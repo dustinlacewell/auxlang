@@ -28,11 +28,11 @@ export const kick = device({
 	defaultInput: "trig",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const trig = inp.trig ?? 0;
-		const basePitch = inp.pitch ?? 50;
-		const sweep = inp.sweep ?? 4;
-		const decay = Math.max(0.01, inp.decay ?? 0.3);
-		const click = Math.max(0, Math.min(1, inp.click ?? 0.3));
+		const trig = (inp.trig ?? [0])[0] ?? 0;
+		const basePitch = (inp.pitch ?? [50])[0] ?? 50;
+		const sweep = (inp.sweep ?? [4])[0] ?? 4;
+		const decay = Math.max(0.01, (inp.decay ?? [0.3])[0] ?? 0.3);
+		const click = Math.max(0, Math.min(1, (inp.click ?? [0.3])[0] ?? 0.3));
 
 		// State
 		const wasTrig = (state.wasTrig as number) ?? 0;

@@ -232,9 +232,16 @@ export const gte = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = (inp.a ?? [0])[0] ?? 0;
-		const b = (inp.b ?? [0])[0] ?? 0;
-		return { out: a >= b ? 1 : 0 };
+		const aIn = inp.a ?? [0];
+		const bIn = inp.b ?? [0];
+		const numChannels = Math.max(aIn.length, bIn.length);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const a = aIn[c % aIn.length] ?? 0;
+			const b = bIn[c % bIn.length] ?? 0;
+			out.push(a >= b ? 1 : 0);
+		}
+		return { out };
 	},
 });
 
@@ -254,9 +261,16 @@ export const lt = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = (inp.a ?? [0])[0] ?? 0;
-		const b = (inp.b ?? [0])[0] ?? 0;
-		return { out: a < b ? 1 : 0 };
+		const aIn = inp.a ?? [0];
+		const bIn = inp.b ?? [0];
+		const numChannels = Math.max(aIn.length, bIn.length);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const a = aIn[c % aIn.length] ?? 0;
+			const b = bIn[c % bIn.length] ?? 0;
+			out.push(a < b ? 1 : 0);
+		}
+		return { out };
 	},
 });
 
@@ -276,9 +290,16 @@ export const eq = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = (inp.a ?? [0])[0] ?? 0;
-		const b = (inp.b ?? [0])[0] ?? 0;
-		return { out: Math.abs(a - b) < 0.0001 ? 1 : 0 };
+		const aIn = inp.a ?? [0];
+		const bIn = inp.b ?? [0];
+		const numChannels = Math.max(aIn.length, bIn.length);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const a = aIn[c % aIn.length] ?? 0;
+			const b = bIn[c % bIn.length] ?? 0;
+			out.push(Math.abs(a - b) < 0.0001 ? 1 : 0);
+		}
+		return { out };
 	},
 });
 
@@ -297,9 +318,16 @@ export const and = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = (inp.a ?? [0])[0] ?? 0;
-		const b = (inp.b ?? [0])[0] ?? 0;
-		return { out: a > 0.5 && b > 0.5 ? 1 : 0 };
+		const aIn = inp.a ?? [0];
+		const bIn = inp.b ?? [0];
+		const numChannels = Math.max(aIn.length, bIn.length);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const a = aIn[c % aIn.length] ?? 0;
+			const b = bIn[c % bIn.length] ?? 0;
+			out.push(a > 0.5 && b > 0.5 ? 1 : 0);
+		}
+		return { out };
 	},
 });
 
@@ -318,9 +346,16 @@ export const or = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = (inp.a ?? [0])[0] ?? 0;
-		const b = (inp.b ?? [0])[0] ?? 0;
-		return { out: a > 0.5 || b > 0.5 ? 1 : 0 };
+		const aIn = inp.a ?? [0];
+		const bIn = inp.b ?? [0];
+		const numChannels = Math.max(aIn.length, bIn.length);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const a = aIn[c % aIn.length] ?? 0;
+			const b = bIn[c % bIn.length] ?? 0;
+			out.push(a > 0.5 || b > 0.5 ? 1 : 0);
+		}
+		return { out };
 	},
 });
 
@@ -339,7 +374,8 @@ export const not = device({
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const input = (inp.input ?? [0])[0] ?? 0;
-		return { out: input > 0.5 ? 0 : 1 };
+		const inputSig = inp.input ?? [0];
+		const out = inputSig.map((v) => (v > 0.5 ? 0 : 1));
+		return { out };
 	},
 });

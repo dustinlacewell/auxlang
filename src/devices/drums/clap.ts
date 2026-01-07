@@ -28,10 +28,10 @@ export const clap = device({
 	defaultInput: "trig",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const trig = inp.trig ?? 0;
-		const decay = Math.max(0.01, inp.decay ?? 0.15);
-		const tone = Math.max(0, Math.min(1, inp.tone ?? 0.5));
-		const spread = Math.max(0, Math.min(1, inp.spread ?? 0.5));
+		const trig = (inp.trig ?? [0])[0] ?? 0;
+		const decay = Math.max(0.01, (inp.decay ?? [0.15])[0] ?? 0.15);
+		const tone = Math.max(0, Math.min(1, (inp.tone ?? [0.5])[0] ?? 0.5));
+		const spread = Math.max(0, Math.min(1, (inp.spread ?? [0.5])[0] ?? 0.5));
 
 		// State
 		const wasTrig = (state.wasTrig as number) ?? 0;
