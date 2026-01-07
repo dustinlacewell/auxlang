@@ -1,0 +1,31 @@
+import { device } from "../descriptor/device";
+import { inputs } from "../descriptor/inputs";
+
+/**
+ * White noise generator.
+ *
+ * Outputs random values scaled to the min/max range.
+ *
+ * Inputs:
+ * - `min`: Minimum output value (default -1)
+ * - `max`: Maximum output value (default 1)
+ *
+ * @example
+ * ```javascript
+ * noise()                    // White noise -1 to 1
+ * noise().min(0).max(1)      // Unipolar noise 0 to 1
+ * gain(noise()).amount(0.1)  // Quiet noise for texture
+ * ```
+ */
+export const noise = device({
+	inputs: inputs({ min: -1, max: 1 }),
+	outputs: ["out"],
+	defaultInput: "min",
+	defaultOutput: "out",
+	process(inp, _cfg, _state, _sampleRate) {
+		const min = inp.min ?? -1;
+		const max = inp.max ?? 1;
+		const rand = Math.random();
+		return { out: min + rand * (max - min) };
+	},
+});

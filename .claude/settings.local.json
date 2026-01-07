@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm test)",
+      "Bash(pnpm test:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx biome:*)",
+      "Bash(pnpm add:*)",
+      "Bash(timeout 10 pnpm dev:*)",
+      "Bash(pnpm tsc:*)",
+      "Bash(timeout 30 npx vitest:*)",
+      "Bash(npx tsx:*)",
+      "Bash(cat:*)",
+      "Bash(node -e:*)",
+      "Bash(npx vitest:*)"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "auxlang",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "test": "vitest",
+    "lint": "biome check src/",
+    "format": "biome format --write src/"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "@types/node": "^25.0.3",
+    "typescript": "^5.7.0",
+    "vite": "^7.3.1",
+    "vitest": "^2.1.0"
+  },
+  "packageManager": "pnpm@10.22.0"
+}
