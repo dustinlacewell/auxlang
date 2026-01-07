@@ -28,10 +28,10 @@ export const hihat = device({
 	defaultInput: "trig",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const trig = inp.trig ?? 0;
-		const decay = Math.max(0.005, inp.decay ?? 0.05);
-		const tone = Math.max(0, Math.min(1, inp.tone ?? 0.6));
-		const metal = Math.max(0, Math.min(1, inp.metal ?? 0.5));
+		const trig = (inp.trig ?? [0])[0] ?? 0;
+		const decay = Math.max(0.005, (inp.decay ?? [0.05])[0] ?? 0.05);
+		const tone = Math.max(0, Math.min(1, (inp.tone ?? [0.6])[0] ?? 0.6));
+		const metal = Math.max(0, Math.min(1, (inp.metal ?? [0.5])[0] ?? 0.5));
 
 		// State
 		const wasTrig = (state.wasTrig as number) ?? 0;

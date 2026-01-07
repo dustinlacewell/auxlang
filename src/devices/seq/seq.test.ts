@@ -64,7 +64,8 @@ describe("seq", () => {
 			bpm = 120
 		) {
 			// Send reset signal with BPM (-bpm) - this IS beat 0
-			return process({ trig: -bpm }, config, state, sampleRate);
+			// All signals are PolySignal (number[])
+			return process({ trig: [-bpm] }, config, state, sampleRate);
 		}
 
 		// Helper to advance to next beat (wait samplesPerBeat, then trigger)
@@ -76,11 +77,12 @@ describe("seq", () => {
 			samplesPerBeat: number
 		) {
 			// Wait for beat duration
+			// All signals are PolySignal (number[])
 			for (let i = 0; i < samplesPerBeat; i++) {
-				process({ trig: 0 }, config, state, sampleRate);
+				process({ trig: [0] }, config, state, sampleRate);
 			}
 			// Send trigger to advance
-			return process({ trig: 1 }, config, state, sampleRate);
+			return process({ trig: [1] }, config, state, sampleRate);
 		}
 
 		it("outputs cv from first note on reset", () => {
@@ -137,7 +139,7 @@ describe("seq", () => {
 			const cv1 = state.cv as number;
 
 			// Sustained high - should NOT advance
-			process({ trig: 1 }, config, state, sampleRate);
+			process({ trig: [1] }, config, state, sampleRate);
 			const cv2 = state.cv as number;
 
 			expect(cv1).toBe(cv2);
@@ -201,7 +203,7 @@ describe("seq", () => {
 			const { process, config } = getProcessAndConfig("");
 			const state: Record<string, unknown> = {};
 
-			const result = process({ trig: 1 }, config, state, 44100);
+			const result = process({ trig: [1] }, config, state, 44100);
 
 			expect(result.cv).toBe(0);
 			expect(result.gate).toBe(0);
@@ -212,7 +214,7 @@ describe("seq", () => {
 			const state: Record<string, unknown> = {};
 
 			// No reset or trigger yet
-			const result = process({ trig: 0 }, config, state, 44100);
+			const result = process({ trig: [0] }, config, state, 44100);
 
 			expect(result.cv).toBe(0);
 			expect(result.gate).toBe(0);
@@ -229,14 +231,14 @@ describe("seq", () => {
 			simulateReset(process, config, state, sampleRate, bpm);
 
 			// At start of beat, gate should be high
-			const resultStart = process({ trig: 0 }, config, state, sampleRate);
+			const resultStart = process({ trig: [0] }, config, state, sampleRate);
 			expect(resultStart.gate).toBe(1);
 
 			// Advance to 85% of beat - gate should be low
 			for (let i = 0; i < samplesPerBeat * 0.84; i++) {
-				process({ trig: 0 }, config, state, sampleRate);
+				process({ trig: [0] }, config, state, sampleRate);
 			}
-			const resultEnd = process({ trig: 0 }, config, state, sampleRate);
+			const resultEnd = process({ trig: [0] }, config, state, sampleRate);
 			expect(resultEnd.gate).toBe(0);
 		});
 
