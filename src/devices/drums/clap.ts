@@ -2,44 +2,41 @@ import { device } from "../../descriptor/device";
 import { inputs } from "../../descriptor/inputs";
 
 /**
- * Hand clap synthesizer.
+ * Hand clap synthesizer (808/909-style).
  *
  * Generates a clap sound on trigger using:
- * - Filtered noise burst
- * - Multiple "hits" with short delays (simulating multiple hands)
- * - Bandpass filtering for realistic tone
+ * - Bandpass filtered noise
+ * - Multiple short bursts followed by a decay tail
+ * - Classic "scattered hands" envelope
  *
  * Inputs:
  * - `trig`: Trigger signal (fires on rising edge > 0.5)
- * - `decay`: Tail decay time in seconds (default 0.15)
- * - `tone`: Brightness 0-1 (default 0.5)
- * - `spread`: Time spread of initial hits (default 0.5)
+ * - `decay`: Tail decay time in seconds (default 0.2)
+ * - `tone`: Filter frequency - higher = brighter (default 0.5)
  *
  * @example
  * ```javascript
  * clap(clk.trig)                     // Basic clap
  * clap(clk.trig).decay(0.3)          // Longer reverby clap
- * clap(clk.trig).spread(0.8)         // More scattered initial hits
+ * clap(clk.trig).tone(0.8)           // Brighter clap
  * ```
  */
 export const clap = device({
-	inputs: inputs({ trig: 0, decay: 0.15, tone: 0.5, spread: 0.5 }),
+	inputs: inputs({ trig: 0, decay: 0.2, tone: 0.5 }),
 	outputs: ["out"],
 	defaultInput: "trig",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
 		const trig = (inp.trig ?? [0])[0] ?? 0;
-		const decay = Math.max(0.01, (inp.decay ?? [0.15])[0] ?? 0.15);
+		const decay = Math.max(0.05, (inp.decay ?? [0.2])[0] ?? 0.2);
 		const tone = Math.max(0, Math.min(1, (inp.tone ?? [0.5])[0] ?? 0.5));
-		const spread = Math.max(0, Math.min(1, (inp.spread ?? [0.5])[0] ?? 0.5));
 
 		// State
 		const wasTrig = (state.wasTrig as number) ?? 0;
 		let sampleCount = (state.sampleCount as number) ?? 0;
-		let amp = (state.amp as number) ?? 0;
 		let triggered = (state.triggered as boolean) ?? false;
-		let bpState1 = (state.bpState1 as number) ?? 0;
-		let bpState2 = (state.bpState2 as number) ?? 0;
+		let lpState = (state.lpState as number) ?? 0;
+		let hpState = (state.hpState as number) ?? 0;
 
 		// Edge detection
 		const trigOn = trig > 0.5;
@@ -49,63 +46,69 @@ export const clap = device({
 		// Retrigger
 		if (risingEdge) {
 			sampleCount = 0;
-			amp = 1;
 			triggered = true;
+			// Reset filter state to avoid clicks
+			lpState = 0;
+			hpState = 0;
 		}
 
 		let out = 0;
 
 		if (triggered) {
-			// Raw noise
-			const rawNoise = Math.random() * 2 - 1;
+			// Raw noise source
+			const noise = Math.random() * 2 - 1;
 
-			// Bandpass filter the noise
-			const bpCutoff = 1000 + tone * 2000; // 1k-3k Hz
-			const bpQ = 2;
-			const w = (2 * Math.PI * bpCutoff) / sampleRate;
-			const alpha = Math.sin(w) / (2 * bpQ);
-			const cosw = Math.cos(w);
+			// Bandpass filter: LP then HP
+			// Center frequency 1000-2500 Hz based on tone
+			const centerFreq = 1000 + tone * 1500;
+			const lpFreq = centerFreq * 1.4;
+			const hpFreq = centerFreq * 0.7;
 
-			// Simple resonant bandpass approximation using two one-pole filters
-			const lpCoef = 1 - Math.exp(-2 * Math.PI * (bpCutoff * 1.5) / sampleRate);
-			const hpCoef = 1 - Math.exp(-2 * Math.PI * (bpCutoff * 0.5) / sampleRate);
+			const lpCoef = Math.exp(-2 * Math.PI * lpFreq / sampleRate);
+			const hpCoef = Math.exp(-2 * Math.PI * hpFreq / sampleRate);
 
-			bpState1 = bpState1 + lpCoef * (rawNoise - bpState1);
-			bpState2 = bpState2 + hpCoef * (bpState1 - bpState2);
-			const filtered = bpState1 - bpState2;
+			// Lowpass
+			lpState = lpState * lpCoef + noise * (1 - lpCoef);
+			// Highpass
+			const hpInput = lpState;
+			const hpOut = hpInput - hpState;
+			hpState = hpState + (1 - hpCoef) * hpOut;
 
-			// Multiple hit envelope - creates the "scattered hands" effect
-			// 3-4 quick bursts before the decay tail
-			const hitSpacing = Math.floor(0.01 * sampleRate * (1 + spread)); // ~10-20ms between hits
-			const numHits = 4;
-			let hitEnv = 0;
+			const filtered = hpOut * 2; // Boost filtered signal
 
-			for (let i = 0; i < numHits; i++) {
-				const hitStart = i * hitSpacing;
-				const hitDur = Math.floor(0.008 * sampleRate); // 8ms per hit
-				if (sampleCount >= hitStart && sampleCount < hitStart + hitDur) {
-					// Quick attack/decay for each hit
-					const hitProgress = (sampleCount - hitStart) / hitDur;
-					hitEnv = Math.max(hitEnv, 1 - hitProgress);
+			// 808-style clap envelope: 4 quick hits then decay
+			// Hits at 0ms, 8ms, 18ms, 28ms approximately
+			const hitTimes = [0, 0.008, 0.018, 0.028];
+			const hitDuration = 0.012; // 12ms per hit
+			const hitDecayRate = 30; // Fast decay within each hit
+
+			let env = 0;
+			const timeSec = sampleCount / sampleRate;
+
+			// Check each hit
+			for (let i = 0; i < hitTimes.length; i++) {
+				const hitStart = hitTimes[i] ?? 0;
+				const hitEnd = hitStart + hitDuration;
+				if (timeSec >= hitStart && timeSec < hitEnd) {
+					const hitProgress = (timeSec - hitStart) / hitDuration;
+					// Exponential decay within hit
+					const hitAmp = Math.exp(-hitProgress * hitDecayRate);
+					env = Math.max(env, hitAmp * (0.7 + i * 0.1)); // Later hits slightly louder
 				}
 			}
 
-			// Main decay envelope starts after the hits
-			const decayStart = numHits * hitSpacing;
-			let tailEnv = 0;
-			if (sampleCount >= decayStart) {
-				const decayProgress = (sampleCount - decayStart) / (decay * sampleRate);
-				tailEnv = Math.exp(-decayProgress * 5);
+			// Decay tail starts overlapping with last hit
+			const tailStart = 0.025;
+			if (timeSec >= tailStart) {
+				const tailProgress = (timeSec - tailStart) / decay;
+				const tailAmp = Math.exp(-tailProgress * 4) * 0.8;
+				env = Math.max(env, tailAmp);
 			}
 
-			// Combine hit envelope and tail
-			const totalEnv = Math.max(hitEnv * 0.8, tailEnv);
-			amp = totalEnv;
+			out = filtered * env;
 
-			out = filtered * amp;
-
-			// Stop when envelope is done
-			if (sampleCount > decayStart + decay * sampleRate && amp < 0.001) {
+			// Stop when done
+			if (timeSec > decay * 2 && env < 0.001) {
 				triggered = false;
 			}
 
@@ -115,10 +118,9 @@ export const clap = device({
 		// Update state
 		state.wasTrig = trig;
 		state.sampleCount = sampleCount;
-		state.amp = amp;
 		state.triggered = triggered;
-		state.bpState1 = bpState1;
-		state.bpState2 = bpState2;
+		state.lpState = lpState;
+		state.hpState = hpState;
 
 		return { out };
 	},

@@ -14,16 +14,38 @@ type ShapeFn = (phase: number) => number;
 /** Create an oscillator device with a given default shape */
 function createOsc(defaultShape: ShapeFn) {
 	return device({
-		inputs: inputs({ freq: 440, min: -1, max: 1, phase: 0 }),
-		config: { shape: defaultShape },
+		inputs: inputs({ freq: 440, min: -1, max: 1, phase: 0, detune: 0 }),
+		config: { shape: defaultShape, poly: 1 },
 		outputs: ["out"],
 		defaultInput: "freq",
 		defaultOutput: "out",
 		process(inp, cfg, state, sampleRate) {
-			const freqs = inp.freq ?? [440];
+			const freqsIn = inp.freq ?? [440];
 			const mins = inp.min ?? [-1];
 			const maxs = inp.max ?? [1];
 			const initPhases = inp.phase ?? [0];
+			const polyCount = Math.max(1, Math.floor(cfg.poly));
+			const detuneCents = (inp.detune ?? [0])[0] ?? 0;
+
+			// Expand frequencies for unison voices
+			// Each input freq becomes polyCount voices with symmetric detuning
+			const freqs: number[] = [];
+			for (let i = 0; i < freqsIn.length; i++) {
+				const baseFreq = freqsIn[i] ?? 440;
+				if (polyCount === 1) {
+					freqs.push(baseFreq);
+				} else {
+					// Spread voices symmetrically: e.g. for 4 voices and 10 cents,
+					// offsets are -15, -5, +5, +15 cents (spread across -detune to +detune)
+					for (let v = 0; v < polyCount; v++) {
+						const t = polyCount === 1 ? 0 : (v / (polyCount - 1)) * 2 - 1; // -1 to +1
+						const centsOffset = t * detuneCents;
+						const detuned = baseFreq * Math.pow(2, centsOffset / 1200);
+						freqs.push(detuned);
+					}
+				}
+			}
+
 			const numChannels = Math.max(freqs.length, mins.length, maxs.length, initPhases.length);
 
 			if (!state.phases) state.phases = [];
