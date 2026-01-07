@@ -50,6 +50,7 @@ export const kick = device({
 		if (risingEdge) {
 			amp = 1;
 			pitchEnv = 1;
+			phase = 0; // Reset phase to avoid click from discontinuity
 			clickPhase = 0;
 		}
 

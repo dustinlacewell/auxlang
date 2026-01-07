@@ -508,6 +508,36 @@ let s = seq("c2 c4,e4,g4 c2 g3,b3,d4").trig(clk.trig)
 let e = adsr(s.gate).attack(0.01).decay(0.15).sustain(0.2).release(0.1)
 return out(gain(mult(lpf(saw(s.cv)).cutoff(1000)).b(e.out)).amount(0.15))`,
 	},
+	{
+		id: "poly-unison-param",
+		category: "Polyphony",
+		name: ".poly(4).detune(15)",
+		desc: "Supersaw via poly/detune params - thick and wide",
+		code: `let clk = clock(120)
+let s = seq("c3 g3 c3 eb3").trig(clk.trig)
+let e = adsr(s.gate).attack(0.01).decay(0.2).sustain(0.3).release(0.2)
+let voice = sawOsc(s.cv).poly(4).detune(15)
+return out(gain(mult(lpf(voice).cutoff(1500)).b(e.out)).amount(0.12))`,
+	},
+	{
+		id: "poly-unison-7",
+		category: "Polyphony",
+		name: ".poly(7).detune(25)",
+		desc: "7-voice supersaw - massive unison",
+		code: `let voice = sawOsc(110).poly(7).detune(25)
+return out(gain(lpf(voice).cutoff(2000)).amount(0.08))`,
+	},
+	{
+		id: "poly-unison-subtle",
+		category: "Polyphony",
+		name: ".poly(2).detune(5)",
+		desc: "Subtle 2-voice chorus - gentle widening",
+		code: `let clk = clock(90)
+let s = seq("c4 e4 g4 c5").trig(clk.trig)
+let e = adsr(s.gate).attack(0.1).decay(0.3).sustain(0.6).release(0.3)
+let voice = osc(s.cv).poly(2).detune(5)
+return out(gain(mult(voice).b(e.out)).amount(0.2))`,
+	},
 ];
 
 export function getTestsByCategory(): Map<string, TestDefinition[]> {
