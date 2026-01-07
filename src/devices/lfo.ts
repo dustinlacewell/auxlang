@@ -7,16 +7,27 @@ export const lfo = device({
 	defaultInput: "rate",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const rate = inp.rate ?? 1;
-		const min = inp.min ?? -1;
-		const max = inp.max ?? 1;
-		const initialPhase = inp.phase ?? 0;
+		const rates = inp.rate ?? [1];
+		const mins = inp.min ?? [-1];
+		const maxs = inp.max ?? [1];
+		const initPhases = inp.phase ?? [0];
+		const numChannels = Math.max(rates.length, mins.length, maxs.length, initPhases.length);
 
-		state.phase = ((state.phase as number) ?? initialPhase) + rate / sampleRate;
-		state.phase = (state.phase as number) % 1;
+		if (!state.phases) state.phases = [];
+		const phases = state.phases as number[];
 
-		// Sine wave normalized to 0..1, then scaled to min..max
-		const normalized = (Math.sin((state.phase as number) * Math.PI * 2) + 1) / 2;
-		return { out: min + normalized * (max - min) };
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const rate = rates[c % rates.length] ?? 1;
+			const min = mins[c % mins.length] ?? -1;
+			const max = maxs[c % maxs.length] ?? 1;
+			const initPhase = initPhases[c % initPhases.length] ?? 0;
+
+			phases[c] = ((phases[c] ?? initPhase) + rate / sampleRate) % 1;
+			const normalized = (Math.sin(phases[c] * Math.PI * 2) + 1) / 2;
+			out.push(min + normalized * (max - min));
+		}
+
+		return { out };
 	},
 });

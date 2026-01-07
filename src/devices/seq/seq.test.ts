@@ -14,10 +14,9 @@ describe("seq", () => {
 		expect(s._state.spec.outputs).toContain("gate");
 	});
 
-	it("has trig and gateIn inputs", () => {
+	it("has trig input", () => {
 		const s = seq("c4 e4 g4");
 		expect(s._state.spec.inputs).toHaveProperty("trig");
-		expect(s._state.spec.inputs).toHaveProperty("gateIn");
 	});
 
 	it("stores pattern in config", () => {
@@ -40,11 +39,6 @@ describe("seq", () => {
 		expect(s._state.inputBindings).toHaveProperty("trig", 1);
 	});
 
-	it("can set gateIn input via chaining", () => {
-		const s = seq("c4 e4 g4").gateIn(1);
-		expect(s._state.inputBindings).toHaveProperty("gateIn", 1);
-	});
-
 	it("supports calling with default input", () => {
 		const s = seq("c4 e4 g4")(0.5);
 		expect(s._state.inputBindings).toHaveProperty("trig", 0.5);
@@ -60,44 +54,53 @@ describe("seq", () => {
 			return { process, config };
 		}
 
-		it("outputs initial cv from first note", () => {
+		// Helper to simulate clock reset signal (which also starts beat 0)
+		// bpm defaults to 120, which gives samplesPerBeat = 22050 at 44100 Hz
+		function simulateReset(
+			process: ReturnType<typeof getProcessAndConfig>["process"],
+			config: ReturnType<typeof getProcessAndConfig>["config"],
+			state: Record<string, unknown>,
+			sampleRate: number,
+			bpm = 120
+		) {
+			// Send reset signal with BPM (-bpm) - this IS beat 0
+			return process({ trig: -bpm }, config, state, sampleRate);
+		}
+
+		// Helper to advance to next beat (wait samplesPerBeat, then trigger)
+		function advanceBeat(
+			process: ReturnType<typeof getProcessAndConfig>["process"],
+			config: ReturnType<typeof getProcessAndConfig>["config"],
+			state: Record<string, unknown>,
+			sampleRate: number,
+			samplesPerBeat: number
+		) {
+			// Wait for beat duration
+			for (let i = 0; i < samplesPerBeat; i++) {
+				process({ trig: 0 }, config, state, sampleRate);
+			}
+			// Send trigger to advance
+			return process({ trig: 1 }, config, state, sampleRate);
+		}
+
+		it("outputs cv from first note on reset", () => {
 			const { process, config } = getProcessAndConfig("c4 e4 g4");
 			const state: Record<string, unknown> = {};
+			const sampleRate = 44100;
 
-			const result = process(
-				{ trig: 0, gateIn: 0 },
-				config,
-				state,
-				44100,
-			);
+			// Reset signal IS beat 0
+			const result = simulateReset(process, config, state, sampleRate);
 
 			expect(result.cv).toBeCloseTo(261.63, 1); // C4
 		});
 
-		it("outputs gate=0 when input gateIn is low", () => {
+		it("generates gate=1 at start of note", () => {
 			const { process, config } = getProcessAndConfig("c4 e4 g4");
 			const state: Record<string, unknown> = {};
+			const sampleRate = 44100;
 
-			const result = process(
-				{ trig: 0, gateIn: 0 },
-				config,
-				state,
-				44100,
-			);
-
-			expect(result.gate).toBe(0);
-		});
-
-		it("outputs gate=1 when input gateIn is high and step is note", () => {
-			const { process, config } = getProcessAndConfig("c4 e4 g4");
-			const state: Record<string, unknown> = {};
-
-			const result = process(
-				{ trig: 0, gateIn: 1 },
-				config,
-				state,
-				44100,
-			);
+			// Reset signal IS beat 0
+			const result = simulateReset(process, config, state, sampleRate);
 
 			expect(result.gate).toBe(1);
 		});
@@ -105,13 +108,15 @@ describe("seq", () => {
 		it("advances step on trigger rising edge", () => {
 			const { process, config } = getProcessAndConfig("c4 e4 g4");
 			const state: Record<string, unknown> = {};
+			const sampleRate = 44100;
+			const samplesPerBeat = 22050;
 
-			// First call - step 0
-			process({ trig: 0, gateIn: 1 }, config, state, 44100);
+			// Reset -> beat 0 (C4)
+			simulateReset(process, config, state, sampleRate);
 			const cv0 = state.cv as number;
 
-			// Trigger low -> high (rising edge) - advances to step 1
-			process({ trig: 1, gateIn: 1 }, config, state, 44100);
+			// Wait and trigger -> beat 1 (E4)
+			advanceBeat(process, config, state, sampleRate, samplesPerBeat);
 			const cv1 = state.cv as number;
 
 			expect(cv0).toBeCloseTo(261.63, 1); // C4
@@ -121,14 +126,18 @@ describe("seq", () => {
 		it("does not advance on sustained trigger", () => {
 			const { process, config } = getProcessAndConfig("c4 e4 g4");
 			const state: Record<string, unknown> = {};
+			const sampleRate = 44100;
+			const samplesPerBeat = 22050;
 
-			// First rising edge - advances to step 1
-			process({ trig: 0, gateIn: 1 }, config, state, 44100);
-			process({ trig: 1, gateIn: 1 }, config, state, 44100);
+			// Reset -> beat 0
+			simulateReset(process, config, state, sampleRate);
+
+			// Wait and trigger -> beat 1
+			advanceBeat(process, config, state, sampleRate, samplesPerBeat);
 			const cv1 = state.cv as number;
 
 			// Sustained high - should NOT advance
-			process({ trig: 1, gateIn: 1 }, config, state, 44100);
+			process({ trig: 1 }, config, state, sampleRate);
 			const cv2 = state.cv as number;
 
 			expect(cv1).toBe(cv2);
@@ -137,16 +146,17 @@ describe("seq", () => {
 		it("wraps around at end of pattern", () => {
 			const { process, config } = getProcessAndConfig("c4 e4");
 			const state: Record<string, unknown> = {};
+			const sampleRate = 44100;
+			const samplesPerBeat = 22050;
 
-			// Step 0
-			process({ trig: 0, gateIn: 1 }, config, state, 44100);
+			// Reset -> beat 0
+			simulateReset(process, config, state, sampleRate);
 
-			// Rising edge -> step 1
-			process({ trig: 1, gateIn: 1 }, config, state, 44100);
-			process({ trig: 0, gateIn: 1 }, config, state, 44100);
+			// Trigger -> beat 1
+			advanceBeat(process, config, state, sampleRate, samplesPerBeat);
 
-			// Rising edge -> step 0 (wrap)
-			process({ trig: 1, gateIn: 1 }, config, state, 44100);
+			// Trigger -> beat 0 (wrap)
+			advanceBeat(process, config, state, sampleRate, samplesPerBeat);
 			const cv = state.cv as number;
 
 			expect(cv).toBeCloseTo(261.63, 1); // C4
@@ -155,29 +165,32 @@ describe("seq", () => {
 		it("suppresses gate on rest steps", () => {
 			const { process, config } = getProcessAndConfig("c4 ~");
 			const state: Record<string, unknown> = {};
+			const sampleRate = 44100;
+			const samplesPerBeat = 22050;
 
-			// Step 0 (note) - gate should follow input
-			let result = process({ trig: 0, gateIn: 1 }, config, state, 44100);
+			// Beat 0 (note) - gate should be 1
+			let result = simulateReset(process, config, state, sampleRate);
 			expect(result.gate).toBe(1);
 
-			// Advance to step 1 (rest)
-			process({ trig: 1, gateIn: 1 }, config, state, 44100);
-			result = process({ trig: 0, gateIn: 1 }, config, state, 44100);
+			// Advance to beat 1 (rest)
+			result = advanceBeat(process, config, state, sampleRate, samplesPerBeat);
 
-			// Gate should be 0 even though input gateIn is high
+			// Gate should be 0 on rest
 			expect(result.gate).toBe(0);
 		});
 
 		it("holds cv on rest steps", () => {
 			const { process, config } = getProcessAndConfig("c4 ~");
 			const state: Record<string, unknown> = {};
+			const sampleRate = 44100;
+			const samplesPerBeat = 22050;
 
-			// Step 0 (C4)
-			process({ trig: 0, gateIn: 1 }, config, state, 44100);
+			// Beat 0 (C4)
+			simulateReset(process, config, state, sampleRate);
 			const cv0 = state.cv as number;
 
-			// Advance to step 1 (rest) - cv should hold
-			process({ trig: 1, gateIn: 1 }, config, state, 44100);
+			// Advance to beat 1 (rest) - cv should hold
+			advanceBeat(process, config, state, sampleRate, samplesPerBeat);
 			const cv1 = state.cv as number;
 
 			expect(cv0).toBeCloseTo(261.63, 1);
@@ -188,10 +201,74 @@ describe("seq", () => {
 			const { process, config } = getProcessAndConfig("");
 			const state: Record<string, unknown> = {};
 
-			const result = process({ trig: 1, gateIn: 1 }, config, state, 44100);
+			const result = process({ trig: 1 }, config, state, 44100);
 
 			expect(result.cv).toBe(0);
 			expect(result.gate).toBe(0);
+		});
+
+		it("outputs nothing before reset/trigger", () => {
+			const { process, config } = getProcessAndConfig("c4 e4 g4");
+			const state: Record<string, unknown> = {};
+
+			// No reset or trigger yet
+			const result = process({ trig: 0 }, config, state, 44100);
+
+			expect(result.cv).toBe(0);
+			expect(result.gate).toBe(0);
+		});
+
+		it("generates gate with 80% duty cycle", () => {
+			const { process, config } = getProcessAndConfig("c4");
+			const state: Record<string, unknown> = {};
+			const sampleRate = 44100;
+			const samplesPerBeat = 1000; // Short for testing
+			const bpm = (60 * sampleRate) / samplesPerBeat; // Calculate BPM from samplesPerBeat
+
+			// Reset (beat 0)
+			simulateReset(process, config, state, sampleRate, bpm);
+
+			// At start of beat, gate should be high
+			const resultStart = process({ trig: 0 }, config, state, sampleRate);
+			expect(resultStart.gate).toBe(1);
+
+			// Advance to 85% of beat - gate should be low
+			for (let i = 0; i < samplesPerBeat * 0.84; i++) {
+				process({ trig: 0 }, config, state, sampleRate);
+			}
+			const resultEnd = process({ trig: 0 }, config, state, sampleRate);
+			expect(resultEnd.gate).toBe(0);
+		});
+
+		it("holds gate high for tied notes", () => {
+			const { process, config } = getProcessAndConfig("c4@2");
+			const state: Record<string, unknown> = {};
+			const sampleRate = 44100;
+			const samplesPerBeat = 22050;
+
+			// Beat 0 - first beat of tied note
+			const result0 = simulateReset(process, config, state, sampleRate);
+			expect(result0.gate).toBe(1);
+
+			// Advance to beat 1 (second beat of tie)
+			const result1 = advanceBeat(process, config, state, sampleRate, samplesPerBeat);
+
+			// Gate should still be high for tied continuation
+			expect(result1.gate).toBe(1);
+		});
+
+		it("knows tempo immediately from reset signal", () => {
+			const { process, config } = getProcessAndConfig("c4*4");
+			const state: Record<string, unknown> = {};
+			const sampleRate = 44100;
+			const bpm = 120;
+			const expectedSamplesPerBeat = (60 / bpm) * sampleRate; // 22050
+
+			// Reset with BPM - tempo should be known immediately
+			simulateReset(process, config, state, sampleRate, bpm);
+
+			// Tempo should be calculated from BPM
+			expect(state.samplesPerBeat).toBe(expectedSamplesPerBeat);
 		});
 	});
 });

@@ -12,7 +12,8 @@
       "Bash(npx tsx:*)",
       "Bash(cat:*)",
       "Bash(node -e:*)",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

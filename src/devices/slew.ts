@@ -24,24 +24,35 @@ export const slew = device({
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const input = inp.input ?? 0;
-		const rise = Math.max(0.0001, inp.rise ?? 0.1);
-		const fall = Math.max(0.0001, inp.fall ?? 0.1);
+		const inputSig = inp.input ?? [0];
+		const rises = inp.rise ?? [0.1];
+		const falls = inp.fall ?? [0.1];
+		const numChannels = Math.max(inputSig.length, rises.length, falls.length);
 
-		const current = (state.current as number) ?? input;
+		if (!state.currents) state.currents = [];
+		const currents = state.currents as number[];
 
-		let newValue: number;
-		if (input > current) {
-			// Rising - limit by rise rate
-			const riseRate = 1 / (rise * sampleRate);
-			newValue = Math.min(input, current + riseRate);
-		} else {
-			// Falling - limit by fall rate
-			const fallRate = 1 / (fall * sampleRate);
-			newValue = Math.max(input, current - fallRate);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const input = inputSig[c % inputSig.length] ?? 0;
+			const rise = Math.max(0.0001, rises[c % rises.length] ?? 0.1);
+			const fall = Math.max(0.0001, falls[c % falls.length] ?? 0.1);
+
+			const current = currents[c] ?? input;
+
+			let newValue: number;
+			if (input > current) {
+				const riseRate = 1 / (rise * sampleRate);
+				newValue = Math.min(input, current + riseRate);
+			} else {
+				const fallRate = 1 / (fall * sampleRate);
+				newValue = Math.max(input, current - fallRate);
+			}
+
+			currents[c] = newValue;
+			out.push(newValue);
 		}
 
-		state.current = newValue;
-		return { out: newValue };
+		return { out };
 	},
 });

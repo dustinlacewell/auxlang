@@ -8,8 +8,11 @@ import { inputs } from "../descriptor/inputs";
  * The `swing` input adds swing feel (0 = straight, 0.5 = max swing).
  *
  * Outputs:
- * - `trig`: 1.0 for one sample at each beat, 0.0 otherwise
+ * - `trig`: -bpm on first sample (reset with tempo), 1.0 at each beat, 0.0 otherwise
  * - `gate`: 1.0 for 50% of beat duration, 0.0 otherwise
+ *
+ * The reset signal (trig = -bpm) allows downstream sequencers to know the
+ * tempo immediately without waiting for the first beat interval.
  *
  * Examples:
  *   clock(120)              // 120 BPM clock
@@ -21,33 +24,29 @@ export const clock = device({
 	defaultInput: "bpm",
 	defaultOutput: "trig",
 	process(inp, _cfg, state, sampleRate) {
-		const bpm = inp.bpm ?? 120;
-		const swing = Math.max(0, Math.min(0.5, inp.swing ?? 0));
+		const bpm = (inp.bpm ?? [120])[0] ?? 120;
+		const swing = Math.max(0, Math.min(0.5, (inp.swing ?? [0])[0] ?? 0));
 
-		// Samples per beat
 		const samplesPerBeat = (60 / bpm) * sampleRate;
-
-		// Initialize state
 		const phase = (state.phase as number) ?? 0;
 		const beatCount = (state.beatCount as number) ?? 0;
+		const hasReset = (state.hasReset as boolean) ?? false;
 
-		// Swing affects even beats (0, 2, 4...) vs odd beats (1, 3, 5...)
-		// Swing delays odd beats by a fraction of a beat
+		if (!hasReset) {
+			state.hasReset = true;
+			state.phase = 0;
+			state.beatCount = 0;
+			return { trig: -bpm, gate: 0 };
+		}
+
 		const isOddBeat = beatCount % 2 === 1;
 		const swingOffset = isOddBeat ? swing * samplesPerBeat : 0;
-
-		// Advance phase
 		const newPhase = phase + 1;
-
-		// Check for beat crossing
 		const beatThreshold = samplesPerBeat + swingOffset;
 		const trig = newPhase >= beatThreshold ? 1 : 0;
-
-		// Gate is high for first 50% of beat
 		const gateThreshold = beatThreshold * 0.5;
 		const gate = newPhase < gateThreshold ? 1 : 0;
 
-		// Update state
 		if (trig === 1) {
 			state.phase = 0;
 			state.beatCount = beatCount + 1;

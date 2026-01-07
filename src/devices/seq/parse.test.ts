@@ -17,7 +17,7 @@ describe("parse", () => {
 			expect(pattern[0]?.[0]?.type).toBe("note");
 			expect(pattern[0]?.[0]?.dur).toBe(1);
 			if (pattern[0]?.[0]?.type === "note") {
-				expect(pattern[0][0].freq).toBeCloseTo(261.63, 1);
+				expect(pattern[0][0].freqs[0]).toBeCloseTo(261.63, 1);
 			}
 		});
 
@@ -66,7 +66,7 @@ describe("parse", () => {
 			const step1 = pattern[1]?.[0];
 			if (step0?.type === "note" && step1?.type === "note") {
 				// C#4 and Db4 should be the same frequency
-				expect(step0.freq).toBeCloseTo(step1.freq, 5);
+				expect(step0.freqs[0]).toBeCloseTo(step1.freqs[0], 5);
 			}
 		});
 
@@ -75,7 +75,7 @@ describe("parse", () => {
 			expect(pattern).toHaveLength(3);
 			const step = pattern[0]?.[0];
 			if (step?.type === "note") {
-				expect(step.freq).toBeCloseTo(261.63, 1); // C4
+				expect(step.freqs[0]).toBeCloseTo(261.63, 1); // C4
 			}
 		});
 
@@ -107,7 +107,7 @@ describe("parse", () => {
 			const lowerStep = lower[0]?.[0];
 			const upperStep = upper[0]?.[0];
 			if (lowerStep?.type === "note" && upperStep?.type === "note") {
-				expect(lowerStep.freq).toBe(upperStep.freq);
+				expect(lowerStep.freqs[0]).toBe(upperStep.freqs[0]);
 			}
 		});
 	});
@@ -349,6 +349,170 @@ describe("parse", () => {
 			expect(pattern).toHaveLength(1); // 1 beat
 			// c4*2 (2 steps, cycle 0) + e4 (1 step, cycle 1)
 			expect(pattern[0]).toHaveLength(3);
+		});
+	});
+
+	describe("glide (_)", () => {
+		it("creates two beats with tie markers", () => {
+			const pattern = parse("c3_g3");
+			expect(pattern).toHaveLength(2); // 2 beats
+			expect(pattern[0]?.[0]?.type).toBe("note");
+			expect(pattern[1]?.[0]?.type).toBe("note");
+			// c3 has tieStart, g3 has tie
+			const c3 = pattern[0]?.[0];
+			const g3 = pattern[1]?.[0];
+			if (c3?.type === "note" && g3?.type === "note") {
+				expect(c3.tieStart).toBe(true);
+				expect(g3.tie).toBe(true);
+			}
+		});
+
+		it("chains multiple glides", () => {
+			const pattern = parse("c3_g3_e3");
+			expect(pattern).toHaveLength(3); // 3 beats
+			const [b0, b1, b2] = pattern;
+			// c3: tieStart only
+			expect(b0?.[0]?.type).toBe("note");
+			if (b0?.[0]?.type === "note") {
+				expect(b0[0].tieStart).toBe(true);
+				expect(b0[0].tie).toBeUndefined();
+			}
+			// g3: both tie and tieStart (receives from c3, sends to e3)
+			expect(b1?.[0]?.type).toBe("note");
+			if (b1?.[0]?.type === "note") {
+				expect(b1[0].tie).toBe(true);
+				expect(b1[0].tieStart).toBe(true);
+			}
+			// e3: tie only
+			expect(b2?.[0]?.type).toBe("note");
+			if (b2?.[0]?.type === "note") {
+				expect(b2[0].tie).toBe(true);
+				expect(b2[0].tieStart).toBeUndefined();
+			}
+		});
+
+		it("works with postfix operators on left", () => {
+			const pattern = parse("c3*2_e3");
+			expect(pattern).toHaveLength(2); // 1 beat (c3*2) + 1 beat (e3)
+			// c3*2 produces one beat with 2 subdivided steps
+			expect(pattern[0]).toHaveLength(2);
+			// Last step of first beat has tieStart
+			const lastStep = pattern[0]?.[1];
+			if (lastStep?.type === "note") {
+				expect(lastStep.tieStart).toBe(true);
+			}
+			// First step of second beat has tie
+			const firstStep = pattern[1]?.[0];
+			if (firstStep?.type === "note") {
+				expect(firstStep.tie).toBe(true);
+			}
+		});
+
+		it("works in a sequence", () => {
+			const pattern = parse("a4 c3_e3 g4");
+			expect(pattern).toHaveLength(4); // a4, c3, e3, g4
+			// a4 and g4 have no tie markers
+			expect(pattern[0]?.[0]?.tie).toBeUndefined();
+			if (pattern[0]?.[0]?.type === "note") {
+				expect(pattern[0][0].tieStart).toBeUndefined();
+			}
+			expect(pattern[3]?.[0]?.tie).toBeUndefined();
+			// c3 has tieStart, e3 has tie
+			if (pattern[1]?.[0]?.type === "note") {
+				expect(pattern[1][0].tieStart).toBe(true);
+			}
+			expect(pattern[2]?.[0]?.tie).toBe(true);
+		});
+
+		it("works within a group", () => {
+			const pattern = parse("[c3_e3]");
+			expect(pattern).toHaveLength(1); // 1 beat
+			expect(pattern[0]).toHaveLength(2); // 2 steps
+			// c3 has tieStart, e3 has tie
+			const c3 = pattern[0]?.[0];
+			const e3 = pattern[0]?.[1];
+			if (c3?.type === "note" && e3?.type === "note") {
+				expect(c3.tieStart).toBe(true);
+				expect(e3.tie).toBe(true);
+				// Both have 0.5 duration (subdivided)
+				expect(c3.dur).toBe(0.5);
+				expect(e3.dur).toBe(0.5);
+			}
+		});
+
+		it("works with group on right side", () => {
+			const pattern = parse("c3_[e3 g3]");
+			expect(pattern).toHaveLength(2); // c3 (1 beat), [e3 g3] (1 beat)
+			// c3 has tieStart
+			if (pattern[0]?.[0]?.type === "note") {
+				expect(pattern[0][0].tieStart).toBe(true);
+			}
+			// First step of group (e3) has tie
+			if (pattern[1]?.[0]?.type === "note") {
+				expect(pattern[1][0].tie).toBe(true);
+			}
+		});
+	});
+
+	describe("stack (,) - polyphony", () => {
+		it("creates a chord from two notes", () => {
+			const pattern = parse("c4,e4");
+			expect(pattern).toHaveLength(1); // 1 beat
+			expect(pattern[0]).toHaveLength(1); // 1 step (polyphonic)
+			const step = pattern[0]?.[0];
+			if (step?.type === "note") {
+				expect(step.freqs).toHaveLength(2);
+				expect(step.freqs[0]).toBeCloseTo(261.63, 1); // C4
+				expect(step.freqs[1]).toBeCloseTo(329.63, 1); // E4
+			}
+		});
+
+		it("creates a chord from three notes", () => {
+			const pattern = parse("c4,e4,g4");
+			expect(pattern).toHaveLength(1); // 1 beat
+			expect(pattern[0]).toHaveLength(1); // 1 step
+			const step = pattern[0]?.[0];
+			if (step?.type === "note") {
+				expect(step.freqs).toHaveLength(3);
+				expect(step.freqs[0]).toBeCloseTo(261.63, 1); // C4
+				expect(step.freqs[1]).toBeCloseTo(329.63, 1); // E4
+				expect(step.freqs[2]).toBeCloseTo(392.00, 1); // G4
+			}
+		});
+
+		it("works in a sequence with mono notes", () => {
+			const pattern = parse("c3 c4,e4,g4 g3");
+			expect(pattern).toHaveLength(3); // 3 beats
+			// First beat: mono c3
+			if (pattern[0]?.[0]?.type === "note") {
+				expect(pattern[0][0].freqs).toHaveLength(1);
+			}
+			// Second beat: poly chord
+			if (pattern[1]?.[0]?.type === "note") {
+				expect(pattern[1][0].freqs).toHaveLength(3);
+			}
+			// Third beat: mono g3
+			if (pattern[2]?.[0]?.type === "note") {
+				expect(pattern[2][0].freqs).toHaveLength(1);
+			}
+		});
+
+		it("preserves duration for stacked notes", () => {
+			const pattern = parse("c4,e4");
+			const step = pattern[0]?.[0];
+			expect(step?.dur).toBe(1);
+		});
+
+		it("works with accidentals", () => {
+			const pattern = parse("c4,eb4,g4");
+			expect(pattern).toHaveLength(1);
+			const step = pattern[0]?.[0];
+			if (step?.type === "note") {
+				expect(step.freqs).toHaveLength(3);
+				expect(step.freqs[0]).toBeCloseTo(261.63, 1); // C4
+				expect(step.freqs[1]).toBeCloseTo(311.13, 1); // Eb4
+				expect(step.freqs[2]).toBeCloseTo(392.00, 1); // G4
+			}
 		});
 	});
 });

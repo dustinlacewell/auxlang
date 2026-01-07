@@ -16,9 +16,14 @@ export const mult = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = inp.a ?? 0;
-		const b = inp.b ?? 1;
-		return { out: a * b };
+		const aIn = inp.a ?? [0];
+		const bIn = inp.b ?? [1];
+		const numChannels = Math.max(aIn.length, bIn.length);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			out.push((aIn[c % aIn.length] ?? 0) * (bIn[c % bIn.length] ?? 1));
+		}
+		return { out };
 	},
 });
 
@@ -37,9 +42,14 @@ export const sub = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = inp.a ?? 0;
-		const b = inp.b ?? 0;
-		return { out: a - b };
+		const aIn = inp.a ?? [0];
+		const bIn = inp.b ?? [0];
+		const numChannels = Math.max(aIn.length, bIn.length);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			out.push((aIn[c % aIn.length] ?? 0) - (bIn[c % bIn.length] ?? 0));
+		}
+		return { out };
 	},
 });
 
@@ -58,10 +68,18 @@ export const clip = device({
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const input = inp.input ?? 0;
-		const min = inp.min ?? -1;
-		const max = inp.max ?? 1;
-		return { out: Math.max(min, Math.min(max, input)) };
+		const inputSig = inp.input ?? [0];
+		const mins = inp.min ?? [-1];
+		const maxs = inp.max ?? [1];
+		const numChannels = Math.max(inputSig.length, mins.length, maxs.length);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const v = inputSig[c % inputSig.length] ?? 0;
+			const min = mins[c % mins.length] ?? -1;
+			const max = maxs[c % maxs.length] ?? 1;
+			out.push(Math.max(min, Math.min(max, v)));
+		}
+		return { out };
 	},
 });
 
@@ -82,16 +100,23 @@ export const scale = device({
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const input = inp.input ?? 0;
-		const inMin = inp.inMin ?? -1;
-		const inMax = inp.inMax ?? 1;
-		const outMin = inp.outMin ?? 0;
-		const outMax = inp.outMax ?? 1;
-
-		// Normalize to 0-1
-		const normalized = (input - inMin) / (inMax - inMin);
-		// Scale to output range
-		return { out: outMin + normalized * (outMax - outMin) };
+		const inputSig = inp.input ?? [0];
+		const inMins = inp.inMin ?? [-1];
+		const inMaxs = inp.inMax ?? [1];
+		const outMins = inp.outMin ?? [0];
+		const outMaxs = inp.outMax ?? [1];
+		const numChannels = Math.max(inputSig.length, inMins.length, inMaxs.length, outMins.length, outMaxs.length);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const v = inputSig[c % inputSig.length] ?? 0;
+			const inMin = inMins[c % inMins.length] ?? -1;
+			const inMax = inMaxs[c % inMaxs.length] ?? 1;
+			const outMin = outMins[c % outMins.length] ?? 0;
+			const outMax = outMaxs[c % outMaxs.length] ?? 1;
+			const normalized = (v - inMin) / (inMax - inMin);
+			out.push(outMin + normalized * (outMax - outMin));
+		}
+		return { out };
 	},
 });
 
@@ -109,8 +134,9 @@ export const abs = device({
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const input = inp.input ?? 0;
-		return { out: Math.abs(input) };
+		const inputSig = inp.input ?? [0];
+		const out = inputSig.map((v) => Math.abs(v));
+		return { out };
 	},
 });
 
@@ -129,8 +155,9 @@ export const inv = device({
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const input = inp.input ?? 0;
-		return { out: -input };
+		const inputSig = inp.input ?? [0];
+		const out = inputSig.map((v) => -v);
+		return { out };
 	},
 });
 
@@ -148,10 +175,16 @@ export const div = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = inp.a ?? 0;
-		const b = inp.b ?? 1;
-		// Avoid division by zero
-		return { out: b === 0 ? 0 : a / b };
+		const aIn = inp.a ?? [0];
+		const bIn = inp.b ?? [1];
+		const numChannels = Math.max(aIn.length, bIn.length);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const a = aIn[c % aIn.length] ?? 0;
+			const b = bIn[c % bIn.length] ?? 1;
+			out.push(b === 0 ? 0 : a / b);
+		}
+		return { out };
 	},
 });
 
@@ -169,9 +202,16 @@ export const mod = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = inp.a ?? 0;
-		const b = inp.b ?? 1;
-		return { out: b === 0 ? 0 : a % b };
+		const aIn = inp.a ?? [0];
+		const bIn = inp.b ?? [1];
+		const numChannels = Math.max(aIn.length, bIn.length);
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const a = aIn[c % aIn.length] ?? 0;
+			const b = bIn[c % bIn.length] ?? 1;
+			out.push(b === 0 ? 0 : a % b);
+		}
+		return { out };
 	},
 });
 
@@ -192,8 +232,8 @@ export const gte = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = inp.a ?? 0;
-		const b = inp.b ?? 0;
+		const a = (inp.a ?? [0])[0] ?? 0;
+		const b = (inp.b ?? [0])[0] ?? 0;
 		return { out: a >= b ? 1 : 0 };
 	},
 });
@@ -214,8 +254,8 @@ export const lt = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = inp.a ?? 0;
-		const b = inp.b ?? 0;
+		const a = (inp.a ?? [0])[0] ?? 0;
+		const b = (inp.b ?? [0])[0] ?? 0;
 		return { out: a < b ? 1 : 0 };
 	},
 });
@@ -236,8 +276,8 @@ export const eq = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = inp.a ?? 0;
-		const b = inp.b ?? 0;
+		const a = (inp.a ?? [0])[0] ?? 0;
+		const b = (inp.b ?? [0])[0] ?? 0;
 		return { out: Math.abs(a - b) < 0.0001 ? 1 : 0 };
 	},
 });
@@ -257,8 +297,8 @@ export const and = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = inp.a ?? 0;
-		const b = inp.b ?? 0;
+		const a = (inp.a ?? [0])[0] ?? 0;
+		const b = (inp.b ?? [0])[0] ?? 0;
 		return { out: a > 0.5 && b > 0.5 ? 1 : 0 };
 	},
 });
@@ -278,8 +318,8 @@ export const or = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = inp.a ?? 0;
-		const b = inp.b ?? 0;
+		const a = (inp.a ?? [0])[0] ?? 0;
+		const b = (inp.b ?? [0])[0] ?? 0;
 		return { out: a > 0.5 || b > 0.5 ? 1 : 0 };
 	},
 });
@@ -299,7 +339,7 @@ export const not = device({
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const input = inp.input ?? 0;
+		const input = (inp.input ?? [0])[0] ?? 0;
 		return { out: input > 0.5 ? 0 : 1 };
 	},
 });

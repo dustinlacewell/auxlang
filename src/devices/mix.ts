@@ -22,10 +22,21 @@ export const mix = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = inp.a ?? 0;
-		const b = inp.b ?? 0;
-		const c = inp.c ?? 0;
-		const d = inp.d ?? 0;
-		return { out: a + b + c + d };
+		const aIn = inp.a ?? [0];
+		const bIn = inp.b ?? [0];
+		const cIn = inp.c ?? [0];
+		const dIn = inp.d ?? [0];
+		const numChannels = Math.max(aIn.length, bIn.length, cIn.length, dIn.length);
+
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const a = aIn[c % aIn.length] ?? 0;
+			const b = bIn[c % bIn.length] ?? 0;
+			const cv = cIn[c % cIn.length] ?? 0;
+			const d = dIn[c % dIn.length] ?? 0;
+			out.push(a + b + cv + d);
+		}
+
+		return { out };
 	},
 });

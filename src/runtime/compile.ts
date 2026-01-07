@@ -35,11 +35,11 @@ function compileNode(node: Graph["nodes"][number]): CompiledNode {
 }
 
 function serializeSpec(spec: Graph["nodes"][number]["spec"]): SerializedSpec {
-	const inputs: Record<string, { default: number }> = {};
+	const inputs: Record<string, { default: number[] }> = {};
 
 	for (const [name, def] of Object.entries(spec.inputs)) {
-		// For now, only support scalar defaults
-		const defaultValue = Array.isArray(def.default) ? (def.default[0] ?? 0) : def.default;
+		// Normalize to array (mono = 1-element array)
+		const defaultValue = Array.isArray(def.default) ? def.default : [def.default];
 		inputs[name] = { default: defaultValue };
 	}
 
@@ -53,8 +53,8 @@ function serializeSpec(spec: Graph["nodes"][number]["spec"]): SerializedSpec {
 
 function compileInput(resolved: ResolvedInput): CompiledInput {
 	if (resolved.type === "constant") {
-		// For now, only support scalar values
-		const value = Array.isArray(resolved.value) ? (resolved.value[0] ?? 0) : resolved.value;
+		// Normalize to array (mono = 1-element array)
+		const value = Array.isArray(resolved.value) ? resolved.value : [resolved.value];
 		return { type: "constant", value };
 	}
 

@@ -1,7 +1,10 @@
 import { defineConfig } from "vite";
 import { resolve } from "node:path";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
+	plugins: [react(), tailwindcss()],
 	build: {
 		target: "esnext",
 		rollupOptions: {
@@ -13,5 +16,10 @@ export default defineConfig({
 	},
 	worker: {
 		format: "es",
+	},
+	resolve: {
+		alias: {
+			"@": resolve(__dirname, "src"),
+		},
 	},
 });

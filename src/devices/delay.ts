@@ -25,38 +25,44 @@ export const delay = device({
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const input = inp.input ?? 0;
-		const time = Math.max(0, Math.min(2, inp.time ?? 0.25));
-		const feedback = Math.max(0, Math.min(0.99, inp.feedback ?? 0.3));
-		const mix = Math.max(0, Math.min(1, inp.mix ?? 0.5));
+		const inputSig = inp.input ?? [0];
+		const times = inp.time ?? [0.25];
+		const feedbacks = inp.feedback ?? [0.3];
+		const mixes = inp.mix ?? [0.5];
+		const numChannels = Math.max(inputSig.length, times.length, feedbacks.length, mixes.length);
 
-		// Initialize buffer if needed (2 seconds max at sample rate)
 		const maxSamples = Math.ceil(2 * sampleRate);
-		let buffer = state.buffer as Float32Array | undefined;
-		if (!buffer || buffer.length !== maxSamples) {
-			buffer = new Float32Array(maxSamples);
-			state.buffer = buffer;
+
+		if (!state.buffers) state.buffers = [];
+		if (!state.writeIndices) state.writeIndices = [];
+		const buffers = state.buffers as Float32Array[];
+		const writeIndices = state.writeIndices as number[];
+
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const input = inputSig[c % inputSig.length] ?? 0;
+			const time = Math.max(0, Math.min(2, times[c % times.length] ?? 0.25));
+			const feedback = Math.max(0, Math.min(0.99, feedbacks[c % feedbacks.length] ?? 0.3));
+			const mix = Math.max(0, Math.min(1, mixes[c % mixes.length] ?? 0.5));
+
+			if (!buffers[c] || buffers[c].length !== maxSamples) {
+				buffers[c] = new Float32Array(maxSamples);
+			}
+			const buffer = buffers[c];
+			let writeIndex = writeIndices[c] ?? 0;
+
+			const delaySamples = Math.floor(time * sampleRate);
+			let readIndex = writeIndex - delaySamples;
+			if (readIndex < 0) readIndex += maxSamples;
+
+			const delayed = buffer[readIndex] ?? 0;
+			buffer[writeIndex] = input + delayed * feedback;
+
+			writeIndex = (writeIndex + 1) % maxSamples;
+			writeIndices[c] = writeIndex;
+
+			out.push(input * (1 - mix) + delayed * mix);
 		}
-
-		let writeIndex = (state.writeIndex as number) ?? 0;
-
-		// Calculate read position
-		const delaySamples = Math.floor(time * sampleRate);
-		let readIndex = writeIndex - delaySamples;
-		if (readIndex < 0) readIndex += maxSamples;
-
-		// Read delayed sample
-		const delayed = buffer[readIndex] ?? 0;
-
-		// Write new sample with feedback
-		buffer[writeIndex] = input + delayed * feedback;
-
-		// Advance write position
-		writeIndex = (writeIndex + 1) % maxSamples;
-		state.writeIndex = writeIndex;
-
-		// Mix dry and wet
-		const out = input * (1 - mix) + delayed * mix;
 
 		return { out };
 	},
