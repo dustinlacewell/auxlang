@@ -2,14 +2,15 @@
  * Sequencer device - steps through a pattern on clock triggers.
  *
  * Parses mini-notation patterns and outputs CV (pitch) and gate signals.
+ * The sequencer generates its own gate signal based on the pattern -
+ * it does NOT require an external gate input.
  *
  * Inputs:
  * - `trig`: Clock trigger signal (advances on rising edge)
- * - `gateIn`: Clock gate signal (controls output gate duration)
  *
  * Outputs:
  * - `cv`: Frequency in Hz for the current step (sample-and-hold)
- * - `gate`: 1.0 when current step is a note and input gate is high, 0.0 otherwise
+ * - `gate`: 1.0 during notes, 0.0 during rests. Tied notes hold gate high.
  *
  * Supported mini-notation:
  * - Notes: c3, c#4, db2
@@ -24,7 +25,7 @@
  * @example
  * ```javascript
  * let c = clock(120)
- * let s = seq("c3 e3 g3").trig(c.trig).gateIn(c.gate)
+ * let s = seq("c3 e3 g3").trig(c.trig)
  * let voice = osc(s.cv)
  * let shaped = gain(voice).amount(env(s.gate).out)
  * return out(shaped)
@@ -51,7 +52,7 @@ export function seq(patternString: string) {
 	const patternFn = new Function(`return ${patternJson}`) as () => Pattern;
 
 	return device({
-		inputs: inputs({ trig: 0, gateIn: 0 }),
+		inputs: inputs({ trig: 0 }),
 		config: {
 			pattern: patternFn,
 		},
@@ -97,26 +98,45 @@ export function seq(patternString: string) {
 				return { cv: 0, gate: 0 };
 			}
 
-			// Edge detection for trigger
-			const trig = inp.trig ?? 0;
-			const gateIn = inp.gateIn ?? 0;
+			// Edge detection for trigger (extract channel 0 from poly signal)
+			const trig = (inp.trig ?? [0])[0] ?? 0;
 			const wasTrig = (state.wasTrig as number) ?? 0;
 			const trigOn = trig > 0.5;
 			const trigWasOn = wasTrig > 0.5;
 			const risingEdge = trigOn && !trigWasOn;
+			const isReset = trig < -0.5; // Reset signal from clock (carries -bpm)
 
-			// Beat tracking (integer index)
-			let beatIndex = (state.beatIndex as number) ?? 0;
+			// Beat tracking (integer index, starts at -1 meaning "waiting for first trigger")
+			let beatIndex = (state.beatIndex as number) ?? -1;
 			let cycleCount = (state.cycleCount as number) ?? 0;
 
-			// Samples per beat (measured from trigger intervals)
-			let samplesPerBeat = (state.samplesPerBeat as number) ?? sampleRate / 2; // default 120 BPM
+			// Samples per beat (calculated from BPM or measured from trigger intervals)
+			let samplesPerBeat = (state.samplesPerBeat as number) ?? 0;
 			let samplesSinceTrig = (state.samplesSinceTrig as number) ?? 0;
 
-			// On rising edge, advance beat and measure tempo
-			if (risingEdge) {
-				// Measure beat length if reasonable (at least 100 samples)
-				if (samplesSinceTrig >= 100) {
+			// Gate state: track if we're in an active note (for ties)
+			let gateActive = (state.gateActive as number) ?? 0;
+
+			// Handle reset signal (-bpm) from clock - this IS the first trigger
+			if (isReset) {
+				// Extract BPM from reset signal and calculate samplesPerBeat immediately
+				const bpm = -trig; // trig is negative, so negate to get positive BPM
+				samplesPerBeat = (60 / bpm) * sampleRate;
+				samplesSinceTrig = 0;
+				beatIndex = 0; // Start at beat 0 immediately
+				cycleCount = 0;
+				state.wasTrig = trig;
+				state.beatIndex = beatIndex;
+				state.cycleCount = cycleCount;
+				state.samplesPerBeat = samplesPerBeat;
+				state.samplesSinceTrig = samplesSinceTrig;
+				// Don't return early - fall through to process beat 0
+			}
+
+			// On rising edge (not reset), advance beat and refine tempo
+			if (risingEdge && !isReset) {
+				// Refine tempo from actual trigger intervals (handles swing, drift)
+				if (samplesPerBeat > 0 && samplesSinceTrig >= 100) {
 					samplesPerBeat = samplesSinceTrig;
 				}
 				samplesSinceTrig = 0;
@@ -127,12 +147,23 @@ export function seq(patternString: string) {
 					beatIndex = 0;
 					cycleCount++;
 				}
-			} else {
+			} else if (!isReset) {
 				samplesSinceTrig++;
 			}
 
+			// If we haven't received a reset yet, output nothing
+			if (beatIndex < 0) {
+				state.wasTrig = trig;
+				state.beatIndex = beatIndex;
+				state.samplesSinceTrig = samplesSinceTrig;
+				return { cv: 0, gate: 0 };
+			}
+
 			// Calculate phase within beat (0 to ~1)
-			const phase = Math.min(samplesSinceTrig / samplesPerBeat, 0.999);
+			// Before tempo is known (samplesPerBeat == 0), stay at phase 0
+			const phase = samplesPerBeat > 0
+				? Math.min(samplesSinceTrig / samplesPerBeat, 0.999)
+				: 0;
 
 			// Get current beat
 			const beat = pat[beatIndex];
@@ -142,6 +173,7 @@ export function seq(patternString: string) {
 				state.cycleCount = cycleCount;
 				state.samplesPerBeat = samplesPerBeat;
 				state.samplesSinceTrig = samplesSinceTrig;
+				state.gateActive = 0;
 				return { cv: (state.cv as number) ?? 0, gate: 0 };
 			}
 
@@ -149,28 +181,38 @@ export function seq(patternString: string) {
 			const { step, stepPhase } = findStepInBeat(beat, phase, cycleCount);
 
 			// CV: update on note, hold on rest
-			let cv = (state.cv as number) ?? 0;
+			// For poly steps (chords), cv is an array of frequencies
+			let cv = (state.cv as number | number[]) ?? 0;
 			if (step.type === "note") {
-				cv = step.freq;
+				// Output poly cv for chords, mono for single notes
+				cv = step.freqs.length === 1 ? step.freqs[0] : step.freqs;
 			}
 
-			// Gate logic
+			// Gate logic - sequencer generates its own gate
+			// tieStart = this note connects to the next (hold gate high)
+			// tie = this note receives from previous (don't re-trigger)
 			let gateOut = 0;
 			if (step.type === "note") {
-				const isTied = step.tie === true;
+				const isTieStart = step.tieStart === true;
 				const isSubdivided = step.dur < 1;
 
 				if (isSubdivided) {
-					// Subdivided step: internal 80% duty cycle gate
+					// Subdivided step: 80% duty cycle within the step
 					gateOut = stepPhase < 0.8 ? 1 : 0;
-				} else if (isTied) {
-					// Tied note: follow gateIn (sustain from previous beat)
-					gateOut = gateIn > 0.5 ? 1 : 0;
+				} else if (isTieStart) {
+					// Start of tie chain: gate stays high for entire duration
+					gateOut = 1;
 				} else {
-					// Normal note: follow gateIn
-					gateOut = gateIn > 0.5 ? 1 : 0;
+					// Normal note (or end of tie chain): 80% duty cycle
+					gateOut = phase < 0.8 ? 1 : 0;
 				}
+			} else {
+				// Rest: gate off
+				gateOut = 0;
 			}
+
+			// Track gate state for tie handling
+			gateActive = gateOut;
 
 			// Update state
 			state.wasTrig = trig;
@@ -178,6 +220,7 @@ export function seq(patternString: string) {
 			state.cycleCount = cycleCount;
 			state.samplesPerBeat = samplesPerBeat;
 			state.samplesSinceTrig = samplesSinceTrig;
+			state.gateActive = gateActive;
 			state.cv = cv;
 
 			return { cv, gate: gateOut };

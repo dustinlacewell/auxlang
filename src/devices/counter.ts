@@ -35,16 +35,14 @@ export const counter = device({
 	defaultInput: "trig",
 	defaultOutput: "count",
 	process(inp, _cfg, state, _sampleRate) {
-		const trig = inp.trig ?? 0;
-		const reset = inp.reset ?? 0;
-		const max = Math.floor(inp.max ?? 0);
+		const trig = (inp.trig ?? [0])[0] ?? 0;
+		const reset = (inp.reset ?? [0])[0] ?? 0;
+		const max = Math.floor((inp.max ?? [0])[0] ?? 0);
 
-		// State
 		let count = (state.count as number) ?? 0;
 		const wasTrig = (state.wasTrig as number) ?? 0;
 		const wasReset = (state.wasReset as number) ?? 0;
 
-		// Edge detection
 		const trigOn = trig > 0.5;
 		const trigWasOn = wasTrig > 0.5;
 		const trigRising = trigOn && !trigWasOn;
@@ -53,20 +51,17 @@ export const counter = device({
 		const resetWasOn = wasReset > 0.5;
 		const resetRising = resetOn && !resetWasOn;
 
-		// Reset takes priority
 		let wrap = 0;
 		if (resetRising) {
 			count = 0;
 		} else if (trigRising) {
 			count = count + 1;
-			// Wrap if max is set
 			if (max > 0 && count >= max) {
 				count = 0;
 				wrap = 1;
 			}
 		}
 
-		// Update state
 		state.count = count;
 		state.wasTrig = trig;
 		state.wasReset = reset;

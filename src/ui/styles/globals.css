@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+	/* Surface colors - dark theme */
+	--color-surface-900: #1a1a1a;
+	--color-surface-800: #2a2a2a;
+	--color-surface-700: #444444;
+	--color-surface-600: #666666;
+
+	/* Accent colors */
+	--color-accent-green: #44aa99;
+	--color-accent-red: #aa4444;
+	--color-accent-blue: #88ccff;
+
+	/* Font family */
+	--font-mono: "Fira Code", Consolas, monospace;
+}
+
+/* Base styles */
+body {
+	@apply bg-surface-900 text-white font-sans antialiased;
+}
+
+/* Scrollbar styling for dark theme */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	@apply bg-surface-800;
+}
+
+::-webkit-scrollbar-thumb {
+	@apply bg-surface-600 rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	@apply bg-surface-700;
+}

@@ -16,6 +16,7 @@ export type TokenType =
 	| "MULTIPLY"    // *
 	| "REPLICATE"   // !
 	| "ELONGATE"    // @
+	| "GLIDE"       // _
 	| "NUMBER"      // numeric value
 	| "COMMA"       // ,
 	| "EOF";
@@ -79,6 +80,12 @@ export interface ElongateNode {
 	readonly count: number;
 }
 
+/** Stack: a,b,c plays notes simultaneously (polyphonic) */
+export interface StackNode {
+	readonly type: "stack";
+	readonly children: AstNode[];
+}
+
 export type AstNode =
 	| NoteNode
 	| RestNode
@@ -87,15 +94,22 @@ export type AstNode =
 	| EuclideanNode
 	| MultiplyNode
 	| ReplicateNode
-	| ElongateNode;
+	| ElongateNode
+	| StackNode;
 
 // ============= Pattern Structure =============
 
 export interface NoteStep {
 	readonly type: "note";
-	readonly freq: number;
+	/**
+	 * Frequency in Hz. For polyphonic steps (chords), this is an array.
+	 * Mono notes have a single-element array.
+	 */
+	readonly freqs: number[];
 	/** Duration within beat (0-1, where 1 = whole beat) */
 	readonly dur: number;
+	/** Start of a tied sequence - gate holds high, no 80% duty cycle */
+	readonly tieStart?: boolean;
 	/** Tied note - continuation from previous beat, don't re-trigger gate */
 	readonly tie?: boolean;
 	/** For alternation: which cycle index this step plays on (undefined = always) */

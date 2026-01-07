@@ -3,11 +3,16 @@
  *
  * These types represent the serializable form of a graph
  * that can be sent to the worklet thread.
+ *
+ * All signals are polyphonic (1-16 channels). Mono is just 1 channel.
  */
+
+/** A polyphonic signal - array of channel values */
+export type PolySignal = number[];
 
 /** Serialized device spec for worklet */
 export interface SerializedSpec {
-	readonly inputs: Record<string, { default: number }>;
+	readonly inputs: Record<string, { default: PolySignal }>;
 	readonly outputs: readonly string[];
 	readonly defaultOutput: string;
 	readonly processSource: string;
@@ -23,7 +28,7 @@ export interface CompiledNode {
 
 /** A compiled input - either constant or connection */
 export type CompiledInput =
-	| { readonly type: "constant"; readonly value: number }
+	| { readonly type: "constant"; readonly value: PolySignal }
 	| { readonly type: "connection"; readonly nodeId: string; readonly output: string };
 
 /** A compiled graph ready for worklet execution */

@@ -23,21 +23,34 @@ export const sah = device({
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, state, _sampleRate) {
-		const input = inp.input ?? 0;
-		const trig = inp.trig ?? 0;
+		const inputSig = inp.input ?? [0];
+		const trigs = inp.trig ?? [0];
+		const numChannels = Math.max(inputSig.length, trigs.length);
 
-		const held = (state.held as number) ?? input;
-		const wasTrig = (state.wasTrig as number) ?? 0;
+		if (!state.helds) state.helds = [];
+		if (!state.wasTrigs) state.wasTrigs = [];
+		const helds = state.helds as number[];
+		const wasTrigs = state.wasTrigs as number[];
 
-		const trigOn = trig > 0.5;
-		const trigWasOn = wasTrig > 0.5;
-		const risingEdge = trigOn && !trigWasOn;
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const input = inputSig[c % inputSig.length] ?? 0;
+			const trig = trigs[c % trigs.length] ?? 0;
 
-		const newHeld = risingEdge ? input : held;
+			const held = helds[c] ?? input;
+			const wasTrig = wasTrigs[c] ?? 0;
 
-		state.held = newHeld;
-		state.wasTrig = trig;
+			const trigOn = trig > 0.5;
+			const trigWasOn = wasTrig > 0.5;
+			const risingEdge = trigOn && !trigWasOn;
 
-		return { out: newHeld };
+			const newHeld = risingEdge ? input : held;
+
+			helds[c] = newHeld;
+			wasTrigs[c] = trig;
+			out.push(newHeld);
+		}
+
+		return { out };
 	},
 });

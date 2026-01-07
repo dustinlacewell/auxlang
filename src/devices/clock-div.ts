@@ -29,8 +29,8 @@ export const clockDiv = device({
 	defaultInput: "trig",
 	defaultOutput: "trig",
 	process(inp, _cfg, state, _sampleRate) {
-		const trig = inp.trig ?? 0;
-		const div = Math.max(1, Math.floor(inp.div ?? 4));
+		const trig = (inp.trig ?? [0])[0] ?? 0;
+		const div = Math.max(1, Math.floor((inp.div ?? [4])[0] ?? 4));
 
 		// State
 		let count = (state.count as number) ?? 0;
@@ -88,8 +88,8 @@ export const clockMult = device({
 	defaultInput: "trig",
 	defaultOutput: "trig",
 	process(inp, _cfg, state, sampleRate) {
-		const trig = inp.trig ?? 0;
-		const mult = Math.max(1, Math.floor(inp.mult ?? 2));
+		const trig = (inp.trig ?? [0])[0] ?? 0;
+		const mult = Math.max(1, Math.floor((inp.mult ?? [2])[0] ?? 2));
 
 		// State
 		let phase = (state.phase as number) ?? 0;

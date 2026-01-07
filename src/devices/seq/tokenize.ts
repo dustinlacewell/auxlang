@@ -114,6 +114,12 @@ export function tokenize(input: string): Token[] {
 			continue;
 		}
 
+		if (char === "_") {
+			tokens.push(makeToken("GLIDE", "_", position));
+			position++;
+			continue;
+		}
+
 		// Multi-character tokens
 		const remaining = input.slice(position);
 

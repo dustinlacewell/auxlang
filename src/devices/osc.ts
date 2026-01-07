@@ -1,6 +1,5 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
-import type { ProcessFn } from "../descriptor/types";
 
 /** Standard waveform shapes */
 const shapes = {
@@ -12,21 +11,6 @@ const shapes = {
 
 type ShapeFn = (phase: number) => number;
 
-type OscInputs = { freq: number; min: number; max: number; phase: number };
-type OscConfig = { shape: ShapeFn };
-type OscOutputs = { out: number };
-
-const oscProcess: ProcessFn<OscInputs, OscConfig, OscOutputs> = (inp, cfg, state, sampleRate) => {
-	state.phase = ((state.phase as number) ?? inp.phase) + inp.freq / sampleRate;
-	state.phase = (state.phase as number) % 1;
-
-	// Shape function returns value in some range (typically -1 to 1)
-	// We normalize to 0..1 then scale to min..max
-	const raw = cfg.shape(state.phase as number);
-	const normalized = (raw + 1) / 2;
-	return { out: inp.min + normalized * (inp.max - inp.min) };
-};
-
 /** Create an oscillator device with a given default shape */
 function createOsc(defaultShape: ShapeFn) {
 	return device({
@@ -35,7 +19,31 @@ function createOsc(defaultShape: ShapeFn) {
 		outputs: ["out"],
 		defaultInput: "freq",
 		defaultOutput: "out",
-		process: oscProcess,
+		process(inp, cfg, state, sampleRate) {
+			const freqs = inp.freq ?? [440];
+			const mins = inp.min ?? [-1];
+			const maxs = inp.max ?? [1];
+			const initPhases = inp.phase ?? [0];
+			const numChannels = Math.max(freqs.length, mins.length, maxs.length, initPhases.length);
+
+			if (!state.phases) state.phases = [];
+			const phases = state.phases as number[];
+
+			const out: number[] = [];
+			for (let c = 0; c < numChannels; c++) {
+				const freq = freqs[c % freqs.length] ?? 440;
+				const min = mins[c % mins.length] ?? -1;
+				const max = maxs[c % maxs.length] ?? 1;
+				const initPhase = initPhases[c % initPhases.length] ?? 0;
+
+				phases[c] = ((phases[c] ?? initPhase) + freq / sampleRate) % 1;
+				const raw = cfg.shape(phases[c]);
+				const normalized = (raw + 1) / 2;
+				out.push(min + normalized * (max - min));
+			}
+
+			return { out };
+		},
 	});
 }
 

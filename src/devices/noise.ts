@@ -23,9 +23,17 @@ export const noise = device({
 	defaultInput: "min",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const min = inp.min ?? -1;
-		const max = inp.max ?? 1;
-		const rand = Math.random();
-		return { out: min + rand * (max - min) };
+		const mins = inp.min ?? [-1];
+		const maxs = inp.max ?? [1];
+		const numChannels = Math.max(mins.length, maxs.length);
+
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const min = mins[c % mins.length] ?? -1;
+			const max = maxs[c % maxs.length] ?? 1;
+			out.push(min + Math.random() * (max - min));
+		}
+
+		return { out };
 	},
 });

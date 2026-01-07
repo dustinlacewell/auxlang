@@ -30,67 +30,78 @@ export const adsr = device({
 	defaultInput: "gate",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const gate = inp.gate ?? 0;
-		const attack = Math.max(0.0001, inp.attack ?? 0.01);
-		const decay = Math.max(0.0001, inp.decay ?? 0.1);
-		const sustain = Math.max(0, Math.min(1, inp.sustain ?? 0.7));
-		const release = Math.max(0.0001, inp.release ?? 0.3);
+		const gates = inp.gate ?? [0];
+		const attacks = inp.attack ?? [0.01];
+		const decays = inp.decay ?? [0.1];
+		const sustains = inp.sustain ?? [0.7];
+		const releases = inp.release ?? [0.3];
+		const numChannels = Math.max(gates.length, attacks.length, decays.length, sustains.length, releases.length);
 
-		const level = (state.level as number) ?? 0;
-		const stage = (state.stage as string) ?? "idle";
-		const wasGate = (state.wasGate as number) ?? 0;
+		// Per-channel state arrays
+		if (!state.levels) state.levels = [];
+		if (!state.stages) state.stages = [];
+		if (!state.wasGates) state.wasGates = [];
+		const levels = state.levels as number[];
+		const stages = state.stages as string[];
+		const wasGates = state.wasGates as number[];
 
-		const gateOn = gate > 0.5;
-		const gateWasOn = wasGate > 0.5;
-		const gateRising = gateOn && !gateWasOn;
-		const gateFalling = !gateOn && gateWasOn;
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const gate = gates[c % gates.length] ?? 0;
+			const attack = Math.max(0.0001, attacks[c % attacks.length] ?? 0.01);
+			const decay = Math.max(0.0001, decays[c % decays.length] ?? 0.1);
+			const sustain = Math.max(0, Math.min(1, sustains[c % sustains.length] ?? 0.7));
+			const release = Math.max(0.0001, releases[c % releases.length] ?? 0.3);
 
-		let newLevel = level;
-		let newStage = stage;
+			const level = levels[c] ?? 0;
+			const stage = stages[c] ?? "idle";
+			const wasGate = wasGates[c] ?? 0;
 
-		// Gate just opened - start attack
-		if (gateRising) {
-			newStage = "attack";
-		}
+			const gateOn = gate > 0.5;
+			const gateWasOn = wasGate > 0.5;
+			const gateRising = gateOn && !gateWasOn;
+			const gateFalling = !gateOn && gateWasOn;
 
-		// Gate just closed - start release
-		if (gateFalling) {
-			newStage = "release";
-		}
+			let newLevel = level;
+			let newStage = stage;
 
-		// Process current stage
-		if (newStage === "attack") {
-			const attackRate = 1 / (attack * sampleRate);
-			newLevel = level + attackRate;
-			if (newLevel >= 1) {
-				newLevel = 1;
-				newStage = "decay";
-			}
-		} else if (newStage === "decay") {
-			const decayRate = (1 - sustain) / (decay * sampleRate);
-			newLevel = level - decayRate;
-			if (newLevel <= sustain) {
+			if (gateRising) newStage = "attack";
+			if (gateFalling) newStage = "release";
+
+			if (newStage === "attack") {
+				const attackRate = 1 / (attack * sampleRate);
+				newLevel = level + attackRate;
+				if (newLevel >= 1) {
+					newLevel = 1;
+					newStage = "decay";
+				}
+			} else if (newStage === "decay") {
+				const decayRate = (1 - sustain) / (decay * sampleRate);
+				newLevel = level - decayRate;
+				if (newLevel <= sustain) {
+					newLevel = sustain;
+					newStage = "sustain";
+				}
+			} else if (newStage === "sustain") {
 				newLevel = sustain;
-				newStage = "sustain";
-			}
-		} else if (newStage === "sustain") {
-			newLevel = sustain;
-		} else if (newStage === "release") {
-			const releaseRate = sustain / (release * sampleRate);
-			newLevel = level - releaseRate;
-			if (newLevel <= 0) {
+			} else if (newStage === "release") {
+				const releaseRate = sustain / (release * sampleRate);
+				newLevel = level - releaseRate;
+				if (newLevel <= 0) {
+					newLevel = 0;
+					newStage = "idle";
+				}
+			} else {
 				newLevel = 0;
-				newStage = "idle";
 			}
-		} else {
-			// idle
-			newLevel = 0;
+
+			levels[c] = newLevel;
+			stages[c] = newStage;
+			wasGates[c] = gate;
+
+			out.push(newLevel);
 		}
 
-		state.level = newLevel;
-		state.stage = newStage;
-		state.wasGate = gate;
-
-		return { out: newLevel };
+		return { out };
 	},
 });

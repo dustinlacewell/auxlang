@@ -7,8 +7,17 @@ export const add = device({
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const a = inp.a ?? 0;
-		const b = inp.b ?? 0;
-		return { out: a + b };
+		const aIn = inp.a ?? [0];
+		const bIn = inp.b ?? [0];
+		const numChannels = Math.max(aIn.length, bIn.length);
+
+		const out: number[] = [];
+		for (let c = 0; c < numChannels; c++) {
+			const a = aIn[c % aIn.length] ?? 0;
+			const b = bIn[c % bIn.length] ?? 0;
+			out.push(a + b);
+		}
+
+		return { out };
 	},
 });
