@@ -154,7 +154,7 @@ function ReEvalTestCard({ test }: TestCardProps) {
 
 			const graph = evaluateCode(test.codeA);
 			if (graph) {
-				sendGraph(instance, graph);
+				await sendGraph(instance, graph);
 				setIsPlaying(true);
 				setActiveCode("A");
 				setError(null);
@@ -175,13 +175,13 @@ function ReEvalTestCard({ test }: TestCardProps) {
 	}, []);
 
 	const switchTo = useCallback(
-		(which: "A" | "B") => {
+		async (which: "A" | "B") => {
 			if (!instanceRef.current || !isPlaying) return;
 
 			const code = which === "A" ? test.codeA : test.codeB;
 			const graph = evaluateCode(code);
 			if (graph) {
-				sendGraph(instanceRef.current, graph);
+				await sendGraph(instanceRef.current, graph);
 				setActiveCode(which);
 				setError(null);
 			} else {

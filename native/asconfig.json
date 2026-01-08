@@ -1,0 +1,18 @@
+{
+  "targets": {
+    "debug": {
+      "outFile": "build/native.wasm",
+      "textFile": "build/native.wat",
+      "debug": true
+    },
+    "release": {
+      "outFile": "build/native.wasm",
+      "textFile": "build/native.wat",
+      "optimize": true,
+      "noAssert": true
+    }
+  },
+  "options": {
+    "exportRuntime": true
+  }
+}

@@ -25,7 +25,9 @@ export interface DeviceInput<
 	readonly defaultInput: I;
 	readonly defaultOutput: O;
 	// biome-ignore lint/suspicious/noExplicitAny: process functions have device-specific typed signatures
-	readonly process: ProcessFn<any, any, any>;
+	readonly process?: ProcessFn<any, any, any>;
+	/** URL to WASM module - if provided, process is optional */
+	readonly wasmUrl?: string;
 }
 
 /** Extract config keys from an input object, defaulting to never if no config */
@@ -34,6 +36,9 @@ type ConfigKeys<T> = T extends { config: Record<infer K, ConfigValue> } ? K : ne
 // biome-ignore lint/suspicious/noExplicitAny: process functions have device-specific typed signatures
 type AnyProcessFn = ProcessFn<any, any, any>;
 
+// Dummy no-op process for WASM devices (never called, WASM handles processing)
+const wasmNoopProcess: AnyProcessFn = () => ({});
+
 export function device<
 	const T extends {
 		inputs: Record<string, { default: number | number[] }>;
@@ -41,7 +46,8 @@ export function device<
 		outputs: readonly string[];
 		defaultInput: string;
 		defaultOutput: string;
-		process: AnyProcessFn;
+		process?: AnyProcessFn;
+		wasmUrl?: string;
 	},
 >(
 	input: T,
@@ -58,14 +64,18 @@ export function device<
 		}
 	}
 
+	// Use provided process or no-op for WASM devices
+	const process = input.process ?? wasmNoopProcess;
+
 	const spec: DeviceSpec = {
 		inputs: input.inputs,
 		config: configDefs,
 		outputs: input.outputs,
 		defaultInput: input.defaultInput,
 		defaultOutput: input.defaultOutput,
-		process: input.process,
-		processSource: input.process.toString(),
+		process,
+		processSource: process.toString(),
+		...(input.wasmUrl ? { wasmUrl: input.wasmUrl } : {}),
 	};
 	// Cast is safe: createDescriptor returns the correct runtime shape,
 	// and device() ensures the type parameters match the spec

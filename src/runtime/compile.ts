@@ -1,18 +1,52 @@
 import type { Graph, ResolvedInput } from "../graph/types";
 import type { CompiledGraph, CompiledInput, CompiledNode, SerializedSpec } from "./types";
 
+/** Cache of fetched WASM modules by URL */
+const wasmCache = new Map<string, ArrayBuffer>();
+
 /**
  * Compile a graph into a serializable form for the worklet.
+ * Fetches any WASM modules referenced by devices.
  */
-export function compile(graph: Graph): CompiledGraph {
-	const nodes = graph.nodes.map(compileNode);
+export async function compile(graph: Graph): Promise<CompiledGraph> {
+	// Collect unique WASM URLs and fetch them in parallel
+	const wasmUrls = new Set<string>();
+	for (const node of graph.nodes) {
+		if (node.spec.wasmUrl) {
+			wasmUrls.add(node.spec.wasmUrl);
+		}
+	}
+
+	// Fetch any URLs not already cached
+	const fetchPromises: Promise<void>[] = [];
+	for (const url of wasmUrls) {
+		if (!wasmCache.has(url)) {
+			fetchPromises.push(
+				fetch(url)
+					.then((res) => {
+						if (!res.ok) throw new Error(`Failed to fetch WASM: ${url}`);
+						return res.arrayBuffer();
+					})
+					.then((bytes) => {
+						wasmCache.set(url, bytes);
+					}),
+			);
+		}
+	}
+	await Promise.all(fetchPromises);
+
+	// Now compile nodes with WASM bytes available
+	const nodes = graph.nodes.map((node) => compileNode(node, wasmCache));
 	return {
 		nodes,
 		outputNodeId: graph.outputNodeId,
 	};
 }
 
-function compileNode(node: Graph["nodes"][number]): CompiledNode {
+function compileNode(
+	node: Graph["nodes"][number],
+	wasmCache: Map<string, ArrayBuffer>,
+): CompiledNode {
 	const spec = serializeSpec(node.spec);
 	const inputs: Record<string, CompiledInput> = {};
 
@@ -26,12 +60,22 @@ function compileNode(node: Graph["nodes"][number]): CompiledNode {
 		config[name] = fn.toString();
 	}
 
-	return {
+	const compiled: CompiledNode = {
 		id: node.id,
 		spec,
 		inputs,
 		config,
 	};
+
+	// Include wasmBytes if this device has a wasmUrl
+	if (node.spec.wasmUrl) {
+		const wasmBytes = wasmCache.get(node.spec.wasmUrl);
+		if (wasmBytes) {
+			return { ...compiled, wasmBytes };
+		}
+	}
+
+	return compiled;
 }
 
 function serializeSpec(spec: Graph["nodes"][number]["spec"]): SerializedSpec {
@@ -46,6 +90,7 @@ function serializeSpec(spec: Graph["nodes"][number]["spec"]): SerializedSpec {
 	return {
 		inputs,
 		outputs: spec.outputs,
+		defaultInput: spec.defaultInput,
 		defaultOutput: spec.defaultOutput,
 		processSource: spec.processSource,
 	};

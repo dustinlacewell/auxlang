@@ -1,11 +1,29 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
+/**
+ * Lowpass filter (state-variable filter).
+ *
+ * Attenuates frequencies above the cutoff.
+ * Uses a WASM SVF implementation for stability and audio-rate modulation.
+ *
+ * Inputs:
+ * - `input`: Signal to filter
+ * - `cutoff`: Cutoff frequency in Hz (default 1000)
+ * - `resonance`: Resonance/Q amount 0-1 (default 0)
+ *
+ * @example
+ * ```javascript
+ * lpf(saw(220)).cutoff(800)           // Mellow saw wave
+ * lpf(noise()).cutoff(lfo.min(200).max(2000))  // Filter sweep
+ * ```
+ */
 export const lpf = device({
-	inputs: inputs({ input: 0, cutoff: 1000, resonance: 0 }),
+	inputs: inputs({ input: 0, cutoff: 1000, resonance: 0, mode: 0 }),
 	outputs: ["out"],
 	defaultInput: "input",
 	defaultOutput: "out",
+	wasmUrl: "/filter.wasm",
 	process(inp, _cfg, state, sampleRate) {
 		const inputSig = inp.input ?? [0];
 		const cutoffs = inp.cutoff ?? [1000];

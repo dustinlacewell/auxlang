@@ -2,9 +2,10 @@ import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
 /**
- * Highpass filter (biquad).
+ * Highpass filter (state-variable filter).
  *
  * Attenuates frequencies below the cutoff.
+ * Uses a WASM SVF implementation for stability and audio-rate modulation.
  *
  * Inputs:
  * - `input`: Signal to filter
@@ -18,10 +19,11 @@ import { inputs } from "../descriptor/inputs";
  * ```
  */
 export const hpf = device({
-	inputs: inputs({ input: 0, cutoff: 200, resonance: 0 }),
+	inputs: inputs({ input: 0, cutoff: 200, resonance: 0, mode: 1 }),
 	outputs: ["out"],
 	defaultInput: "input",
 	defaultOutput: "out",
+	wasmUrl: "/filter.wasm",
 	process(inp, _cfg, state, sampleRate) {
 		const inputSig = inp.input ?? [0];
 		const cutoffs = inp.cutoff ?? [200];

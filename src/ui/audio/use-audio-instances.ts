@@ -43,7 +43,7 @@ export function useAudioInstances() {
 
 			// Send graph
 			if (result && typeof result === "object" && "nodes" in result) {
-				sendGraph(instance, result as Graph);
+				await sendGraph(instance, result as Graph);
 				setStates((prev) => {
 					const next = new Map(prev);
 					next.set(id, { state: "playing" });

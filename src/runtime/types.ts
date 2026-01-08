@@ -14,6 +14,7 @@ export type PolySignal = number[];
 export interface SerializedSpec {
 	readonly inputs: Record<string, { default: PolySignal }>;
 	readonly outputs: readonly string[];
+	readonly defaultInput: string;
 	readonly defaultOutput: string;
 	readonly processSource: string;
 }
@@ -24,6 +25,7 @@ export interface CompiledNode {
 	readonly spec: SerializedSpec;
 	readonly inputs: Record<string, CompiledInput>;
 	readonly config: Record<string, string>; // Stringified functions
+	readonly wasmBytes?: ArrayBuffer;
 }
 
 /** A compiled input - either constant or connection */
@@ -38,4 +40,6 @@ export interface CompiledGraph {
 }
 
 /** Message from main thread to worklet */
-export type WorkletMessage = { type: "setGraph"; graph: CompiledGraph } | { type: "stop" };
+export type WorkletMessage =
+	| { type: "setGraph"; graph: CompiledGraph }
+	| { type: "stop" };

@@ -34,7 +34,7 @@ export function useAudioPlayer() {
 
 			// Send graph (processor handles state preservation for matched nodes)
 			if (result && typeof result === "object" && "nodes" in result) {
-				sendGraph(instanceRef.current, result as Graph);
+				await sendGraph(instanceRef.current, result as Graph);
 				setState("playing");
 				setError(null);
 			} else {

@@ -5,7 +5,7 @@ import type { WorkletMessage } from "./types";
 export interface Engine {
 	start(): Promise<void>;
 	stop(): void;
-	setGraph(graph: Graph): void;
+	setGraph(graph: Graph): Promise<void>;
 }
 
 /**
@@ -40,12 +40,12 @@ export function createEngine(workletUrl: string): Engine {
 			}
 		},
 
-		setGraph(graph: Graph) {
+		async setGraph(graph: Graph) {
 			if (!workletNode) {
 				throw new Error("Engine not started");
 			}
 
-			const compiled = compile(graph);
+			const compiled = await compile(graph);
 			const message: WorkletMessage = { type: "setGraph", graph: compiled };
 			workletNode.port.postMessage(message);
 		},
