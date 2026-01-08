@@ -1,6 +1,7 @@
 import type { Step } from "../types";
 import { applyElongateToSteps } from "./apply-elongate";
 import { applyGlideToSteps } from "./apply-glide";
+import { applyMaybeToSteps } from "./apply-maybe";
 import {
 	applyMultiplyToSteps,
 	applyMultiplyToStepsWithAlternation,
@@ -32,7 +33,7 @@ export function parseGroup(stream: TokenStream): ParseResult {
 	}
 
 	stream.expect("RBRACKET");
-	return { beats: [steps] };
+	return { beats: [{ steps }] };
 }
 
 /**
@@ -78,6 +79,14 @@ export function parseGroupItem(stream: TokenStream, baseDuration: number): Step[
 		stream.expect("ELONGATE");
 		const count = stream.parseNumber();
 		steps = applyElongateToSteps(steps, count, baseDuration);
+	}
+
+	// Maybe modifier can follow other modifiers
+	// Token value contains probability: "0.5" for ?, "0.2" for ?0.2, etc.
+	if (stream.check("MAYBE")) {
+		const token = stream.expect("MAYBE");
+		const prob = Number.parseFloat(token.value);
+		steps = applyMaybeToSteps(steps, prob);
 	}
 
 	// Check for glide within group

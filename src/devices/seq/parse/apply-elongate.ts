@@ -10,17 +10,20 @@ export function applyElongate(result: ParseResult, count: number): ParseResult {
 
 	for (const beat of result.beats) {
 		// First beat: mark with tieStart if extending
-		const firstBeat: Beat = beat.map((step): Step => {
+		const firstSteps: Step[] = beat.steps.map((step): Step => {
 			if (step.type === "note" && count > 1) {
 				return { ...step, dur: 1.0, tieStart: true };
 			}
 			return { ...step, dur: 1.0 };
 		});
-		newBeats.push(firstBeat);
+		newBeats.push({ steps: firstSteps, prob: beat.prob });
 
 		// Continuation beats: mark with tie
 		for (let i = 1; i < count; i++) {
-			newBeats.push(beat.map((step) => ({ ...step, dur: 1.0, tie: true })));
+			newBeats.push({
+				steps: beat.steps.map((step) => ({ ...step, dur: 1.0, tie: true })),
+				prob: beat.prob,
+			});
 		}
 	}
 

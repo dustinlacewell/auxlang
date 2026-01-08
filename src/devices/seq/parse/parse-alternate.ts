@@ -23,7 +23,7 @@ export function parseAlternate(
 
 		// Tag each step with its cycle index
 		for (const beat of result.beats) {
-			for (const step of beat) {
+			for (const step of beat.steps) {
 				allSteps.push({
 					...step,
 					cycle: cycleIndex,
@@ -36,5 +36,5 @@ export function parseAlternate(
 	}
 
 	stream.expect("RANGLE");
-	return { beats: [allSteps] };
+	return { beats: [{ steps: allSteps }] };
 }

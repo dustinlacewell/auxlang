@@ -17,6 +17,7 @@ export type TokenType =
 	| "REPLICATE"   // !
 	| "ELONGATE"    // @
 	| "GLIDE"       // _
+	| "MAYBE"       // ?
 	| "NUMBER"      // numeric value
 	| "COMMA"       // ,
 	| "EOF";
@@ -116,6 +117,8 @@ export interface NoteStep {
 	readonly cycle?: number;
 	/** For alternation: total number of alternates */
 	readonly cycleTotal?: number;
+	/** Probability of playing (0-1, undefined = always play) */
+	readonly prob?: number;
 }
 
 export interface RestStep {
@@ -128,12 +131,18 @@ export interface RestStep {
 	readonly cycle?: number;
 	/** For alternation: total number of alternates */
 	readonly cycleTotal?: number;
+	/** Probability of playing (0-1, undefined = always play) */
+	readonly prob?: number;
 }
 
 export type Step = NoteStep | RestStep;
 
-/** Steps within a single beat (durations sum to 1.0) */
-export type Beat = Step[];
+/** A beat contains steps and optional beat-level probability */
+export interface Beat {
+	readonly steps: Step[];
+	/** Beat-level probability (from [group]? or <alt>?) */
+	readonly prob?: number;
+}
 
 /** Sequence of beats - each beat corresponds to one clock trigger */
 export type Pattern = Beat[];

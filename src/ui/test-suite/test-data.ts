@@ -6,6 +6,7 @@ import { oscSqr } from "./cases/oscillators/osc-sqr";
 import { oscTri } from "./cases/oscillators/osc-tri";
 import { oscNoise } from "./cases/oscillators/osc-noise";
 import { oscLfoPitch } from "./cases/oscillators/osc-lfo-pitch";
+import { oscLfoFilter } from "./cases/oscillators/osc-lfo-filter";
 
 import { drumsKick } from "./cases/drums/drums-kick";
 import { drumsSnare } from "./cases/drums/drums-snare";
@@ -24,9 +25,19 @@ import { seqEuclidean } from "./cases/sequencing/seq-euclidean";
 import { seqSharpsFlats } from "./cases/sequencing/seq-sharps-flats";
 import { seqGlide } from "./cases/sequencing/seq-glide";
 
+import { randMaybeBasic } from "./cases/randomness/rand-maybe-basic";
+import { randMaybeCustom } from "./cases/randomness/rand-maybe-custom";
+import { randMaybeHats } from "./cases/randomness/rand-maybe-hats";
+import { randMaybeMelody } from "./cases/randomness/rand-maybe-melody";
+import { randMaybeGroup } from "./cases/randomness/rand-maybe-group";
+import { randMaybeAlt } from "./cases/randomness/rand-maybe-alt";
+import { randMaybeChord } from "./cases/randomness/rand-maybe-chord";
+
 import { envAr } from "./cases/envelopes/env-ar";
 import { envPlucky } from "./cases/envelopes/env-plucky";
 import { envPad } from "./cases/envelopes/env-pad";
+import { envAdsrFull } from "./cases/envelopes/env-adsr-full";
+import { envPercussive } from "./cases/envelopes/env-percussive";
 
 import { lpfStatic } from "./cases/filters/lpf-static";
 import { lpfResonant } from "./cases/filters/lpf-resonant";
@@ -42,16 +53,27 @@ import { notchResonant } from "./cases/filters/notch-resonant";
 import { notchModulated } from "./cases/filters/notch-modulated";
 
 import { delayEcho } from "./cases/effects/delay-echo";
+import { delayModulated } from "./cases/effects/delay-modulated";
+import { delaySlapback } from "./cases/effects/delay-slapback";
 import { tapeWobble } from "./cases/effects/tape-wobble";
 import { tapeSaturated } from "./cases/effects/tape-saturated";
 import { tapeSlapback } from "./cases/effects/tape-slapback";
 
 import { utilMix } from "./cases/utilities/util-mix";
 import { utilSlew } from "./cases/utilities/util-slew";
+import { utilSlewAsym } from "./cases/utilities/util-slew-asym";
 import { utilGain } from "./cases/utilities/util-gain";
+import { utilSah } from "./cases/utilities/util-sah";
 
 import { mathRingMod } from "./cases/math/math-ring-mod";
 import { mathAdd } from "./cases/math/math-add";
+import { mathScale } from "./cases/math/math-scale";
+import { mathClip } from "./cases/math/math-clip";
+import { mathSub } from "./cases/math/math-sub";
+import { mathAbs } from "./cases/math/math-abs";
+import { mathInv } from "./cases/math/math-inv";
+import { mathDiv } from "./cases/math/math-div";
+import { mathMod } from "./cases/math/math-mod";
 
 import { clock60 } from "./cases/clock/clock-60";
 import { clock140 } from "./cases/clock/clock-140";
@@ -61,6 +83,9 @@ import { clockCounter } from "./cases/clock/clock-counter";
 import { logicGte } from "./cases/logic/logic-gte";
 import { logicLt } from "./cases/logic/logic-lt";
 import { logicAnd } from "./cases/logic/logic-and";
+import { logicEq } from "./cases/logic/logic-eq";
+import { logicOr } from "./cases/logic/logic-or";
+import { logicNot } from "./cases/logic/logic-not";
 
 import { polyChordStatic } from "./cases/polyphony/poly-chord-static";
 import { polyChord7th } from "./cases/polyphony/poly-chord-7th";
@@ -91,6 +116,7 @@ export const tests: TestDefinition[] = [
 	oscTri,
 	oscNoise,
 	oscLfoPitch,
+	oscLfoFilter,
 	// Drums
 	drumsKick,
 	drumsSnare,
@@ -108,10 +134,20 @@ export const tests: TestDefinition[] = [
 	seqEuclidean,
 	seqSharpsFlats,
 	seqGlide,
+	// Randomness
+	randMaybeBasic,
+	randMaybeCustom,
+	randMaybeHats,
+	randMaybeMelody,
+	randMaybeGroup,
+	randMaybeAlt,
+	randMaybeChord,
 	// Envelopes
 	envAr,
 	envPlucky,
 	envPad,
+	envAdsrFull,
+	envPercussive,
 	// Filters - LPF
 	lpfStatic,
 	lpfResonant,
@@ -130,16 +166,27 @@ export const tests: TestDefinition[] = [
 	notchModulated,
 	// Effects
 	delayEcho,
+	delayModulated,
+	delaySlapback,
 	tapeWobble,
 	tapeSaturated,
 	tapeSlapback,
 	// Utilities
 	utilMix,
 	utilSlew,
+	utilSlewAsym,
 	utilGain,
+	utilSah,
 	// Math
 	mathRingMod,
 	mathAdd,
+	mathScale,
+	mathClip,
+	mathSub,
+	mathAbs,
+	mathInv,
+	mathDiv,
+	mathMod,
 	// Clock
 	clock60,
 	clock140,
@@ -149,6 +196,9 @@ export const tests: TestDefinition[] = [
 	logicGte,
 	logicLt,
 	logicAnd,
+	logicEq,
+	logicOr,
+	logicNot,
 	// Polyphony
 	polyChordStatic,
 	polyChord7th,

@@ -11,11 +11,11 @@ export function applyMultiply(result: ParseResult, count: number): ParseResult {
 	for (const beat of result.beats) {
 		const newSteps: Step[] = [];
 		for (let i = 0; i < count; i++) {
-			for (const step of beat) {
+			for (const step of beat.steps) {
 				newSteps.push({ ...step, dur: step.dur / count });
 			}
 		}
-		newBeats.push(newSteps);
+		newBeats.push({ steps: newSteps, prob: beat.prob });
 	}
 
 	return { beats: newBeats };
@@ -43,7 +43,7 @@ export function applyMultiplyWithAlternation(
 			const count = counts[cycleIndex] ?? 1;
 
 			for (let i = 0; i < count; i++) {
-				for (const step of beat) {
+				for (const step of beat.steps) {
 					allSteps.push({
 						...step,
 						dur: step.dur / count,
@@ -54,7 +54,7 @@ export function applyMultiplyWithAlternation(
 			}
 		}
 
-		newBeats.push(allSteps);
+		newBeats.push({ steps: allSteps, prob: beat.prob });
 	}
 
 	return { beats: newBeats };

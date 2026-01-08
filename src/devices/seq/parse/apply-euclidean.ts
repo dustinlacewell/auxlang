@@ -18,11 +18,14 @@ export function applyEuclidean(
 		if (isHit) {
 			// Play the original content on hit positions
 			for (const beat of result.beats) {
-				newBeats.push(beat.map((step) => ({ ...step, dur: 1.0 })));
+				newBeats.push({
+					steps: beat.steps.map((step) => ({ ...step, dur: 1.0 })),
+					prob: beat.prob,
+				});
 			}
 		} else {
 			// Rest on non-hit positions
-			newBeats.push([{ type: "rest", dur: 1.0 }]);
+			newBeats.push({ steps: [{ type: "rest", dur: 1.0 }] });
 		}
 	}
 
