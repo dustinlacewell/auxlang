@@ -11,6 +11,8 @@ c4_e4     legato/glide
 [c4 d4]   subdivide
 <c4 d4>   alternate each loop
 f#4 bb3   sharps/flats
+c4?       50% chance to play
+c4*2?     modifiers chain (multiply then maybe)
 ```
 
 ## Signal Flow

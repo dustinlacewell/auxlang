@@ -23,7 +23,8 @@
       "Bash(npm test:*)",
       "Bash(dir:*)",
       "Bash(ls:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(node --loader ts-node/esm:*)"
     ]
   }
 }

@@ -10,7 +10,10 @@ export function applyReplicate(result: ParseResult, count: number): ParseResult 
 
 	for (let i = 0; i < count; i++) {
 		for (const beat of result.beats) {
-			newBeats.push(beat.map((step) => ({ ...step, dur: 1.0 })));
+			newBeats.push({
+				steps: beat.steps.map((step) => ({ ...step, dur: 1.0 })),
+				prob: beat.prob,
+			});
 		}
 	}
 

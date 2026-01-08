@@ -22,12 +22,12 @@ export function applyStack(
 	const leftBeat = leftBeats[0];
 	const rightBeat = rightBeats[0];
 
-	if (!leftBeat || !rightBeat || leftBeat.length !== 1 || rightBeat.length !== 1) {
+	if (!leftBeat || !rightBeat || leftBeat.steps.length !== 1 || rightBeat.steps.length !== 1) {
 		return { beats: [...leftBeats, ...rightBeats] };
 	}
 
-	const leftStep = leftBeat[0];
-	const rightStep = rightBeat[0];
+	const leftStep = leftBeat.steps[0];
+	const rightStep = rightBeat.steps[0];
 
 	if (leftStep?.type !== "note" || rightStep?.type !== "note") {
 		return { beats: [...leftBeats, ...rightBeats] };
@@ -37,5 +37,7 @@ export function applyStack(
 	const combinedFreqs = [...leftStep.freqs, ...rightStep.freqs];
 	const mergedStep = { ...leftStep, freqs: combinedFreqs };
 
-	return { beats: [[mergedStep]] };
+	// Take beat-level prob from either side (right takes precedence for c4,e4,g4?)
+	const prob = rightBeat.prob ?? leftBeat.prob;
+	return { beats: [{ steps: [mergedStep], prob }] };
 }

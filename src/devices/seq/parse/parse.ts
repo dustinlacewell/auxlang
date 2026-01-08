@@ -10,7 +10,7 @@
  *   base        = NOTE | REST | group | alternate
  *   group       = '[' element* ']'
  *   alternate   = '<' element* '>'
- *   modifier    = REPLICATE num | ELONGATE num | EUCLIDEAN | MULTIPLY num
+ *   modifier    = REPLICATE num | ELONGATE num | EUCLIDEAN | MULTIPLY num | MAYBE
  *
  * Supported syntax:
  * - Notes: c3, c#4, db2
@@ -21,6 +21,7 @@
  * - Replicate: c3!2 - repeat as separate beats
  * - Elongate: c3@2 - sustain across multiple beats (tied)
  * - Euclidean: c3(3,8) - spread 3 hits over 8 beats
+ * - Maybe: c3? - 50% chance to play (becomes rest if not)
  * - Glide: c3_e3 - tie notes together (legato)
  * - Stack: c4,e4,g4 - play notes simultaneously (chord)
  */
@@ -30,6 +31,7 @@ import type { Pattern } from "../types";
 import { applyElongate } from "./apply-elongate";
 import { applyEuclidean } from "./apply-euclidean";
 import { applyGlide } from "./apply-glide";
+import { applyMaybe } from "./apply-maybe";
 import { applyMultiply, applyMultiplyWithAlternation } from "./apply-multiply";
 import { applyReplicate } from "./apply-replicate";
 import { applyStack } from "./apply-stack";
@@ -105,40 +107,46 @@ function parseElementWithModifiers(stream: TokenStream): ParseResult {
 }
 
 /**
- * Apply a single postfix modifier if present.
+ * Apply postfix modifiers if present.
+ * ? (maybe) can follow other modifiers, so check for it after.
  */
 function applyPostfixModifier(
 	stream: TokenStream,
 	result: ParseResult,
 ): ParseResult {
+	let modified = result;
+
 	if (stream.check("REPLICATE")) {
 		stream.expect("REPLICATE");
-		return applyReplicate(result, stream.parseNumber());
-	}
-
-	if (stream.check("ELONGATE")) {
+		modified = applyReplicate(modified, stream.parseNumber());
+	} else if (stream.check("ELONGATE")) {
 		stream.expect("ELONGATE");
-		return applyElongate(result, stream.parseNumber());
-	}
-
-	if (stream.check("LPAREN")) {
+		modified = applyElongate(modified, stream.parseNumber());
+	} else if (stream.check("LPAREN")) {
 		stream.expect("LPAREN");
 		const hits = stream.parseNumber();
 		stream.expect("COMMA");
 		const totalSteps = stream.parseNumber();
 		stream.expect("RPAREN");
-		return applyEuclidean(result, hits, totalSteps);
-	}
-
-	if (stream.check("MULTIPLY")) {
+		modified = applyEuclidean(modified, hits, totalSteps);
+	} else if (stream.check("MULTIPLY")) {
 		stream.expect("MULTIPLY");
 		if (stream.check("LANGLE")) {
-			return parseMultiplyWithAlternation(stream, result);
+			modified = parseMultiplyWithAlternation(stream, modified);
+		} else {
+			modified = applyMultiply(modified, stream.parseNumber());
 		}
-		return applyMultiply(result, stream.parseNumber());
 	}
 
-	return result;
+	// ? can follow other modifiers (c4*2? means "multiply then maybe")
+	// Token value contains probability: "0.5" for ?, "0.2" for ?0.2, etc.
+	if (stream.check("MAYBE")) {
+		const token = stream.expect("MAYBE");
+		const prob = Number.parseFloat(token.value);
+		modified = applyMaybe(modified, prob);
+	}
+
+	return modified;
 }
 
 /**
@@ -168,12 +176,12 @@ function parseElement(stream: TokenStream): ParseResult {
 	if (token.type === "NOTE") {
 		stream.advance();
 		const step = parseNote(token.value, 1.0);
-		return { beats: [[step]] };
+		return { beats: [{ steps: [step] }] };
 	}
 
 	if (token.type === "REST") {
 		stream.advance();
-		return { beats: [[{ type: "rest", dur: 1.0 }]] };
+		return { beats: [{ steps: [{ type: "rest", dur: 1.0 }] }] };
 	}
 
 	if (token.type === "LBRACKET") {

@@ -21,6 +21,7 @@
  * - Replicate: c3!2 - repeat as separate beats
  * - Elongate: c3@2 - sustain across multiple beats (tied)
  * - Euclidean: c3(3,8) - spread 3 hits over 8 beats
+ * - Maybe: c3? - 50% chance to play (rolled per step occurrence)
  *
  * @example
  * ```javascript
@@ -67,26 +68,33 @@ export function seq(patternString: string) {
 					: cycle % s.cycleTotal === s.cycle;
 
 			// Helper: find step within a beat using phase (0-1)
-			const findStepInBeat = (beat: Beat, phase: number, cycleCount: number): { step: Step; stepPhase: number } => {
+			// Returns step index along with step for probability tracking
+			const findStepInBeat = (
+				steps: Step[],
+				phase: number,
+				cycleCount: number,
+			): { step: Step; stepPhase: number; stepIdx: number } => {
 				// Filter to playable steps for this cycle
-				const playable = beat.filter(s => shouldPlay(s, cycleCount));
+				const playable = steps.filter(s => shouldPlay(s, cycleCount));
 				if (playable.length === 0) {
-					return { step: { type: "rest", dur: 1.0 }, stepPhase: 0 };
+					return { step: { type: "rest", dur: 1.0 }, stepPhase: 0, stepIdx: -1 };
 				}
 
 				// Walk through steps to find which one contains this phase
 				let accumulatedDur = 0;
-				for (const step of playable) {
+				for (let i = 0; i < playable.length; i++) {
+					const step = playable[i]!;
 					if (accumulatedDur + step.dur > phase) {
 						const stepPhase = (phase - accumulatedDur) / step.dur;
-						return { step, stepPhase };
+						return { step, stepPhase, stepIdx: i };
 					}
 					accumulatedDur += step.dur;
 				}
 
 				// Return last step if phase >= 1 (edge case)
-				const lastStep = playable[playable.length - 1];
-				return { step: lastStep ?? { type: "rest", dur: 1.0 }, stepPhase: 0.999 };
+				const lastIdx = playable.length - 1;
+				const lastStep = playable[lastIdx] ?? { type: "rest" as const, dur: 1.0 };
+				return { step: lastStep, stepPhase: 0.999, stepIdx: lastIdx };
 			};
 
 			// Simple pattern hash for change detection
@@ -180,6 +188,10 @@ export function seq(patternString: string) {
 					beatIndex = 0;
 					cycleCount++;
 				}
+
+				// Reset step tracking for new beat
+				state.lastStepIdx = -1;
+				state.beatProbRolled = false;
 			} else if (!isReset) {
 				samplesSinceTrig++;
 			}
@@ -200,7 +212,7 @@ export function seq(patternString: string) {
 
 			// Get current beat
 			const beat = pat[beatIndex];
-			if (!beat || beat.length === 0) {
+			if (!beat || beat.steps.length === 0) {
 				state.wasTrig = trig;
 				state.beatIndex = beatIndex;
 				state.cycleCount = cycleCount;
@@ -211,12 +223,34 @@ export function seq(patternString: string) {
 			}
 
 			// Find step within beat using phase
-			const { step, stepPhase } = findStepInBeat(beat, phase, cycleCount);
+			const { step, stepPhase, stepIdx } = findStepInBeat(beat.steps, phase, cycleCount);
 
-			// CV: update on note, hold on rest
+			// Probability: beat-level prob rolls once per beat, step-level rolls per step
+			let lastStepIdx = (state.lastStepIdx as number) ?? -1;
+			let probPass = (state.probPass as boolean) ?? true;
+			const beatProbRolled = (state.beatProbRolled as boolean) ?? false;
+
+			if (beat.prob !== undefined) {
+				// Beat-level probability (from [group]? or <alt>?)
+				if (!beatProbRolled) {
+					probPass = beat.prob >= 1 || Math.random() < beat.prob;
+					state.beatProbRolled = true;
+					state.probPass = probPass;
+				}
+				state.lastStepIdx = stepIdx;
+			} else if (stepIdx !== lastStepIdx) {
+				// Per-step probability
+				const prob = step.prob;
+				probPass = prob === undefined || prob >= 1 || Math.random() < prob;
+				state.lastStepIdx = stepIdx;
+				state.probPass = probPass;
+			}
+
+			// CV: only update when note actually plays (probPass true)
+			// This prevents pitch discontinuities during skipped notes
 			// For poly steps (chords), cv is an array of frequencies
 			let cv = (state.cv as number | number[]) ?? 0;
-			if (step.type === "note") {
+			if (step.type === "note" && probPass) {
 				// Output poly cv for chords, mono for single notes
 				cv = step.freqs.length === 1 ? step.freqs[0] : step.freqs;
 			}
@@ -224,8 +258,9 @@ export function seq(patternString: string) {
 			// Gate logic - sequencer generates its own gate
 			// tieStart = this note connects to the next (hold gate high)
 			// tie = this note receives from previous (don't re-trigger)
+			// If probability check failed, gate is always off
 			let gateOut = 0;
-			if (step.type === "note") {
+			if (step.type === "note" && probPass) {
 				const isTieStart = step.tieStart === true;
 				const isSubdivided = step.dur < 1;
 
@@ -239,9 +274,6 @@ export function seq(patternString: string) {
 					// Normal note (or end of tie chain): 80% duty cycle
 					gateOut = phase < 0.8 ? 1 : 0;
 				}
-			} else {
-				// Rest: gate off
-				gateOut = 0;
 			}
 
 			// Track gate state for tie handling

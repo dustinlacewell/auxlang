@@ -8,11 +8,11 @@ export function markLastStepTieStart(beats: Beat[]): void {
 	if (beats.length === 0) return;
 
 	const lastBeat = beats[beats.length - 1];
-	if (!lastBeat || lastBeat.length === 0) return;
+	if (!lastBeat || lastBeat.steps.length === 0) return;
 
-	const lastStep = lastBeat[lastBeat.length - 1];
+	const lastStep = lastBeat.steps[lastBeat.steps.length - 1];
 	if (lastStep?.type === "note") {
-		lastBeat[lastBeat.length - 1] = { ...lastStep, tieStart: true };
+		(lastBeat.steps as Step[])[lastBeat.steps.length - 1] = { ...lastStep, tieStart: true };
 	}
 }
 
@@ -24,11 +24,11 @@ export function markFirstStepTie(beats: Beat[]): void {
 	if (beats.length === 0) return;
 
 	const firstBeat = beats[0];
-	if (!firstBeat || firstBeat.length === 0) return;
+	if (!firstBeat || firstBeat.steps.length === 0) return;
 
-	const firstStep = firstBeat[0];
+	const firstStep = firstBeat.steps[0];
 	if (firstStep?.type === "note") {
-		firstBeat[0] = { ...firstStep, tie: true };
+		(firstBeat.steps as Step[])[0] = { ...firstStep, tie: true };
 	}
 }
 

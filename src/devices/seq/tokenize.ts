@@ -12,6 +12,7 @@
  * - Multiply: *
  * - Replicate: !
  * - Elongate: @
+ * - Maybe: ?
  * - Numbers: 1, 2, 3, etc.
  */
 
@@ -19,6 +20,8 @@ import type { Token, TokenType } from "./types";
 
 const NOTE_PATTERN = /^[a-gA-G][#b]?[0-9]?/;
 const NUMBER_PATTERN = /^[0-9]+/;
+// Matches probability values: .5, 0.2, 1, 1.0, 0
+const PROBABILITY_PATTERN = /^(0?\.[0-9]+|1(\.0+)?|0)/;
 
 /**
  * Tokenize a mini-notation pattern string.
@@ -117,6 +120,21 @@ export function tokenize(input: string): Token[] {
 		if (char === "_") {
 			tokens.push(makeToken("GLIDE", "_", position));
 			position++;
+			continue;
+		}
+
+		if (char === "?") {
+			position++;
+			// Check for optional probability value: ?0.2, ?.5, ?1
+			const remaining = input.slice(position);
+			const probMatch = remaining.match(PROBABILITY_PATTERN);
+			if (probMatch?.[0]) {
+				tokens.push(makeToken("MAYBE", probMatch[0], position - 1));
+				position += probMatch[0].length;
+			} else {
+				// Just ? with no value means 0.5
+				tokens.push(makeToken("MAYBE", "0.5", position - 1));
+			}
 			continue;
 		}
 
