@@ -38,6 +38,7 @@ export { notch } from "../devices/notch";
 // Effects
 export { delay } from "../devices/delay";
 export { reverb } from "../devices/reverb";
+export { tape } from "../devices/tape";
 
 // Utilities
 export { gain } from "../devices/gain";

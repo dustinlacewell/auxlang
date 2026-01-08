@@ -3,9 +3,10 @@
   "version": "0.0.1",
   "description": "WebAssembly audio modules for auxlang",
   "scripts": {
-    "build": "npm run build:reverb && npm run build:filter",
+    "build": "npm run build:reverb && npm run build:filter && npm run build:tape",
     "build:reverb": "asc assembly/index.ts --outFile build/reverb.wasm --textFile build/reverb.wat --optimize --exportRuntime",
     "build:filter": "asc assembly/filter.ts --outFile build/filter.wasm --textFile build/filter.wat --optimize --exportRuntime",
+    "build:tape": "asc assembly/tape.ts --outFile build/tape.wasm --textFile build/tape.wat --optimize --exportRuntime",
     "build:debug": "asc assembly/index.ts --outFile build/native.wasm --textFile build/native.wat --debug --exportRuntime"
   },
   "devDependencies": {

@@ -42,6 +42,9 @@ import { notchResonant } from "./cases/filters/notch-resonant";
 import { notchModulated } from "./cases/filters/notch-modulated";
 
 import { delayEcho } from "./cases/effects/delay-echo";
+import { tapeWobble } from "./cases/effects/tape-wobble";
+import { tapeSaturated } from "./cases/effects/tape-saturated";
+import { tapeSlapback } from "./cases/effects/tape-slapback";
 
 import { utilMix } from "./cases/utilities/util-mix";
 import { utilSlew } from "./cases/utilities/util-slew";
@@ -127,6 +130,9 @@ export const tests: TestDefinition[] = [
 	notchModulated,
 	// Effects
 	delayEcho,
+	tapeWobble,
+	tapeSaturated,
+	tapeSlapback,
 	// Utilities
 	utilMix,
 	utilSlew,
