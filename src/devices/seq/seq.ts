@@ -89,9 +89,28 @@ export function seq(patternString: string) {
 				return { step: lastStep ?? { type: "rest", dur: 1.0 }, stepPhase: 0.999 };
 			};
 
-			// Get pattern (cached in state after first call)
-			const pat = (state.pat as Pattern) ?? cfg.pattern();
-			state.pat = pat;
+			// Simple pattern hash for change detection
+			const hashPattern = (p: Pattern): string => JSON.stringify(p);
+
+			// Get pattern from config
+			const configPat = cfg.pattern();
+			const configPatHash = hashPattern(configPat);
+
+			// Check if pattern changed (live re-eval)
+			const currentPatHash = state.patHash as string | undefined;
+			if (currentPatHash !== undefined && currentPatHash !== configPatHash) {
+				// Pattern changed - queue for next beat
+				state.pendingPat = configPat;
+				state.pendingPatHash = configPatHash;
+			}
+
+			// Use current pattern (or initialize from config if first run)
+			let pat = state.pat as Pattern | undefined;
+			if (!pat) {
+				pat = configPat;
+				state.pat = pat;
+				state.patHash = configPatHash;
+			}
 
 			// Handle empty pattern
 			if (pat.length === 0) {
@@ -140,6 +159,15 @@ export function seq(patternString: string) {
 
 			// On rising edge (not reset), advance beat and refine tempo
 			if (risingEdge && !isReset) {
+				// Apply pending pattern change on beat boundary
+				if (state.pendingPat) {
+					pat = state.pendingPat as Pattern;
+					state.pat = pat;
+					state.patHash = state.pendingPatHash;
+					state.pendingPat = null;
+					state.pendingPatHash = null;
+				}
+
 				// Refine tempo from actual trigger intervals (handles swing, drift)
 				if (samplesPerBeat > 0 && samplesSinceTrig >= 100) {
 					samplesPerBeat = samplesSinceTrig;
