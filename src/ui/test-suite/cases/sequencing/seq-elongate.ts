@@ -8,5 +8,5 @@ export const seqElongate: TestDefinition = {
 	code: `let clk = clock(120)
 let s = seq("c4@3 g4").trig(clk.trig)
 let env1 = adsr(s.gate).attack(0.01).decay(0.2).sustain(0.7).release(0.3)
-return out(mult(lpf(saw(s.cv)).cutoff(1200)).b(env1.out))`,
+return out(mult(lpf(saw(s.cv)).cutoff(1200)).by(env1.out))`,
 };

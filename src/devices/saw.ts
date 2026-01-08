@@ -2,13 +2,13 @@ import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
 export const saw = device({
-	inputs: inputs({ pitch: 440, detune: 0 }),
+	inputs: inputs({ freq: 440, detune: 0 }),
 	config: { poly: 1 },
 	outputs: ["out"],
-	defaultInput: "pitch",
+	defaultInput: "freq",
 	defaultOutput: "out",
 	process(inp, cfg, state, sampleRate) {
-		const pitchesIn = inp.pitch ?? [440];
+		const pitchesIn = inp.freq ?? [440];
 		const polyCount = Math.max(1, Math.floor(cfg.poly));
 		const detuneCents = (inp.detune ?? [0])[0] ?? 0;
 

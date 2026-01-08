@@ -5,5 +5,5 @@ export const mathRingMod: TestDefinition = {
 	category: "Math",
 	name: "mult - ring mod",
 	desc: "Two oscs multiplied - metallic sound",
-	code: `return out(gain(mult(osc(440)).b(osc(110))).amount(0.3))`,
+	code: `return out(gain(mult(osc(440)).by(osc(110))).amount(0.3))`,
 };

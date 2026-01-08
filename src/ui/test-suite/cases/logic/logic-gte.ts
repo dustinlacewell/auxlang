@@ -7,7 +7,7 @@ export const logicGte: TestDefinition = {
 	desc: "Drums start after beat 4",
 	code: `let clk = clock(120)
 let cnt = counter(clk.trig).max(8)
-let drumsOn = gte(cnt.count).b(4)
+let drumsOn = gte(cnt.count).than(4)
 let s = seq("c1").trig(clk.trig)
-return out(mult(kick(s.gate)).b(drumsOn))`,
+return out(mult(kick(s.gate)).by(drumsOn))`,
 };

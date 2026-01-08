@@ -8,6 +8,6 @@ export const delayEcho: TestDefinition = {
 	code: `let clk = clock(120)
 let s = seq("c4 ~ ~ ~ e4 ~ ~ ~").trig(clk.trig)
 let e = adsr(s.gate).attack(0.01).decay(0.1).sustain(0.2).release(0.1)
-let dry = mult(lpf(saw(s.cv)).cutoff(1500)).b(e.out)
+let dry = mult(lpf(saw(s.cv)).cutoff(1500)).by(e.out)
 return out(delay(dry).time(0.25).feedback(0.5).mix(0.4))`,
 };

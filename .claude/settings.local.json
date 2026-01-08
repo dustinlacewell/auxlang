@@ -19,7 +19,9 @@
       "Bash(npm install)",
       "Bash(npm run asbuild:*)",
       "Bash(npm run:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm test:*)",
+      "Bash(dir:*)"
     ]
   }
 }

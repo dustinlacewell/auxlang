@@ -8,7 +8,7 @@ import { inputs } from "../descriptor/inputs";
  *
  * Inputs:
  * - `trig`: Input trigger signal
- * - `div`: Division factor (default 4 = 4 beats per output)
+ * - `by`: Division factor (default 4 = 4 beats per output)
  *
  * Outputs:
  * - `trig`: Trigger output (1 for one sample every N inputs)
@@ -17,20 +17,20 @@ import { inputs } from "../descriptor/inputs";
  * @example
  * ```javascript
  * // Bar clock from beat clock (4/4 time)
- * let barClk = clockDiv(clk.trig, 4)
+ * let barClk = clockDiv(clk.trig).by(4)
  *
  * // Count bars
  * let bars = counter(barClk.trig)
  * ```
  */
 export const clockDiv = device({
-	inputs: inputs({ trig: 0, div: 4 }),
+	inputs: inputs({ trig: 0, by: 4 }),
 	outputs: ["trig", "gate"],
 	defaultInput: "trig",
 	defaultOutput: "trig",
 	process(inp, _cfg, state, _sampleRate) {
 		const trig = (inp.trig ?? [0])[0] ?? 0;
-		const div = Math.max(1, Math.floor((inp.div ?? [4])[0] ?? 4));
+		const div = Math.max(1, Math.floor((inp.by ?? [4])[0] ?? 4));
 
 		// State
 		let count = (state.count as number) ?? 0;
@@ -68,7 +68,7 @@ export const clockDiv = device({
  *
  * Inputs:
  * - `trig`: Input trigger signal
- * - `mult`: Multiplication factor (default 2)
+ * - `by`: Multiplication factor (default 2)
  *
  * Note: This is a simple implementation that subdivides evenly
  * between input triggers. For best results, use with a steady clock.
@@ -76,20 +76,20 @@ export const clockDiv = device({
  * @example
  * ```javascript
  * // 8th notes from quarter note clock
- * let eighths = clockMult(clk.trig, 2)
+ * let eighths = clockMult(clk.trig).by(2)
  *
  * // 16th notes
- * let sixteenths = clockMult(clk.trig, 4)
+ * let sixteenths = clockMult(clk.trig).by(4)
  * ```
  */
 export const clockMult = device({
-	inputs: inputs({ trig: 0, mult: 2 }),
+	inputs: inputs({ trig: 0, by: 2 }),
 	outputs: ["trig", "gate"],
 	defaultInput: "trig",
 	defaultOutput: "trig",
 	process(inp, _cfg, state, sampleRate) {
 		const trig = (inp.trig ?? [0])[0] ?? 0;
-		const mult = Math.max(1, Math.floor((inp.mult ?? [2])[0] ?? 2));
+		const mult = Math.max(1, Math.floor((inp.by ?? [2])[0] ?? 2));
 
 		// State
 		let phase = (state.phase as number) ?? 0;
