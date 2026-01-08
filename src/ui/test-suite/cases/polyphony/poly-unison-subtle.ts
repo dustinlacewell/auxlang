@@ -9,5 +9,5 @@ export const polyUnisonSubtle: TestDefinition = {
 let s = seq("c4 e4 g4 c5").trig(clk.trig)
 let e = adsr(s.gate).attack(0.1).decay(0.3).sustain(0.6).release(0.3)
 let voice = osc(s.cv).poly(2).detune(5)
-return out(gain(mult(voice).b(e.out)).amount(0.2))`,
+return out(gain(mult(voice).by(e.out)).amount(0.2))`,
 };

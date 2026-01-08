@@ -8,5 +8,5 @@ export const seqEuclidean: TestDefinition = {
 	code: `let clk = clock(140)
 let s = seq("c4(3,8)").trig(clk.trig)
 let env1 = adsr(s.gate).attack(0.01).decay(0.1).sustain(0.3).release(0.1)
-return out(mult(lpf(saw(s.cv)).cutoff(2000)).b(env1.out))`,
+return out(mult(lpf(saw(s.cv)).cutoff(2000)).by(env1.out))`,
 };

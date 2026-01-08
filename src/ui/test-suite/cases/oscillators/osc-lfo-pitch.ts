@@ -5,6 +5,6 @@ export const oscLfoPitch: TestDefinition = {
 	category: "Oscillators",
 	name: "lfo → pitch",
 	desc: "Sine with vibrato - pitch should wobble",
-	code: `let freq = add(440).b(mult(lfo(5)).b(20))
+	code: `let freq = add(440).to(mult(lfo(5)).by(20))
 return out(gain(osc(freq)).amount(0.3))`,
 };

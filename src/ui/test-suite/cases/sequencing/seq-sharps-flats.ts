@@ -8,5 +8,5 @@ export const seqSharpsFlats: TestDefinition = {
 	code: `let clk = clock(120)
 let s = seq("c#4 db4 f#4 gb4").trig(clk.trig)
 let env1 = adsr(s.gate).attack(0.01).decay(0.1).sustain(0.4).release(0.1)
-return out(mult(lpf(saw(s.cv)).cutoff(1800)).b(env1.out))`,
+return out(mult(lpf(saw(s.cv)).cutoff(1800)).by(env1.out))`,
 };

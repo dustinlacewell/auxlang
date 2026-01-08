@@ -8,5 +8,5 @@ export const envAr: TestDefinition = {
 	code: `let clk = clock(60)
 let s = seq("c4 ~ ~ ~").trig(clk.trig)
 let e = env(s.gate).attack(0.3).release(0.5)
-return out(mult(osc(s.cv)).b(e.out))`,
+return out(mult(osc(s.cv)).by(e.out))`,
 };

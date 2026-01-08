@@ -6,48 +6,50 @@ import { inputs } from "../descriptor/inputs";
  *
  * @example
  * ```javascript
- * mult(osc(440)).b(env.out)    // VCA - multiply oscillator by envelope
- * mult(lfo).b(100)             // Scale LFO output
+ * mult(osc(440)).by(env.out)    // VCA - multiply oscillator by envelope
+ * mult(lfo).by(100)             // Scale LFO output
  * ```
  */
 export const mult = device({
-	inputs: inputs({ a: 0, b: 1 }),
+	inputs: inputs({ input: 0, by: 1 }),
 	outputs: ["out"],
-	defaultInput: "a",
+	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const aIn = inp.a ?? [0];
-		const bIn = inp.b ?? [1];
-		const numChannels = Math.max(aIn.length, bIn.length);
+		const inputSig = inp.input ?? [0];
+		const bySig = inp.by ?? [1];
+		const numChannels = Math.max(inputSig.length, bySig.length);
 		const out: number[] = [];
 		for (let c = 0; c < numChannels; c++) {
-			out.push((aIn[c % aIn.length] ?? 0) * (bIn[c % bIn.length] ?? 1));
+			out.push((inputSig[c % inputSig.length] ?? 0) * (bySig[c % bySig.length] ?? 1));
 		}
 		return { out };
 	},
 });
 
 /**
- * Subtract signal b from signal a.
+ * Subtract input from another value.
+ * sub(x).from(y) returns y - x ("subtract x from y")
  *
  * @example
  * ```javascript
- * sub(osc1).b(osc2)            // Difference of two oscillators
- * sub(1).b(env.out)            // Invert envelope (1 - env)
+ * sub(env.out).from(1)         // Invert envelope (1 - env)
+ * sub(osc2).from(osc1)         // Difference of two oscillators
  * ```
  */
 export const sub = device({
-	inputs: inputs({ a: 0, b: 0 }),
+	inputs: inputs({ input: 0, from: 0 }),
 	outputs: ["out"],
-	defaultInput: "a",
+	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const aIn = inp.a ?? [0];
-		const bIn = inp.b ?? [0];
-		const numChannels = Math.max(aIn.length, bIn.length);
+		const inputSig = inp.input ?? [0];
+		const fromSig = inp.from ?? [0];
+		const numChannels = Math.max(inputSig.length, fromSig.length);
 		const out: number[] = [];
 		for (let c = 0; c < numChannels; c++) {
-			out.push((aIn[c % aIn.length] ?? 0) - (bIn[c % bIn.length] ?? 0));
+			// sub(x).from(y) = y - x
+			out.push((fromSig[c % fromSig.length] ?? 0) - (inputSig[c % inputSig.length] ?? 0));
 		}
 		return { out };
 	},
@@ -86,35 +88,35 @@ export const clip = device({
 /**
  * Scale/map a signal from one range to another.
  *
- * Maps input from inMin..inMax to outMin..outMax.
+ * Maps input from..to range to min..max range.
  *
  * @example
  * ```javascript
- * scale(lfo).inMin(-1).inMax(1).outMin(200).outMax(2000)  // LFO to frequency range
- * scale(env.out).inMin(0).inMax(1).outMin(100).outMax(5000)  // Envelope to filter cutoff
+ * scale(lfo).from(-1).to(1).min(200).max(2000)  // LFO to frequency range
+ * scale(lfo).min(200).max(2000)                  // Same (from/to default to -1..1)
  * ```
  */
 export const scale = device({
-	inputs: inputs({ input: 0, inMin: -1, inMax: 1, outMin: 0, outMax: 1 }),
+	inputs: inputs({ input: 0, from: -1, to: 1, min: 0, max: 1 }),
 	outputs: ["out"],
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
 		const inputSig = inp.input ?? [0];
-		const inMins = inp.inMin ?? [-1];
-		const inMaxs = inp.inMax ?? [1];
-		const outMins = inp.outMin ?? [0];
-		const outMaxs = inp.outMax ?? [1];
-		const numChannels = Math.max(inputSig.length, inMins.length, inMaxs.length, outMins.length, outMaxs.length);
+		const fromVals = inp.from ?? [-1];
+		const toVals = inp.to ?? [1];
+		const minVals = inp.min ?? [0];
+		const maxVals = inp.max ?? [1];
+		const numChannels = Math.max(inputSig.length, fromVals.length, toVals.length, minVals.length, maxVals.length);
 		const out: number[] = [];
 		for (let c = 0; c < numChannels; c++) {
 			const v = inputSig[c % inputSig.length] ?? 0;
-			const inMin = inMins[c % inMins.length] ?? -1;
-			const inMax = inMaxs[c % inMaxs.length] ?? 1;
-			const outMin = outMins[c % outMins.length] ?? 0;
-			const outMax = outMaxs[c % outMaxs.length] ?? 1;
-			const normalized = (v - inMin) / (inMax - inMin);
-			out.push(outMin + normalized * (outMax - outMin));
+			const from = fromVals[c % fromVals.length] ?? -1;
+			const to = toVals[c % toVals.length] ?? 1;
+			const min = minVals[c % minVals.length] ?? 0;
+			const max = maxVals[c % maxVals.length] ?? 1;
+			const normalized = (v - from) / (to - from);
+			out.push(min + normalized * (max - min));
 		}
 		return { out };
 	},
@@ -162,26 +164,26 @@ export const inv = device({
 });
 
 /**
- * Divide signal a by signal b.
+ * Divide input by another signal.
  *
  * @example
  * ```javascript
- * div(input).b(2)              // Halve the signal
+ * div(input).by(2)              // Halve the signal
  * ```
  */
 export const div = device({
-	inputs: inputs({ a: 0, b: 1 }),
+	inputs: inputs({ input: 0, by: 1 }),
 	outputs: ["out"],
-	defaultInput: "a",
+	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const aIn = inp.a ?? [0];
-		const bIn = inp.b ?? [1];
-		const numChannels = Math.max(aIn.length, bIn.length);
+		const inputSig = inp.input ?? [0];
+		const bySig = inp.by ?? [1];
+		const numChannels = Math.max(inputSig.length, bySig.length);
 		const out: number[] = [];
 		for (let c = 0; c < numChannels; c++) {
-			const a = aIn[c % aIn.length] ?? 0;
-			const b = bIn[c % bIn.length] ?? 1;
+			const a = inputSig[c % inputSig.length] ?? 0;
+			const b = bySig[c % bySig.length] ?? 1;
 			out.push(b === 0 ? 0 : a / b);
 		}
 		return { out };
@@ -193,22 +195,22 @@ export const div = device({
  *
  * @example
  * ```javascript
- * mod(phasor).b(0.5)           // Wrap at 0.5
+ * mod(phasor).by(0.5)           // Wrap at 0.5
  * ```
  */
 export const mod = device({
-	inputs: inputs({ a: 0, b: 1 }),
+	inputs: inputs({ input: 0, by: 1 }),
 	outputs: ["out"],
-	defaultInput: "a",
+	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const aIn = inp.a ?? [0];
-		const bIn = inp.b ?? [1];
-		const numChannels = Math.max(aIn.length, bIn.length);
+		const inputSig = inp.input ?? [0];
+		const bySig = inp.by ?? [1];
+		const numChannels = Math.max(inputSig.length, bySig.length);
 		const out: number[] = [];
 		for (let c = 0; c < numChannels; c++) {
-			const a = aIn[c % aIn.length] ?? 0;
-			const b = bIn[c % bIn.length] ?? 1;
+			const a = inputSig[c % inputSig.length] ?? 0;
+			const b = bySig[c % bySig.length] ?? 1;
 			out.push(b === 0 ? 0 : a % b);
 		}
 		return { out };
@@ -217,28 +219,28 @@ export const mod = device({
 
 /**
  * Greater than or equal comparison.
- * Outputs 1 if a >= b, 0 otherwise.
+ * Outputs 1 if input >= than, 0 otherwise.
  *
  * @example
  * ```javascript
  * // Drums come in at bar 4
- * let drumsOn = gte(bars.count, 4)
- * let drums = mult(drumMix).b(drumsOn)
+ * let drumsOn = gte(bars.count).than(4)
+ * let drums = mult(drumMix).by(drumsOn)
  * ```
  */
 export const gte = device({
-	inputs: inputs({ a: 0, b: 0 }),
+	inputs: inputs({ input: 0, than: 0 }),
 	outputs: ["out"],
-	defaultInput: "a",
+	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const aIn = inp.a ?? [0];
-		const bIn = inp.b ?? [0];
-		const numChannels = Math.max(aIn.length, bIn.length);
+		const inputSig = inp.input ?? [0];
+		const thanSig = inp.than ?? [0];
+		const numChannels = Math.max(inputSig.length, thanSig.length);
 		const out: number[] = [];
 		for (let c = 0; c < numChannels; c++) {
-			const a = aIn[c % aIn.length] ?? 0;
-			const b = bIn[c % bIn.length] ?? 0;
+			const a = inputSig[c % inputSig.length] ?? 0;
+			const b = thanSig[c % thanSig.length] ?? 0;
 			out.push(a >= b ? 1 : 0);
 		}
 		return { out };
@@ -247,27 +249,27 @@ export const gte = device({
 
 /**
  * Less than comparison.
- * Outputs 1 if a < b, 0 otherwise.
+ * Outputs 1 if input < than, 0 otherwise.
  *
  * @example
  * ```javascript
  * // Intro only for first 8 bars
- * let introOn = lt(bars.count, 8)
+ * let introOn = lt(bars.count).than(8)
  * ```
  */
 export const lt = device({
-	inputs: inputs({ a: 0, b: 0 }),
+	inputs: inputs({ input: 0, than: 0 }),
 	outputs: ["out"],
-	defaultInput: "a",
+	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const aIn = inp.a ?? [0];
-		const bIn = inp.b ?? [0];
-		const numChannels = Math.max(aIn.length, bIn.length);
+		const inputSig = inp.input ?? [0];
+		const thanSig = inp.than ?? [0];
+		const numChannels = Math.max(inputSig.length, thanSig.length);
 		const out: number[] = [];
 		for (let c = 0; c < numChannels; c++) {
-			const a = aIn[c % aIn.length] ?? 0;
-			const b = bIn[c % bIn.length] ?? 0;
+			const a = inputSig[c % inputSig.length] ?? 0;
+			const b = thanSig[c % thanSig.length] ?? 0;
 			out.push(a < b ? 1 : 0);
 		}
 		return { out };
@@ -276,27 +278,27 @@ export const lt = device({
 
 /**
  * Equal comparison (with tolerance for floating point).
- * Outputs 1 if a == b (within 0.0001), 0 otherwise.
+ * Outputs 1 if input == to (within 0.0001), 0 otherwise.
  *
  * @example
  * ```javascript
  * // Only play on bar 0 of each 16-bar section
- * let dropBar = eq(section.count, 0)
+ * let dropBar = eq(section.count).to(0)
  * ```
  */
 export const eq = device({
-	inputs: inputs({ a: 0, b: 0 }),
+	inputs: inputs({ input: 0, to: 0 }),
 	outputs: ["out"],
-	defaultInput: "a",
+	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const aIn = inp.a ?? [0];
-		const bIn = inp.b ?? [0];
-		const numChannels = Math.max(aIn.length, bIn.length);
+		const inputSig = inp.input ?? [0];
+		const toSig = inp.to ?? [0];
+		const numChannels = Math.max(inputSig.length, toSig.length);
 		const out: number[] = [];
 		for (let c = 0; c < numChannels; c++) {
-			const a = aIn[c % aIn.length] ?? 0;
-			const b = bIn[c % bIn.length] ?? 0;
+			const a = inputSig[c % inputSig.length] ?? 0;
+			const b = toSig[c % toSig.length] ?? 0;
 			out.push(Math.abs(a - b) < 0.0001 ? 1 : 0);
 		}
 		return { out };
@@ -309,22 +311,22 @@ export const eq = device({
  * @example
  * ```javascript
  * // Play only in bars 4-8
- * let section = and(gte(bars, 4)).b(lt(bars, 8))
+ * let section = and(gte(bars).than(4)).with(lt(bars).than(8))
  * ```
  */
 export const and = device({
-	inputs: inputs({ a: 0, b: 0 }),
+	inputs: inputs({ input: 0, with: 0 }),
 	outputs: ["out"],
-	defaultInput: "a",
+	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const aIn = inp.a ?? [0];
-		const bIn = inp.b ?? [0];
-		const numChannels = Math.max(aIn.length, bIn.length);
+		const inputSig = inp.input ?? [0];
+		const withSig = inp.with ?? [0];
+		const numChannels = Math.max(inputSig.length, withSig.length);
 		const out: number[] = [];
 		for (let c = 0; c < numChannels; c++) {
-			const a = aIn[c % aIn.length] ?? 0;
-			const b = bIn[c % bIn.length] ?? 0;
+			const a = inputSig[c % inputSig.length] ?? 0;
+			const b = withSig[c % withSig.length] ?? 0;
 			out.push(a > 0.5 && b > 0.5 ? 1 : 0);
 		}
 		return { out };
@@ -337,22 +339,22 @@ export const and = device({
  * @example
  * ```javascript
  * // Play in bars 0-4 OR bars 12-16
- * let playHere = or(lt(bars, 4)).b(gte(bars, 12))
+ * let playHere = or(lt(bars).than(4)).with(gte(bars).than(12))
  * ```
  */
 export const or = device({
-	inputs: inputs({ a: 0, b: 0 }),
+	inputs: inputs({ input: 0, with: 0 }),
 	outputs: ["out"],
-	defaultInput: "a",
+	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const aIn = inp.a ?? [0];
-		const bIn = inp.b ?? [0];
-		const numChannels = Math.max(aIn.length, bIn.length);
+		const inputSig = inp.input ?? [0];
+		const withSig = inp.with ?? [0];
+		const numChannels = Math.max(inputSig.length, withSig.length);
 		const out: number[] = [];
 		for (let c = 0; c < numChannels; c++) {
-			const a = aIn[c % aIn.length] ?? 0;
-			const b = bIn[c % bIn.length] ?? 0;
+			const a = inputSig[c % inputSig.length] ?? 0;
+			const b = withSig[c % withSig.length] ?? 0;
 			out.push(a > 0.5 || b > 0.5 ? 1 : 0);
 		}
 		return { out };
