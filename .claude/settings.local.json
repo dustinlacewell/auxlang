@@ -21,7 +21,9 @@
       "Bash(npm run:*)",
       "Bash(curl:*)",
       "Bash(npm test:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(tree:*)"
     ]
   }
 }
