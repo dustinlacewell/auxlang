@@ -32,9 +32,12 @@ export { adsr } from "../devices/adsr";
 // Filters
 export { lpf } from "../devices/lpf";
 export { hpf } from "../devices/hpf";
+export { bpf } from "../devices/bpf";
+export { notch } from "../devices/notch";
 
 // Effects
 export { delay } from "../devices/delay";
+export { reverb } from "../devices/reverb";
 
 // Utilities
 export { gain } from "../devices/gain";

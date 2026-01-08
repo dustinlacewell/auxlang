@@ -4,6 +4,6 @@ export const hpfStatic: TestDefinition = {
 	id: "hpf-static",
 	category: "Filters",
 	name: "hpf - static",
-	desc: "High-pass at 1000Hz - thin, trebly",
-	code: `return out(gain(hpf(saw(110)).cutoff(1000)).amount(0.3))`,
+	desc: "Highpass at 500Hz - thin saw",
+	code: `return out(gain(hpf(saw(110)).cutoff(500)).amount(0.3))`,
 };

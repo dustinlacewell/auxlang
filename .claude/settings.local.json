@@ -15,7 +15,11 @@
       "Bash(npx vitest:*)",
       "Bash(git checkout:*)",
       "Bash(npm run build:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(npm install)",
+      "Bash(npm run asbuild:*)",
+      "Bash(npm run:*)",
+      "Bash(curl:*)"
     ]
   }
 }

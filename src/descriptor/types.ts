@@ -40,6 +40,8 @@ export interface DeviceSpec {
 	readonly defaultOutput: string;
 	readonly process: ProcessFn;
 	readonly processSource: string;
+	/** URL to WASM module for native devices */
+	readonly wasmUrl?: string;
 }
 
 /**

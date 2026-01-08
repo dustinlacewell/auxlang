@@ -16,6 +16,7 @@ export type PolySignal = number[];
 export interface SerializedSpec {
 	inputs: Record<string, { default: PolySignal }>;
 	outputs: readonly string[];
+	defaultInput: string;
 	defaultOutput: string;
 	processSource: string;
 }
@@ -32,6 +33,7 @@ export interface CompiledNode {
 	spec: SerializedSpec;
 	inputs: Record<string, CompiledInput>;
 	config: Record<string, string>;
+	wasmBytes?: ArrayBuffer;
 }
 
 export interface CompiledGraph {
@@ -39,10 +41,9 @@ export interface CompiledGraph {
 	outputNodeId: string;
 }
 
-export interface WorkletMessage {
-	type: "setGraph" | "stop";
-	graph?: CompiledGraph;
-}
+export type WorkletMessage =
+	| { type: "setGraph"; graph: CompiledGraph }
+	| { type: "stop" };
 
 /** A hydrated config function */
 export type ConfigFn = (...args: unknown[]) => unknown;

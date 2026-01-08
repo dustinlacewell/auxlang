@@ -34,7 +34,7 @@ export function hydrateGraph(
 }
 
 /** Hydrate config functions from their stringified form */
-function hydrateConfig(config: Record<string, string>): Record<string, ConfigFn> {
+export function hydrateConfig(config: Record<string, string>): Record<string, ConfigFn> {
 	const result: Record<string, ConfigFn> = {};
 	for (const [name, source] of Object.entries(config)) {
 		result[name] = hydrateFunction(source);
@@ -52,7 +52,7 @@ function hydrateFunction(source: string): ConfigFn {
 }
 
 /** Convert processSource string back into a function */
-function hydrateProcess(source: string): RuntimeNode["process"] {
+export function hydrateProcess(source: string): RuntimeNode["process"] {
 	// source can be:
 	// - "process(inp, state, sr) { ... }" (method shorthand)
 	// - "function(inp, state, sr) { ... }"

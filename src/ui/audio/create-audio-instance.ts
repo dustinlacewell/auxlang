@@ -20,8 +20,8 @@ export function stopInstance(instance: AudioInstance): void {
 	instance.ctx.close();
 }
 
-export function sendGraph(instance: AudioInstance, graph: Graph): void {
-	const compiled = compile(graph);
+export async function sendGraph(instance: AudioInstance, graph: Graph): Promise<void> {
+	const compiled = await compile(graph);
 	const message: WorkletMessage = { type: "setGraph", graph: compiled };
 	instance.node.port.postMessage(message);
 }

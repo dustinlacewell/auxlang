@@ -4,6 +4,6 @@ export const lpfResonant: TestDefinition = {
 	id: "lpf-resonant",
 	category: "Filters",
 	name: "lpf - resonant",
-	desc: "High resonance - whistly peak",
-	code: `return out(gain(lpf(saw(110)).cutoff(800).resonance(0.8)).amount(0.2))`,
+	desc: "Lowpass with high resonance - should be stable",
+	code: `return out(gain(lpf(saw(55)).cutoff(400).resonance(0.85)).amount(0.3))`,
 };

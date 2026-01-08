@@ -32,6 +32,14 @@ import { lpfStatic } from "./cases/filters/lpf-static";
 import { lpfResonant } from "./cases/filters/lpf-resonant";
 import { lpfModulated } from "./cases/filters/lpf-modulated";
 import { hpfStatic } from "./cases/filters/hpf-static";
+import { hpfResonant } from "./cases/filters/hpf-resonant";
+import { hpfModulated } from "./cases/filters/hpf-modulated";
+import { bpfStatic } from "./cases/filters/bpf-static";
+import { bpfResonant } from "./cases/filters/bpf-resonant";
+import { bpfModulated } from "./cases/filters/bpf-modulated";
+import { notchStatic } from "./cases/filters/notch-static";
+import { notchResonant } from "./cases/filters/notch-resonant";
+import { notchModulated } from "./cases/filters/notch-modulated";
 
 import { delayEcho } from "./cases/effects/delay-echo";
 
@@ -65,6 +73,11 @@ import { polyUnisonParam } from "./cases/polyphony/poly-unison-param";
 import { polyUnison7 } from "./cases/polyphony/poly-unison-7";
 import { polyUnisonSubtle } from "./cases/polyphony/poly-unison-subtle";
 
+import { nativeReverbSimple } from "./cases/native/native-reverb-simple";
+import { nativeReverbSequenced } from "./cases/native/native-reverb-sequenced";
+import { nativeReverbDrums } from "./cases/native/native-reverb-drums";
+import { nativeReverbBigHall } from "./cases/native/native-reverb-big-hall";
+
 import type { TestDefinition } from "./cases/types";
 
 export const tests: TestDefinition[] = [
@@ -96,11 +109,22 @@ export const tests: TestDefinition[] = [
 	envAr,
 	envPlucky,
 	envPad,
-	// Filters
+	// Filters - LPF
 	lpfStatic,
 	lpfResonant,
 	lpfModulated,
+	// Filters - HPF
 	hpfStatic,
+	hpfResonant,
+	hpfModulated,
+	// Filters - BPF
+	bpfStatic,
+	bpfResonant,
+	bpfModulated,
+	// Filters - Notch
+	notchStatic,
+	notchResonant,
+	notchModulated,
 	// Effects
 	delayEcho,
 	// Utilities
@@ -133,6 +157,11 @@ export const tests: TestDefinition[] = [
 	polyUnisonParam,
 	polyUnison7,
 	polyUnisonSubtle,
+	// Native (WASM)
+	nativeReverbSimple,
+	nativeReverbSequenced,
+	nativeReverbDrums,
+	nativeReverbBigHall,
 ];
 
 export function getTestsByCategory(): Map<string, TestDefinition[]> {
