@@ -16,13 +16,7 @@ export function useAudioPlayer() {
 	const instanceRef = useRef<AudioInstance | null>(null);
 
 	const play = useCallback(async (code: string) => {
-		// Stop existing instance
-		if (instanceRef.current) {
-			stopInstance(instanceRef.current);
-			instanceRef.current = null;
-		}
-
-		// Reset descriptor state
+		// Reset descriptor state (needed for fresh ID generation)
 		resetIdCounter();
 		clearRegistry();
 
@@ -32,13 +26,15 @@ export function useAudioPlayer() {
 			const fn = new Function(...Object.keys(api), wrappedCode);
 			const result = fn(...Object.values(api));
 
-			// Create audio instance
-			const instance = await createAudioInstance();
-			instanceRef.current = instance;
+			// Create audio instance if needed (reuse existing for live re-eval)
+			if (!instanceRef.current) {
+				const instance = await createAudioInstance();
+				instanceRef.current = instance;
+			}
 
-			// Send graph
+			// Send graph (processor handles state preservation for matched nodes)
 			if (result && typeof result === "object" && "nodes" in result) {
-				sendGraph(instance, result as Graph);
+				sendGraph(instanceRef.current, result as Graph);
 				setState("playing");
 				setError(null);
 			} else {

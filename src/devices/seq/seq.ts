@@ -110,6 +110,11 @@ export function seq(patternString: string) {
 			let beatIndex = (state.beatIndex as number) ?? -1;
 			let cycleCount = (state.cycleCount as number) ?? 0;
 
+			// Wrap beatIndex if pattern length changed (e.g., live re-eval with shorter pattern)
+			if (beatIndex >= pat.length) {
+				beatIndex = beatIndex % pat.length;
+			}
+
 			// Samples per beat (calculated from BPM or measured from trigger intervals)
 			let samplesPerBeat = (state.samplesPerBeat as number) ?? 0;
 			let samplesSinceTrig = (state.samplesSinceTrig as number) ?? 0;
