@@ -8,6 +8,7 @@
  * - Rest: ~
  * - Groups: [ ]
  * - Alternation: < >
+ * - Stack: { }
  * - Euclidean: ( ) ,
  * - Multiply: *
  * - Replicate: !
@@ -71,6 +72,18 @@ export function tokenize(input: string): Token[] {
 
 		if (char === ">") {
 			tokens.push(makeToken("RANGLE", ">", position));
+			position++;
+			continue;
+		}
+
+		if (char === "{") {
+			tokens.push(makeToken("LBRACE", "{", position));
+			position++;
+			continue;
+		}
+
+		if (char === "}") {
+			tokens.push(makeToken("RBRACE", "}", position));
 			position++;
 			continue;
 		}

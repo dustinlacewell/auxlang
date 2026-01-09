@@ -11,6 +11,8 @@ export type TokenType =
 	| "RBRACKET"
 	| "LANGLE"      // <
 	| "RANGLE"      // >
+	| "LBRACE"      // {
+	| "RBRACE"      // }
 	| "LPAREN"      // (
 	| "RPAREN"      // )
 	| "MULTIPLY"    // *
