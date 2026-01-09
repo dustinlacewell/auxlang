@@ -20,8 +20,16 @@ import { voiceCount } from "./expr/types";
 // That's 16 slots (each 0.5 beats) = 8 beats
 // Use a group of 16 items stretched to 8 beats
 
-// Test if @4 inside a group works as relative weight
-const pattern = "[<[[f2 ~] [f2 ~] f2 g2] [[g2 ~] [g2 ~] g2 g2]>@4 [c2 ~] c2 c2 [d2 ~] d2 d2 [d2 ~] d2 d2 [d2 ~] d2 d2]@8";
+// Test all patterns
+const kick = "c1!2 [c1*4]!2 c1!4";
+const hihat = "~ c1 ~ c1 ~ c1 ~ c1";
+const bass = "[<[[f2 ~] [f2 ~] f2 g2] [[g2 ~] [g2 ~] g2 g2]>@4 [c2 ~] c2 c2 [d2 ~] d2 d2 [d2 ~] d2 d2 [d2 ~] d2 d2]@8";
+
+console.log("Kick beats:", countBeats(parseExpr(kick)));
+console.log("Hihat beats:", countBeats(parseExpr(hihat)));
+console.log("Bass beats:", countBeats(parseExpr(bass)));
+
+const pattern = hihat;
 
 const expr = parseExpr(pattern);
 const totalBeats = countBeats(expr);

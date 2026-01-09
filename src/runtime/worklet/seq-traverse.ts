@@ -196,9 +196,9 @@ function traverseNote(pitch: string, ctx: TraverseContext, state: TraversalState
 
 	state.voiceCV.set(voiceId, freq);
 
+	// Gate fills the note's full duration (tiny gap for retriggering)
 	const timeInEvent = ctx.absoluteTime - ctx.beatStart;
-	const eventPhase = timeInEvent / ctx.duration;
-	const gate = ctx.inTie ? 1 : (eventPhase < 0.8 ? 1 : 0);
+	const gate = timeInEvent < ctx.duration - 0.001 ? 1 : 0;
 
 	const eventId = `${ctx.exprPath}:${ctx.beatStart}:${ctx.cycle}`;
 	const lastId = state.lastEventId.get(voiceId);
@@ -228,11 +228,17 @@ function traverseSeq(children: Expr[], ctx: TraverseContext, state: TraversalSta
 function traverseGroup(children: Expr[], ctx: TraverseContext, state: TraversalState, outputs: VoiceOutput[]): void {
 	if (children.length === 0) return;
 
-	const childDuration = ctx.duration / children.length;
+	// Weight children by countBeats for Strudel-like @ weighting
+	const totalWeight = children.reduce((sum, child) => sum + countBeats(child), 0);
+	if (totalWeight === 0) return;
+
+	const beatScale = ctx.duration / totalWeight;
 	let currentBeat = ctx.beatStart;
 
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i]!;
+		const childWeight = countBeats(child);
+		const childDuration = childWeight * beatScale;
 		traverseExpr(child, { ...ctx, beatStart: currentBeat, duration: childDuration, exprPath: `${ctx.exprPath}.group[${i}]` }, state, outputs);
 		currentBeat += childDuration;
 	}
