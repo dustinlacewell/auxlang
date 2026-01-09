@@ -1,61 +1,44 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
-/**
- * ADSR envelope generator.
- *
- * Classic Attack-Decay-Sustain-Release envelope.
- * - Attack: Time to rise from 0 to 1
- * - Decay: Time to fall from 1 to sustain level
- * - Sustain: Level held while gate is high (0-1)
- * - Release: Time to fall from sustain to 0 after gate goes low
- *
- * Inputs:
- * - `gate`: Gate signal (envelope active while > 0.5)
- * - `attack`: Attack time in seconds (default 0.01)
- * - `decay`: Decay time in seconds (default 0.1)
- * - `sustain`: Sustain level 0-1 (default 0.7)
- * - `release`: Release time in seconds (default 0.3)
- *
- * @example
- * ```javascript
- * adsr(seq.gate)                                    // Default ADSR
- * adsr(seq.gate).attack(0.5).decay(0.2).sustain(0.5).release(1)  // Pad envelope
- * adsr(seq.gate).attack(0.001).decay(0.05).sustain(0).release(0.1)  // Pluck
- * ```
- */
+// PolySignal type for process function (runtime uses globalThis.poly)
+type PS = Array<{ id: number; value: number }>;
+
+/** ADSR envelope generator. */
 export const adsr = device({
 	inputs: inputs({ gate: 0, attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 }),
 	outputs: ["out"],
 	defaultInput: "gate",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const gates = inp.gate ?? [0];
-		const attacks = inp.attack ?? [0.01];
-		const decays = inp.decay ?? [0.1];
-		const sustains = inp.sustain ?? [0.7];
-		const releases = inp.release ?? [0.3];
-		const numChannels = Math.max(gates.length, attacks.length, decays.length, sustains.length, releases.length);
+		const gates = (inp.gate ?? []) as PS;
+		const attacks = (inp.attack ?? []) as PS;
+		const decays = (inp.decay ?? []) as PS;
+		const sustains = (inp.sustain ?? []) as PS;
+		const releases = (inp.release ?? []) as PS;
 
-		// Per-channel state arrays
-		if (!state.levels) state.levels = [];
-		if (!state.stages) state.stages = [];
-		if (!state.wasGates) state.wasGates = [];
-		const levels = state.levels as number[];
-		const stages = state.stages as string[];
-		const wasGates = state.wasGates as number[];
+		if (gates.length === 0) return { out: [] };
 
-		const out: number[] = [];
-		for (let c = 0; c < numChannels; c++) {
-			const gate = gates[c % gates.length] ?? 0;
-			const attack = Math.max(0.0001, attacks[c % attacks.length] ?? 0.01);
-			const decay = Math.max(0.0001, decays[c % decays.length] ?? 0.1);
-			const sustain = Math.max(0, Math.min(1, sustains[c % sustains.length] ?? 0.7));
-			const release = Math.max(0.0001, releases[c % releases.length] ?? 0.3);
+		// Per-voice state maps
+		if (!state.levels) state.levels = new Map<number, number>();
+		if (!state.stages) state.stages = new Map<number, string>();
+		if (!state.wasGates) state.wasGates = new Map<number, number>();
+		const levels = state.levels as Map<number, number>;
+		const stages = state.stages as Map<number, string>;
+		const wasGates = state.wasGates as Map<number, number>;
 
-			const level = levels[c] ?? 0;
-			const stage = stages[c] ?? "idle";
-			const wasGate = wasGates[c] ?? 0;
+		const out: PS = [];
+		for (const gateCh of gates) {
+			const id = gateCh.id;
+			const gate = gateCh.value;
+			const attack = Math.max(0.0001, poly.getValue(attacks, id, 0.01));
+			const decay = Math.max(0.0001, poly.getValue(decays, id, 0.1));
+			const sustain = Math.max(0, Math.min(1, poly.getValue(sustains, id, 0.7)));
+			const release = Math.max(0.0001, poly.getValue(releases, id, 0.3));
+
+			const level = levels.get(id) ?? 0;
+			const stage = stages.get(id) ?? "idle";
+			const wasGate = wasGates.get(id) ?? 0;
 
 			const gateOn = gate > 0.5;
 			const gateWasOn = wasGate > 0.5;
@@ -95,11 +78,11 @@ export const adsr = device({
 				newLevel = 0;
 			}
 
-			levels[c] = newLevel;
-			stages[c] = newStage;
-			wasGates[c] = gate;
+			levels.set(id, newLevel);
+			stages.set(id, newStage);
+			wasGates.set(id, gate);
 
-			out.push(newLevel);
+			out.push({ id, value: newLevel });
 		}
 
 		return { out };

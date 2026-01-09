@@ -1,44 +1,33 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
-/**
- * Slew limiter / lag processor for smoothing signals.
- *
- * Limits how fast a signal can change, creating glides/portamento.
- * Separate rise and fall times allow asymmetric behavior.
- *
- * Inputs:
- * - `input`: Signal to smooth
- * - `rise`: Time in seconds to rise from 0 to 1 (default 0.1)
- * - `fall`: Time in seconds to fall from 1 to 0 (default 0.1)
- *
- * @example
- * ```javascript
- * slew(seq.cv).rise(0.05).fall(0.05)   // Portamento on pitch CV
- * slew(lfo).rise(0.5).fall(0.01)       // Slow attack, fast decay
- * ```
- */
+// PolySignal type for process function (runtime uses globalThis.poly)
+type PS = Array<{ id: number; value: number }>;
+
+/** Slew limiter / lag processor for smoothing signals. */
 export const slew = device({
 	inputs: inputs({ input: 0, rise: 0.1, fall: 0.1 }),
 	outputs: ["out"],
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const inputSig = inp.input ?? [0];
-		const rises = inp.rise ?? [0.1];
-		const falls = inp.fall ?? [0.1];
-		const numChannels = Math.max(inputSig.length, rises.length, falls.length);
+		const inputSig = (inp.input ?? []) as PS;
+		const rises = (inp.rise ?? []) as PS;
+		const falls = (inp.fall ?? []) as PS;
 
-		if (!state.currents) state.currents = [];
-		const currents = state.currents as number[];
+		if (inputSig.length === 0) return { out: [] };
 
-		const out: number[] = [];
-		for (let c = 0; c < numChannels; c++) {
-			const input = inputSig[c % inputSig.length] ?? 0;
-			const rise = Math.max(0.0001, rises[c % rises.length] ?? 0.1);
-			const fall = Math.max(0.0001, falls[c % falls.length] ?? 0.1);
+		if (!state.currents) state.currents = new Map<number, number>();
+		const currents = state.currents as Map<number, number>;
 
-			const current = currents[c] ?? input;
+		const out: PS = [];
+		for (const inputCh of inputSig) {
+			const id = inputCh.id;
+			const input = inputCh.value;
+			const rise = Math.max(0.0001, poly.getValue(rises, id, 0.1));
+			const fall = Math.max(0.0001, poly.getValue(falls, id, 0.1));
+
+			const current = currents.get(id) ?? input;
 
 			let newValue: number;
 			if (input > current) {
@@ -49,8 +38,8 @@ export const slew = device({
 				newValue = Math.max(input, current - fallRate);
 			}
 
-			currents[c] = newValue;
-			out.push(newValue);
+			currents.set(id, newValue);
+			out.push({ id, value: newValue });
 		}
 
 		return { out };

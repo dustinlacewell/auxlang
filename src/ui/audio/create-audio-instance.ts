@@ -3,7 +3,7 @@ import { compile } from "@/runtime/compile";
 import type { WorkletMessage } from "@/runtime/types";
 import type { AudioInstance } from "./types";
 
-const processorUrl = new URL("../../runtime/processor/graph-processor.ts", import.meta.url).href;
+const processorUrl = new URL("../../runtime/worklet/index.ts", import.meta.url).href;
 
 export async function createAudioInstance(): Promise<AudioInstance> {
 	const ctx = new AudioContext();

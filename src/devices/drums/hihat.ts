@@ -28,10 +28,14 @@ export const hihat = device({
 	defaultInput: "trig",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const trig = (inp.trig ?? [0])[0] ?? 0;
-		const decay = Math.max(0.005, (inp.decay ?? [0.05])[0] ?? 0.05);
-		const tone = Math.max(0, Math.min(1, (inp.tone ?? [0.6])[0] ?? 0.6));
-		const metal = Math.max(0, Math.min(1, (inp.metal ?? [0.5])[0] ?? 0.5));
+		// Extract first voice value from PolySignal inputs
+		type PS = Array<{ id: number; value: number }>;
+		const getVal = (sig: PS, def: number) => sig.length > 0 ? sig[0]!.value : def;
+
+		const trig = getVal((inp.trig ?? []) as PS, 0);
+		const decay = Math.max(0.005, getVal((inp.decay ?? []) as PS, 0.05));
+		const tone = Math.max(0, Math.min(1, getVal((inp.tone ?? []) as PS, 0.6)));
+		const metal = Math.max(0, Math.min(1, getVal((inp.metal ?? []) as PS, 0.5)));
 
 		// State
 		const wasTrig = (state.wasTrig as number) ?? 0;

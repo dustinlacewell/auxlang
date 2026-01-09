@@ -6,6 +6,6 @@ export const clock60: TestDefinition = {
 	name: "clock - 60 BPM",
 	desc: "Slow tempo - one beat per second",
 	code: `let clk = clock(60)
-let s = seq("c4").trig(clk.trig)
+let s = seq("c4").clk(clk.trig)
 return out(kick(s.gate))`,
 };

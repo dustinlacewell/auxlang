@@ -27,9 +27,13 @@ export const clap = device({
 	defaultInput: "trig",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const trig = (inp.trig ?? [0])[0] ?? 0;
-		const decay = Math.max(0.05, (inp.decay ?? [0.2])[0] ?? 0.2);
-		const tone = Math.max(0, Math.min(1, (inp.tone ?? [0.5])[0] ?? 0.5));
+		// Extract first voice value from PolySignal inputs
+		type PS = Array<{ id: number; value: number }>;
+		const getVal = (sig: PS, def: number) => sig.length > 0 ? sig[0]!.value : def;
+
+		const trig = getVal((inp.trig ?? []) as PS, 0);
+		const decay = Math.max(0.05, getVal((inp.decay ?? []) as PS, 0.2));
+		const tone = Math.max(0, Math.min(1, getVal((inp.tone ?? []) as PS, 0.5)));
 
 		// State
 		const wasTrig = (state.wasTrig as number) ?? 0;

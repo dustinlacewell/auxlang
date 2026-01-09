@@ -1,40 +1,42 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
-/**
- * Mix multiple signals together.
- *
- * A convenient 4-channel mixer. Unused channels default to 0.
- * For more channels, chain multiple mix devices.
- *
- * Inputs:
- * - `a`, `b`, `c`, `d`: Input signals (default 0)
- *
- * @example
- * ```javascript
- * mix(bass).b(lead).c(drums)           // Mix three signals
- * mix(a).b(b).c(c).d(d)                // Mix four signals
- * ```
- */
+// PolySignal type for process function (runtime uses globalThis.poly)
+type PS = Array<{ id: number; value: number }>;
+
+/** Mix multiple signals together with 1/sqrt(n) scaling to prevent clipping. */
 export const mix = device({
 	inputs: inputs({ a: 0, b: 0, c: 0, d: 0 }),
 	outputs: ["out"],
 	defaultInput: "a",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const aIn = inp.a ?? [0];
-		const bIn = inp.b ?? [0];
-		const cIn = inp.c ?? [0];
-		const dIn = inp.d ?? [0];
-		const numChannels = Math.max(aIn.length, bIn.length, cIn.length, dIn.length);
+		const aIn = (inp.a ?? []) as PS;
+		const bIn = (inp.b ?? []) as PS;
+		const cIn = (inp.c ?? []) as PS;
+		const dIn = (inp.d ?? []) as PS;
 
-		const out: number[] = [];
-		for (let c = 0; c < numChannels; c++) {
-			const a = aIn[c % aIn.length] ?? 0;
-			const b = bIn[c % bIn.length] ?? 0;
-			const cv = cIn[c % cIn.length] ?? 0;
-			const d = dIn[c % dIn.length] ?? 0;
-			out.push(a + b + cv + d);
+		if (aIn.length === 0 && bIn.length === 0 && cIn.length === 0 && dIn.length === 0) {
+			return { out: [] };
+		}
+
+		// Count active inputs for scaling
+		const hasA = aIn.length > 0;
+		const hasB = bIn.length > 0;
+		const hasC = cIn.length > 0;
+		const hasD = dIn.length > 0;
+		const activeCount = (hasA ? 1 : 0) + (hasB ? 1 : 0) + (hasC ? 1 : 0) + (hasD ? 1 : 0);
+		const scale = 1 / Math.sqrt(activeCount);
+
+		const voiceIds = poly.getVoiceIds(aIn, bIn, cIn, dIn);
+
+		const out: PS = [];
+		for (const id of voiceIds) {
+			const a = poly.getValue(aIn, id, 0);
+			const b = poly.getValue(bIn, id, 0);
+			const c = poly.getValue(cIn, id, 0);
+			const d = poly.getValue(dIn, id, 0);
+			out.push({ id, value: (a + b + c + d) * scale });
 		}
 
 		return { out };

@@ -24,7 +24,9 @@
       "Bash(dir:*)",
       "Bash(ls:*)",
       "Bash(tree:*)",
-      "Bash(node --loader ts-node/esm:*)"
+      "Bash(node --loader ts-node/esm:*)",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(grep:*)"
     ]
   }
 }

@@ -43,7 +43,7 @@ export const tape = device({
 	process(inp) {
 		// WASM-only device - this process function is a placeholder
 		// The actual processing happens in the WASM module
-		const inputSig = inp.input ?? [0];
+		const inputSig = inp.input ?? [];
 		return { out: inputSig };
 	},
 });

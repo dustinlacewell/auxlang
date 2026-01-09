@@ -1,6 +1,9 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
+// PolySignal type for process function (runtime uses globalThis.poly)
+type PS = Array<{ id: number; value: number }>;
+
 /** Standard waveform shapes */
 const shapes = {
 	sin: (p: number) => Math.sin(p * Math.PI * 2),
@@ -20,48 +23,47 @@ function createOsc(defaultShape: ShapeFn) {
 		defaultInput: "freq",
 		defaultOutput: "out",
 		process(inp, cfg, state, sampleRate) {
-			const freqsIn = inp.freq ?? [440];
-			const mins = inp.min ?? [-1];
-			const maxs = inp.max ?? [1];
-			const initPhases = inp.phase ?? [0];
+			const freqsIn = (inp.freq ?? []) as PS;
+			const mins = (inp.min ?? []) as PS;
+			const maxs = (inp.max ?? []) as PS;
+			const initPhases = (inp.phase ?? []) as PS;
+			const detuneIn = (inp.detune ?? []) as PS;
 			const polyCount = Math.max(1, Math.floor(cfg.poly));
-			const detuneCents = (inp.detune ?? [0])[0] ?? 0;
+			const detuneCents = detuneIn.length > 0 ? detuneIn[0]!.value : 0;
 
-			// Expand frequencies for unison voices
-			// Each input freq becomes polyCount voices with symmetric detuning
-			const freqs: number[] = [];
-			for (let i = 0; i < freqsIn.length; i++) {
-				const baseFreq = freqsIn[i] ?? 440;
+			if (freqsIn.length === 0) return { out: [] };
+
+			if (!state.phases) state.phases = new Map<number, number>();
+			const phases = state.phases as Map<number, number>;
+
+			const out: PS = [];
+
+			for (const freqCh of freqsIn) {
+				const voiceId = freqCh.id;
+				const baseFreq = freqCh.value;
+				const min = poly.getValue(mins, voiceId, -1);
+				const max = poly.getValue(maxs, voiceId, 1);
+				const initPhase = poly.getValue(initPhases, voiceId, 0);
+
 				if (polyCount === 1) {
-					freqs.push(baseFreq);
+					const phase = ((phases.get(voiceId) ?? initPhase) + baseFreq / sampleRate) % 1;
+					phases.set(voiceId, phase);
+					const raw = cfg.shape(phase);
+					const normalized = (raw + 1) / 2;
+					out.push({ id: voiceId, value: min + normalized * (max - min) });
 				} else {
-					// Spread voices symmetrically: e.g. for 4 voices and 10 cents,
-					// offsets are -15, -5, +5, +15 cents (spread across -detune to +detune)
 					for (let v = 0; v < polyCount; v++) {
-						const t = polyCount === 1 ? 0 : (v / (polyCount - 1)) * 2 - 1; // -1 to +1
+						const subId = voiceId * 1000 + v;
+						const t = polyCount === 1 ? 0 : (v / (polyCount - 1)) * 2 - 1;
 						const centsOffset = t * detuneCents;
 						const detuned = baseFreq * Math.pow(2, centsOffset / 1200);
-						freqs.push(detuned);
+						const phase = ((phases.get(subId) ?? initPhase) + detuned / sampleRate) % 1;
+						phases.set(subId, phase);
+						const raw = cfg.shape(phase);
+						const normalized = (raw + 1) / 2;
+						out.push({ id: subId, value: min + normalized * (max - min) });
 					}
 				}
-			}
-
-			const numChannels = Math.max(freqs.length, mins.length, maxs.length, initPhases.length);
-
-			if (!state.phases) state.phases = [];
-			const phases = state.phases as number[];
-
-			const out: number[] = [];
-			for (let c = 0; c < numChannels; c++) {
-				const freq = freqs[c % freqs.length] ?? 440;
-				const min = mins[c % mins.length] ?? -1;
-				const max = maxs[c % maxs.length] ?? 1;
-				const initPhase = initPhases[c % initPhases.length] ?? 0;
-
-				phases[c] = ((phases[c] ?? initPhase) + freq / sampleRate) % 1;
-				const raw = cfg.shape(phases[c]);
-				const normalized = (raw + 1) / 2;
-				out.push(min + normalized * (max - min));
 			}
 
 			return { out };
@@ -69,27 +71,8 @@ function createOsc(defaultShape: ShapeFn) {
 	});
 }
 
-/**
- * General-purpose oscillator with configurable waveform (default: sine).
- *
- * The shape function receives phase (0-1) and returns a value (typically -1 to 1).
- * Output is scaled from the shape's range to min..max.
- *
- * Examples:
- *   osc(440)                                    // sine at 440Hz
- *   osc(440).shape(p => p * 2 - 1)              // saw at 440Hz
- *   osc(4).min(200).max(1800)                   // LFO sweeping 200-1800
- */
 export const osc = createOsc(shapes.sin);
-
-/** Sine oscillator */
 export const sin = createOsc(shapes.sin);
-
-/** Sawtooth oscillator */
 export const sawOsc = createOsc(shapes.saw);
-
-/** Triangle oscillator */
 export const tri = createOsc(shapes.tri);
-
-/** Square oscillator */
 export const sqr = createOsc(shapes.sqr);

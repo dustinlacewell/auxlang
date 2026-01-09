@@ -28,11 +28,15 @@ export const kick = device({
 	defaultInput: "trig",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const trig = (inp.trig ?? [0])[0] ?? 0;
-		const basePitch = (inp.pitch ?? [50])[0] ?? 50;
-		const sweep = (inp.sweep ?? [4])[0] ?? 4;
-		const decay = Math.max(0.01, (inp.decay ?? [0.3])[0] ?? 0.3);
-		const click = Math.max(0, Math.min(1, (inp.click ?? [0.3])[0] ?? 0.3));
+		// Extract first voice value from PolySignal inputs
+		type PS = Array<{ id: number; value: number }>;
+		const getVal = (sig: PS, def: number) => sig.length > 0 ? sig[0]!.value : def;
+
+		const trig = getVal((inp.trig ?? []) as PS, 0);
+		const basePitch = getVal((inp.pitch ?? []) as PS, 50);
+		const sweep = getVal((inp.sweep ?? []) as PS, 4);
+		const decay = Math.max(0.01, getVal((inp.decay ?? []) as PS, 0.3));
+		const click = Math.max(0, Math.min(1, getVal((inp.click ?? []) as PS, 0.3)));
 
 		// State
 		const wasTrig = (state.wasTrig as number) ?? 0;

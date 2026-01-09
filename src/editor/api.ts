@@ -22,7 +22,6 @@ export { clap } from "../devices/drums/clap";
 // Sequencing
 export { clock } from "../devices/clock";
 export { seq } from "../devices/seq/seq";
-export { seqExpr } from "../devices/seq/seq-expr";
 export { counter } from "../devices/counter";
 export { clockDiv, clockMult } from "../devices/clock-div";
 
@@ -47,6 +46,7 @@ export { add } from "../devices/add";
 export { mix } from "../devices/mix";
 export { slew } from "../devices/slew";
 export { sah } from "../devices/sah";
+export { pick } from "../devices/pick";
 
 // Math & Logic
 export {
