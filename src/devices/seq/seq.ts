@@ -142,30 +142,27 @@ export function seq(patternString: string) {
 				beatIndex = beatIndex % pat.length;
 			}
 
-			// Samples per beat (calculated from BPM or measured from trigger intervals)
+			// Samples per beat (calculated from BPM via reset signal)
 			let samplesPerBeat = (state.samplesPerBeat as number) ?? 0;
 			let samplesSinceTrig = (state.samplesSinceTrig as number) ?? 0;
 
-			// Gate state: track if we're in an active note (for ties)
-			let gateActive = (state.gateActive as number) ?? 0;
-
 			// Handle reset signal (-bpm) from clock - this IS the first trigger
 			if (isReset) {
-				// Extract BPM from reset signal and calculate samplesPerBeat immediately
-				const bpm = -trig; // trig is negative, so negate to get positive BPM
+				// Extract BPM from reset signal and calculate samplesPerBeat
+				const bpm = -trig;
 				samplesPerBeat = (60 / bpm) * sampleRate;
 				samplesSinceTrig = 0;
-				beatIndex = 0; // Start at beat 0 immediately
+				beatIndex = 0;
 				cycleCount = 0;
 				state.wasTrig = trig;
 				state.beatIndex = beatIndex;
 				state.cycleCount = cycleCount;
 				state.samplesPerBeat = samplesPerBeat;
 				state.samplesSinceTrig = samplesSinceTrig;
-				// Don't return early - fall through to process beat 0
+				// Fall through to process beat 0
 			}
 
-			// On rising edge (not reset), advance beat and refine tempo
+			// On rising edge (not reset), advance beat
 			if (risingEdge && !isReset) {
 				// Apply pending pattern change on beat boundary
 				if (state.pendingPat) {
@@ -176,10 +173,6 @@ export function seq(patternString: string) {
 					state.pendingPatHash = null;
 				}
 
-				// Refine tempo from actual trigger intervals (handles swing, drift)
-				if (samplesPerBeat > 0 && samplesSinceTrig >= 100) {
-					samplesPerBeat = samplesSinceTrig;
-				}
 				samplesSinceTrig = 0;
 
 				// Advance to next beat
@@ -200,7 +193,6 @@ export function seq(patternString: string) {
 			if (beatIndex < 0) {
 				state.wasTrig = trig;
 				state.beatIndex = beatIndex;
-				state.samplesSinceTrig = samplesSinceTrig;
 				return { cv: 0, gate: 0 };
 			}
 
@@ -218,7 +210,6 @@ export function seq(patternString: string) {
 				state.cycleCount = cycleCount;
 				state.samplesPerBeat = samplesPerBeat;
 				state.samplesSinceTrig = samplesSinceTrig;
-				state.gateActive = 0;
 				return { cv: (state.cv as number) ?? 0, gate: 0 };
 			}
 
@@ -276,16 +267,12 @@ export function seq(patternString: string) {
 				}
 			}
 
-			// Track gate state for tie handling
-			gateActive = gateOut;
-
 			// Update state
 			state.wasTrig = trig;
 			state.beatIndex = beatIndex;
 			state.cycleCount = cycleCount;
 			state.samplesPerBeat = samplesPerBeat;
 			state.samplesSinceTrig = samplesSinceTrig;
-			state.gateActive = gateActive;
 			state.cv = cv;
 
 			return { cv, gate: gateOut };
