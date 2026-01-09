@@ -106,6 +106,15 @@ import { nativeReverbSequenced } from "./cases/native/native-reverb-sequenced";
 import { nativeReverbDrums } from "./cases/native/native-reverb-drums";
 import { nativeReverbBigHall } from "./cases/native/native-reverb-big-hall";
 
+import { exprChordBasic } from "./cases/expr-parser/expr-chord-basic";
+import { exprChordSeq } from "./cases/expr-parser/expr-chord-seq";
+import { exprPolyrhythm32 } from "./cases/expr-parser/expr-polyrhythm-32";
+import { exprNestedStack } from "./cases/expr-parser/expr-nested-stack";
+import { exprVoiceLeading } from "./cases/expr-parser/expr-voice-leading";
+import { exprStackTie } from "./cases/expr-parser/expr-stack-tie";
+import { exprStackAlt } from "./cases/expr-parser/expr-stack-alt";
+import { exprStackProb } from "./cases/expr-parser/expr-stack-prob";
+
 import type { TestDefinition } from "./cases/types";
 
 export const tests: TestDefinition[] = [
@@ -218,6 +227,15 @@ export const tests: TestDefinition[] = [
 	nativeReverbSequenced,
 	nativeReverbDrums,
 	nativeReverbBigHall,
+	// Expr Parser (new stack-based polyphony)
+	exprChordBasic,
+	exprChordSeq,
+	exprPolyrhythm32,
+	exprNestedStack,
+	exprVoiceLeading,
+	exprStackTie,
+	exprStackAlt,
+	exprStackProb,
 ];
 
 export function getTestsByCategory(): Map<string, TestDefinition[]> {
