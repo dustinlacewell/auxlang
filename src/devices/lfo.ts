@@ -1,31 +1,39 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
+// PolySignal type for process function (runtime uses globalThis.poly)
+type PS = Array<{ id: number; value: number }>;
+
 export const lfo = device({
 	inputs: inputs({ rate: 1, min: -1, max: 1, phase: 0 }),
 	outputs: ["out"],
 	defaultInput: "rate",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const rates = inp.rate ?? [1];
-		const mins = inp.min ?? [-1];
-		const maxs = inp.max ?? [1];
-		const initPhases = inp.phase ?? [0];
-		const numChannels = Math.max(rates.length, mins.length, maxs.length, initPhases.length);
+		const rates = (inp.rate ?? []) as PS;
+		const mins = (inp.min ?? []) as PS;
+		const maxs = (inp.max ?? []) as PS;
+		const initPhases = (inp.phase ?? []) as PS;
 
-		if (!state.phases) state.phases = [];
-		const phases = state.phases as number[];
+		if (rates.length === 0) return { out: [] };
 
-		const out: number[] = [];
-		for (let c = 0; c < numChannels; c++) {
-			const rate = rates[c % rates.length] ?? 1;
-			const min = mins[c % mins.length] ?? -1;
-			const max = maxs[c % maxs.length] ?? 1;
-			const initPhase = initPhases[c % initPhases.length] ?? 0;
+		const voiceIds = poly.getVoiceIds(rates, mins, maxs, initPhases);
 
-			phases[c] = ((phases[c] ?? initPhase) + rate / sampleRate) % 1;
-			const normalized = (Math.sin(phases[c] * Math.PI * 2) + 1) / 2;
-			out.push(min + normalized * (max - min));
+		// State: phase per voice ID
+		if (!state.phases) state.phases = new Map<number, number>();
+		const phases = state.phases as Map<number, number>;
+
+		const out: PS = [];
+		for (const id of voiceIds) {
+			const rate = poly.getValue(rates, id, 1);
+			const min = poly.getValue(mins, id, -1);
+			const max = poly.getValue(maxs, id, 1);
+			const initPhase = poly.getValue(initPhases, id, 0);
+
+			const phase = ((phases.get(id) ?? initPhase) + rate / sampleRate) % 1;
+			phases.set(id, phase);
+			const normalized = (Math.sin(phase * Math.PI * 2) + 1) / 2;
+			out.push({ id, value: min + normalized * (max - min) });
 		}
 
 		return { out };

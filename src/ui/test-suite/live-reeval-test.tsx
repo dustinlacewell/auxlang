@@ -26,12 +26,12 @@ const testCases: ReEvalTestCase[] = [
 		name: "Pattern Change (Same Length)",
 		desc: "Switch between two 2-note patterns. Position should be preserved.",
 		codeA: `let c = clock(120)
-let s = seq("c3 g3").trig(c)
+let s = seq("c3 g3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
 return out(gain(o).amount(e))`,
 		codeB: `let c = clock(120)
-let s = seq("e3 a3").trig(c)
+let s = seq("e3 a3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
 return out(gain(o).amount(e))`,
@@ -41,12 +41,12 @@ return out(gain(o).amount(e))`,
 		name: "Pattern Length Change",
 		desc: "Switch from 2-note to 3-note pattern. Beat position should wrap.",
 		codeA: `let c = clock(120)
-let s = seq("c3 e3").trig(c)
+let s = seq("c3 e3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
 return out(gain(o).amount(e))`,
 		codeB: `let c = clock(120)
-let s = seq("c3 e3 g3").trig(c)
+let s = seq("c3 e3 g3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
 return out(gain(o).amount(e))`,
@@ -56,12 +56,12 @@ return out(gain(o).amount(e))`,
 		name: "BPM Change",
 		desc: "Switch from 120 BPM to 180 BPM. 8-note chromatic scale makes timing obvious.",
 		codeA: `let c = clock(120)
-let s = seq("c3 c#3 d3 d#3 e3 f3 f#3 g3").trig(c)
+let s = seq("c3 c#3 d3 d#3 e3 f3 f#3 g3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
 return out(gain(o).amount(e))`,
 		codeB: `let c = clock(180)
-let s = seq("c3 c#3 d3 d#3 e3 f3 f#3 g3").trig(c)
+let s = seq("c3 c#3 d3 d#3 e3 f3 f#3 g3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
 return out(gain(o).amount(e))`,
@@ -71,12 +71,12 @@ return out(gain(o).amount(e))`,
 		name: "Long Note Interrupt",
 		desc: "Pattern has a long note (bb8). Switching mid-note should not cut off abruptly.",
 		codeA: `let c = clock(60)
-let s = seq("gb2 bb8").trig(c)
+let s = seq("gb2 bb8").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.3)
 return out(gain(o).amount(e))`,
 		codeB: `let c = clock(60)
-let s = seq("gb2 bb2").trig(c)
+let s = seq("gb2 bb2").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.3)
 return out(gain(o).amount(e))`,
@@ -86,12 +86,12 @@ return out(gain(o).amount(e))`,
 		name: "Oscillator Type Change",
 		desc: "Switch from saw to sine. Phase should continue smoothly.",
 		codeA: `let c = clock(120)
-let s = seq("c3 e3 g3").trig(c)
+let s = seq("c3 e3 g3").clk(c)
 let o = saw(s.cv)
 let e = env(s.gate).attack(0.01).release(0.2)
 return out(gain(o).amount(e))`,
 		codeB: `let c = clock(120)
-let s = seq("c3 e3 g3").trig(c)
+let s = seq("c3 e3 g3").clk(c)
 let o = sin(s.cv)
 let e = env(s.gate).attack(0.01).release(0.2)
 return out(gain(o).amount(e))`,
@@ -101,13 +101,13 @@ return out(gain(o).amount(e))`,
 		name: "Filter Cutoff Change",
 		desc: "Switch filter cutoff. Should sound smooth, no clicks.",
 		codeA: `let c = clock(120)
-let s = seq("c2 e2 g2 c3").trig(c)
+let s = seq("c2 e2 g2 c3").clk(c)
 let o = saw(s.cv)
 let e = env(s.gate).attack(0.01).release(0.2)
 let f = lpf(gain(o).amount(e)).cutoff(800)
 return out(f)`,
 		codeB: `let c = clock(120)
-let s = seq("c2 e2 g2 c3").trig(c)
+let s = seq("c2 e2 g2 c3").clk(c)
 let o = saw(s.cv)
 let e = env(s.gate).attack(0.01).release(0.2)
 let f = lpf(gain(o).amount(e)).cutoff(2000)

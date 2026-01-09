@@ -8,6 +8,6 @@ export const logicGte: TestDefinition = {
 	code: `let clk = clock(120)
 let cnt = counter(clk.trig).max(8)
 let drumsOn = gte(cnt.count).than(4)
-let s = seq("c1").trig(clk.trig)
+let s = seq("c1").clk(clk.trig)
 return out(mult(kick(s.gate)).by(drumsOn))`,
 };

@@ -6,7 +6,7 @@ export const utilSlewAsym: TestDefinition = {
 	name: "slew - asymmetric rise/fall",
 	desc: "Fast attack, slow decay on filter - punchy with long tail",
 	code: `let clk = clock(120)
-let s = seq("c3 e3").trig(clk.trig)
+let s = seq("c3 e3").clk(clk.trig)
 let e = env(s.gate).attack(0.001).release(0.05)
 let cutoffEnv = slew(mult(e.out).by(3000)).rise(0.01).fall(0.8)
 let cutoff = add(cutoffEnv).to(200)

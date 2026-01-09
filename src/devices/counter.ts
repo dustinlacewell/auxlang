@@ -1,33 +1,11 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
+// PolySignal format: {id: number, value: number}[]
+type PolySignal = Array<{ id: number; value: number }>;
+
 /**
  * Counter device - counts triggers and outputs the count.
- *
- * Useful for arrangement: count bars, then use comparisons to gate sections.
- *
- * Inputs:
- * - `trig`: Trigger signal (increments on rising edge > 0.5)
- * - `reset`: Reset signal (resets count on rising edge > 0.5)
- * - `max`: Maximum count before wrapping (0 = no wrap)
- *
- * Outputs:
- * - `count`: Current count (0-indexed)
- * - `wrap`: 1.0 for one sample when count wraps, 0.0 otherwise
- *
- * @example
- * ```javascript
- * // Count bars (assuming 4 beats per bar)
- * let barClock = clockDiv(clk, 4)
- * let bars = counter(barClock.trig)
- *
- * // Gate: drums come in at bar 4
- * let drumsOn = gte(bars.count, 4)
- * let drums = mult(drumMix).b(drumsOn)
- *
- * // 16-bar loop
- * let section = counter(barClock.trig).max(16)
- * ```
  */
 export const counter = device({
 	inputs: inputs({ trig: 0, reset: 0, max: 0 }),
@@ -35,9 +13,12 @@ export const counter = device({
 	defaultInput: "trig",
 	defaultOutput: "count",
 	process(inp, _cfg, state, _sampleRate) {
-		const trig = (inp.trig ?? [0])[0] ?? 0;
-		const reset = (inp.reset ?? [0])[0] ?? 0;
-		const max = Math.floor((inp.max ?? [0])[0] ?? 0);
+		const trigSig = (inp.trig ?? []) as PolySignal;
+		const resetSig = (inp.reset ?? []) as PolySignal;
+		const maxSig = (inp.max ?? []) as PolySignal;
+		const trig = trigSig.length > 0 ? trigSig[0]!.value : 0;
+		const reset = resetSig.length > 0 ? resetSig[0]!.value : 0;
+		const max = Math.floor(maxSig.length > 0 ? maxSig[0]!.value : 0);
 
 		let count = (state.count as number) ?? 0;
 		const wasTrig = (state.wasTrig as number) ?? 0;
@@ -66,6 +47,6 @@ export const counter = device({
 		state.wasTrig = trig;
 		state.wasReset = reset;
 
-		return { count, wrap };
+		return { count: [{ id: 0, value: count }], wrap: [{ id: 0, value: wrap }] };
 	},
 });

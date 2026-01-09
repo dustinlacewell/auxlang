@@ -2,10 +2,46 @@ import type {
 	CompiledGraph,
 	CompiledNode,
 	ConfigFn,
+	LegacyPolySignal,
 	PolySignal,
 	SerializedSpec,
 } from "./types";
 import { hydrateConfig, hydrateProcess } from "./hydrate";
+import { fromLegacy, sumToMono } from "./poly-signal";
+
+/**
+ * Normalize a device output to PolySignal format.
+ * Accepts: number, number[] (legacy), or PolySignal (new format).
+ */
+function normalizeOutput(
+	value: number | number[] | PolySignal,
+): PolySignal {
+	// Single number → mono signal with id=0
+	if (typeof value === "number") {
+		return [{ id: 0, value }];
+	}
+
+	// Empty array
+	if (value.length === 0) {
+		return [];
+	}
+
+	// Check if it's already new format (has 'id' property on first element)
+	const first = value[0];
+	if (first !== undefined && typeof first === "object" && "id" in first) {
+		return value as PolySignal;
+	}
+
+	// Legacy number[] format → convert to new format
+	return fromLegacy(value as number[]);
+}
+
+/**
+ * Convert legacy constant to PolySignal format.
+ */
+function constantToPolySignal(value: LegacyPolySignal): PolySignal {
+	return fromLegacy(value);
+}
 
 /**
  * Create a process function from a WASM module instance.
@@ -52,29 +88,30 @@ function hydrateWasmProcess(
 		}
 
 		// Update parameters via setters every sample (for modulation)
+		// Uses first voice value (or mono broadcast)
 		for (const name of inputNames) {
 			const setter = setters[name];
 			if (setter) {
-				const value = (inputs[name] ?? [0])[0] ?? 0;
+				const sig = inputs[name] ?? [];
+				const value = sig.length > 0 ? sig[0]!.value : 0;
 				setter(value);
 			}
 		}
 
 		// Get main input (use the device's default input)
-		const inputSignal = inputs[spec.defaultInput] ?? [0];
+		const inputSignal = inputs[spec.defaultInput] ?? [];
 
-		// Sum to mono
-		let monoInput = 0;
-		for (let i = 0; i < inputSignal.length; i++) {
-			monoInput += inputSignal[i] ?? 0;
-		}
-		monoInput /= inputSignal.length || 1;
+		// Sum to mono using new helper
+		const monoInput =
+			inputSignal.length > 0
+				? sumToMono(inputSignal) / inputSignal.length
+				: 0;
 
 		// Process through WASM
 		const output = processExport(monoInput);
 
-		// Return mono output
-		return { [spec.defaultOutput]: [output] };
+		// Return mono output in new format
+		return { [spec.defaultOutput]: [{ id: 0, value: output }] };
 	};
 }
 
@@ -196,27 +233,29 @@ export class RuntimeGraph {
 		const inputNames = Object.keys(compiledNode.inputs).sort();
 		const outputNames = [...compiledNode.spec.outputs].sort();
 
-		// Pre-allocate input record with default values
+		// Pre-allocate input record with default values (in new format)
 		const inputRecord: Record<string, PolySignal> = {};
 		for (const name of inputNames) {
-			inputRecord[name] = [0];
+			inputRecord[name] = [{ id: 0, value: 0 }];
 		}
 
-		// Pre-allocate output record
+		// Pre-allocate output record (in new format)
 		const outputRecord: Record<string, PolySignal> = {};
 		for (const name of outputNames) {
-			outputRecord[name] = [0];
+			outputRecord[name] = [{ id: 0, value: 0 }];
 		}
 
-		// Build input bindings
+		// Build input bindings - convert legacy constants to new format
 		const inputBindings: InputBinding[] = inputNames.map((name) => {
 			const input = compiledNode.inputs[name];
 			if (!input || input.type === "constant") {
-				return { type: "constant", value: input?.value ?? [0] };
+				// Convert legacy constant to new PolySignal format
+				const legacyValue = input?.value ?? [0];
+				return { type: "constant", value: constantToPolySignal(legacyValue) };
 			}
 			const sourceIndex = idToIndex.get(input.nodeId ?? "");
 			if (sourceIndex === undefined) {
-				return { type: "constant", value: [0] };
+				return { type: "constant", value: [{ id: 0, value: 0 }] };
 			}
 			return {
 				type: "connection",
@@ -269,8 +308,10 @@ export class RuntimeGraph {
 				} else {
 					const sourceNode = this.nodes[binding.sourceNodeIndex];
 					if (sourceNode) {
+						const sourceOutput =
+							sourceNode.outputRecord[binding.outputName];
 						node.inputRecord[inputName] =
-							sourceNode.outputRecord[binding.outputName] ?? [0];
+							sourceOutput ?? [{ id: 0, value: 0 }];
 					}
 				}
 			}
@@ -283,21 +324,13 @@ export class RuntimeGraph {
 				sampleRate,
 			);
 
-			// Copy results to pre-allocated outputRecord
+			// Copy results to pre-allocated outputRecord, normalizing to PolySignal format
 			for (const outputName of node.outputNames) {
 				const value = result[outputName];
 				if (value !== undefined) {
-					if (Array.isArray(value)) {
-						node.outputRecord[outputName] = value;
-					} else {
-						// Normalize scalar to array - reuse existing array if possible
-						const existing = node.outputRecord[outputName];
-						if (existing && existing.length === 1) {
-							existing[0] = value;
-						} else {
-							node.outputRecord[outputName] = [value];
-						}
-					}
+					// Normalize output to new PolySignal format
+					// This handles: number, number[] (legacy), or PolySignal (new)
+					node.outputRecord[outputName] = normalizeOutput(value);
 				}
 			}
 		}
@@ -307,14 +340,10 @@ export class RuntimeGraph {
 		if (!outputNode) return 0;
 
 		const outputSignal = outputNode.outputRecord[outputNode.defaultOutput];
-		if (!outputSignal) return 0;
+		if (!outputSignal || outputSignal.length === 0) return 0;
 
-		// Sum polyphonic channels to mono
-		let sum = 0;
-		for (let i = 0; i < outputSignal.length; i++) {
-			sum += outputSignal[i] ?? 0;
-		}
-		return sum;
+		// Sum polyphonic channels to mono using new helper
+		return sumToMono(outputSignal);
 	}
 
 	/**

@@ -1,21 +1,26 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
+// PolySignal type for process function (runtime uses globalThis.poly)
+type PS = Array<{ id: number; value: number }>;
+
 export const add = device({
 	inputs: inputs({ input: 0, to: 0 }),
 	outputs: ["out"],
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = inp.input ?? [0];
-		const toSig = inp.to ?? [0];
-		const numChannels = Math.max(inputSig.length, toSig.length);
+		const inputSig = (inp.input ?? []) as PS;
+		const toSig = (inp.to ?? []) as PS;
 
-		const out: number[] = [];
-		for (let c = 0; c < numChannels; c++) {
-			const a = inputSig[c % inputSig.length] ?? 0;
-			const b = toSig[c % toSig.length] ?? 0;
-			out.push(a + b);
+		if (inputSig.length === 0 && toSig.length === 0) return { out: [] };
+
+		const voiceIds = poly.getVoiceIds(inputSig, toSig);
+		const out: PS = [];
+		for (const id of voiceIds) {
+			const a = poly.getValue(inputSig, id, 0);
+			const b = poly.getValue(toSig, id, 0);
+			out.push({ id, value: a + b });
 		}
 
 		return { out };

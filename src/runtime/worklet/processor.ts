@@ -1,19 +1,22 @@
-import type { CompiledGraph, CompiledNode, WorkletMessage } from "./types";
-import { diffGraphs } from "./topology-hash";
-import { RuntimeGraph } from "./runtime-graph";
+/**
+ * AudioWorklet processor that runs a compiled graph.
+ *
+ * Supports both JS and WASM devices. WASM modules are instantiated
+ * when the graph arrives and cached for reuse.
+ */
+
+import type { CompiledGraph, WorkletMessage } from "../processor/types";
+import { diffGraphs } from "../processor/topology-hash";
+import { RuntimeGraph } from "../processor/runtime-graph";
 
 // AudioWorklet globals
 declare const sampleRate: number;
-
-// =============================================================================
-// WASM Module Instantiation
-// =============================================================================
 
 /**
  * Instantiate a fresh WASM module from bytes.
  * Each node gets its own instance to maintain independent state.
  */
-export async function instantiateWasmModule(
+async function instantiateWasmModule(
 	wasmBytes: ArrayBuffer,
 ): Promise<WebAssembly.Instance> {
 	const wasmModule = await WebAssembly.instantiate(wasmBytes, {
@@ -30,7 +33,7 @@ export async function instantiateWasmModule(
  * Pre-instantiate all WASM modules in a graph.
  * Returns a map from node ID to WASM instance.
  */
-export async function instantiateWasmModules(
+async function instantiateWasmModules(
 	graph: CompiledGraph,
 ): Promise<Map<string, WebAssembly.Instance>> {
 	const instances = new Map<string, WebAssembly.Instance>();
@@ -55,12 +58,6 @@ declare class AudioWorkletProcessor {
 	): boolean;
 }
 
-/**
- * AudioWorklet processor that runs a compiled graph.
- *
- * Supports both JS and WASM devices. WASM modules are instantiated
- * when the graph arrives and cached for reuse.
- */
 export class GraphProcessor extends AudioWorkletProcessor {
 	private graph: RuntimeGraph | null = null;
 	private oldCompiledGraph: CompiledGraph | null = null;

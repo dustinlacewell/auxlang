@@ -10,11 +10,16 @@ declare class AudioWorkletProcessor {
 }
 declare function registerProcessor(name: string, processorCtor: typeof AudioWorkletProcessor): void;
 
-// All signals are polyphonic: number[] where length = channel count (1-16)
-export type PolySignal = number[];
+// Import and re-export PolySignal from poly-signal module
+import type { PolySignal, VoiceChannel } from "./poly-signal";
+export type { PolySignal, VoiceChannel };
+
+// Legacy format - used for serialization and constants
+export type LegacyPolySignal = number[];
 
 export interface SerializedSpec {
-	inputs: Record<string, { default: PolySignal }>;
+	// Default values stored in legacy format (simple number arrays)
+	inputs: Record<string, { default: LegacyPolySignal }>;
 	outputs: readonly string[];
 	defaultInput: string;
 	defaultOutput: string;
@@ -23,7 +28,8 @@ export interface SerializedSpec {
 
 export interface CompiledInput {
 	type: "constant" | "connection";
-	value?: PolySignal;
+	// Constants stored in legacy format
+	value?: LegacyPolySignal;
 	nodeId?: string;
 	output?: string;
 }

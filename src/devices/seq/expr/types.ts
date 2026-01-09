@@ -157,58 +157,26 @@ export function voiceCount(expr: Expr): number {
 	}
 }
 
-// ============= Runtime Pattern =============
-
-/**
- * A single event in the evaluated pattern.
- * Events are grouped by voice ID for efficient per-voice lookup.
- */
-export interface VoiceEvent {
-	/** Voice ID (0-indexed, assigned to stack branches) */
-	readonly voiceId: number;
-	/** Frequency in Hz */
-	readonly freq: number;
-	/** Beat index where event starts */
-	readonly beatStart: number;
-	/** Beat index where event ends (exclusive) */
-	readonly beatEnd: number;
-	/** Position within beat (0-1) */
-	readonly offset: number;
-	/** Duration as fraction of beat */
-	readonly dur: number;
-	/** Probability of playing (undefined = always) */
-	readonly prob?: number;
-	/** For alternation: which cycle this plays on */
-	readonly cycle?: number;
-	/** For alternation: total cycle count */
-	readonly cycleTotal?: number;
-	/** Is this part of a tie chain? (gate stays high) */
-	readonly tied?: boolean;
-}
-
-/**
- * Evaluated pattern ready for runtime query.
- */
-export interface RuntimePattern {
-	/** Total beats in pattern */
-	readonly totalBeats: number;
-	/** Number of voices (fixed at parse time) */
-	readonly voiceCount: number;
-	/** All events, sorted by beatStart for efficient lookup */
-	readonly events: VoiceEvent[];
-}
-
 // ============= Runtime Output =============
+
+/** A single voice channel with its identity */
+export interface VoiceChannel {
+	readonly id: number;
+	readonly value: number;
+}
+
+/** Polyphonic signal - array of voice channels */
+export type PolySignal = VoiceChannel[];
 
 /**
  * Per-sample output from sequencer.
- * Parallel arrays indexed by voice ID.
+ * Each output is a PolySignal with voice IDs.
  */
 export interface SeqOutput {
 	/** Frequency per voice */
-	readonly cv: number[];
+	readonly cv: PolySignal;
 	/** Gate per voice (0 or 1) */
-	readonly gate: number[];
+	readonly gate: PolySignal;
 	/** Trigger per voice (1 on onset, else 0) */
-	readonly trig: number[];
+	readonly trig: PolySignal;
 }

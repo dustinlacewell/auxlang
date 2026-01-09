@@ -9,7 +9,7 @@ export const mathMod: TestDefinition = {
 let cnt = counter(clk.trig)
 let wrapped = mod(cnt.count).by(4)
 let cutoff = add(mult(wrapped).by(400)).to(400)
-let s = seq("c3 c3 g3 c3").trig(clk.trig)
+let s = seq("c3 c3 g3 c3").clk(clk.trig)
 let e = adsr(s.gate).attack(0.01).decay(0.1).sustain(0.3).release(0.1)
 return out(mult(lpf(saw(s.cv)).cutoff(cutoff).resonance(0.3)).by(e.out))`,
 };

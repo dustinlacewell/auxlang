@@ -1,27 +1,11 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
+// PolySignal format: {id: number, value: number}[]
+type PolySignal = Array<{ id: number; value: number }>;
+
 /**
  * Clock divider - outputs a trigger every N input triggers.
- *
- * Useful for creating bar-level clocks from beat clocks.
- *
- * Inputs:
- * - `trig`: Input trigger signal
- * - `by`: Division factor (default 4 = 4 beats per output)
- *
- * Outputs:
- * - `trig`: Trigger output (1 for one sample every N inputs)
- * - `gate`: Gate output (high for first half of division period)
- *
- * @example
- * ```javascript
- * // Bar clock from beat clock (4/4 time)
- * let barClk = clockDiv(clk.trig).by(4)
- *
- * // Count bars
- * let bars = counter(barClk.trig)
- * ```
  */
 export const clockDiv = device({
 	inputs: inputs({ trig: 0, by: 4 }),
@@ -29,14 +13,14 @@ export const clockDiv = device({
 	defaultInput: "trig",
 	defaultOutput: "trig",
 	process(inp, _cfg, state, _sampleRate) {
-		const trig = (inp.trig ?? [0])[0] ?? 0;
-		const div = Math.max(1, Math.floor((inp.by ?? [4])[0] ?? 4));
+		const trigSig = (inp.trig ?? []) as PolySignal;
+		const bySig = (inp.by ?? []) as PolySignal;
+		const trig = trigSig.length > 0 ? trigSig[0]!.value : 0;
+		const div = Math.max(1, Math.floor(bySig.length > 0 ? bySig[0]!.value : 4));
 
-		// State
 		let count = (state.count as number) ?? 0;
 		const wasTrig = (state.wasTrig as number) ?? 0;
 
-		// Edge detection
 		const trigOn = trig > 0.5;
 		const trigWasOn = wasTrig > 0.5;
 		const trigRising = trigOn && !trigWasOn;
@@ -50,37 +34,17 @@ export const clockDiv = device({
 			}
 		}
 
-		// Gate is high for first half of division
 		const gate = count < div / 2 ? 1 : 0;
 
-		// Update state
 		state.count = count;
 		state.wasTrig = trig;
 
-		return { trig: outTrig, gate };
+		return { trig: [{ id: 0, value: outTrig }], gate: [{ id: 0, value: gate }] };
 	},
 });
 
 /**
  * Clock multiplier - outputs N triggers for each input trigger.
- *
- * Creates faster subdivisions from a slower clock.
- *
- * Inputs:
- * - `trig`: Input trigger signal
- * - `by`: Multiplication factor (default 2)
- *
- * Note: This is a simple implementation that subdivides evenly
- * between input triggers. For best results, use with a steady clock.
- *
- * @example
- * ```javascript
- * // 8th notes from quarter note clock
- * let eighths = clockMult(clk.trig).by(2)
- *
- * // 16th notes
- * let sixteenths = clockMult(clk.trig).by(4)
- * ```
  */
 export const clockMult = device({
 	inputs: inputs({ trig: 0, by: 2 }),
@@ -88,22 +52,21 @@ export const clockMult = device({
 	defaultInput: "trig",
 	defaultOutput: "trig",
 	process(inp, _cfg, state, sampleRate) {
-		const trig = (inp.trig ?? [0])[0] ?? 0;
-		const mult = Math.max(1, Math.floor((inp.by ?? [2])[0] ?? 2));
+		const trigSig = (inp.trig ?? []) as PolySignal;
+		const bySig = (inp.by ?? []) as PolySignal;
+		const trig = trigSig.length > 0 ? trigSig[0]!.value : 0;
+		const mult = Math.max(1, Math.floor(bySig.length > 0 ? bySig[0]!.value : 2));
 
-		// State
 		let phase = (state.phase as number) ?? 0;
-		let interval = (state.interval as number) ?? sampleRate; // samples between input trigs
+		let interval = (state.interval as number) ?? sampleRate;
 		let lastTrigSample = (state.lastTrigSample as number) ?? 0;
 		let sampleCount = (state.sampleCount as number) ?? 0;
 		const wasTrig = (state.wasTrig as number) ?? 0;
 
-		// Edge detection
 		const trigOn = trig > 0.5;
 		const trigWasOn = wasTrig > 0.5;
 		const trigRising = trigOn && !trigWasOn;
 
-		// On input trigger, calculate new interval
 		if (trigRising) {
 			const newInterval = sampleCount - lastTrigSample;
 			if (newInterval > 0) {
@@ -113,7 +76,6 @@ export const clockMult = device({
 			phase = 0;
 		}
 
-		// Generate output triggers at subdivided intervals
 		const subInterval = interval / mult;
 		let outTrig = 0;
 
@@ -122,20 +84,17 @@ export const clockMult = device({
 			outTrig = 1;
 		}
 
-		// Gate high for first half of sub-interval
 		const gate = phase < subInterval / 2 ? 1 : 0;
 
-		// Advance
 		phase = phase + 1;
 		sampleCount = sampleCount + 1;
 
-		// Update state
 		state.phase = phase;
 		state.interval = interval;
 		state.lastTrigSample = lastTrigSample;
 		state.sampleCount = sampleCount;
 		state.wasTrig = trig;
 
-		return { trig: outTrig, gate };
+		return { trig: [{ id: 0, value: outTrig }], gate: [{ id: 0, value: gate }] };
 	},
 });

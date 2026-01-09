@@ -6,6 +6,6 @@ export const clock140: TestDefinition = {
 	name: "clock - 140 BPM",
 	desc: "Fast tempo - energetic",
 	code: `let clk = clock(140)
-let s = seq("c4").trig(clk.trig)
+let s = seq("c4").clk(clk.trig)
 return out(kick(s.gate))`,
 };

@@ -29,11 +29,15 @@ export const snare = device({
 	defaultInput: "trig",
 	defaultOutput: "out",
 	process(inp, _cfg, state, sampleRate) {
-		const trig = (inp.trig ?? [0])[0] ?? 0;
-		const pitch = (inp.pitch ?? [180])[0] ?? 180;
-		const tone = Math.max(0, Math.min(1, (inp.tone ?? [0.4])[0] ?? 0.4));
-		const decay = Math.max(0.01, (inp.decay ?? [0.15])[0] ?? 0.15);
-		const snappy = Math.max(0, Math.min(1, (inp.snappy ?? [0.7])[0] ?? 0.7));
+		// Extract first voice value from PolySignal inputs
+		type PS = Array<{ id: number; value: number }>;
+		const getVal = (sig: PS, def: number) => sig.length > 0 ? sig[0]!.value : def;
+
+		const trig = getVal((inp.trig ?? []) as PS, 0);
+		const pitch = getVal((inp.pitch ?? []) as PS, 180);
+		const tone = Math.max(0, Math.min(1, getVal((inp.tone ?? []) as PS, 0.4)));
+		const decay = Math.max(0.01, getVal((inp.decay ?? []) as PS, 0.15));
+		const snappy = Math.max(0, Math.min(1, getVal((inp.snappy ?? []) as PS, 0.7)));
 
 		// State
 		const wasTrig = (state.wasTrig as number) ?? 0;
