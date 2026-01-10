@@ -115,15 +115,18 @@ import { polyUnisonDetune } from "./cases/polyphony/poly-unison-detune";
 
 // Lambda
 import { lambdaApplyBasic } from "./cases/lambda/lambda-apply-basic";
-import { lambdaFeedbackEcho } from "./cases/lambda/lambda-feedback-echo";
-import { lambdaFeedbackComb } from "./cases/lambda/lambda-feedback-comb";
-import { lambdaFeedbackKarplus } from "./cases/lambda/lambda-feedback-karplus";
-import { lambdaFeedbackPing } from "./cases/lambda/lambda-feedback-ping";
+import { lambdaArpSpeed } from "./cases/lambda/lambda-arp-speed";
+import { lambdaChaosFm } from "./cases/lambda/lambda-chaos-fm";
+import { lambdaDroneTexture } from "./cases/lambda/lambda-drone-texture";
+import { lambdaGlitchDrums } from "./cases/lambda/lambda-glitch-drums";
 import { lambdaInlineBinding } from "./cases/lambda/lambda-inline-binding";
-import { lambdaNestedApply } from "./cases/lambda/lambda-nested-apply";
+import { lambdaInlineLfo } from "./cases/lambda/lambda-inline-lfo";
+import { lambdaInlineRamp } from "./cases/lambda/lambda-inline-ramp";
+import { lambdaInlineRandom } from "./cases/lambda/lambda-inline-random";
 import { lambdaLfoRouting } from "./cases/lambda/lambda-lfo-routing";
-import { lambdaPolyFeedback } from "./cases/lambda/lambda-poly-feedback";
+import { lambdaNestedApply } from "./cases/lambda/lambda-nested-apply";
 import { lambdaSidechain } from "./cases/lambda/lambda-sidechain";
+import { lambdaWobbleBass } from "./cases/lambda/lambda-wobble-bass";
 
 import type { TestDefinition } from "./cases/types";
 
@@ -242,17 +245,22 @@ export const tests: TestDefinition[] = [
 	polyArrayGain,
 	polyArrayLfo,
 
-	// Lambda
+	// Apply (.apply() for inline binding)
 	lambdaApplyBasic,
-	lambdaFeedbackEcho,
-	lambdaFeedbackComb,
-	lambdaFeedbackKarplus,
-	lambdaFeedbackPing,
 	lambdaInlineBinding,
 	lambdaNestedApply,
 	lambdaLfoRouting,
-	lambdaPolyFeedback,
 	lambdaSidechain,
+
+	// Inline (signal lambdas)
+	lambdaInlineLfo,
+	lambdaInlineRamp,
+	lambdaInlineRandom,
+	lambdaWobbleBass,
+	lambdaChaosFm,
+	lambdaGlitchDrums,
+	lambdaDroneTexture,
+	lambdaArpSpeed,
 ];
 
 export function getTestsByCategory(): Map<string, TestDefinition[]> {

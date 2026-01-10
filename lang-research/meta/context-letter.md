@@ -27,19 +27,45 @@ See `.claude/rules/auxlang-guide.md` for complete API reference covering:
 
 ## Current Focus
 
-**Mono/Uzu refactor** - Simplifying polyphony model.
-
-See the plans:
-- [plans/polyphony-decomposition.md](../plans/polyphony-decomposition.md) - Compile-time graph duplication
-- [plans/uzu-design.md](../plans/uzu-design.md) - Overall architecture vision
-
-### Key Insight
-
-Polyphonic patterns decompose into N mono seqs at parse time. Downstream devices duplicate per-voice. No runtime voice tracking needed.
+**Inline Signal Lambdas** - Just implemented. Any device input accepts `(state, sr) => number`:
 
 ```javascript
-seq("{c4,e4,g4}").saw()  // Creates poly of 3 saws, each mono
+saw(220).lpf({
+  cutoff: (s, sr) => {
+    s.phase = ((s.phase ?? 0) + 2 / sr) % 1
+    return Math.sin(s.phase * Math.PI * 2) * 800 + 1000
+  }
+}).out()
 ```
+
+Lambda state is properly preserved across re-eval via `CollectedStates.lambdaStates` map (keyed by `nodeId:inputName`).
+
+### Next: Add sampleTime parameter
+
+Devices and lambdas currently only get `sampleRate`. They should also get `sampleTime` (samples since eval started) so they don't need to manually track time:
+
+```javascript
+// Current - manual time tracking
+(s, sr) => {
+  s.t = (s.t ?? 0) + 1 / sr
+  return Math.sin(s.t * 2 * Math.PI)
+}
+
+// Proposed - sampleTime provided
+(s, sr, t) => Math.sin(t * 2 * Math.PI)
+```
+
+**Changes needed:**
+1. `ProcessFn` signature: add 5th param `sampleTime: number`
+2. `SignalLambda` signature: add 3rd param `sampleTime: number`
+3. `RuntimeGraph`: track `sampleCount`, pass to process/lambda calls
+4. State restoration should preserve `sampleCount` for continuity
+
+**Files:**
+- `src/descriptor/types.ts` - ProcessFn, SignalLambda types
+- `src/runtime/processor/runtime-graph.ts` - track and pass sampleTime
+- `src/runtime/processor/hydrate.ts` - update process call
+- Test cases that use time tracking can be simplified
 
 ## Key Files
 

@@ -1,5 +1,5 @@
-import { isDescriptor } from "../descriptor/is-descriptor";
-import { isOutputRef } from "../descriptor/is-output-ref";
+import { isDescriptor } from "../descriptor/guards/is-descriptor";
+import { isOutputRef } from "../descriptor/guards/is-output-ref";
 import { isPoly, type PolyDescriptor } from "../descriptor/poly";
 import { getDescriptor, setOutputHandler } from "../descriptor/registry";
 import type { AnyDescriptor, Signal } from "../descriptor/types";

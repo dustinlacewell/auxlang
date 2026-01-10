@@ -29,7 +29,7 @@ export function TestCard({ test, state, error, onPlay, onStop }: TestCardProps) 
 				<span>{test.name}</span>
 			</div>
 			<p className="text-sm text-gray-400 mb-2">{test.desc}</p>
-			<div className="mb-2 max-h-[180px] overflow-hidden rounded">
+			<div className="mb-2 max-h-[200px] overflow-y-auto rounded">
 				<CodeEditor value={code} onChange={setCode} onRun={handlePlay} className="text-xs" />
 			</div>
 			<div className="flex gap-2">

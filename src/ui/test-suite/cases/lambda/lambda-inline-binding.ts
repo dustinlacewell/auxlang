@@ -2,7 +2,7 @@ import type { TestDefinition } from "../types";
 
 export const lambdaInlineBinding: TestDefinition = {
 	id: "lambda-inline-binding",
-	category: "Lambda",
+	category: "Apply",
 	name: "inline variable binding",
 	desc: "Use .apply() to bind variables inline without breaking the chain",
 	code: `// .apply(fn) lets you bind intermediate values

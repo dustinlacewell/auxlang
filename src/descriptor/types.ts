@@ -9,29 +9,25 @@
 export type DescriptorId = string & { readonly brand: unique symbol };
 
 /**
+ * A lambda function that generates a signal value per-sample.
+ * Receives persistent state and sample rate, returns the signal value.
+ */
+export type SignalLambda = (state: Record<string, unknown>, sampleRate: number) => number;
+
+/**
  * A signal source that can be passed to device inputs.
  *
  * - number: constant value
  * - number[]: legacy poly format (deprecated, use poly() instead)
  * - OutputRef: explicit reference to a descriptor's output
  * - AnyDescriptor: shorthand for the descriptor's default output
+ * - SignalLambda: inline per-sample function
  */
-export type Signal = number | number[] | OutputRef | AnyDescriptor;
+export type Signal = number | number[] | OutputRef | AnyDescriptor | SignalLambda;
 
 /** Reference to a specific output of a descriptor */
 export interface OutputRef {
 	readonly descriptorId: DescriptorId;
-	readonly outputName: string;
-}
-
-/**
- * Reference to a feedback point - the output of the node being constructed.
- * Created when a lambda is passed as an input: add(x => x.delay(0.1))
- * The `x` parameter is a FeedbackRef pointing back to the add node's output.
- */
-export interface FeedbackRef {
-	readonly _feedback: true;
-	readonly targetId: DescriptorId;
 	readonly outputName: string;
 }
 

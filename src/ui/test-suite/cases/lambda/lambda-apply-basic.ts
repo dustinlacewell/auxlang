@@ -2,7 +2,7 @@ import type { TestDefinition } from "../types";
 
 export const lambdaApplyBasic: TestDefinition = {
 	id: "lambda-apply-basic",
-	category: "Lambda",
+	category: "Apply",
 	name: "apply for binding",
 	desc: "Use .apply() to bind a signal for multiple uses",
 	code: `// .apply() lets you name a signal and use it multiple times

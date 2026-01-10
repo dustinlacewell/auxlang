@@ -19,10 +19,11 @@ export interface SerializedSpec {
 }
 
 export interface CompiledInput {
-	type: "constant" | "connection" | "feedback";
+	type: "constant" | "connection" | "lambda";
 	value?: number[];
 	nodeId?: string;
 	output?: string;
+	fnSource?: string;
 }
 
 export interface CompiledNode {

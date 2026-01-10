@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { isDescriptor } from "../../descriptor/guards/is-descriptor";
 import { resetIdCounter } from "../../descriptor/identity";
-import { isDescriptor } from "../../descriptor/is-descriptor";
 import { type PolyDescriptor, isPoly } from "../../descriptor/poly";
 import type { AnyDescriptor } from "../../descriptor/types";
 import { seq } from "./seq";

@@ -2,7 +2,7 @@ import type { TestDefinition } from "../types";
 
 export const lambdaLfoRouting: TestDefinition = {
 	id: "lambda-lfo-routing",
-	category: "Lambda",
+	category: "Apply",
 	name: "LFO signal routing",
 	desc: "Use apply to route one LFO to multiple destinations",
 	code: `// Single LFO modulates both pitch and filter

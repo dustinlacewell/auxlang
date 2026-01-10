@@ -103,12 +103,8 @@ function compileInput(resolved: ResolvedInput): CompiledInput {
 		return { type: "constant", value };
 	}
 
-	if (resolved.type === "feedback") {
-		return {
-			type: "feedback",
-			nodeId: resolved.nodeId,
-			output: resolved.output,
-		};
+	if (resolved.type === "lambda") {
+		return { type: "lambda", fnSource: resolved.fn.toString() };
 	}
 
 	return {
