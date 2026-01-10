@@ -354,3 +354,47 @@
   - Reverted: now output all voices with gate=0 for inactive ones
   - Better approach: devices check gate and skip processing when gate=0
   - Maintains continuity, still allows CPU savings via gate checking
+
+### KabelSalat Comparison & Mono Refactor Design
+
+- **Deep dive into KabelSalat architecture**
+  - Compared graph compilation approaches: KS codegen vs Auxlang traversal
+  - KS generates flat JS code: `r[1] = nodes[0].update(r[0])`
+  - Auxlang traverses graph per-sample calling process functions
+  - V8 JIT makes codegen marginal benefit; WASM devices dominate CPU anyway
+
+- **Key insight: KabelSalat's polyphony model**
+  - KS uses compile-time graph duplication: `sine([220, 330])` creates 2 sine nodes
+  - `poly` node triggers multichannel expansion at graph construction
+  - All devices are mono - no voice tracking at runtime
+  - Tradeoff: no dynamic voice count, but massive simplification
+
+- **Identified why Auxlang's PolySignal is complex**
+  - Every device iterates voices, keys state by ID, builds `{id, value}[]`
+  - 21 device files redefine `type PS = Array<{ id: number; value: number }>`
+  - `LegacyPolySignal` / `fromLegacy` / `toLegacy` conversion layers
+  - Hot loop has voice ID lookups every sample
+
+- **Designed AST decomposition approach**
+  - `projectVoice(expr, voiceIndex)` extracts single voice timeline
+  - `decomposePattern(expr)` returns N mono ASTs for N-voice pattern
+  - Graph duplication happens at construction, not runtime
+  - Polyrhythm works: `{c4 d4 e4, g3 a3}` becomes independent 3-beat and 2-beat seqs
+
+- **Identified need for explicit poly devices**
+  - Without runtime polyphony, need devices to create it explicitly
+  - `poly(n)` - duplicate signal path N times
+  - `chord([0, 4, 7])` - add intervals to mono pitch
+  - `spread(n, detune)` - unison with detuning
+
+- **Planned Uzu syntax refactor** (after mono)
+  - Unified input model: merge config and inputs, everything is a signal
+  - Method chaining: `osc(440).lpf({ cutoff: 800 }).adsr({ attack: 0.1 })`
+  - Device registration for chainable methods
+  - Composite devices: functions returning descriptor graphs
+
+- **Created comprehensive plan docs**
+  - `plans/polyphony-decomposition.md` - full mono refactor design
+  - `plans/uzu-design.md` - architecture vision
+  - `plans/core-cleanup.md` - concrete redundancy fixes
+  - Updated `meta/context-letter.md` with current focus

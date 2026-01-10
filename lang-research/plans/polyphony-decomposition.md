@@ -253,6 +253,47 @@ Voice 1 is always silent. Decomposed pattern is just `~`. The graph still gets d
 
 ---
 
+## Explicit Polyphony Devices
+
+If polyphony only comes from pattern decomposition, we need dedicated devices to create polyphony from mono signals.
+
+### `poly(n)` - Duplicate Signal Path
+
+```javascript
+seq("c4 e4 g4").poly(5).saw({ detune: 10 }).mix()
+```
+
+Takes a mono signal path and duplicates it N times. Each copy can have different parameters (e.g., detune spread across voices).
+
+### `chord(intervals)` - Add Intervals
+
+```javascript
+seq("c4").chord([0, 4, 7]).saw().mix()  // major triad
+```
+
+Takes mono pitch, outputs N voices with pitch offsets (in semitones). Creates chords from a monophonic melody.
+
+### `spread(n, detune)` - Unison with Detune
+
+```javascript
+saw(440).spread(5, 10).mix()  // 5 saws, ±10 cents
+```
+
+Duplicates an oscillator N times with symmetric detuning. Common for thick unison sounds.
+
+### Sources of Polyphony
+
+With decomposition, polyphony is always explicit:
+
+1. **Pattern syntax** - `seq("{c4, e4}")` decomposes at parse time
+2. **Poly devices** - `poly(n)`, `chord()`, `spread()` duplicate graph
+
+Both result in graph duplication at construction time. No runtime voice tracking.
+
+You can't accidentally create polyphony - it's always visible in the code.
+
+---
+
 ## Benefits
 
 1. **Devices stay mono** - No voice iteration, no state keying by ID

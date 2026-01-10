@@ -70,3 +70,8 @@
 | D066 | Signals carry voice ID with value | 2025-01-09 | Format: `{ id: number, value: number }[]` — enables state keying by voice ID |
 | D067 | Sequencer uses stateful AST traversal instead of flattened events | 2025-01-09 | Preserves hierarchical structure; enables correct probability semantics (all-or-nothing for stacks); probability decisions cached by AST node path |
 | D068 | Polysignal mixdown uses √n normalization | 2025-01-09 | `sum / Math.sqrt(n)` for perceptually balanced mixing; prevents volume increase when adding voices; common in pro audio |
+| D069 | Move to compile-time graph duplication for polyphony | 2025-01-09 | Replace runtime PolySignal with KabelSalat-style approach: decompose poly patterns to mono ASTs, duplicate downstream graph. Eliminates voice ID tracking, simplifies all devices to mono. |
+| D070 | AST decomposition via projectVoice() | 2025-01-09 | Extract single voice timeline from polyphonic pattern. `{c4, e4}` decomposes to voice 0: `c4`, voice 1: `e4`. Enables mono signals throughout. |
+| D071 | Polyrhythm via independent seq cycles | 2025-01-09 | `{c4 d4 e4, g3 a3}` becomes two seqs with different loop lengths (3 beats, 2 beats). They phase naturally - correct polyrhythm behavior. |
+| D072 | Explicit poly devices for non-pattern polyphony | 2025-01-09 | `poly(n)`, `chord([intervals])`, `spread(n, detune)` trigger graph duplication. Polyphony is always visible in code. |
+| D073 | Stereo only at mix/output | 2025-01-09 | Everything mono until final mix. Mix device has spread parameter for stereo positioning. Matches eurorack model. |
