@@ -5,8 +5,9 @@
 ```
 c4        note
 ~         rest
-c4*4      hold 4 steps
-c4,e4,g4  chord (polyphony)
+c4*4      repeat 4x (subdivide)
+c4@4      hold 4 beats
+{c4,e4,g4} chord (polyphony)
 c4_e4     legato/glide
 [c4 d4]   subdivide
 <c4 d4>   alternate each loop
