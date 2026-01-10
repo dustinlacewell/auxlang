@@ -5,7 +5,7 @@
  * when the graph arrives and cached for reuse.
  */
 
-import { RuntimeGraph } from "../processor/runtime-graph";
+import { RuntimeGraph, type CollectedStates } from "../processor/runtime-graph";
 import { diffGraphs } from "../processor/topology-hash";
 import type { CompiledGraph, WorkletMessage } from "../processor/types";
 

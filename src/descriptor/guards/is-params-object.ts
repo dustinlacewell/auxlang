@@ -1,4 +1,4 @@
-import type { Signal } from "./types";
+import type { Signal } from "../types";
 
 /**
  * Check if value is a plain params object (not a function, array, or special signal type).

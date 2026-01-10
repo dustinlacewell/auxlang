@@ -1,4 +1,4 @@
-import type { OutputRef } from "./types";
+import type { OutputRef } from "../types";
 
 export function isOutputRef(value: unknown): value is OutputRef {
 	if (value === null || value === undefined) return false;

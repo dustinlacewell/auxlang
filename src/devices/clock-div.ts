@@ -35,6 +35,7 @@ export const clockDiv = device("clockDiv", {
 /**
  * Clock multiplier - outputs N triggers for each input trigger.
  * Expects impulse triggers (trig > 0 for one sample).
+ * Supports fractional multipliers for smooth tempo changes.
  */
 export const clockMult = device("clockMult", {
 	inputs: inputs({ trig: 0, by: 2 }),
@@ -43,7 +44,8 @@ export const clockMult = device("clockMult", {
 	defaultOutput: "trig",
 	process(inp, _cfg, state, sampleRate) {
 		const trig = (inp.trig as number) ?? 0;
-		const mult = Math.max(1, Math.floor((inp.by as number) ?? 2));
+		// Allow fractional multipliers for smooth tempo modulation
+		const mult = Math.max(0.1, (inp.by as number) ?? 2);
 
 		let phase = (state.phase as number) ?? 0;
 		let interval = (state.interval as number) ?? sampleRate;
@@ -57,7 +59,7 @@ export const clockMult = device("clockMult", {
 				interval = newInterval;
 			}
 			lastTrigSample = sampleCount;
-			phase = 0;
+			// Don't reset phase on input trigger - let it free-run at current rate
 		}
 
 		const subInterval = interval / mult;

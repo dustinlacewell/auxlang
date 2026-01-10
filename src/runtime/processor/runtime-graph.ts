@@ -85,6 +85,9 @@ function hydrateWasmProcess(
 	};
 }
 
+/** Hydrated signal lambda function */
+type HydratedLambda = (state: Record<string, unknown>, sampleRate: number) => number;
+
 /**
  * Pre-computed binding for resolving a node input.
  * Built once at hydration, used every sample without allocation.
@@ -92,7 +95,7 @@ function hydrateWasmProcess(
 type InputBinding =
 	| { type: "constant"; value: number }
 	| { type: "connection"; sourceNodeIndex: number; outputName: string }
-	| { type: "feedback"; sourceNodeIndex: number; outputName: string };
+	| { type: "lambda"; fn: HydratedLambda; state: Record<string, unknown> };
 
 /**
  * Optimized runtime node with pre-allocated storage.
@@ -125,9 +128,6 @@ interface OptimizedNode {
 	/** Pre-allocated output record (mutated in place each sample) */
 	outputRecord: Record<string, number>;
 
-	/** Previous sample's outputs (for feedback - 1 sample delay) */
-	previousOutputs: Record<string, number>;
-
 	/** Pre-computed input bindings (index aligns with inputNames) */
 	inputBindings: InputBinding[];
 
@@ -144,6 +144,12 @@ interface OptimizedNode {
  * All allocations happen at construction time. The process loop only
  * mutates pre-existing objects, avoiding GC pressure in the audio thread.
  */
+/** Collected states for graph swap preservation */
+export interface CollectedStates {
+	nodeStates: Map<string, Record<string, unknown>>;
+	lambdaStates: Map<string, Record<string, unknown>>; // key: "nodeId:inputName"
+}
+
 export class RuntimeGraph {
 	/** Nodes in topological order (dependencies before dependents) */
 	readonly nodes: OptimizedNode[];
@@ -151,10 +157,13 @@ export class RuntimeGraph {
 	/** Index of the output node in the nodes array */
 	readonly outputNodeIndex: number;
 
+	/** Lambda states keyed by "nodeId:inputName" for state preservation */
+	private lambdaStates: Map<string, Record<string, unknown>> = new Map();
+
 	constructor(
 		compiledGraph: CompiledGraph,
 		wasmInstances: Map<string, WebAssembly.Instance>,
-		oldStates?: Map<string, Record<string, unknown>>,
+		oldStates?: CollectedStates,
 		nodeMapping?: Map<string, string>,
 	) {
 		// Build node ID to index map for resolving connections
@@ -189,15 +198,16 @@ export class RuntimeGraph {
 		compiledNode: CompiledNode,
 		idToIndex: Map<string, number>,
 		wasmInstances: Map<string, WebAssembly.Instance>,
-		oldStates?: Map<string, Record<string, unknown>>,
+		oldStates?: CollectedStates,
 		nodeMapping?: Map<string, string>,
 	): OptimizedNode {
 		// Restore state from matched old node if available
 		let state: Record<string, unknown> = {};
+		let oldNodeId: string | undefined;
 		if (oldStates && nodeMapping) {
-			const oldNodeId = nodeMapping.get(compiledNode.id);
+			oldNodeId = nodeMapping.get(compiledNode.id);
 			if (oldNodeId) {
-				const oldState = oldStates.get(oldNodeId);
+				const oldState = oldStates.nodeStates.get(oldNodeId);
 				if (oldState) {
 					// Deep clone preserving TypedArrays (delay buffers, etc.)
 					state = deepCloneState(oldState);
@@ -216,13 +226,11 @@ export class RuntimeGraph {
 		}
 
 		const outputRecord: Record<string, number> = {};
-		const previousOutputs: Record<string, number> = {};
 		for (const name of outputNames) {
 			outputRecord[name] = 0;
-			previousOutputs[name] = 0;
 		}
 
-		// Build input bindings - constants are plain numbers, connections/feedback resolve to nodes
+		// Build input bindings - constants are plain numbers, connections resolve to nodes
 		const inputBindings: InputBinding[] = inputNames.map((name) => {
 			const input = compiledNode.inputs[name];
 			if (!input || input.type === "constant") {
@@ -230,17 +238,26 @@ export class RuntimeGraph {
 				const legacyValue = input?.value ?? [0];
 				return { type: "constant", value: legacyValue[0] ?? 0 };
 			}
+			if (input.type === "lambda") {
+				// Hydrate lambda function from source string
+				// biome-ignore lint/security/noGlobalEval: required for dynamic function hydration
+				const fn = new Function(`return (${input.fnSource})`)() as HydratedLambda;
+
+				// Restore lambda state from previous graph if available
+				const lambdaKey = `${compiledNode.id}:${name}`;
+				const oldLambdaKey = oldNodeId ? `${oldNodeId}:${name}` : undefined;
+				let lambdaState: Record<string, unknown> = {};
+				if (oldLambdaKey && oldStates?.lambdaStates.has(oldLambdaKey)) {
+					lambdaState = deepCloneState(oldStates.lambdaStates.get(oldLambdaKey)!);
+				}
+				// Store in our lambda states map for future preservation
+				this.lambdaStates.set(lambdaKey, lambdaState);
+
+				return { type: "lambda", fn, state: lambdaState };
+			}
 			const sourceIndex = idToIndex.get(input.nodeId ?? "");
 			if (sourceIndex === undefined) {
 				return { type: "constant", value: 0 };
-			}
-			if (input.type === "feedback") {
-				// Feedback reads from previous sample
-				return {
-					type: "feedback",
-					sourceNodeIndex: sourceIndex,
-					outputName: input.output ?? "out",
-				};
 			}
 			return {
 				type: "connection",
@@ -266,7 +283,6 @@ export class RuntimeGraph {
 			defaultOutput: compiledNode.spec.defaultOutput,
 			inputRecord,
 			outputRecord,
-			previousOutputs,
 			inputBindings,
 			inputNames,
 			outputNames,
@@ -278,16 +294,6 @@ export class RuntimeGraph {
 	 * Returns the output signal (mono).
 	 */
 	processSample(sampleRate: number): number {
-		// First, copy current outputs to previous for feedback (1-sample delay)
-		// This must happen before processing so feedback reads the last sample
-		for (let i = 0; i < this.nodes.length; i++) {
-			const node = this.nodes[i];
-			if (!node) continue;
-			for (const outputName of node.outputNames) {
-				node.previousOutputs[outputName] = node.outputRecord[outputName];
-			}
-		}
-
 		// Process each node in topological order
 		for (let i = 0; i < this.nodes.length; i++) {
 			const node = this.nodes[i];
@@ -301,12 +307,9 @@ export class RuntimeGraph {
 
 				if (binding.type === "constant") {
 					node.inputRecord[inputName] = binding.value;
-				} else if (binding.type === "feedback") {
-					// Feedback reads from PREVIOUS sample (1-sample delay)
-					const sourceNode = this.nodes[binding.sourceNodeIndex];
-					if (sourceNode) {
-						node.inputRecord[inputName] = sourceNode.previousOutputs[binding.outputName] ?? 0;
-					}
+				} else if (binding.type === "lambda") {
+					// Execute lambda with its own persistent state
+					node.inputRecord[inputName] = binding.fn(binding.state, sampleRate);
 				} else {
 					// Connection reads from current sample
 					const sourceNode = this.nodes[binding.sourceNodeIndex];
@@ -338,11 +341,14 @@ export class RuntimeGraph {
 	/**
 	 * Collect current state from all nodes (for state preservation during graph swap).
 	 */
-	collectStates(): Map<string, Record<string, unknown>> {
-		const states = new Map<string, Record<string, unknown>>();
+	collectStates(): CollectedStates {
+		const nodeStates = new Map<string, Record<string, unknown>>();
 		for (const node of this.nodes) {
-			states.set(node.id, node.state);
+			nodeStates.set(node.id, node.state);
 		}
-		return states;
+		return {
+			nodeStates,
+			lambdaStates: this.lambdaStates,
+		};
 	}
 }

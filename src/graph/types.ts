@@ -5,7 +5,7 @@
  * It contains concrete nodes ready for AudioWorklet execution.
  */
 
-import type { ConfigValue, DescriptorId, DeviceSpec } from "../descriptor/types";
+import type { ConfigValue, DescriptorId, DeviceSpec, SignalLambda } from "../descriptor/types";
 
 /** A concrete node in the runtime graph */
 export interface GraphNode {
@@ -15,11 +15,11 @@ export interface GraphNode {
 	readonly configBindings: Record<string, ConfigValue>;
 }
 
-/** A resolved input - constant, connection, or feedback reference */
+/** A resolved input - constant, connection, or lambda */
 export type ResolvedInput =
 	| { readonly type: "constant"; readonly value: number | number[] }
 	| { readonly type: "connection"; readonly nodeId: DescriptorId; readonly output: string }
-	| { readonly type: "feedback"; readonly nodeId: DescriptorId; readonly output: string };
+	| { readonly type: "lambda"; readonly fn: SignalLambda };
 
 /** The complete runtime graph */
 export interface Graph {

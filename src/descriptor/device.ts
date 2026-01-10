@@ -1,100 +1,19 @@
+import { isPlainParamsObject } from "./guards/is-params-object";
+import { isSignalArray } from "./guards/is-signal-array";
 import { createDescriptorId } from "./identity";
-import { isDescriptor } from "./is-descriptor";
-import { isOutputRef } from "./is-output-ref";
-import { isPlainParamsObject } from "./is-params-object";
 import { poly, type PolyDescriptor } from "./poly";
-import { getDeviceFactory, getOutputHandler, registerDescriptor, registerDevice } from "./registry";
+import { createChainableOutput } from "./proxy/chainable-output";
+import { getOutputHandler, registerDescriptor, registerDevice } from "./registry";
 import type {
 	AnyDescriptor,
 	ConfigDef,
 	ConfigValue,
 	Descriptor,
-	DescriptorId,
 	DescriptorState,
 	DeviceSpec,
-	FeedbackRef,
-	OutputRef,
 	ProcessFn,
 	Signal,
 } from "./types";
-
-/**
- * Check if a value is a signal array that should expand to polyphony.
- * Any array passed as an input triggers poly expansion.
- */
-function isSignalArray(value: unknown): value is Signal[] {
-	return Array.isArray(value) && value.length > 0;
-}
-
-/** Type for lambda inputs that create feedback loops */
-type FeedbackLambda = (ref: FeedbackRef) => Signal | AnyDescriptor;
-
-/**
- * Check if a value is a feedback lambda function.
- * Lambda inputs are plain functions (not OutputRef or Descriptor proxies).
- * OutputRef and Descriptor are both callable proxies, but they have
- * identifying properties that distinguish them from plain functions.
- */
-function isFeedbackLambda(value: unknown): value is FeedbackLambda {
-	if (typeof value !== "function") return false;
-	// OutputRef proxies have descriptorId property
-	if (isOutputRef(value)) return false;
-	// Descriptor proxies have _state property
-	if (isDescriptor(value)) return false;
-	return true;
-}
-
-/**
- * Create a chainable FeedbackRef proxy.
- * This is passed to lambda inputs and represents "the output of the node being built".
- *
- * The proxy:
- * - Acts as a FeedbackRef (has _feedback, targetId, outputName)
- * - Supports Uzu chaining: ref.delay(0.1).mult(0.8)
- * - Returns descriptors that contain the feedback reference in their input chain
- */
-function createFeedbackProxy(targetId: DescriptorId, defaultOutput: string): FeedbackRef {
-	const feedbackRef: FeedbackRef = {
-		_feedback: true,
-		targetId,
-		outputName: defaultOutput,
-	};
-
-	return new Proxy(feedbackRef, {
-		get(target, prop) {
-			// Return FeedbackRef properties
-			if (prop === "_feedback") return true;
-			if (prop === "targetId") return targetId;
-			if (prop === "outputName") return defaultOutput;
-
-			// Uzu chaining: look up device by name
-			if (typeof prop === "string") {
-				const deviceFactory = getDeviceFactory(prop);
-				if (deviceFactory) {
-					// Chain to device, passing the feedback ref as input
-					return (params?: Record<string, Signal>): AnyDescriptor | PolyDescriptor => {
-						const device = deviceFactory(feedbackRef as unknown as Signal);
-						if (params) {
-							let result: AnyDescriptor | PolyDescriptor = device;
-							for (const [key, value] of Object.entries(params)) {
-								const setter = (result as unknown as Record<string, (v: Signal) => AnyDescriptor | PolyDescriptor>)[key];
-								if (typeof setter === "function") {
-									result = setter(value);
-								}
-							}
-							return result;
-						}
-						return device;
-					};
-				}
-				// Property access for specific output - return new FeedbackRef with that output
-				return createFeedbackProxy(targetId, prop);
-			}
-
-			return undefined;
-		},
-	});
-}
 
 
 /** Input to device() - process is a function, processSource is auto-generated */
@@ -222,29 +141,13 @@ function createDescriptor(
 	inputBindings: Record<string, Signal>,
 	configBindings: Record<string, ConfigValue>,
 ): AnyDescriptor | PolyDescriptor {
-	// Generate ID first - needed for feedback proxy
 	const id = createDescriptorId();
 
-	// Resolve lambda inputs - execute them with a feedback proxy
-	const resolvedBindings: Record<string, Signal> = {};
-	for (const [key, value] of Object.entries(inputBindings)) {
-		if (isFeedbackLambda(value)) {
-			// Create feedback proxy pointing to this descriptor's output
-			const feedbackProxy = createFeedbackProxy(id, spec.defaultOutput);
-			// Execute lambda to get the actual signal (which contains the feedback ref)
-			const result = value(feedbackProxy);
-			// Result is either a Signal directly or a descriptor (use as signal)
-			resolvedBindings[key] = result as Signal;
-		} else {
-			resolvedBindings[key] = value;
-		}
-	}
-
 	// Check for array inputs - expand to poly
-	for (const [key, value] of Object.entries(resolvedBindings)) {
+	for (const [key, value] of Object.entries(inputBindings)) {
 		if (isSignalArray(value)) {
 			const voices = value.map((v) =>
-				createDescriptor(spec, { ...resolvedBindings, [key]: v }, configBindings),
+				createDescriptor(spec, { ...inputBindings, [key]: v }, configBindings),
 			) as AnyDescriptor[];
 			return poly(voices);
 		}
@@ -253,7 +156,7 @@ function createDescriptor(
 	const state: DescriptorState = {
 		id,
 		spec,
-		inputBindings: resolvedBindings,
+		inputBindings: inputBindings,
 		configBindings,
 	};
 
@@ -265,11 +168,11 @@ function createDescriptor(
 			const hasInputKey = signalKeys.some((k) => inputNames.includes(k));
 			if (hasInputKey) {
 				// Merge params into existing bindings
-				return createDescriptor(spec, { ...resolvedBindings, ...value }, configBindings);
+				return createDescriptor(spec, { ...inputBindings, ...value }, configBindings);
 			}
 		}
 		// Single signal goes to default input
-		return createDescriptor(spec, { ...resolvedBindings, [spec.defaultInput]: value as Signal }, configBindings);
+		return createDescriptor(spec, { ...inputBindings, [spec.defaultInput]: value as Signal }, configBindings);
 	};
 
 	const descriptor = new Proxy(callable as AnyDescriptor, {
@@ -322,97 +225,4 @@ function createDescriptor(
 
 	registerDescriptor(descriptor);
 	return descriptor;
-}
-
-/**
- * Create a ChainableOutput - an OutputRef that's also callable for device chaining.
- *
- * @param descriptorId - The source descriptor's ID
- * @param defaultOutput - The source descriptor's default output (used when this is called)
- * @param outputName - The output name being accessed (may or may not be valid - checked at reify)
- *
- * Behavior:
- * - As a value: acts as OutputRef { descriptorId, outputName }
- * - When called: looks up device in registry, chains using defaultOutput
- * - Property access: returns another ChainableOutput for further chaining
- */
-function createChainableOutput(
-	descriptorId: DescriptorId,
-	defaultOutput: string,
-	outputName: string,
-): OutputRef {
-	// The callable function - when invoked, chain a device
-	const callable = (params?: Record<string, Signal> | Signal): AnyDescriptor | PolyDescriptor => {
-		const deviceFactory = getDeviceFactory(outputName);
-		if (!deviceFactory) {
-			throw new Error(`"${outputName}" is not a registered device`);
-		}
-		// Use the default output of the source descriptor
-		const sourceRef: OutputRef = { descriptorId, outputName: defaultOutput };
-		const device = deviceFactory(sourceRef);
-
-		// No params - just return the device with default input connected
-		if (params === undefined) {
-			return device;
-		}
-
-		// Plain object params - apply each as a setter
-		if (isPlainParamsObject(params)) {
-			let result: AnyDescriptor | PolyDescriptor = device;
-			for (const [key, value] of Object.entries(params)) {
-				const setter = (result as unknown as Record<string, (v: Signal) => AnyDescriptor | PolyDescriptor>)[key];
-				if (typeof setter === "function") {
-					result = setter(value);
-				}
-			}
-			return result;
-		}
-
-		// Bare signal (lambda, number, OutputRef, etc.) - find next input after default
-		// This enables syntax like: sawOsc.add(x => x.delay().mult())
-		// where the lambda goes to add's "to" input (the non-default input)
-		if (isDescriptor(device)) {
-			const spec = device._state.spec;
-			const inputNames = Object.keys(spec.inputs);
-			const nonDefaultInputs = inputNames.filter((name) => name !== spec.defaultInput);
-			if (nonDefaultInputs.length > 0) {
-				const firstNonDefault = nonDefaultInputs[0]!;
-				const setter = (device as unknown as Record<string, (v: Signal) => AnyDescriptor | PolyDescriptor>)[
-					firstNonDefault
-				];
-				if (typeof setter === "function") {
-					return setter(params as Signal);
-				}
-			}
-		}
-
-		// No non-default inputs to apply to (or it's a poly), just return device
-		return device;
-	};
-
-	// Proxy to make it both an OutputRef and chainable
-	return new Proxy(callable as unknown as OutputRef, {
-		get(target, prop) {
-			// Return OutputRef properties - this makes it usable as a signal input
-			if (prop === "descriptorId") return descriptorId;
-			if (prop === "outputName") return outputName;
-
-			// .out() on ChainableOutput - error, need to chain to a device first
-			if (prop === "out") {
-				return () => {
-					throw new Error("Cannot call .out() on output ref - chain to a device first");
-				};
-			}
-
-			// Property access returns another ChainableOutput for chaining
-			// e.g., s.cv.saw() - accessing 'saw' on the cv output
-			if (typeof prop === "string") {
-				// This ChainableOutput represents the explicit output (outputName),
-				// so when chaining from it, we use outputName as the source output
-				return createChainableOutput(descriptorId, outputName, prop);
-			}
-
-			return undefined;
-		},
-	});
 }

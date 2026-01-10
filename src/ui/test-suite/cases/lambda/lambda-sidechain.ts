@@ -2,7 +2,7 @@ import type { TestDefinition } from "../types";
 
 export const lambdaSidechain: TestDefinition = {
 	id: "lambda-sidechain",
-	category: "Lambda",
+	category: "Apply",
 	name: "sidechain compression",
 	desc: "Use apply to route kick to duck the pad",
 	code: `// Kick signal used to duck the pad volume

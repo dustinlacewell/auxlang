@@ -6,6 +6,7 @@
 - `number` - constant value (`440`, `0.5`)
 - `OutputRef` - reference to device output (`s.cv`, `lfo.out`)
 - `Descriptor` - shorthand for its default output
+- `SignalLambda` - inline per-sample function `(state, sr) => number`
 
 **Descriptors** - Lazy device specs forming a DAG:
 - Created by calling device functions
@@ -41,9 +42,10 @@ Modifiers chain: `c4*2?.5` = multiply by 2, then 50% chance
 **Device Instantiation:**
 ```javascript
 saw(440)                              // positional: default input
-lpf(audio, { cutoff: 800 })           // object: named inputs
+lpf({ input: audio, cutoff: 800 })    // object: named inputs
 lpf(audio).cutoff(800).resonance(0.5) // method chaining
 saw(440).lpf({ cutoff: 800 })         // fluent style
+mix({ a: voice1, b: voice2 })         // multi-input devices
 ```
 
 **Variable Semantics:**
@@ -70,12 +72,40 @@ s.gate.adsr()     // different output
 s.saw().lpf({ cutoff: 800 }).gain({ level: s.gate.adsr() }).out()
 ```
 
-**Multiple Outputs:**
+## Inline Signal Lambdas
+
+Any input accepts a lambda `(state, sampleRate) => number` that runs per-sample:
+
 ```javascript
-let s = seq("c4 e4").clk(clock(120))
-let audio = s.saw().lpf({ cutoff: 1000 })
-let env = s.gate.adsr({ attack: 0.01 })
-audio.gain({ level: env }).out()
+// Inline LFO as filter cutoff
+saw(220).lpf({
+  cutoff: (s, sr) => {
+    s.phase = ((s.phase ?? 0) + 2 / sr) % 1
+    return Math.sin(s.phase * Math.PI * 2) * 800 + 1000
+  }
+}).out()
+
+// Pitch ramp oscillator
+saw((s, sr) => {
+  s.t = (s.t ?? 0) + 1 / sr
+  if (s.t > 2) s.t = 0
+  return 200 + (s.t / 2) * 600
+}).out()
+```
+
+- `state` - persistent object per input (survives across samples)
+- `sampleRate` - typically 44100 or 48000
+
+## Apply for Inline Binding
+
+`.apply(fn)` binds intermediate values without breaking chains:
+
+```javascript
+clock(120).apply(c =>
+  seq("c4 e4 g4", { clk: c }).apply(s =>
+    s.saw().gain({ level: s.gate.adsr() }).out()
+  )
+)
 ```
 
 ## Polyphony
@@ -108,7 +138,9 @@ chord.voices[0]     // first voice
 **Sources**: `osc`, `saw`, `sin`, `tri`, `sqr`, `noise`, `lfo`
 **Drums**: `kick`, `snare`, `hihat`, `clap`
 **Filters**: `lpf`, `hpf`, `bpf`, `notch` (cutoff, resonance)
-**Envelopes**: `adsr`, `env` (gate, attack, decay, sustain, release)
+**Envelopes**:
+- `adsr` (gate, attack, decay, sustain, release) - full ADSR
+- `env` (gate, attack, release) - simpler AR envelope
 **Effects**: `delay`, `tape`, `reverb`
 **Utilities**: `gain`, `mix`, `slew`, `sah`, `pick`
 **Math**: `mult`, `add`, `sub`, `div`, `scale`, `clip`, `abs`, `inv`, `mod`
@@ -131,8 +163,11 @@ kick(seq("c1 ~ c1 ~").clk(c).gate).out()
 hihat(seq("c1*4").clk(c).gate).out()
 
 // LFO modulation
-let mod = lfo(0.5).min(200).max(2000)
+let mod = lfo(0.5).scale({ from: -1, to: 1, min: 200, max: 2000 })
 seq("c2").clk(clock(60)).saw().lpf({ cutoff: mod }).out()
+
+// Echo using delay's built-in feedback
+saw(110).delay({ time: 0.2, feedback: 0.7, mix: 0.5 }).out()
 ```
 
 ## Key Gotchas
@@ -153,3 +188,7 @@ seq("c2").clk(clock(60)).saw().lpf({ cutoff: mod }).out()
 3. **out() is terminal**: Call once at end of chain
 
 4. **gain for amplitude**: `.gain({ level: envelope })` - level is modulation input
+
+5. **env vs adsr**: `env` has attack/release only, `adsr` has all four stages
+
+6. **scale inputs**: `{ from, to, min, max }` - maps [from,to] range to [min,max]

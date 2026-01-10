@@ -2,11 +2,11 @@
  * Graph reification - walks the descriptor DAG to build a runtime graph.
  */
 
-import { isDescriptor } from "../descriptor/is-descriptor";
-import { isFeedbackRef } from "../descriptor/is-feedback-ref";
-import { isOutputRef } from "../descriptor/is-output-ref";
+import { isDescriptor } from "../descriptor/guards/is-descriptor";
+import { isSignalLambda } from "../descriptor/guards/is-lambda";
+import { isOutputRef } from "../descriptor/guards/is-output-ref";
 import { getDescriptor } from "../descriptor/registry";
-import type { AnyDescriptor, DescriptorId, FeedbackRef, Signal } from "../descriptor/types";
+import type { AnyDescriptor, DescriptorId, Signal } from "../descriptor/types";
 import type { Graph, GraphNode, ResolvedInput } from "./types";
 
 /**
@@ -76,16 +76,6 @@ function resolveInput(
 		};
 	}
 
-	// FeedbackRef - reference to the output of the node being built (creates a cycle)
-	// We do NOT visit the target as a dependency - that would cause infinite recursion
-	if (isFeedbackRef(signal)) {
-		return {
-			type: "feedback",
-			nodeId: signal.targetId,
-			output: signal.outputName,
-		};
-	}
-
 	// OutputRef - reference to another descriptor's output
 	if (isOutputRef(signal)) {
 		const sourceDescriptor = getDescriptor(signal.descriptorId);
@@ -107,6 +97,11 @@ function resolveInput(
 			nodeId: signal.descriptorId,
 			output: signal.outputName,
 		};
+	}
+
+	// Signal lambda - inline per-sample function
+	if (isSignalLambda(signal)) {
+		return { type: "lambda", fn: signal };
 	}
 
 	throw new Error(`Invalid signal type: ${typeof signal}`);

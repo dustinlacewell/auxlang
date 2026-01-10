@@ -2,7 +2,7 @@ import type { TestDefinition } from "../types";
 
 export const lambdaNestedApply: TestDefinition = {
 	id: "lambda-multi-seq",
-	category: "Lambda",
+	category: "Apply",
 	name: "multiple sequences",
 	desc: "Two sequences sharing a clock, mixed together",
 	code: `// Two sequences sharing the same clock

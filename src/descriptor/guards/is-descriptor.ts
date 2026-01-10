@@ -1,4 +1,4 @@
-import type { AnyDescriptor } from "./types";
+import type { AnyDescriptor } from "../types";
 
 export function isDescriptor(value: unknown): value is AnyDescriptor {
 	if (typeof value !== "function") return false;

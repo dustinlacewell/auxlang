@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { device } from "./device";
+import { isDescriptor } from "./guards/is-descriptor";
+import { isOutputRef } from "./guards/is-output-ref";
 import { resetIdCounter } from "./identity";
 import { inputs } from "./inputs";
-import { isDescriptor } from "./is-descriptor";
-import { isOutputRef } from "./is-output-ref";
 import { isPoly, poly, type PolyDescriptor } from "./poly";
 import { clearDeviceRegistry } from "./registry";
 
@@ -561,97 +561,13 @@ describe("apply method", () => {
 	});
 });
 
-describe("feedback lambda inputs", () => {
+describe("device input chaining", () => {
 	beforeEach(() => {
 		resetIdCounter();
 		clearDeviceRegistry();
 	});
 
-	it("lambda input creates feedback chain", () => {
-		const add = device("add", {
-			inputs: inputs({ input: 0, to: 0 }),
-			outputs: ["signal"] as const,
-			defaultInput: "input" as const,
-			defaultOutput: "signal" as const,
-			process: () => ({ signal: 0 }),
-		});
-
-		const delay = device("delay", {
-			inputs: inputs({ input: 0, time: 0.1 }),
-			outputs: ["out"] as const,
-			defaultInput: "input" as const,
-			defaultOutput: "out" as const,
-			process: () => ({ out: 0 }),
-		});
-
-		// Create add with feedback: x => x.delay()
-		// This should create: add -> delay, where delay's input is a feedback ref to add's output
-		const result = add(1).to((x: any) => x.delay());
-
-		// Result should be a descriptor (the add device)
-		expect(isDescriptor(result)).toBe(true);
-		if (!isDescriptor(result)) return;
-
-		// The "to" input should be bound to a delay descriptor
-		const toBinding = result._state.inputBindings.to;
-		expect(isDescriptor(toBinding)).toBe(true);
-		if (!isDescriptor(toBinding)) return;
-
-		// The delay's input should be a feedback reference to the add's output
-		const delayInput = toBinding._state.inputBindings.input;
-		expect(delayInput).toBeDefined();
-		// The feedback ref has _feedback: true and targetId pointing to add
-		expect((delayInput as any)._feedback).toBe(true);
-		expect((delayInput as any).targetId).toBe(result._state.id);
-	});
-
-	it("feedback proxy chains multiple devices", () => {
-		const add = device("add", {
-			inputs: inputs({ input: 0, to: 0 }),
-			outputs: ["signal"] as const,
-			defaultInput: "input" as const,
-			defaultOutput: "signal" as const,
-			process: () => ({ signal: 0 }),
-		});
-
-		const delay = device("delay", {
-			inputs: inputs({ input: 0 }),
-			outputs: ["out"] as const,
-			defaultInput: "input" as const,
-			defaultOutput: "out" as const,
-			process: () => ({ out: 0 }),
-		});
-
-		const mult = device("mult", {
-			inputs: inputs({ input: 0, by: 1 }),
-			outputs: ["out"] as const,
-			defaultInput: "input" as const,
-			defaultOutput: "out" as const,
-			process: () => ({ out: 0 }),
-		});
-
-		// x => x.delay().mult({ by: 0.8 })
-		// Chain: add -> to:mult -> input:delay -> input:feedback(add)
-		const result = add(1).to((x: any) => x.delay().mult({ by: 0.8 }));
-
-		expect(isDescriptor(result)).toBe(true);
-		if (!isDescriptor(result)) return;
-
-		// The "to" input should be the mult descriptor
-		const multDescriptor = result._state.inputBindings.to;
-		expect(isDescriptor(multDescriptor)).toBe(true);
-		if (!isDescriptor(multDescriptor)) return;
-
-		// mult.by should be 0.8
-		expect(multDescriptor._state.inputBindings.by).toBe(0.8);
-
-		// mult's input comes from delay's output via OutputRef
-		const multInput = multDescriptor._state.inputBindings.input;
-		// This should be an OutputRef to the delay descriptor
-		expect(isOutputRef(multInput)).toBe(true);
-	});
-
-	it("regular function signals are not treated as feedback", () => {
+	it("descriptor passed as input chains correctly", () => {
 		const saw = device("saw", {
 			inputs: inputs({ freq: 440 }),
 			outputs: ["out"] as const,
@@ -660,7 +576,6 @@ describe("feedback lambda inputs", () => {
 			process: () => ({ out: 0 }),
 		});
 
-		// OutputRef passed as input should NOT be treated as feedback lambda
 		const result = saw(440);
 		expect(isDescriptor(result)).toBe(true);
 
@@ -669,7 +584,7 @@ describe("feedback lambda inputs", () => {
 		expect(isDescriptor(chained)).toBe(true);
 		if (!isDescriptor(chained)) return;
 
-		// The input should be a reference to result's output, not feedback
+		// The input should be a reference to result's output
 		const freqBinding = chained._state.inputBindings.freq;
 		expect(isDescriptor(freqBinding)).toBe(true);
 	});

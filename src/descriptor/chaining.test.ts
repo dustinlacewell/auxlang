@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { isDescriptor } from "./guards/is-descriptor";
+import { isOutputRef } from "./guards/is-output-ref";
 import { resetIdCounter } from "./identity";
-import { isDescriptor } from "./is-descriptor";
-import { isOutputRef } from "./is-output-ref";
 import { clearDeviceRegistry } from "./registry";
 
 import { lpf } from "../devices/lpf";
