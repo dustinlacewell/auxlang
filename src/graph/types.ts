@@ -15,10 +15,11 @@ export interface GraphNode {
 	readonly configBindings: Record<string, ConfigValue>;
 }
 
-/** A resolved input - either constant or a reference to another node's output */
+/** A resolved input - constant, connection, or feedback reference */
 export type ResolvedInput =
 	| { readonly type: "constant"; readonly value: number | number[] }
-	| { readonly type: "connection"; readonly nodeId: DescriptorId; readonly output: string };
+	| { readonly type: "connection"; readonly nodeId: DescriptorId; readonly output: string }
+	| { readonly type: "feedback"; readonly nodeId: DescriptorId; readonly output: string };
 
 /** The complete runtime graph */
 export interface Graph {

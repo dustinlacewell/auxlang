@@ -91,7 +91,8 @@ function hydrateWasmProcess(
  */
 type InputBinding =
 	| { type: "constant"; value: number }
-	| { type: "connection"; sourceNodeIndex: number; outputName: string };
+	| { type: "connection"; sourceNodeIndex: number; outputName: string }
+	| { type: "feedback"; sourceNodeIndex: number; outputName: string };
 
 /**
  * Optimized runtime node with pre-allocated storage.
@@ -123,6 +124,9 @@ interface OptimizedNode {
 
 	/** Pre-allocated output record (mutated in place each sample) */
 	outputRecord: Record<string, number>;
+
+	/** Previous sample's outputs (for feedback - 1 sample delay) */
+	previousOutputs: Record<string, number>;
 
 	/** Pre-computed input bindings (index aligns with inputNames) */
 	inputBindings: InputBinding[];
@@ -212,11 +216,13 @@ export class RuntimeGraph {
 		}
 
 		const outputRecord: Record<string, number> = {};
+		const previousOutputs: Record<string, number> = {};
 		for (const name of outputNames) {
 			outputRecord[name] = 0;
+			previousOutputs[name] = 0;
 		}
 
-		// Build input bindings - constants are plain numbers
+		// Build input bindings - constants are plain numbers, connections/feedback resolve to nodes
 		const inputBindings: InputBinding[] = inputNames.map((name) => {
 			const input = compiledNode.inputs[name];
 			if (!input || input.type === "constant") {
@@ -227,6 +233,14 @@ export class RuntimeGraph {
 			const sourceIndex = idToIndex.get(input.nodeId ?? "");
 			if (sourceIndex === undefined) {
 				return { type: "constant", value: 0 };
+			}
+			if (input.type === "feedback") {
+				// Feedback reads from previous sample
+				return {
+					type: "feedback",
+					sourceNodeIndex: sourceIndex,
+					outputName: input.output ?? "out",
+				};
 			}
 			return {
 				type: "connection",
@@ -252,6 +266,7 @@ export class RuntimeGraph {
 			defaultOutput: compiledNode.spec.defaultOutput,
 			inputRecord,
 			outputRecord,
+			previousOutputs,
 			inputBindings,
 			inputNames,
 			outputNames,
@@ -263,6 +278,16 @@ export class RuntimeGraph {
 	 * Returns the output signal (mono).
 	 */
 	processSample(sampleRate: number): number {
+		// First, copy current outputs to previous for feedback (1-sample delay)
+		// This must happen before processing so feedback reads the last sample
+		for (let i = 0; i < this.nodes.length; i++) {
+			const node = this.nodes[i];
+			if (!node) continue;
+			for (const outputName of node.outputNames) {
+				node.previousOutputs[outputName] = node.outputRecord[outputName];
+			}
+		}
+
 		// Process each node in topological order
 		for (let i = 0; i < this.nodes.length; i++) {
 			const node = this.nodes[i];
@@ -276,7 +301,14 @@ export class RuntimeGraph {
 
 				if (binding.type === "constant") {
 					node.inputRecord[inputName] = binding.value;
+				} else if (binding.type === "feedback") {
+					// Feedback reads from PREVIOUS sample (1-sample delay)
+					const sourceNode = this.nodes[binding.sourceNodeIndex];
+					if (sourceNode) {
+						node.inputRecord[inputName] = sourceNode.previousOutputs[binding.outputName] ?? 0;
+					}
 				} else {
+					// Connection reads from current sample
 					const sourceNode = this.nodes[binding.sourceNodeIndex];
 					if (sourceNode) {
 						node.inputRecord[inputName] = sourceNode.outputRecord[binding.outputName] ?? 0;

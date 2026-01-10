@@ -24,6 +24,17 @@ export interface OutputRef {
 	readonly outputName: string;
 }
 
+/**
+ * Reference to a feedback point - the output of the node being constructed.
+ * Created when a lambda is passed as an input: add(x => x.delay(0.1))
+ * The `x` parameter is a FeedbackRef pointing back to the add node's output.
+ */
+export interface FeedbackRef {
+	readonly _feedback: true;
+	readonly targetId: DescriptorId;
+	readonly outputName: string;
+}
+
 /** Input definition for a device - modulatable signals */
 export interface InputDef {
 	readonly default: number | number[];
