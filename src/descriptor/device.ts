@@ -1,4 +1,5 @@
 import { createDescriptorId } from "./identity";
+import { poly, type PolyDescriptor } from "./poly";
 import { getDeviceFactory, getOutputHandler, registerDescriptor, registerDevice } from "./registry";
 import type {
 	AnyDescriptor,
@@ -12,6 +13,15 @@ import type {
 	ProcessFn,
 	Signal,
 } from "./types";
+
+/**
+ * Check if a value is a signal array that should expand to polyphony.
+ * Any array passed as an input triggers poly expansion.
+ */
+function isSignalArray(value: unknown): value is Signal[] {
+	return Array.isArray(value) && value.length > 0;
+}
+
 
 /** Input to device() - process is a function, processSource is auto-generated */
 export interface DeviceInput<I extends string, C extends string, O extends string> {
@@ -118,7 +128,17 @@ function createDescriptor(
 	spec: DeviceSpec,
 	inputBindings: Record<string, Signal>,
 	configBindings: Record<string, ConfigValue>,
-): AnyDescriptor {
+): AnyDescriptor | PolyDescriptor {
+	// Check for array inputs - expand to poly
+	for (const [key, value] of Object.entries(inputBindings)) {
+		if (isSignalArray(value)) {
+			const voices = value.map((v) =>
+				createDescriptor(spec, { ...inputBindings, [key]: v }, configBindings),
+			) as AnyDescriptor[];
+			return poly(voices);
+		}
+	}
+
 	const id = createDescriptorId();
 
 	const state: DescriptorState = {
@@ -128,7 +148,7 @@ function createDescriptor(
 		configBindings,
 	};
 
-	const callable = (value: Signal): AnyDescriptor => {
+	const callable = (value: Signal): AnyDescriptor | PolyDescriptor => {
 		return createDescriptor(spec, { ...inputBindings, [spec.defaultInput]: value }, configBindings);
 	};
 
@@ -140,14 +160,14 @@ function createDescriptor(
 
 			// Signal input setter (takes priority)
 			if (prop in spec.inputs) {
-				return (value: Signal): AnyDescriptor => {
+				return (value: Signal): AnyDescriptor | PolyDescriptor => {
 					return createDescriptor(spec, { ...inputBindings, [prop]: value }, configBindings);
 				};
 			}
 
 			// Config setter
 			if (prop in spec.config) {
-				return (value: ConfigValue): AnyDescriptor => {
+				return (value: ConfigValue): AnyDescriptor | PolyDescriptor => {
 					return createDescriptor(spec, inputBindings, {
 						...configBindings,
 						[prop]: value,
@@ -164,6 +184,12 @@ function createDescriptor(
 						handler(descriptor);
 					}
 				};
+			}
+
+			// .apply(fn) - call fn with this descriptor and return the result
+			// Allows inline variable binding: clock(120).apply(c => seq("...", { clk: c }).saw())
+			if (prop === "apply") {
+				return <T>(fn: (d: AnyDescriptor) => T): T => fn(descriptor);
 			}
 
 			// Everything else: return a ChainableOutput
@@ -196,7 +222,7 @@ function createChainableOutput(
 	outputName: string,
 ): OutputRef {
 	// The callable function - when invoked, chain a device
-	const callable = (params?: Record<string, Signal>): AnyDescriptor => {
+	const callable = (params?: Record<string, Signal>): AnyDescriptor | PolyDescriptor => {
 		const deviceFactory = getDeviceFactory(outputName);
 		if (!deviceFactory) {
 			throw new Error(`"${outputName}" is not a registered device`);
@@ -206,9 +232,9 @@ function createChainableOutput(
 		const device = deviceFactory(sourceRef);
 		// Apply additional params if provided
 		if (params) {
-			let result = device;
+			let result: AnyDescriptor | PolyDescriptor = device;
 			for (const [key, value] of Object.entries(params)) {
-				const setter = (result as unknown as Record<string, (v: Signal) => AnyDescriptor>)[key];
+				const setter = (result as unknown as Record<string, (v: Signal) => AnyDescriptor | PolyDescriptor>)[key];
 				if (typeof setter === "function") {
 					result = setter(value);
 				}

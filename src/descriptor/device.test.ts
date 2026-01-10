@@ -4,7 +4,7 @@ import { resetIdCounter } from "./identity";
 import { inputs } from "./inputs";
 import { isDescriptor } from "./is-descriptor";
 import { isOutputRef } from "./is-output-ref";
-import { isPoly, poly } from "./poly";
+import { isPoly, poly, type PolyDescriptor } from "./poly";
 import { clearDeviceRegistry } from "./registry";
 
 const testSpec = {
@@ -225,6 +225,174 @@ describe("device with name (Uzu chaining)", () => {
 	});
 });
 
+describe("array to poly expansion", () => {
+	beforeEach(() => {
+		resetIdCounter();
+		clearDeviceRegistry();
+	});
+
+	it("array input creates poly", () => {
+		const saw = device("saw", {
+			inputs: inputs({ freq: 440 }),
+			outputs: ["out"] as const,
+			defaultInput: "freq" as const,
+			defaultOutput: "out" as const,
+			process: () => ({ out: 0 }),
+		});
+
+		// saw([220, 330, 440]) should create poly with 3 voices
+		const polyResult = saw([220, 330, 440]);
+
+		expect(isPoly(polyResult)).toBe(true);
+		if (isPoly(polyResult)) {
+			expect(polyResult.voices.length).toBe(3);
+			expect(polyResult.voices[0]._state.inputBindings.freq).toBe(220);
+			expect(polyResult.voices[1]._state.inputBindings.freq).toBe(330);
+			expect(polyResult.voices[2]._state.inputBindings.freq).toBe(440);
+		}
+	});
+
+	it("array via input setter creates poly", () => {
+		const saw = device("saw", {
+			inputs: inputs({ freq: 440 }),
+			outputs: ["out"] as const,
+			defaultInput: "freq" as const,
+			defaultOutput: "out" as const,
+			process: () => ({ out: 0 }),
+		});
+
+		// saw.freq([220, 330, 440]) should create poly with 3 voices
+		const polyResult = saw.freq([220, 330, 440]);
+
+		expect(isPoly(polyResult)).toBe(true);
+		if (isPoly(polyResult)) {
+			expect(polyResult.voices.length).toBe(3);
+			expect(polyResult.voices[0]._state.inputBindings.freq).toBe(220);
+			expect(polyResult.voices[1]._state.inputBindings.freq).toBe(330);
+			expect(polyResult.voices[2]._state.inputBindings.freq).toBe(440);
+		}
+	});
+
+	it("single element array creates single-voice poly", () => {
+		const saw = device("saw", {
+			inputs: inputs({ freq: 440 }),
+			outputs: ["out"] as const,
+			defaultInput: "freq" as const,
+			defaultOutput: "out" as const,
+			process: () => ({ out: 0 }),
+		});
+
+		const polyResult = saw([220]);
+
+		expect(isPoly(polyResult)).toBe(true);
+		if (isPoly(polyResult)) {
+			expect(polyResult.voices.length).toBe(1);
+		}
+	});
+});
+
+describe("array distribution on poly", () => {
+	beforeEach(() => {
+		resetIdCounter();
+		clearDeviceRegistry();
+	});
+
+	it("array param distributes to voices", () => {
+		const mult = device("mult", {
+			inputs: inputs({ input: 0, by: 1 }),
+			outputs: ["out"] as const,
+			defaultInput: "input" as const,
+			defaultOutput: "out" as const,
+			process: () => ({ out: 0 }),
+		});
+
+		// Create a poly with 3 voices
+		const voice0 = mult(1);
+		const voice1 = mult(2);
+		const voice2 = mult(3);
+		const polyMult = poly([voice0, voice1, voice2]);
+
+		// .by([10, 20, 30]) should distribute
+		const result = (polyMult as any).by([10, 20, 30]);
+
+		expect(isPoly(result)).toBe(true);
+		if (isPoly(result)) {
+			expect(result.voices[0]._state.inputBindings.by).toBe(10);
+			expect(result.voices[1]._state.inputBindings.by).toBe(20);
+			expect(result.voices[2]._state.inputBindings.by).toBe(30);
+		}
+	});
+
+	it("shorter array wraps around", () => {
+		const mult = device("mult", {
+			inputs: inputs({ input: 0, by: 1 }),
+			outputs: ["out"] as const,
+			defaultInput: "input" as const,
+			defaultOutput: "out" as const,
+			process: () => ({ out: 0 }),
+		});
+
+		// Create a poly with 4 voices
+		const polyMult = poly([mult(1), mult(2), mult(3), mult(4)]);
+
+		// .by([10, 20]) should wrap: voice 0=10, voice 1=20, voice 2=10, voice 3=20
+		const result = (polyMult as any).by([10, 20]);
+
+		expect(isPoly(result)).toBe(true);
+		if (isPoly(result)) {
+			expect(result.voices[0]._state.inputBindings.by).toBe(10);
+			expect(result.voices[1]._state.inputBindings.by).toBe(20);
+			expect(result.voices[2]._state.inputBindings.by).toBe(10);
+			expect(result.voices[3]._state.inputBindings.by).toBe(20);
+		}
+	});
+
+	it("scalar broadcasts to all voices", () => {
+		const mult = device("mult", {
+			inputs: inputs({ input: 0, by: 1 }),
+			outputs: ["out"] as const,
+			defaultInput: "input" as const,
+			defaultOutput: "out" as const,
+			process: () => ({ out: 0 }),
+		});
+
+		const polyMult = poly([mult(1), mult(2), mult(3)]);
+
+		// .by(0.5) should broadcast to all voices
+		const result = (polyMult as any).by(0.5);
+
+		expect(isPoly(result)).toBe(true);
+		if (isPoly(result)) {
+			expect(result.voices[0]._state.inputBindings.by).toBe(0.5);
+			expect(result.voices[1]._state.inputBindings.by).toBe(0.5);
+			expect(result.voices[2]._state.inputBindings.by).toBe(0.5);
+		}
+	});
+
+	it("array distributes via callable (default input)", () => {
+		const saw = device("saw", {
+			inputs: inputs({ freq: 440 }),
+			outputs: ["out"] as const,
+			defaultInput: "freq" as const,
+			defaultOutput: "out" as const,
+			process: () => ({ out: 0 }),
+		});
+
+		// Create poly of 3 saws
+		const polySaw = poly([saw(100), saw(200), saw(300)]);
+
+		// Call with array to set default input on each
+		const result = (polySaw as any)([1000, 2000, 3000]);
+
+		expect(isPoly(result)).toBe(true);
+		if (isPoly(result)) {
+			expect(result.voices[0]._state.inputBindings.freq).toBe(1000);
+			expect(result.voices[1]._state.inputBindings.freq).toBe(2000);
+			expect(result.voices[2]._state.inputBindings.freq).toBe(3000);
+		}
+	});
+});
+
 describe("poly descriptor Uzu chaining", () => {
 	beforeEach(() => {
 		resetIdCounter();
@@ -304,5 +472,91 @@ describe("poly descriptor Uzu chaining", () => {
 		// Each voice should be an lpf (check spec)
 		expect(chained.voices[0]._state.spec.inputs.cutoff).toBeDefined();
 		expect(chained.voices[1]._state.spec.inputs.cutoff).toBeDefined();
+	});
+});
+
+describe("apply method", () => {
+	beforeEach(() => {
+		resetIdCounter();
+		clearDeviceRegistry();
+	});
+
+	it("descriptor.apply passes descriptor to callback", () => {
+		const saw = device("saw", {
+			inputs: inputs({ freq: 440 }),
+			outputs: ["out"] as const,
+			defaultInput: "freq" as const,
+			defaultOutput: "out" as const,
+			process: () => ({ out: 0 }),
+		});
+
+		const result = saw(220);
+		let captured: AnyDescriptor | null = null;
+
+		const returned = (result as any).apply((d: AnyDescriptor) => {
+			captured = d;
+			return "test-return";
+		});
+
+		expect(captured).toBe(result);
+		expect(returned).toBe("test-return");
+	});
+
+	it("apply allows inline variable binding", () => {
+		const clock = device("clock", {
+			inputs: inputs({ bpm: 120 }),
+			outputs: ["out", "gate"] as const,
+			defaultInput: "bpm" as const,
+			defaultOutput: "out" as const,
+			process: () => ({ out: 0, gate: 0 }),
+		});
+
+		const seq = device("seq", {
+			inputs: inputs({ clk: 0 }),
+			outputs: ["cv"] as const,
+			defaultInput: "clk" as const,
+			defaultOutput: "cv" as const,
+			process: () => ({ cv: 0 }),
+		});
+
+		const saw = device("saw", {
+			inputs: inputs({ freq: 440 }),
+			outputs: ["out"] as const,
+			defaultInput: "freq" as const,
+			defaultOutput: "out" as const,
+			process: () => ({ out: 0 }),
+		});
+
+		// Use apply to capture clock and use it in two places
+		const result = (clock(120) as any).apply((c: AnyDescriptor) => {
+			const s = seq(c.out);
+			return (s as any).saw();
+		});
+
+		// Result should be a saw descriptor
+		expect(isDescriptor(result)).toBe(true);
+		expect(result._state.spec.defaultOutput).toBe("out");
+	});
+
+	it("poly.apply passes poly to callback", () => {
+		const saw = device("saw", {
+			inputs: inputs({ freq: 440 }),
+			outputs: ["out"] as const,
+			defaultInput: "freq" as const,
+			defaultOutput: "out" as const,
+			process: () => ({ out: 0 }),
+		});
+
+		const polySaw = poly([saw(220), saw(330), saw(440)]);
+		let captured: PolyDescriptor | null = null;
+
+		const returned = (polySaw as any).apply((p: PolyDescriptor) => {
+			captured = p;
+			return "poly-test";
+		});
+
+		expect(isPoly(captured)).toBe(true);
+		expect(captured?.voices.length).toBe(3);
+		expect(returned).toBe("poly-test");
 	});
 });
