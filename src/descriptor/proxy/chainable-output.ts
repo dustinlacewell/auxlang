@@ -1,9 +1,5 @@
-import { applyBareSignal } from "../chaining/apply-bare-signal";
-import { isDescriptor } from "../guards/is-descriptor";
-import { isPlainParamsObject } from "../guards/is-params-object";
 import { getDeviceFactory } from "../registry";
-import { applyParams } from "../signals/apply-params";
-import type { AnyDescriptor, DescriptorId, OutputRef, Signal } from "../types";
+import type { AnyDescriptor, DescriptorId, OutputRef } from "../types";
 
 type PolyDescriptor = { _poly: true; voices: readonly AnyDescriptor[] };
 
@@ -25,31 +21,17 @@ export function createChainableOutput(
 	outputName: string,
 ): OutputRef {
 	// The callable function - when invoked, chain a device
-	const callable = (params?: Record<string, Signal> | Signal): AnyDescriptor | PolyDescriptor => {
+	// Accepts any number of positional args, passed through to the factory
+	const callable = (...args: unknown[]): AnyDescriptor | PolyDescriptor => {
 		const deviceFactory = getDeviceFactory(outputName);
 		if (!deviceFactory) {
 			throw new Error(`"${outputName}" is not a registered device`);
 		}
-		// Use the default output of the source descriptor
+		// Use the default output of the source descriptor as the chained signal
 		const sourceRef: OutputRef = { descriptorId, outputName: defaultOutput };
-		const device = deviceFactory(sourceRef);
 
-		// No params - just return the device with default input connected
-		if (params === undefined) {
-			return device;
-		}
-
-		// Plain object params - apply each as a setter
-		if (isPlainParamsObject(params)) {
-			return applyParams(device, params);
-		}
-
-		// Bare signal (lambda, number, OutputRef, etc.) - apply to secondary input
-		if (isDescriptor(device)) {
-			return applyBareSignal(device, params as Signal);
-		}
-
-		return device;
+		// Pass chained signal + all args to factory
+		return deviceFactory(sourceRef, ...args);
 	};
 
 	// Proxy to make it both an OutputRef and chainable

@@ -5,6 +5,9 @@ export const timeClock: TestDefinition = {
 	category: "Timing",
 	name: "clock",
 	desc: "Clock at 120 BPM - steady beat",
-	code: `let clk = clock(120)
-seq("c4", { clk }).trig.kick().out()`,
+	code: `clock(120)
+  .seq("c4")
+  .trig
+  .kick()
+  .out()`,
 };

@@ -129,8 +129,7 @@ export class Dattorro {
 	private decay: f32 = 0.5;
 	private excursionRate: f32 = 0.5;
 	private excursionDepth: f32 = 0.7;
-	private wet: f32 = 0.3;
-	private dry: f32 = 0.7;
+	private mix: f32 = 0.3;
 
 	private sampleRate: f32;
 
@@ -166,12 +165,8 @@ export class Dattorro {
 		this.damping = value * 0.5;
 	}
 
-	setWet(value: f32): void {
-		this.wet = value;
-	}
-
-	setDry(value: f32): void {
-		this.dry = value;
+	setMix(value: f32): void {
+		this.mix = value;
 	}
 
 	@inline
@@ -289,9 +284,9 @@ export class Dattorro {
 			unchecked(this.delays[i]).advance();
 		}
 
-		// Mix to mono output
-		const wetMono = (lo + ro) * 0.5 * this.wet * 0.6;
-		return wetMono + input * this.dry;
+		// Mix to mono output (crossfade between dry and wet)
+		const wetMono = (lo + ro) * 0.5 * 0.6;
+		return wetMono * this.mix + input * (1 - this.mix);
 	}
 
 	clear(): void {

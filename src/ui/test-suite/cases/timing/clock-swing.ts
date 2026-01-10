@@ -5,6 +5,10 @@ export const timeClockSwing: TestDefinition = {
 	category: "Timing",
 	name: "clock - swing",
 	desc: "Clock with swing - shuffled feel",
-	code: `let clk = clock(120).swing(0.3)
-seq("c4*2", { clk }).trig.hihat({ decay: 0.05 }).out()`,
+	code: `clock(120)
+  .swing(0.3)
+  .seq("c4*2")
+  .trig
+  .hihat({ decay: 0.05 })
+  .out()`,
 };

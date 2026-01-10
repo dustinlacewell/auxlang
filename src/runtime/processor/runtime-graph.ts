@@ -1,5 +1,5 @@
 import { hydrateConfig, hydrateProcess } from "./hydrate";
-import type { CompiledGraph, CompiledNode, ConfigFn, SerializedSpec } from "./types";
+import type { CompiledGraph, CompiledNode, ConfigVal, SerializedSpec } from "./types";
 
 /**
  * Deep clone that preserves TypedArrays (Float32Array, etc.).
@@ -86,7 +86,7 @@ function hydrateWasmProcess(
 }
 
 /** Hydrated signal lambda function */
-type HydratedLambda = (state: Record<string, unknown>, sampleRate: number) => number;
+type HydratedLambda = (state: Record<string, unknown>, sampleRate: number, time: number) => number;
 
 /**
  * Pre-computed binding for resolving a node input.
@@ -108,13 +108,14 @@ interface OptimizedNode {
 	/** The hydrated process function */
 	process: (
 		inputs: Record<string, number>,
-		config: Record<string, ConfigFn>,
+		config: Record<string, ConfigVal>,
 		state: Record<string, unknown>,
 		sampleRate: number,
+		time: number,
 	) => Record<string, number>;
 
-	/** Hydrated config functions */
-	config: Record<string, ConfigFn>;
+	/** Hydrated config values (functions or data) */
+	config: Record<string, ConfigVal>;
 
 	/** Mutable state for the device */
 	state: Record<string, unknown>;
@@ -148,6 +149,7 @@ interface OptimizedNode {
 export interface CollectedStates {
 	nodeStates: Map<string, Record<string, unknown>>;
 	lambdaStates: Map<string, Record<string, unknown>>; // key: "nodeId:inputName"
+	sampleCount: number;
 }
 
 export class RuntimeGraph {
@@ -159,6 +161,9 @@ export class RuntimeGraph {
 
 	/** Lambda states keyed by "nodeId:inputName" for state preservation */
 	private lambdaStates: Map<string, Record<string, unknown>> = new Map();
+
+	/** Sample count since graph creation (for time calculation) */
+	private sampleCount = 0;
 
 	constructor(
 		compiledGraph: CompiledGraph,
@@ -181,6 +186,11 @@ export class RuntimeGraph {
 			throw new Error(`Output node ${compiledGraph.outputNodeId} not found`);
 		}
 		this.outputNodeIndex = outputIndex;
+
+		// Restore sample count from previous graph if available
+		if (oldStates) {
+			this.sampleCount = oldStates.sampleCount;
+		}
 
 		// Build optimized nodes
 		this.nodes = compiledGraph.nodes.map((compiledNode) => {
@@ -294,6 +304,10 @@ export class RuntimeGraph {
 	 * Returns the output signal (mono).
 	 */
 	processSample(sampleRate: number): number {
+		// Calculate time in seconds
+		const time = this.sampleCount / sampleRate;
+		this.sampleCount++;
+
 		// Process each node in topological order
 		for (let i = 0; i < this.nodes.length; i++) {
 			const node = this.nodes[i];
@@ -309,7 +323,7 @@ export class RuntimeGraph {
 					node.inputRecord[inputName] = binding.value;
 				} else if (binding.type === "lambda") {
 					// Execute lambda with its own persistent state
-					node.inputRecord[inputName] = binding.fn(binding.state, sampleRate);
+					node.inputRecord[inputName] = binding.fn(binding.state, sampleRate, time);
 				} else {
 					// Connection reads from current sample
 					const sourceNode = this.nodes[binding.sourceNodeIndex];
@@ -320,7 +334,7 @@ export class RuntimeGraph {
 			}
 
 			// Call the device's process function
-			const result = node.process(node.inputRecord, node.config, node.state, sampleRate);
+			const result = node.process(node.inputRecord, node.config, node.state, sampleRate, time);
 
 			// Copy results to pre-allocated outputRecord
 			for (const outputName of node.outputNames) {
@@ -349,6 +363,7 @@ export class RuntimeGraph {
 		return {
 			nodeStates,
 			lambdaStates: this.lambdaStates,
+			sampleCount: this.sampleCount,
 		};
 	}
 }

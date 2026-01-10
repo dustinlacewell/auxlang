@@ -4,28 +4,36 @@ export const lambdaChaosFm: TestDefinition = {
 	id: "lambda-chaos-fm",
 	category: "Inline",
 	name: "chaos FM",
-	desc: "FM synthesis with chaotic modulation index",
-	code: `// Chaotic FM - modulation index wanders unpredictably
-let c = clock(60)
-let s = seq("c3 ~ e3 ~ g3 ~ c4 ~", { clk: c })
+	desc: "FM synthesis with lambda-driven chaotic modulation depth",
+	code: `// FM with chaotic modulation depth via inline lambda
+clock(60)
+  .seq("c3 ~ e3 ~ g3 ~ c4 ~")
+  .apply(s => {
+    // Lambda for chaotic wandering mod depth (control signal, not audio)
+    let modDepth = (state, sr, t) => {
+      // Random walk with bounds
+      state.depth = state.depth ?? 100
+      state.depth += (Math.random() - 0.5) * 2
+      state.depth = Math.max(50, Math.min(400, state.depth))
+      // Add sine wobble
+      return state.depth + Math.sin(t * 2) * 50
+    }
 
-// Carrier oscillator
-s.sin()
-  // FM modulation with chaotic index
-  .add({
-    to: sin(s.cv.mult({ by: 2 })).mult({
-      by: (state, sr) => {
-        // Slowly wandering modulation depth
-        state.t = (state.t ?? 0) + 1 / sr
-        state.drift = (state.drift ?? 0) + (Math.random() - 0.5) * 0.001
-        state.drift = Math.max(-0.5, Math.min(0.5, state.drift))
-        const base = Math.sin(state.t * 0.3) * 0.5 + 0.5
-        return (base + state.drift) * 200
-      }
-    })
-  })
-  .lpf({ cutoff: 2000 })
-  .gain({ level: s.gate.adsr({ attack: 0.1, decay: 0.2, sustain: 0.4, release: 0.5 }) })
-  .mult({ by: 0.3 })
-  .out()`,
+    // Modulator with lambda-controlled depth
+    let fmMod = sin(s.cv.mult({ by: 3 })).mult({ by: modDepth })
+
+    // Carrier with FM
+    sin(s.cv.add({ to: fmMod }))
+      .lpf({ cutoff: 4000 })
+      .gain({
+        level: s.gate.adsr({
+          attack: 0.01,
+          decay: 0.3,
+          sustain: 0.3,
+          release: 0.4
+        })
+      })
+      .gain({ level: 0.4 })
+      .out()
+  })`,
 };

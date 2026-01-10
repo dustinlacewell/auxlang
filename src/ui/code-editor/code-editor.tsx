@@ -72,7 +72,7 @@ export function CodeEditor({ value, onChange, onRun, className = "" }: CodeEdito
 	return (
 		<div
 			ref={containerRef}
-			className={`border border-surface-700 rounded overflow-hidden ${className}`}
+			className={`border border-surface-700 rounded overflow-auto ${className}`}
 		/>
 	);
 }

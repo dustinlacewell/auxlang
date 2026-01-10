@@ -1,7 +1,7 @@
 (module
  (type $0 (func))
- (type $1 (func (param f32)))
- (type $2 (func (param i32)))
+ (type $1 (func (param i32)))
+ (type $2 (func (param f32)))
  (type $3 (func (param i32 i32)))
  (type $4 (func (result i32)))
  (type $5 (func (param i32 i32) (result i32)))
@@ -57,8 +57,7 @@
  (export "process" (func $assembly/index/process))
  (export "set_room" (func $assembly/index/set_room))
  (export "set_damp" (func $assembly/index/set_damp))
- (export "set_wet" (func $assembly/index/set_wet))
- (export "set_dry" (func $assembly/index/set_dry))
+ (export "set_mix" (func $assembly/index/set_mix))
  (export "clear" (func $assembly/index/clear))
  (export "get_state_size" (func $assembly/index/get_state_size))
  (export "alloc_state_buffer" (func $assembly/index/alloc_state_buffer))
@@ -2606,7 +2605,7 @@
    i64.const 0
    i64.store offset=8
    global.get $~lib/memory/__stack_pointer
-   i32.const 88
+   i32.const 84
    i32.const 5
    call $~lib/rt/itcms/__new
    local.tee $1
@@ -2801,20 +2800,14 @@
    local.get $1
    i32.store offset=4
    local.get $1
-   f32.const 0.699999988079071
+   f32.const 0
    f32.store offset=80
    global.get $~lib/memory/__stack_pointer
    local.get $1
    i32.store offset=4
    local.get $1
-   f32.const 0
-   f32.store offset=84
-   global.get $~lib/memory/__stack_pointer
-   local.get $1
-   i32.store offset=4
-   local.get $1
    local.get $0
-   f32.store offset=84
+   f32.store offset=80
    global.get $~lib/memory/__stack_pointer
    local.get $1
    i32.store offset=4
@@ -3233,7 +3226,7 @@
   i32.store offset=4
   local.get $10
   local.get $1
-  f32.load offset=84
+  f32.load offset=80
   f32.div
   local.set $10
   global.get $~lib/memory/__stack_pointer
@@ -3247,7 +3240,7 @@
   i32.store offset=4
   local.get $11
   local.get $1
-  f32.load offset=84
+  f32.load offset=80
   f32.mul
   f32.const 1e3
   f32.div
@@ -5953,10 +5946,10 @@
   f32.add
   f32.const 0.5
   f32.mul
+  f32.const 0.6000000238418579
+  f32.mul
   local.get $1
   f32.load offset=76
-  f32.mul
-  f32.const 0.6000000238418579
   f32.mul
   local.set $4
   global.get $~lib/memory/__stack_pointer
@@ -5964,8 +5957,10 @@
   i32.store offset=4
   local.get $4
   local.get $0
+  f32.const 1
   local.get $1
-  f32.load offset=80
+  f32.load offset=76
+  f32.sub
   f32.mul
   f32.add
   local.set $0
@@ -6091,7 +6086,7 @@
   call $~lib/builtins/abort
   unreachable
  )
- (func $assembly/index/set_wet (param $0 f32)
+ (func $assembly/index/set_mix (param $0 f32)
   (local $1 i32)
   global.get $~lib/memory/__stack_pointer
   i32.const 4
@@ -6128,61 +6123,6 @@
     local.get $1
     local.get $0
     f32.store offset=76
-    global.get $~lib/memory/__stack_pointer
-    i32.const 4
-    i32.add
-    global.set $~lib/memory/__stack_pointer
-   end
-   global.get $~lib/memory/__stack_pointer
-   i32.const 4
-   i32.add
-   global.set $~lib/memory/__stack_pointer
-   return
-  end
-  i32.const 34720
-  i32.const 34768
-  i32.const 1
-  i32.const 1
-  call $~lib/builtins/abort
-  unreachable
- )
- (func $assembly/index/set_dry (param $0 f32)
-  (local $1 i32)
-  global.get $~lib/memory/__stack_pointer
-  i32.const 4
-  i32.sub
-  global.set $~lib/memory/__stack_pointer
-  block $folding-inner0
-   global.get $~lib/memory/__stack_pointer
-   i32.const 1928
-   i32.lt_s
-   br_if $folding-inner0
-   global.get $~lib/memory/__stack_pointer
-   i32.const 0
-   i32.store
-   global.get $assembly/index/reverb
-   if
-    global.get $~lib/memory/__stack_pointer
-    global.get $assembly/index/reverb
-    local.tee $1
-    i32.store
-    global.get $~lib/memory/__stack_pointer
-    i32.const 4
-    i32.sub
-    global.set $~lib/memory/__stack_pointer
-    global.get $~lib/memory/__stack_pointer
-    i32.const 1928
-    i32.lt_s
-    br_if $folding-inner0
-    global.get $~lib/memory/__stack_pointer
-    i32.const 0
-    i32.store
-    global.get $~lib/memory/__stack_pointer
-    local.get $1
-    i32.store
-    local.get $1
-    local.get $0
-    f32.store offset=80
     global.get $~lib/memory/__stack_pointer
     i32.const 4
     i32.add

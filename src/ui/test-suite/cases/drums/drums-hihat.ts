@@ -5,8 +5,8 @@ export const drumsHihat: TestDefinition = {
 	category: "Drums",
 	name: "hihat",
 	desc: "808-style hihat - metallic tick",
-	code: `let clk = clock(120)
-seq("c4*8", { clk })
+	code: `clock(120)
+  .seq("c4*8")
   .trig
   .hihat({ decay: 0.05, tone: 0.7 })
   .gain({ level: 0.5 })

@@ -6,7 +6,10 @@ export const notchModulated: TestDefinition = {
 	name: "notch - modulated",
 	desc: "Notch with LFO modulation - phaser-like effect",
 	code: `noise()
-  .notch({ cutoff: lfo(2).min(200).max(2000), resonance: 0.7 })
+  .notch({
+    cutoff: lfo(2).min(200).max(2000),
+    resonance: 0.7
+  })
   .gain({ level: 0.3 })
   .out()`,
 };

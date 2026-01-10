@@ -19,19 +19,25 @@ export interface SerializedSpec {
 	readonly processSource: string;
 }
 
+/** A serialized config value - either function source or plain data */
+export type SerializedConfig =
+	| { readonly type: "fn"; readonly source: string }
+	| { readonly type: "data"; readonly value: unknown };
+
 /** A compiled node ready for worklet execution */
 export interface CompiledNode {
 	readonly id: string;
 	readonly spec: SerializedSpec;
 	readonly inputs: Record<string, CompiledInput>;
-	readonly config: Record<string, string>; // Stringified functions
+	readonly config: Record<string, SerializedConfig>;
 	readonly wasmBytes?: ArrayBuffer;
 }
 
-/** A compiled input - either constant or connection */
+/** A compiled input - constant, connection, or lambda */
 export type CompiledInput =
 	| { readonly type: "constant"; readonly value: PolySignal }
-	| { readonly type: "connection"; readonly nodeId: string; readonly output: string };
+	| { readonly type: "connection"; readonly nodeId: string; readonly output: string }
+	| { readonly type: "lambda"; readonly fnSource: string };
 
 /** A compiled graph ready for worklet execution */
 export interface CompiledGraph {

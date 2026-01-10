@@ -33,6 +33,7 @@
     "@codemirror/view": "^6.39.9",
     "@lezer/highlight": "^1.2.3",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "tonal": "^6.4.2"
   }
 }

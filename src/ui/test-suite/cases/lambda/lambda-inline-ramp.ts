@@ -5,11 +5,13 @@ export const lambdaInlineRamp: TestDefinition = {
 	category: "Inline",
 	name: "inline ramp",
 	desc: "Lambda generates rising pitch ramp",
-	code: `// Pitch ramp using inline lambda state
+	code: `// Pitch ramp using time parameter
 // Ramps from 200Hz to 800Hz over ~2 seconds, then resets
-saw((s, sr) => {
-  s.t = (s.t ?? 0) + 1 / sr
-  if (s.t > 2) s.t = 0
-  return 200 + (s.t / 2) * 600
-}).lpf({ cutoff: 1500 }).gain({ level: 0.3 }).out()`,
+saw((s, sr, t) => {
+  const cycleT = t % 2  // Reset every 2 seconds
+  return 200 + (cycleT / 2) * 600
+})
+  .lpf({ cutoff: 1500 })
+  .gain({ level: 0.3 })
+  .out()`,
 };

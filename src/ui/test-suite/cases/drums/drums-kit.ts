@@ -5,9 +5,9 @@ export const drumsKit: TestDefinition = {
 	category: "Drums",
 	name: "drum kit combined",
 	desc: "All drums together - full beat",
-	code: `let clk = clock(120)
+	code: `let c = clock(120)
 
-seq("c4 ~ c4 ~", { clk }).trig.kick({ decay: 0.4 }).out()
-seq("~ c4 ~ c4", { clk }).trig.snare({ snappy: 0.6 }).out()
-seq("c4*4", { clk }).trig.hihat({ decay: 0.04 }).gain({ level: 0.4 }).out()`,
+c.seq("c4 ~ c4 ~").trig.kick({ decay: 0.4 }).out()
+c.seq("~ c4 ~ c4").trig.snare({ snappy: 0.6 }).out()
+c.seq("c4*4").trig.hihat({ decay: 0.04 }).gain({ level: 0.4 }).out()`,
 };

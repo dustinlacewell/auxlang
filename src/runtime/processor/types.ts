@@ -26,11 +26,16 @@ export interface CompiledInput {
 	fnSource?: string;
 }
 
+/** Serialized config - function source or plain data */
+export type SerializedConfig =
+	| { type: "fn"; source: string }
+	| { type: "data"; value: unknown };
+
 export interface CompiledNode {
 	id: string;
 	spec: SerializedSpec;
 	inputs: Record<string, CompiledInput>;
-	config: Record<string, string>;
+	config: Record<string, SerializedConfig>;
 	wasmBytes?: ArrayBuffer;
 }
 
@@ -43,3 +48,6 @@ export type WorkletMessage = { type: "setGraph"; graph: CompiledGraph } | { type
 
 /** A hydrated config function */
 export type ConfigFn = (...args: unknown[]) => unknown;
+
+/** A hydrated config value - either a function or plain data */
+export type ConfigVal = ConfigFn | unknown;

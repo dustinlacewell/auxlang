@@ -5,11 +5,10 @@ export const utilMix: TestDefinition = {
 	category: "Utilities",
 	name: "mix - 4 channel",
 	desc: "Four detuned saws - thick unison",
-	code: `let f = 220
-mix(saw(f))
-  .b(saw(mult(f).by(1.005)))
-  .c(saw(mult(f).by(0.995)))
-  .d(saw(mult(f).by(1.01)))
+	code: `mix(saw(220))
+  .b(saw(221.1))
+  .c(saw(218.9))
+  .d(saw(222.2))
   .lpf({ cutoff: 1200 })
   .gain({ level: 0.15 })
   .out()`,

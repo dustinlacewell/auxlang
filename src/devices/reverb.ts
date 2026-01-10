@@ -3,10 +3,10 @@ import { inputs } from "../descriptor/inputs";
 
 /**
  * Freeverb-style algorithmic reverb.
- * Inputs/outputs are plain numbers.
+ * mix: 0 = dry, 1 = wet (crossfade, no clipping)
  */
 export const reverb = device("reverb", {
-	inputs: inputs({ input: 0, room: 0.5, damp: 0.5, wet: 0.33, dry: 0.7 }),
+	inputs: inputs({ input: 0, room: 0.5, damp: 0.5, mix: 0.33 }),
 	outputs: ["audio"],
 	defaultInput: "input",
 	defaultOutput: "audio",
@@ -15,8 +15,7 @@ export const reverb = device("reverb", {
 		const input = (inp.input as number) ?? 0;
 		const room = (inp.room as number) ?? 0.5;
 		const damp = (inp.damp as number) ?? 0.5;
-		const wet = (inp.wet as number) ?? 0.33;
-		const dry = (inp.dry as number) ?? 0.7;
+		const mix = (inp.mix as number) ?? 0.33;
 
 		// Try to use WASM reverb if available
 		// biome-ignore lint/suspicious/noExplicitAny: globalThis typing in worklet
@@ -27,8 +26,7 @@ export const reverb = device("reverb", {
 				g.__nativeReverb.init(sampleRate);
 				state.lastRoom = room;
 				state.lastDamp = damp;
-				state.lastWet = wet;
-				state.lastDry = dry;
+				state.lastMix = mix;
 			}
 
 			if (state.lastRoom !== room) {
@@ -39,13 +37,9 @@ export const reverb = device("reverb", {
 				g.__nativeReverb.setDamp(damp);
 				state.lastDamp = damp;
 			}
-			if (state.lastWet !== wet) {
-				g.__nativeReverb.setWet(wet);
-				state.lastWet = wet;
-			}
-			if (state.lastDry !== dry) {
-				g.__nativeReverb.setDry(dry);
-				state.lastDry = dry;
+			if (state.lastMix !== mix) {
+				g.__nativeReverb.setMix(mix);
+				state.lastMix = mix;
 			}
 
 			return { audio: g.__nativeReverb.process(input) };
@@ -109,6 +103,6 @@ export const reverb = device("reverb", {
 			}
 		}
 
-		return { audio: out * wet + input * dry };
+		return { audio: out * mix + input * (1 - mix) };
 	},
 });

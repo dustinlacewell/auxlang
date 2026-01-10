@@ -34,8 +34,7 @@ export class Freeverb {
   // Parameters
   private roomSize: f32 = 0.5;
   private damping: f32 = 0.5;
-  private wet: f32 = 0.33;
-  private dry: f32 = 0.0;
+  private mix: f32 = 0.33;
   private width: f32 = 1.0;
 
   // Derived values
@@ -81,9 +80,9 @@ export class Freeverb {
     // Damping coefficient
     this.damp1 = this.damping;
 
-    // Wet signal stereo spread
-    this.wet1 = this.wet * (this.width / 2 + 0.5);
-    this.wet2 = this.wet * ((1 - this.width) / 2);
+    // Wet signal stereo spread (based on mix ratio)
+    this.wet1 = this.mix * (this.width / 2 + 0.5);
+    this.wet2 = this.mix * ((1 - this.width) / 2);
   }
 
   setRoomSize(value: f32): void {
@@ -96,13 +95,9 @@ export class Freeverb {
     this.updateDerivedValues();
   }
 
-  setWet(value: f32): void {
-    this.wet = value;
+  setMix(value: f32): void {
+    this.mix = value;
     this.updateDerivedValues();
-  }
-
-  setDry(value: f32): void {
-    this.dry = value;
   }
 
   setWidth(value: f32): void {
@@ -141,10 +136,11 @@ export class Freeverb {
     // Mix wet/dry and apply stereo width
     const wetL: f32 = outL * this.wet1 + outR * this.wet2;
     const wetR: f32 = outR * this.wet1 + outL * this.wet2;
+    const dry: f32 = 1 - this.mix;
 
     const result = new StaticArray<f32>(2);
-    unchecked(result[0] = wetL + inputL * this.dry);
-    unchecked(result[1] = wetR + inputR * this.dry);
+    unchecked(result[0] = wetL + inputL * dry);
+    unchecked(result[1] = wetR + inputR * dry);
 
     return result;
   }
@@ -169,7 +165,7 @@ export class Freeverb {
       out = unchecked(this.allpassesL[i]).process(out);
     }
 
-    return out * this.wet + input * this.dry;
+    return out * this.mix + input * (1 - this.mix);
   }
 
   clear(): void {

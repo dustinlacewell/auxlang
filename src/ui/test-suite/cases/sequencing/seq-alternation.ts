@@ -5,10 +5,19 @@ export const seqAlternation: TestDefinition = {
 	category: "Sequencer",
 	name: "seq - alternation (<>)",
 	desc: "Angle brackets cycle through options each pattern loop",
-	code: `let clk = clock(160)
-let s = seq("c4 <e4 eb4> g4 <e4 f4>", { clk })
-s.saw()
-  .lpf({ cutoff: 1500 })
-  .gain({ level: s.gate.adsr({ attack: 0.01, decay: 0.15, sustain: 0.4, release: 0.1 }) })
-  .out()`,
+	code: `clock(160)
+  .seq("c4 <e4 eb4> g4 <e4 f4>")
+  .apply(s =>
+    s.saw()
+      .lpf({ cutoff: 1500 })
+      .gain({
+        level: s.gate.adsr({
+          attack: 0.01,
+          decay: 0.15,
+          sustain: 0.4,
+          release: 0.1
+        })
+      })
+      .out()
+  )`,
 };

@@ -7,7 +7,10 @@ export const polyStackedFifths: TestDefinition = {
 	desc: "Power chord stack - heavy!",
 	code: `// A1, E2, A2, E3, A3 - stacked fifths
 saw([55, 82.41, 110, 164.81, 220])
-  .lpf({ cutoff: 800, resonance: 0.3 })
+  .lpf({
+    cutoff: 800,
+    resonance: 0.3
+  })
   .gain({ level: 0.1 })
   .out()`,
 };

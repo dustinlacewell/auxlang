@@ -5,9 +5,13 @@ export const drumsKick: TestDefinition = {
 	category: "Drums",
 	name: "kick",
 	desc: "808-style kick drum - deep thump",
-	code: `let clk = clock(120)
-seq("c4 c4 c4 c4", { clk })
+	code: `clock(120)
+  .seq("c4 c4 c4 c4")
   .trig
-  .kick({ pitch: 50, decay: 0.3, sweep: 3 })
+  .kick({
+    pitch: 50,
+    decay: 0.3,
+    sweep: 3
+  })
   .out()`,
 };

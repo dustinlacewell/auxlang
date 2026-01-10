@@ -5,12 +5,23 @@ export const delayModulated: TestDefinition = {
 	category: "Effects",
 	name: "delay - modulated time",
 	desc: "Delay time modulated by LFO for chorus-like effect",
-	code: `let clk = clock(100)
-let s = seq("c4 ~ e4 ~ g4 ~ e4 ~", { clk })
-let modTime = lfo(0.3).min(0.015).max(0.025)
-s
-  .osc()
-  .gain({ level: s.gate.adsr({ attack: 0.01, decay: 0.15, sustain: 0.4, release: 0.2 }) })
-  .delay({ time: modTime, feedback: 0.3, mix: 0.4 })
-  .out()`,
+	code: `clock(100)
+  .seq("c4 ~ e4 ~ g4 ~ e4 ~")
+  .apply(s =>
+    s.osc()
+      .gain({
+        level: s.gate.adsr({
+          attack: 0.01,
+          decay: 0.15,
+          sustain: 0.4,
+          release: 0.2
+        })
+      })
+      .delay({
+        time: lfo(0.3).min(0.015).max(0.025),
+        feedback: 0.3,
+        mix: 0.4
+      })
+      .out()
+  )`,
 };

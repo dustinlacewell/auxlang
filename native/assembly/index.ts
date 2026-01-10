@@ -49,19 +49,11 @@ export function set_damp(value: f32): void {
 }
 
 /**
- * Set reverb wet level (0-1).
- * Amount of reverb in the output.
+ * Set reverb mix (0-1).
+ * 0 = fully dry, 1 = fully wet (crossfade).
  */
-export function set_wet(value: f32): void {
-	if (reverb !== null) (reverb as Dattorro).setWet(value);
-}
-
-/**
- * Set reverb dry level (0-1).
- * Amount of original signal in the output.
- */
-export function set_dry(value: f32): void {
-	if (reverb !== null) (reverb as Dattorro).setDry(value);
+export function set_mix(value: f32): void {
+	if (reverb !== null) (reverb as Dattorro).setMix(value);
 }
 
 /**

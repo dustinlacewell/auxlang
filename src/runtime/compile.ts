@@ -54,10 +54,14 @@ function compileNode(
 		inputs[name] = compileInput(resolved);
 	}
 
-	// Serialize config functions
-	const config: Record<string, string> = {};
-	for (const [name, fn] of Object.entries(node.configBindings)) {
-		config[name] = fn.toString();
+	// Serialize config values (functions as source, data as JSON)
+	const config: Record<string, { type: "fn"; source: string } | { type: "data"; value: unknown }> = {};
+	for (const [name, value] of Object.entries(node.configBindings)) {
+		if (typeof value === "function") {
+			config[name] = { type: "fn", source: value.toString() };
+		} else {
+			config[name] = { type: "data", value };
+		}
 	}
 
 	const compiled: CompiledNode = {
