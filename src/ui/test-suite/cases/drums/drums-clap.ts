@@ -5,8 +5,8 @@ export const drumsClap: TestDefinition = {
 	category: "Drums",
 	name: "clap",
 	desc: "808-style clap - layered snappy sound",
-	code: `let clk = clock(120)
-seq("~ c4 ~ c4", { clk })
+	code: `clock(120)
+  .seq("~ c4 ~ c4")
   .trig
   .clap({ decay: 0.2 })
   .out()`,

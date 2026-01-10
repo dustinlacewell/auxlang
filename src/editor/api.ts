@@ -25,6 +25,9 @@ export { seq } from "../devices/seq/seq";
 export { counter } from "../devices/counter";
 export { clockDiv, clockMult } from "../devices/clock-div";
 
+// Harmony
+export { chord } from "../devices/chord";
+
 // Envelopes
 export { env } from "../devices/env";
 export { adsr } from "../devices/adsr";
@@ -47,6 +50,7 @@ export { mix } from "../devices/mix";
 export { slew } from "../devices/slew";
 export { sah } from "../devices/sah";
 export { pick } from "../devices/pick";
+export { quantize } from "../devices/quantize";
 
 // Math & Logic
 export {

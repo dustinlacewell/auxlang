@@ -128,6 +128,21 @@ import { lambdaNestedApply } from "./cases/lambda/lambda-nested-apply";
 import { lambdaSidechain } from "./cases/lambda/lambda-sidechain";
 import { lambdaWobbleBass } from "./cases/lambda/lambda-wobble-bass";
 
+// Quantize
+import { quantizeMajor } from "./cases/quantize/quantize-major";
+import { quantizePentatonic } from "./cases/quantize/quantize-pentatonic";
+import { quantizeBlues } from "./cases/quantize/quantize-blues";
+import { quantizeDorian } from "./cases/quantize/quantize-dorian";
+import { quantizeChromatic } from "./cases/quantize/quantize-chromatic";
+import { quantizeWholeTone } from "./cases/quantize/quantize-whole-tone";
+import { quantizeBluesModulated } from "./cases/quantize/quantize-blues-modulated";
+
+// Chord
+import { chordMajor } from "./cases/chord/chord-major";
+import { chordMinor } from "./cases/chord/chord-minor";
+import { chordSeventh } from "./cases/chord/chord-seventh";
+import { chordProgression } from "./cases/chord/chord-progression";
+
 import type { TestDefinition } from "./cases/types";
 
 export const tests: TestDefinition[] = [
@@ -261,6 +276,21 @@ export const tests: TestDefinition[] = [
 	lambdaGlitchDrums,
 	lambdaDroneTexture,
 	lambdaArpSpeed,
+
+	// Quantize
+	quantizeMajor,
+	quantizePentatonic,
+	quantizeBlues,
+	quantizeBluesModulated,
+	quantizeDorian,
+	quantizeChromatic,
+	quantizeWholeTone,
+
+	// Chord
+	chordMajor,
+	chordMinor,
+	chordSeventh,
+	chordProgression,
 ];
 
 export function getTestsByCategory(): Map<string, TestDefinition[]> {

@@ -6,7 +6,7 @@ import { isDescriptor } from "../descriptor/guards/is-descriptor";
 import { isSignalLambda } from "../descriptor/guards/is-lambda";
 import { isOutputRef } from "../descriptor/guards/is-output-ref";
 import { getDescriptor } from "../descriptor/registry";
-import type { AnyDescriptor, DescriptorId, Signal } from "../descriptor/types";
+import type { AnyDescriptor, ConfigValue, DescriptorId, Signal } from "../descriptor/types";
 import type { Graph, GraphNode, ResolvedInput } from "./types";
 
 /**
@@ -35,7 +35,7 @@ export function reify(output: AnyDescriptor): Graph {
 		}
 
 		// Resolve config bindings (use bound value or default)
-		const resolvedConfig: Record<string, (...args: unknown[]) => unknown> = {};
+		const resolvedConfig: Record<string, ConfigValue> = {};
 		for (const [configName, configDef] of Object.entries(spec.config)) {
 			resolvedConfig[configName] = configBindings[configName] ?? configDef.default;
 		}

@@ -28,7 +28,8 @@
       "Bash(pnpm exec tsc:*)",
       "Bash(grep:*)",
       "Bash(xargs sed:*)",
-      "Bash(for dir in */)"
+      "Bash(for dir in */)",
+      "Bash(pnpm exec vitest:*)"
     ]
   }
 }

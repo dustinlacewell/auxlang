@@ -1,5 +1,7 @@
+import { isOutputRef } from "./guards/is-output-ref";
 import { isPlainParamsObject } from "./guards/is-params-object";
 import { isSignalArray } from "./guards/is-signal-array";
+import { isDescriptor } from "./guards/is-descriptor";
 import { createDescriptorId } from "./identity";
 import { poly, type PolyDescriptor } from "./poly";
 import { createChainableOutput } from "./proxy/chainable-output";
@@ -16,6 +18,12 @@ import type {
 } from "./types";
 
 
+/** Expand function - runs at construction time to replace device with other descriptors */
+export type ExpandFn = (
+	config: Record<string, ConfigValue>,
+	inputBindings: Record<string, Signal>,
+) => AnyDescriptor | PolyDescriptor;
+
 /** Input to device() - process is a function, processSource is auto-generated */
 export interface DeviceInput<I extends string, C extends string, O extends string> {
 	readonly inputs: Record<I, { default: number | number[] }>;
@@ -27,6 +35,10 @@ export interface DeviceInput<I extends string, C extends string, O extends strin
 	readonly process?: ProcessFn<any, any, any>;
 	/** URL to WASM module - if provided, process is optional */
 	readonly wasmUrl?: string;
+	/** Positional args order - consumed in sequence until object or end */
+	readonly positionalArgs?: readonly (I | C)[];
+	/** Expand function - replaces this device with other descriptors at construction */
+	readonly expand?: ExpandFn;
 }
 
 /** Extract config keys from an input object, defaulting to never if no config */
@@ -47,6 +59,8 @@ type DeviceSpecInput = {
 	defaultOutput: string;
 	process?: AnyProcessFn;
 	wasmUrl?: string;
+	positionalArgs?: readonly string[];
+	expand?: ExpandFn;
 };
 
 /**
@@ -95,37 +109,109 @@ export function device<const T extends DeviceSpecInput>(
 		...(input.wasmUrl ? { wasmUrl: input.wasmUrl } : {}),
 	};
 
-	// Create the base descriptor
-	const baseDescriptor = createDescriptor(spec, {}, {});
+	const positionalArgs = input.positionalArgs ?? [input.defaultInput];
+	const expandFn = input.expand;
+	const inputNames = Object.keys(spec.inputs);
+	const configNames = Object.keys(spec.config);
+
+	// Factory function that handles positional args and expand
+	// When chained (e.g., clock.seq("pattern")), first arg is an OutputRef/Descriptor
+	// When called directly (e.g., seq("pattern")), first arg is a positional arg
+	const factory = (firstArg?: unknown, ...restArgs: unknown[]) => {
+		const inputBindings: Record<string, Signal> = {};
+		const configBindings: Record<string, ConfigValue> = {};
+
+		// Detect if we're being chained: first arg is OutputRef or Descriptor
+		const isChained = firstArg !== undefined &&
+			(isOutputRef(firstArg) || isDescriptor(firstArg));
+
+		// Collect args to consume via positionalArgs
+		const argsToConsume: unknown[] = isChained ? restArgs :
+			(firstArg !== undefined ? [firstArg, ...restArgs] : []);
+
+		// If chained, the chained signal goes directly to defaultInput
+		if (isChained) {
+			inputBindings[spec.defaultInput] = firstArg as Signal;
+		}
+
+		// Consume argsToConsume via positionalArgs order
+		// If chained, skip defaultInput in positionalArgs (it's already bound)
+		let argIndex = 0;
+		for (const paramName of positionalArgs) {
+			// Skip defaultInput if we're chained (it's already in inputBindings)
+			if (isChained && paramName === spec.defaultInput) {
+				continue;
+			}
+
+			if (argIndex >= argsToConsume.length) break;
+			const arg = argsToConsume[argIndex];
+
+			// If we hit an object, stop positional consumption
+			if (isPlainParamsObject(arg)) break;
+
+			const isInput = inputNames.includes(paramName);
+			const isConfig = configNames.includes(paramName);
+
+			if (isInput) {
+				inputBindings[paramName] = arg as Signal;
+			} else if (isConfig) {
+				configBindings[paramName] = arg as ConfigValue;
+			}
+			argIndex++;
+		}
+
+		// If last arg is a params object, merge it
+		const lastArg = argsToConsume[argsToConsume.length - 1];
+		if (argsToConsume.length > 0 && isPlainParamsObject(lastArg)) {
+			const params = lastArg as Record<string, unknown>;
+			for (const [key, value] of Object.entries(params)) {
+				if (inputNames.includes(key)) {
+					inputBindings[key] = value as Signal;
+				} else if (configNames.includes(key)) {
+					configBindings[key] = value as ConfigValue;
+				}
+			}
+		}
+
+		// If expand function provided, use it instead of creating normal descriptor
+		if (expandFn) {
+			// Merge config defaults with bindings
+			const fullConfig: Record<string, ConfigValue> = {};
+			for (const [key, def] of Object.entries(spec.config)) {
+				fullConfig[key] = configBindings[key] ?? def.default;
+			}
+			const result = expandFn(fullConfig, inputBindings);
+			// Apply any remaining input bindings to the expanded result
+			let finalResult = result;
+			for (const [key, value] of Object.entries(inputBindings)) {
+				if (key in spec.inputs && typeof (finalResult as any)[key] === "function") {
+					finalResult = (finalResult as any)[key](value);
+				}
+			}
+			return finalResult;
+		}
+
+		return createDescriptor(spec, inputBindings, configBindings);
+	};
 
 	// Register device factory if name provided
 	if (name) {
-		registerDevice(name, (inputSignal?: Signal | Record<string, Signal>) => {
-			if (inputSignal === undefined) {
-				return createDescriptor(spec, {}, {});
-			}
-			// Check if it's a plain params object with input names as keys
-			if (
-				typeof inputSignal === "object" &&
-				inputSignal !== null &&
-				!Array.isArray(inputSignal) &&
-				!("_state" in inputSignal) &&
-				!("_feedback" in inputSignal) &&
-				!("descriptorId" in inputSignal)
-			) {
-				// Check if any keys match input names - if so, treat as params object
-				const inputNames = Object.keys(spec.inputs);
-				const signalKeys = Object.keys(inputSignal);
-				const hasInputKey = signalKeys.some((k) => inputNames.includes(k));
-				if (hasInputKey) {
-					// It's a params object like { a: signal, b: signal }
-					return createDescriptor(spec, inputSignal as Record<string, Signal>, {});
-				}
-			}
-			// Single signal goes to default input
-			return createDescriptor(spec, { [spec.defaultInput]: inputSignal as Signal }, {});
-		});
+		registerDevice(name, factory);
 	}
+
+	// For devices with expand, return the factory function directly
+	// For regular devices, return a base descriptor
+	if (expandFn) {
+		// Cast is safe: factory returns the correct runtime shape
+		return factory as unknown as Descriptor<
+			keyof T["inputs"] & string,
+			ConfigKeys<T> & string,
+			T["outputs"][number]
+		>;
+	}
+
+	// Create the base descriptor for regular devices
+	const baseDescriptor = createDescriptor(spec, {}, {});
 
 	// Cast is safe: createDescriptor returns the correct runtime shape,
 	// and device() ensures the type parameters match the spec

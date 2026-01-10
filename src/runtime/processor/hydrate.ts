@@ -1,10 +1,16 @@
-import type { ConfigFn } from "./types";
+import type { SerializedConfig } from "../types";
+import type { ConfigFn, ConfigVal } from "./types";
 
-/** Hydrate config functions from their stringified form */
-export function hydrateConfig(config: Record<string, string>): Record<string, ConfigFn> {
-	const result: Record<string, ConfigFn> = {};
-	for (const [name, source] of Object.entries(config)) {
-		result[name] = hydrateFunction(source);
+/** Hydrate config values from their serialized form */
+export function hydrateConfig(config: Record<string, SerializedConfig>): Record<string, ConfigVal> {
+	const result: Record<string, ConfigVal> = {};
+	for (const [name, serialized] of Object.entries(config)) {
+		if (serialized.type === "fn") {
+			result[name] = hydrateFunction(serialized.source);
+		} else {
+			// Plain data - use as-is
+			result[name] = serialized.value;
+		}
 	}
 	return result;
 }
@@ -21,9 +27,10 @@ function hydrateFunction(source: string): ConfigFn {
 /** Process function signature - inputs/outputs are plain numbers */
 type ProcessFn = (
 	inputs: Record<string, number>,
-	config: Record<string, ConfigFn>,
+	config: Record<string, ConfigVal>,
 	state: Record<string, unknown>,
 	sampleRate: number,
+	time: number,
 ) => Record<string, number>;
 
 /** Convert processSource string back into a function */

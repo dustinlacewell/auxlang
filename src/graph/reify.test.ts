@@ -40,7 +40,8 @@ function nodeAt(graph: ReturnType<typeof reify>, index: number) {
 function getConfigFn(node: ReturnType<typeof firstNode>, name: string) {
 	const fn = node.configBindings[name];
 	if (!fn) throw new Error(`Expected config ${name}`);
-	return fn;
+	if (typeof fn !== "function") throw new Error(`Expected config ${name} to be a function`);
+	return fn as (...args: unknown[]) => unknown;
 }
 
 describe("reify", () => {

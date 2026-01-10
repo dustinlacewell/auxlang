@@ -5,7 +5,10 @@ export const timeClockDiv: TestDefinition = {
 	category: "Timing",
 	name: "clockDiv",
 	desc: "Divide clock by 4 - one hit per bar",
-	code: `let clk = clock(120)
-let divided = clockDiv(clk.trig).by(4)
-kick(divided).decay(0.5).out()`,
+	code: `clock(120)
+  .trig
+  .clockDiv({ by: 4 })
+  .kick()
+  .decay(0.5)
+  .out()`,
 };

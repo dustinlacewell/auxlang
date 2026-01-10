@@ -10,9 +10,13 @@ export type DescriptorId = string & { readonly brand: unique symbol };
 
 /**
  * A lambda function that generates a signal value per-sample.
- * Receives persistent state and sample rate, returns the signal value.
+ * Receives persistent state, sample rate, and time in seconds since eval started.
  */
-export type SignalLambda = (state: Record<string, unknown>, sampleRate: number) => number;
+export type SignalLambda = (
+	state: Record<string, unknown>,
+	sampleRate: number,
+	time: number,
+) => number;
 
 /**
  * A signal source that can be passed to device inputs.
@@ -41,9 +45,12 @@ export interface ConfigDef {
 	readonly default: ConfigValue;
 }
 
-/** A config value - any function that a device might call internally */
+/** A config value - either plain JSON data or a function */
+// biome-ignore lint/suspicious/noExplicitAny: config values have arbitrary types
+export type ConfigValue = ConfigData | ConfigFunction;
+export type ConfigData = number | string | boolean | number[] | string[] | Record<string, unknown>;
 // biome-ignore lint/suspicious/noExplicitAny: config functions have arbitrary signatures
-export type ConfigValue = (...args: any[]) => any;
+export type ConfigFunction = (...args: any[]) => any;
 
 /** Device specification - the blueprint for creating descriptors */
 export interface DeviceSpec {
@@ -72,7 +79,7 @@ export type ProcessFn<
 	I extends Record<string, number> = Record<string, number>,
 	C extends Record<string, ConfigValue> = Record<string, ConfigValue>,
 	O extends Record<string, number> = Record<string, number>,
-> = (inputs: I, config: C, state: Record<string, unknown>, sampleRate: number) => O;
+> = (inputs: I, config: C, state: Record<string, unknown>, sampleRate: number, time: number) => O;
 
 /** The internal state of a descriptor */
 export interface DescriptorState {

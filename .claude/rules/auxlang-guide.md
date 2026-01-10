@@ -74,27 +74,24 @@ s.saw().lpf({ cutoff: 800 }).gain({ level: s.gate.adsr() }).out()
 
 ## Inline Signal Lambdas
 
-Any input accepts a lambda `(state, sampleRate) => number` that runs per-sample:
+Any input accepts a lambda `(state, sampleRate, time) => number` that runs per-sample:
 
 ```javascript
-// Inline LFO as filter cutoff
+// Inline LFO using time parameter
 saw(220).lpf({
-  cutoff: (s, sr) => {
-    s.phase = ((s.phase ?? 0) + 2 / sr) % 1
-    return Math.sin(s.phase * Math.PI * 2) * 800 + 1000
-  }
+  cutoff: (s, sr, t) => Math.sin(t * 2 * Math.PI * 2) * 800 + 1000
 }).out()
 
-// Pitch ramp oscillator
-saw((s, sr) => {
-  s.t = (s.t ?? 0) + 1 / sr
-  if (s.t > 2) s.t = 0
-  return 200 + (s.t / 2) * 600
+// Pitch ramp (resets every 2 seconds)
+saw((s, sr, t) => {
+  const cycleT = t % 2
+  return 200 + (cycleT / 2) * 600
 }).out()
 ```
 
-- `state` - persistent object per input (survives across samples)
+- `state` - persistent object per input (survives across samples and re-eval)
 - `sampleRate` - typically 44100 or 48000
+- `time` - seconds since eval started (preserved across re-eval)
 
 ## Apply for Inline Binding
 
@@ -142,7 +139,7 @@ chord.voices[0]     // first voice
 - `adsr` (gate, attack, decay, sustain, release) - full ADSR
 - `env` (gate, attack, release) - simpler AR envelope
 **Effects**: `delay`, `tape`, `reverb`
-**Utilities**: `gain`, `mix`, `slew`, `sah`, `pick`
+**Utilities**: `gain`, `mix`, `slew`, `sah`, `pick`, `quantize`
 **Math**: `mult`, `add`, `sub`, `div`, `scale`, `clip`, `abs`, `inv`, `mod`
 **Logic**: `gte`, `lt`, `eq`, `and`, `or`, `not`
 **Timing**: `clock`, `seq`, `clockDiv`, `clockMult`, `counter`

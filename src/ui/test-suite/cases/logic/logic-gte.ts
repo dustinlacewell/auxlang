@@ -5,8 +5,18 @@ export const logicGte: TestDefinition = {
 	category: "Logic",
 	name: "gte - gate drums",
 	desc: "Drums start after beat 4",
-	code: `let clk = clock(120)
-let drumsOn = counter(clk.trig).max(8).count.gte({ than: 4 })
-let s = seq("c1").clk(clk.trig)
-kick(s.gate).mult({ by: drumsOn }).out()`,
+	code: `clock(120)
+  .apply(c =>
+    c.seq("c1")
+      .apply(s =>
+        kick(s.gate)
+          .mult({
+            by: counter(c)
+              .max(8)
+              .count
+              .gte({ than: 4 })
+          })
+          .out()
+      )
+  )`,
 };

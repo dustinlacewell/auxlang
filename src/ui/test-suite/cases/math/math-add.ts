@@ -5,5 +5,8 @@ export const mathAdd: TestDefinition = {
 	category: "Math",
 	name: "add - mix signals",
 	desc: "Two oscs added - chord",
-	code: "osc(440).add({ to: osc(550) }).gain({ level: 0.2 }).out()",
+	code: `osc(440)
+  .add({ to: osc(550) })
+  .gain({ level: 0.2 })
+  .out()`,
 };

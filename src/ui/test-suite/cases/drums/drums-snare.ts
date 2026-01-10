@@ -5,9 +5,13 @@ export const drumsSnare: TestDefinition = {
 	category: "Drums",
 	name: "snare",
 	desc: "808-style snare - punchy with noise",
-	code: `let clk = clock(120)
-seq("~ c4 ~ c4", { clk })
+	code: `clock(120)
+  .seq("~ c4 ~ c4")
   .trig
-  .snare({ tone: 0.5, decay: 0.15, snappy: 0.5 })
+  .snare({
+    tone: 0.5,
+    decay: 0.15,
+    snappy: 0.5
+  })
   .out()`,
 };

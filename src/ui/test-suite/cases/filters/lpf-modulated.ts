@@ -6,7 +6,10 @@ export const lpfModulated: TestDefinition = {
 	name: "lpf - modulated",
 	desc: "Lowpass with LFO modulation - filter sweep",
 	code: `saw(55)
-  .lpf({ cutoff: lfo(2).min(200).max(2000), resonance: 0.7 })
+  .lpf({
+    cutoff: lfo(2).min(200).max(2000),
+    resonance: 0.7
+  })
   .gain({ level: 0.3 })
   .out()`,
 };
