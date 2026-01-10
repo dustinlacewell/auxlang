@@ -121,14 +121,10 @@ interface VoiceOutput {
 /**
  * Traverse the AST and produce output for current time.
  */
-export function traverse(
-	expr: Expr,
-	time: TimeContext,
-	state: TraversalState,
-): SeqOutput {
+export function traverse(expr: Expr, time: TimeContext, state: TraversalState): SeqOutput {
 	const voices = voiceCount(expr);
 	const totalBeats = countBeats(expr);
-	
+
 	// Wrap beat index for looping
 	const wrappedBeat = time.beatIndex % totalBeats;
 	const absoluteTime = wrappedBeat + time.phase;
@@ -153,7 +149,7 @@ export function traverse(
 	const trig: PolySignal = [];
 
 	for (let i = 0; i < voices; i++) {
-		const output = outputs.find(o => o.voiceId === i);
+		const output = outputs.find((o) => o.voiceId === i);
 		if (output) {
 			// Active voice - update CV state and output
 			state.voiceCV.set(i, output.freq);
@@ -286,12 +282,17 @@ function traverseSeq(
 		const childBeats = countBeats(child);
 		const childDuration = childBeats * beatScale;
 
-		traverseExpr(child, {
-			...ctx,
-			beatStart: currentBeat,
-			duration: childDuration,
-			exprPath: `${ctx.exprPath}.seq[${i}]`,
-		}, state, outputs);
+		traverseExpr(
+			child,
+			{
+				...ctx,
+				beatStart: currentBeat,
+				duration: childDuration,
+				exprPath: `${ctx.exprPath}.seq[${i}]`,
+			},
+			state,
+			outputs,
+		);
 
 		currentBeat += childDuration;
 	}
@@ -320,12 +321,17 @@ function traverseGroup(
 		const childWeight = countBeats(child);
 		const childDuration = childWeight * beatScale;
 
-		traverseExpr(child, {
-			...ctx,
-			beatStart: currentBeat,
-			duration: childDuration,
-			exprPath: `${ctx.exprPath}.group[${i}]`,
-		}, state, outputs);
+		traverseExpr(
+			child,
+			{
+				...ctx,
+				beatStart: currentBeat,
+				duration: childDuration,
+				exprPath: `${ctx.exprPath}.group[${i}]`,
+			},
+			state,
+			outputs,
+		);
 
 		currentBeat += childDuration;
 	}
@@ -345,10 +351,15 @@ function traverseAlt(
 	const selectedIndex = ctx.cycle % children.length;
 	const child = children[selectedIndex]!;
 
-	traverseExpr(child, {
-		...ctx,
-		exprPath: `${ctx.exprPath}.alt[${selectedIndex}]`,
-	}, state, outputs);
+	traverseExpr(
+		child,
+		{
+			...ctx,
+			exprPath: `${ctx.exprPath}.alt[${selectedIndex}]`,
+		},
+		state,
+		outputs,
+	);
 }
 
 /**
@@ -366,11 +377,16 @@ function traverseStack(
 		const child = children[i]!;
 		const childVoices = voiceCount(child);
 
-		traverseExpr(child, {
-			...ctx,
-			voiceOffset,
-			exprPath: `${ctx.exprPath}.stack[${i}]`,
-		}, state, outputs);
+		traverseExpr(
+			child,
+			{
+				...ctx,
+				voiceOffset,
+				exprPath: `${ctx.exprPath}.stack[${i}]`,
+			},
+			state,
+			outputs,
+		);
 
 		voiceOffset += childVoices;
 	}
@@ -393,13 +409,18 @@ function traverseTie(
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i]!;
 
-		traverseExpr(child, {
-			...ctx,
-			beatStart: currentBeat,
-			duration: childDuration,
-			inTie: true,
-			exprPath: `${ctx.exprPath}.tie[${i}]`,
-		}, state, outputs);
+		traverseExpr(
+			child,
+			{
+				...ctx,
+				beatStart: currentBeat,
+				duration: childDuration,
+				inTie: true,
+				exprPath: `${ctx.exprPath}.tie[${i}]`,
+			},
+			state,
+			outputs,
+		);
 
 		currentBeat += childDuration;
 	}
@@ -420,12 +441,17 @@ function traverseMultiply(
 	const repDuration = ctx.duration / count;
 
 	for (let i = 0; i < count; i++) {
-		traverseExpr(child, {
-			...ctx,
-			beatStart: ctx.beatStart + i * repDuration,
-			duration: repDuration,
-			exprPath: `${ctx.exprPath}.mult[${i}]`,
-		}, state, outputs);
+		traverseExpr(
+			child,
+			{
+				...ctx,
+				beatStart: ctx.beatStart + i * repDuration,
+				duration: repDuration,
+				exprPath: `${ctx.exprPath}.mult[${i}]`,
+			},
+			state,
+			outputs,
+		);
 	}
 }
 
@@ -444,12 +470,17 @@ function traverseReplicate(
 	const repDuration = ctx.duration / count;
 
 	for (let i = 0; i < count; i++) {
-		traverseExpr(child, {
-			...ctx,
-			beatStart: ctx.beatStart + i * repDuration,
-			duration: repDuration,
-			exprPath: `${ctx.exprPath}.rep[${i}]`,
-		}, state, outputs);
+		traverseExpr(
+			child,
+			{
+				...ctx,
+				beatStart: ctx.beatStart + i * repDuration,
+				duration: repDuration,
+				exprPath: `${ctx.exprPath}.rep[${i}]`,
+			},
+			state,
+			outputs,
+		);
 	}
 }
 
@@ -464,10 +495,15 @@ function traverseElongate(
 	outputs: VoiceOutput[],
 ): void {
 	// Duration already accounts for elongation via countBeats
-	traverseExpr(child, {
-		...ctx,
-		exprPath: `${ctx.exprPath}.elong`,
-	}, state, outputs);
+	traverseExpr(
+		child,
+		{
+			...ctx,
+			exprPath: `${ctx.exprPath}.elong`,
+		},
+		state,
+		outputs,
+	);
 }
 
 /**
@@ -486,12 +522,17 @@ function traverseEuclidean(
 
 	for (let i = 0; i < steps; i++) {
 		if (pattern[i]) {
-			traverseExpr(child, {
-				...ctx,
-				beatStart: ctx.beatStart + i * stepDuration,
-				duration: stepDuration,
-				exprPath: `${ctx.exprPath}.euc[${i}]`,
-			}, state, outputs);
+			traverseExpr(
+				child,
+				{
+					...ctx,
+					beatStart: ctx.beatStart + i * stepDuration,
+					duration: stepDuration,
+					exprPath: `${ctx.exprPath}.euc[${i}]`,
+				},
+				state,
+				outputs,
+			);
 		}
 	}
 }
@@ -523,8 +564,13 @@ function traverseMaybe(
 	}
 
 	// Otherwise traverse child normally
-	traverseExpr(child, {
-		...ctx,
-		exprPath: `${ctx.exprPath}.maybe`,
-	}, state, outputs);
+	traverseExpr(
+		child,
+		{
+			...ctx,
+			exprPath: `${ctx.exprPath}.maybe`,
+		},
+		state,
+		outputs,
+	);
 }

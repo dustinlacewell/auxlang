@@ -9,19 +9,19 @@ export type TokenType =
 	| "REST"
 	| "LBRACKET"
 	| "RBRACKET"
-	| "LANGLE"      // <
-	| "RANGLE"      // >
-	| "LBRACE"      // {
-	| "RBRACE"      // }
-	| "LPAREN"      // (
-	| "RPAREN"      // )
-	| "MULTIPLY"    // *
-	| "REPLICATE"   // !
-	| "ELONGATE"    // @
-	| "GLIDE"       // _
-	| "MAYBE"       // ?
-	| "NUMBER"      // numeric value
-	| "COMMA"       // ,
+	| "LANGLE" // <
+	| "RANGLE" // >
+	| "LBRACE" // {
+	| "RBRACE" // }
+	| "LPAREN" // (
+	| "RPAREN" // )
+	| "MULTIPLY" // *
+	| "REPLICATE" // !
+	| "ELONGATE" // @
+	| "GLIDE" // _
+	| "MAYBE" // ?
+	| "NUMBER" // numeric value
+	| "COMMA" // ,
 	| "EOF";
 
 export interface Token {
@@ -59,7 +59,7 @@ export interface EuclideanNode {
 	readonly type: "euclidean";
 	readonly hits: number;
 	readonly steps: number;
-	readonly child: AstNode;  // What to play on hits
+	readonly child: AstNode; // What to play on hits
 }
 
 /** Multiply: a*n repeats n times within same duration */

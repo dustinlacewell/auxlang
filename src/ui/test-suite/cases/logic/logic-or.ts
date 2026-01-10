@@ -6,11 +6,8 @@ export const logicOr: TestDefinition = {
 	name: "or - logical OR",
 	desc: "Hihat plays on beat 1 OR beat 3 (first or third quarter)",
 	code: `let clk = clock(120)
-let cnt = counter(clk.trig)
-let mod4 = mod(cnt.count).by(4)
-let beat1 = eq(mod4).to(0)
-let beat3 = eq(mod4).to(2)
-let playHat = or(beat1).with(beat3)
-let e = mult(env(clk.trig).attack(0.001).release(0.1).out).by(playHat)
-return out(mult(hpf(noise()).cutoff(8000)).by(e))`,
+let mod4 = counter(clk.trig).count.mod({ by: 4 })
+let playHat = mod4.eq({ to: 0 }).or({ with: mod4.eq({ to: 2 }) })
+let e = clk.trig.env({ attack: 0.001, release: 0.1 }).mult({ by: playHat })
+noise().hpf({ cutoff: 8000 }).mult({ by: e }).out()`,
 };

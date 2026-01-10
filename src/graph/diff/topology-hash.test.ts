@@ -141,9 +141,7 @@ describe("computeTopologyHash", () => {
 		const hashes2 = computeGraphHashes(graph2.nodes);
 
 		// Filters have different hashes (different input structure)
-		expect(hashes1.get(filter1._state.id)).not.toBe(
-			hashes2.get(filter2._state.id),
-		);
+		expect(hashes1.get(filter1._state.id)).not.toBe(hashes2.get(filter2._state.id));
 	});
 });
 

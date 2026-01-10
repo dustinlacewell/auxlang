@@ -4,37 +4,39 @@
  * Run with: npx tsx src/devices/seq/compare-strudel-aux.ts
  */
 
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
 import { parseExpr } from "./expr/parse";
 import { countBeats, createTraversalState, traverse } from "./expr/traverse";
 import { voiceCount } from "./expr/types";
 
 // ============= PATTERNS TO COMPARE =============
-const strudelPattern = `<[[2 ~] [2 ~] 2 3] [[3 ~] [3 ~] 3 3]>@4 [-1 ~] -1 -1 [0 ~] 0 0 [0 ~] 0 0 [0 ~] 0 0`;
+const strudelPattern =
+	"<[[2 ~] [2 ~] 2 3] [[3 ~] [3 ~] 3 3]>@4 [-1 ~] -1 -1 [0 ~] 0 0 [0 ~] 0 0 [0 ~] 0 0";
 const strudelCycles = 8; // .slow(8) means query 0-8
 
-const auxPattern = `[<[[f2 ~] [f2 ~] f2 g2] [[g2 ~] [g2 ~] g2 g2]>@4 [c2 ~] c2 c2 [d2 ~] d2 d2 [d2 ~] d2 d2 [d2 ~] d2 d2]@8`;
+const auxPattern =
+	"[<[[f2 ~] [f2 ~] f2 g2] [[g2 ~] [g2 ~] g2 g2]>@4 [c2 ~] c2 c2 [d2 ~] d2 d2 [d2 ~] d2 d2 [d2 ~] d2 d2]@8";
 
 // ============= GET STRUDEL EVENTS =============
 // Hardcoded from actual Strudel output (avoiding Windows exec issues)
 function getStrudelEvents(): Array<{ start: number; end: number; value: number }> {
 	return [
-		{ start: 0.0000, end: 0.2500, value: 2 },
-		{ start: 0.5000, end: 0.7500, value: 2 },
-		{ start: 1.0000, end: 1.5000, value: 2 },
-		{ start: 1.5000, end: 2.0000, value: 3 },
-		{ start: 2.0000, end: 2.2500, value: -1 },
-		{ start: 2.5000, end: 3.0000, value: -1 },
-		{ start: 3.0000, end: 3.5000, value: -1 },
-		{ start: 3.5000, end: 3.7500, value: 0 },
-		{ start: 4.0000, end: 4.5000, value: 0 },
-		{ start: 4.5000, end: 5.0000, value: 0 },
-		{ start: 5.0000, end: 5.2500, value: 0 },
-		{ start: 5.5000, end: 6.0000, value: 0 },
-		{ start: 6.0000, end: 6.5000, value: 0 },
-		{ start: 6.5000, end: 6.7500, value: 0 },
-		{ start: 7.0000, end: 7.5000, value: 0 },
-		{ start: 7.5000, end: 8.0000, value: 0 },
+		{ start: Math.LN2, end: 0.25, value: 2 },
+		{ start: 0.5, end: 0.75, value: 2 },
+		{ start: Math.LOG2E, end: 1.5, value: 2 },
+		{ start: 1.5, end: Math.E, value: 3 },
+		{ start: Math.E, end: 2.25, value: -1 },
+		{ start: 2.5, end: Math.PI, value: -1 },
+		{ start: Math.PI, end: 3.5, value: -1 },
+		{ start: 3.5, end: 3.75, value: 0 },
+		{ start: 4.0, end: 4.5, value: 0 },
+		{ start: 4.5, end: 5.0, value: 0 },
+		{ start: 5.0, end: 5.25, value: 0 },
+		{ start: 5.5, end: 6.0, value: 0 },
+		{ start: 6.0, end: 6.5, value: 0 },
+		{ start: 6.5, end: 6.75, value: 0 },
+		{ start: 7.0, end: 7.5, value: 0 },
+		{ start: 7.5, end: 8.0, value: 0 },
 	];
 }
 
@@ -51,11 +53,7 @@ function getAuxEvents(): Array<{ start: number; end: number; note: string; freq:
 	for (let beat = 0; beat < totalBeats; beat++) {
 		for (let phase = 0; phase < resolution; phase++) {
 			const p = phase / resolution;
-			const output = traverse(
-				expr,
-				{ beatIndex: beat, phase: p, cycle: 0, totalBeats },
-				state
-			);
+			const output = traverse(expr, { beatIndex: beat, phase: p, cycle: 0, totalBeats }, state);
 
 			const cv = output.cv[0]?.value ?? 0;
 			const gate = output.gate[0]?.value ?? 0;
@@ -118,13 +116,17 @@ console.log("\n=== STRUDEL EVENTS ===");
 console.log("Count:", strudelEvents.length);
 for (const e of strudelEvents) {
 	const note = scaleMap[e.value] ?? `?${e.value}`;
-	console.log(`${e.start.toFixed(4)} - ${e.end.toFixed(4)}  ${note}  (dur: ${(e.end - e.start).toFixed(4)})`);
+	console.log(
+		`${e.start.toFixed(4)} - ${e.end.toFixed(4)}  ${note}  (dur: ${(e.end - e.start).toFixed(4)})`,
+	);
 }
 
 console.log("\n=== AUX EVENTS ===");
 console.log("Count:", auxEvents.length);
 for (const e of auxEvents) {
-	console.log(`${e.start.toFixed(4)} - ${e.end.toFixed(4)}  ${e.note}  (dur: ${(e.end - e.start).toFixed(4)})`);
+	console.log(
+		`${e.start.toFixed(4)} - ${e.end.toFixed(4)}  ${e.note}  (dur: ${(e.end - e.start).toFixed(4)})`,
+	);
 }
 
 // ============= DIFF =============
@@ -140,7 +142,9 @@ for (let i = 0; i < maxLen; i++) {
 	const s = strudelEvents[i];
 	const a = auxEvents[i];
 
-	const sStr = s ? `${s.start.toFixed(2)} ${scaleMap[s.value] ?? "?"} (${(s.end - s.start).toFixed(2)})` : "---";
+	const sStr = s
+		? `${s.start.toFixed(2)} ${scaleMap[s.value] ?? "?"} (${(s.end - s.start).toFixed(2)})`
+		: "---";
 	const aStr = a ? `${a.start.toFixed(2)} ${a.note} (${(a.end - a.start).toFixed(2)})` : "---";
 
 	const startMatch = s && a && Math.abs(s.start - a.start) < 0.01;
@@ -150,7 +154,9 @@ for (let i = 0; i < maxLen; i++) {
 	if (match) matches++;
 	else mismatches++;
 
-	console.log(`${String(i).padStart(8)} | ${sStr.padEnd(16)} | ${aStr.padEnd(16)} | ${match ? "YES" : "NO"}`);
+	console.log(
+		`${String(i).padStart(8)} | ${sStr.padEnd(16)} | ${aStr.padEnd(16)} | ${match ? "YES" : "NO"}`,
+	);
 }
 
 console.log(`\nMatches: ${matches}/${maxLen}, Mismatches: ${mismatches}`);

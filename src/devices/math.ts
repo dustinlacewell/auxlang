@@ -1,284 +1,186 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
-// PolySignal type for process function (runtime uses globalThis.poly)
-type PS = Array<{ id: number; value: number }>;
-
 /** Multiply two signals. */
-export const mult = device({
+export const mult = device("mult", {
 	inputs: inputs({ input: 0, by: 1 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const bySig = (inp.by ?? []) as PS;
-		if (inputSig.length === 0) return { out: [] };
-		const voiceIds = poly.getVoiceIds(inputSig, bySig);
-		const out: PS = [];
-		for (const id of voiceIds) {
-			const a = poly.getValue(inputSig, id, 0);
-			const b = poly.getValue(bySig, id, 1);
-			out.push({ id, value: a * b });
-		}
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		const by = (inp.by as number) ?? 1;
+		return { val: input * by };
 	},
 });
 
 /** Subtract input from another value. sub(x).from(y) returns y - x */
-export const sub = device({
+export const sub = device("sub", {
 	inputs: inputs({ input: 0, from: 0 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const fromSig = (inp.from ?? []) as PS;
-		if (inputSig.length === 0 && fromSig.length === 0) return { out: [] };
-		const voiceIds = poly.getVoiceIds(inputSig, fromSig);
-		const out: PS = [];
-		for (const id of voiceIds) {
-			const x = poly.getValue(inputSig, id, 0);
-			const y = poly.getValue(fromSig, id, 0);
-			out.push({ id, value: y - x });
-		}
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		const from = (inp.from as number) ?? 0;
+		return { val: from - input };
 	},
 });
 
 /** Clip/clamp signal to a range. */
-export const clip = device({
+export const clip = device("clip", {
 	inputs: inputs({ input: 0, min: -1, max: 1 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const mins = (inp.min ?? []) as PS;
-		const maxs = (inp.max ?? []) as PS;
-		if (inputSig.length === 0) return { out: [] };
-		const voiceIds = poly.getVoiceIds(inputSig, mins, maxs);
-		const out: PS = [];
-		for (const id of voiceIds) {
-			const v = poly.getValue(inputSig, id, 0);
-			const min = poly.getValue(mins, id, -1);
-			const max = poly.getValue(maxs, id, 1);
-			out.push({ id, value: Math.max(min, Math.min(max, v)) });
-		}
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		const min = (inp.min as number) ?? -1;
+		const max = (inp.max as number) ?? 1;
+		return { val: Math.max(min, Math.min(max, input)) };
 	},
 });
 
 /** Scale/map a signal from one range to another. */
-export const scale = device({
+export const scale = device("scale", {
 	inputs: inputs({ input: 0, from: -1, to: 1, min: 0, max: 1 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const fromVals = (inp.from ?? []) as PS;
-		const toVals = (inp.to ?? []) as PS;
-		const minVals = (inp.min ?? []) as PS;
-		const maxVals = (inp.max ?? []) as PS;
-		if (inputSig.length === 0) return { out: [] };
-		const voiceIds = poly.getVoiceIds(inputSig, fromVals, toVals, minVals, maxVals);
-		const out: PS = [];
-		for (const id of voiceIds) {
-			const v = poly.getValue(inputSig, id, 0);
-			const from = poly.getValue(fromVals, id, -1);
-			const to = poly.getValue(toVals, id, 1);
-			const min = poly.getValue(minVals, id, 0);
-			const max = poly.getValue(maxVals, id, 1);
-			const normalized = (v - from) / (to - from);
-			out.push({ id, value: min + normalized * (max - min) });
-		}
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		const from = (inp.from as number) ?? -1;
+		const to = (inp.to as number) ?? 1;
+		const min = (inp.min as number) ?? 0;
+		const max = (inp.max as number) ?? 1;
+		const normalized = (input - from) / (to - from);
+		return { val: min + normalized * (max - min) };
 	},
 });
 
 /** Absolute value of a signal. */
-export const abs = device({
+export const abs = device("abs", {
 	inputs: inputs({ input: 0 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const out: PS = inputSig.map((ch) => ({ id: ch.id, value: Math.abs(ch.value) }));
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		return { val: Math.abs(input) };
 	},
 });
 
 /** Invert/negate a signal. */
-export const inv = device({
+export const inv = device("inv", {
 	inputs: inputs({ input: 0 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const out: PS = inputSig.map((ch) => ({ id: ch.id, value: -ch.value }));
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		return { val: -input };
 	},
 });
 
 /** Divide input by another signal. */
-export const div = device({
+export const div = device("div", {
 	inputs: inputs({ input: 0, by: 1 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const bySig = (inp.by ?? []) as PS;
-		if (inputSig.length === 0) return { out: [] };
-		const voiceIds = poly.getVoiceIds(inputSig, bySig);
-		const out: PS = [];
-		for (const id of voiceIds) {
-			const a = poly.getValue(inputSig, id, 0);
-			const b = poly.getValue(bySig, id, 1);
-			out.push({ id, value: b === 0 ? 0 : a / b });
-		}
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		const by = (inp.by as number) ?? 1;
+		return { val: by === 0 ? 0 : input / by };
 	},
 });
 
 /** Modulo operation - remainder after division. */
-export const mod = device({
+export const mod = device("mod", {
 	inputs: inputs({ input: 0, by: 1 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const bySig = (inp.by ?? []) as PS;
-		if (inputSig.length === 0) return { out: [] };
-		const voiceIds = poly.getVoiceIds(inputSig, bySig);
-		const out: PS = [];
-		for (const id of voiceIds) {
-			const a = poly.getValue(inputSig, id, 0);
-			const b = poly.getValue(bySig, id, 1);
-			out.push({ id, value: b === 0 ? 0 : a % b });
-		}
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		const by = (inp.by as number) ?? 1;
+		return { val: by === 0 ? 0 : input % by };
 	},
 });
 
 /** Greater than or equal comparison. Outputs 1 if input >= than, 0 otherwise. */
-export const gte = device({
+export const gte = device("gte", {
 	inputs: inputs({ input: 0, than: 0 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const thanSig = (inp.than ?? []) as PS;
-		if (inputSig.length === 0) return { out: [] };
-		const voiceIds = poly.getVoiceIds(inputSig, thanSig);
-		const out: PS = [];
-		for (const id of voiceIds) {
-			const a = poly.getValue(inputSig, id, 0);
-			const b = poly.getValue(thanSig, id, 0);
-			out.push({ id, value: a >= b ? 1 : 0 });
-		}
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		const than = (inp.than as number) ?? 0;
+		return { val: input >= than ? 1 : 0 };
 	},
 });
 
 /** Less than comparison. Outputs 1 if input < than, 0 otherwise. */
-export const lt = device({
+export const lt = device("lt", {
 	inputs: inputs({ input: 0, than: 0 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const thanSig = (inp.than ?? []) as PS;
-		if (inputSig.length === 0) return { out: [] };
-		const voiceIds = poly.getVoiceIds(inputSig, thanSig);
-		const out: PS = [];
-		for (const id of voiceIds) {
-			const a = poly.getValue(inputSig, id, 0);
-			const b = poly.getValue(thanSig, id, 0);
-			out.push({ id, value: a < b ? 1 : 0 });
-		}
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		const than = (inp.than as number) ?? 0;
+		return { val: input < than ? 1 : 0 };
 	},
 });
 
-/** Equal comparison (with tolerance for floating point). Outputs 1 if input == to (within 0.0001), 0 otherwise. */
-export const eq = device({
+/** Equal comparison (with tolerance for floating point). */
+export const eq = device("eq", {
 	inputs: inputs({ input: 0, to: 0 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const toSig = (inp.to ?? []) as PS;
-		if (inputSig.length === 0) return { out: [] };
-		const voiceIds = poly.getVoiceIds(inputSig, toSig);
-		const out: PS = [];
-		for (const id of voiceIds) {
-			const a = poly.getValue(inputSig, id, 0);
-			const b = poly.getValue(toSig, id, 0);
-			out.push({ id, value: Math.abs(a - b) < 0.0001 ? 1 : 0 });
-		}
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		const to = (inp.to as number) ?? 0;
+		return { val: Math.abs(input - to) < 0.0001 ? 1 : 0 };
 	},
 });
 
 /** Logical AND - outputs 1 if both inputs are > 0.5, 0 otherwise. */
-export const and = device({
+export const and = device("and", {
 	inputs: inputs({ input: 0, with: 0 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const withSig = (inp.with ?? []) as PS;
-		if (inputSig.length === 0) return { out: [] };
-		const voiceIds = poly.getVoiceIds(inputSig, withSig);
-		const out: PS = [];
-		for (const id of voiceIds) {
-			const a = poly.getValue(inputSig, id, 0);
-			const b = poly.getValue(withSig, id, 0);
-			out.push({ id, value: a > 0.5 && b > 0.5 ? 1 : 0 });
-		}
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		const withVal = (inp.with as number) ?? 0;
+		return { val: input > 0.5 && withVal > 0.5 ? 1 : 0 };
 	},
 });
 
 /** Logical OR - outputs 1 if either input is > 0.5, 0 otherwise. */
-export const or = device({
+export const or = device("or", {
 	inputs: inputs({ input: 0, with: 0 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const withSig = (inp.with ?? []) as PS;
-		if (inputSig.length === 0) return { out: [] };
-		const voiceIds = poly.getVoiceIds(inputSig, withSig);
-		const out: PS = [];
-		for (const id of voiceIds) {
-			const a = poly.getValue(inputSig, id, 0);
-			const b = poly.getValue(withSig, id, 0);
-			out.push({ id, value: a > 0.5 || b > 0.5 ? 1 : 0 });
-		}
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		const withVal = (inp.with as number) ?? 0;
+		return { val: input > 0.5 || withVal > 0.5 ? 1 : 0 };
 	},
 });
 
 /** Logical NOT - outputs 1 if input is <= 0.5, 0 otherwise. */
-export const not = device({
+export const not = device("not", {
 	inputs: inputs({ input: 0 }),
-	outputs: ["out"],
+	outputs: ["val"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "val",
 	process(inp, _cfg, _state, _sampleRate) {
-		const inputSig = (inp.input ?? []) as PS;
-		const out: PS = inputSig.map((ch) => ({ id: ch.id, value: ch.value > 0.5 ? 0 : 1 }));
-		return { out };
+		const input = (inp.input as number) ?? 0;
+		return { val: input > 0.5 ? 0 : 1 };
 	},
 });

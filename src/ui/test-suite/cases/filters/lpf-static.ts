@@ -5,5 +5,5 @@ export const lpfStatic: TestDefinition = {
 	category: "Filters",
 	name: "lpf - static",
 	desc: "Lowpass at 500Hz - muffled saw",
-	code: `return out(gain(lpf(saw(110)).cutoff(500)).amount(0.3))`,
+	code: `saw(110).lpf({ cutoff: 500 }).gain({ level: 0.3 }).out()`,
 };

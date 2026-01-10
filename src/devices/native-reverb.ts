@@ -18,8 +18,8 @@ import { inputs } from "../descriptor/inputs";
  */
 export const nativeReverb = device({
 	inputs: inputs({ input: 0, room: 0.5, damp: 0.5, wet: 0.33, dry: 0.7 }),
-	outputs: ["out"] as const,
+	outputs: ["audio"] as const,
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "audio",
 	wasmUrl: "/native.wasm",
 });

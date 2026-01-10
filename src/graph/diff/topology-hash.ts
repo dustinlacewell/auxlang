@@ -52,10 +52,7 @@ export function computeTopologyHash(
  * - Constants become "const" (value excluded for stability)
  * - Connections become the source node's hash + output name
  */
-function hashInput(
-	input: ResolvedInput,
-	nodeHashes: Map<string, TopologyHash>,
-): string {
+function hashInput(input: ResolvedInput, nodeHashes: Map<string, TopologyHash>): string {
 	if (input.type === "constant") {
 		return "const";
 	}
@@ -87,9 +84,7 @@ function simpleHash(str: string): string {
  * Nodes must be in topological order (dependencies first)
  * so that when we hash a node, its dependencies already have hashes.
  */
-export function computeGraphHashes(
-	nodes: readonly GraphNode[],
-): Map<string, TopologyHash> {
+export function computeGraphHashes(nodes: readonly GraphNode[]): Map<string, TopologyHash> {
 	const hashes = new Map<string, TopologyHash>();
 
 	for (const node of nodes) {

@@ -71,3 +71,41 @@ export function set_dry(value: f32): void {
 export function clear(): void {
 	if (reverb !== null) (reverb as Dattorro).clear();
 }
+
+// State serialization for live re-eval
+// Shared buffer for state transfer - allocated on first use
+let stateBuffer: StaticArray<f32> | null = null;
+
+/**
+ * Get the size of state buffer needed (in f32 elements).
+ */
+export function get_state_size(): i32 {
+	if (reverb === null) return 0;
+	return (reverb as Dattorro).getStateSize();
+}
+
+/**
+ * Allocate and return pointer to state buffer.
+ * Call get_state_size() first to know the size.
+ */
+export function alloc_state_buffer(size: i32): usize {
+	stateBuffer = new StaticArray<f32>(size);
+	return changetype<usize>(stateBuffer);
+}
+
+/**
+ * Serialize current state into the state buffer.
+ * Returns number of f32 values written.
+ */
+export function serialize_state(): i32 {
+	if (reverb === null || stateBuffer === null) return 0;
+	return (reverb as Dattorro).serializeState(stateBuffer as StaticArray<f32>);
+}
+
+/**
+ * Deserialize state from the state buffer.
+ */
+export function deserialize_state(): void {
+	if (reverb === null || stateBuffer === null) return;
+	(reverb as Dattorro).deserializeState(stateBuffer as StaticArray<f32>);
+}

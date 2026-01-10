@@ -1,16 +1,16 @@
+import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
 import { javascript } from "@codemirror/lang-javascript";
 import { bracketMatching } from "@codemirror/language";
-import { type Extension, EditorState } from "@codemirror/state";
+import { EditorState, type Extension } from "@codemirror/state";
 import {
-	lineNumbers,
-	highlightActiveLineGutter,
-	highlightActiveLine,
-	drawSelection,
-	rectangularSelection,
 	crosshairCursor,
+	drawSelection,
+	highlightActiveLine,
+	highlightActiveLineGutter,
 	highlightSpecialChars,
+	lineNumbers,
+	rectangularSelection,
 } from "@codemirror/view";
-import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
 
 export function createExtensions(): Extension[] {
 	return [

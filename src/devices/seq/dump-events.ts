@@ -23,7 +23,8 @@ import { voiceCount } from "./expr/types";
 // Test all patterns
 const kick = "c1!2 [c1*4]!2 c1!4";
 const hihat = "~ c1 ~ c1 ~ c1 ~ c1";
-const bass = "[<[[f2 ~] [f2 ~] f2 g2] [[g2 ~] [g2 ~] g2 g2]>@4 [c2 ~] c2 c2 [d2 ~] d2 d2 [d2 ~] d2 d2 [d2 ~] d2 d2]@8";
+const bass =
+	"[<[[f2 ~] [f2 ~] f2 g2] [[g2 ~] [g2 ~] g2 g2]>@4 [c2 ~] c2 c2 [d2 ~] d2 d2 [d2 ~] d2 d2 [d2 ~] d2 d2]@8";
 
 console.log("Kick beats:", countBeats(parseExpr(kick)));
 console.log("Hihat beats:", countBeats(parseExpr(hihat)));
@@ -51,12 +52,16 @@ let currentEvent: { start: number; note: string; freq: number } | null = null;
 for (let beat = 0; beat < totalBeats; beat++) {
 	for (let phase = 0; phase < resolution; phase++) {
 		const p = phase / resolution;
-		const output = traverse(expr, {
-			beatIndex: beat,
-			phase: p,
-			cycle: 0,
-			totalBeats,
-		}, state);
+		const output = traverse(
+			expr,
+			{
+				beatIndex: beat,
+				phase: p,
+				cycle: 0,
+				totalBeats,
+			},
+			state,
+		);
 
 		const cv = output.cv[0]?.value ?? 0;
 		const gate = output.gate[0]?.value ?? 0;

@@ -6,7 +6,8 @@ export const envAr: TestDefinition = {
 	name: "env (AR)",
 	desc: "Simple attack-release envelope with slow swell",
 	code: `let clk = clock(50)
-let s = seq("c4 g4").clk(clk.trig)
-let e = env(s.gate).attack(0.3).release(0.5)
-return out(mult(osc(s.cv)).by(e.out))`,
+let s = seq("c4 g4", { clk })
+s.osc()
+  .gain({ level: s.gate.env({ attack: 0.3, release: 0.5 }) })
+  .out()`,
 };

@@ -6,9 +6,7 @@ export const logicNot: TestDefinition = {
 	name: "not - logical NOT",
 	desc: "Snare on every beat EXCEPT beat 1",
 	code: `let clk = clock(120)
-let cnt = counter(clk.trig)
-let beat1 = eq(mod(cnt.count).by(4)).to(0)
-let notBeat1 = not(beat1)
-let e = mult(env(clk.trig).attack(0.001).release(0.15).out).by(notBeat1)
-return out(mult(snare(clk.trig)).by(e))`,
+let notBeat1 = counter(clk.trig).count.mod({ by: 4 }).eq({ to: 0 }).not()
+let e = clk.trig.env({ attack: 0.001, release: 0.15 }).mult({ by: notBeat1 })
+snare(clk.trig).mult({ by: e }).out()`,
 };

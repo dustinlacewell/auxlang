@@ -66,9 +66,7 @@ function expect(state: ParserState, type: TokenType): Token {
 	const token = match(state, type);
 	if (!token) {
 		const actual = peek(state);
-		throw new Error(
-			`Expected ${type} but got ${actual.type} at position ${actual.position}`,
-		);
+		throw new Error(`Expected ${type} but got ${actual.type} at position ${actual.position}`);
 	}
 	return token;
 }
@@ -192,9 +190,7 @@ function parseAtom(state: ParserState): Expr {
 
 	// Error: unexpected token
 	const token = peek(state);
-	throw new Error(
-		`Unexpected token ${token.type} '${token.value}' at position ${token.position}`,
-	);
+	throw new Error(`Unexpected token ${token.type} '${token.value}' at position ${token.position}`);
 }
 
 /** Wrap a SeqExpr's children - unwrap if single child */
@@ -227,7 +223,7 @@ function parseModifier(state: ParserState, child: Expr): Expr | null {
 		return {
 			type: "multiply",
 			child,
-			count: parseInt(num.value, 10),
+			count: Number.parseInt(num.value, 10),
 		} satisfies MultiplyExpr;
 	}
 
@@ -237,7 +233,7 @@ function parseModifier(state: ParserState, child: Expr): Expr | null {
 		return {
 			type: "replicate",
 			child,
-			count: parseInt(num.value, 10),
+			count: Number.parseInt(num.value, 10),
 		} satisfies ReplicateExpr;
 	}
 
@@ -247,7 +243,7 @@ function parseModifier(state: ParserState, child: Expr): Expr | null {
 		return {
 			type: "elongate",
 			child,
-			count: parseInt(num.value, 10),
+			count: Number.parseInt(num.value, 10),
 		} satisfies ElongateExpr;
 	}
 
@@ -266,15 +262,15 @@ function parseModifier(state: ParserState, child: Expr): Expr | null {
 		return {
 			type: "euclidean",
 			child,
-			hits: parseInt(hits.value, 10),
-			steps: parseInt(steps.value, 10),
+			hits: Number.parseInt(hits.value, 10),
+			steps: Number.parseInt(steps.value, 10),
 		} satisfies EuclideanExpr;
 	}
 
 	// Maybe ?p (probability already parsed into token value)
 	const maybeToken = match(state, "MAYBE");
 	if (maybeToken) {
-		const prob = parseFloat(maybeToken.value);
+		const prob = Number.parseFloat(maybeToken.value);
 
 		// Chain probability - multiply with existing if child is already maybe
 		if (child.type === "maybe") {

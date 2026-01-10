@@ -115,4 +115,21 @@ export class SVF {
 		this.ic1eq = 0;
 		this.ic2eq = 0;
 	}
+
+	// State serialization for live re-eval
+	getIc1eq(): f32 {
+		return this.ic1eq;
+	}
+
+	getIc2eq(): f32 {
+		return this.ic2eq;
+	}
+
+	setIc1eq(v: f32): void {
+		this.ic1eq = v;
+	}
+
+	setIc2eq(v: f32): void {
+		this.ic2eq = v;
+	}
 }

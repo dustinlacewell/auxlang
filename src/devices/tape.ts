@@ -24,7 +24,7 @@ import { inputs } from "../descriptor/inputs";
  * tape(voice).time(0.1).saturation(0.6).tone(0.4)  // Warm slapback
  * ```
  */
-export const tape = device({
+export const tape = device("tape", {
 	inputs: inputs({
 		input: 0,
 		time: 0.3,
@@ -36,14 +36,14 @@ export const tape = device({
 		tone: 0.7,
 		age: 0,
 	}),
-	outputs: ["out"],
+	outputs: ["audio"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "audio",
 	wasmUrl: "/tape.wasm",
 	process(inp) {
 		// WASM-only device - this process function is a placeholder
 		// The actual processing happens in the WASM module
 		const inputSig = inp.input ?? [];
-		return { out: inputSig };
+		return { audio: inputSig };
 	},
 });

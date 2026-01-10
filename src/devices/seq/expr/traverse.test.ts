@@ -15,10 +15,15 @@ describe("traverse", () => {
 			expect(output.gate[0]?.value).toBe(1);
 		});
 
-		it("note gate goes low at 80% duty cycle", () => {
+		it("note gate goes low at end of beat (0.999)", () => {
 			const expr = parseExpr("c4");
 			const state = createTraversalState();
-			const output = traverse(expr, { beatIndex: 0, phase: 0.85, cycle: 0, totalBeats: 1 }, state);
+			// Gate stays high until 0.999 of the beat (0.001 gap for retriggering)
+			const output = traverse(
+				expr,
+				{ beatIndex: 0, phase: 0.9995, cycle: 0, totalBeats: 1 },
+				state,
+			);
 
 			expect(output.gate[0]?.value).toBe(0);
 		});
@@ -69,7 +74,7 @@ describe("traverse", () => {
 			expect(output.cv).toHaveLength(3);
 			expect(output.cv[0]?.value).toBeCloseTo(261.63, 1);
 			expect(output.cv[1]?.value).toBeCloseTo(329.63, 1);
-			expect(output.cv[2]?.value).toBeCloseTo(392.00, 1);
+			expect(output.cv[2]?.value).toBeCloseTo(392.0, 1);
 		});
 	});
 
@@ -138,9 +143,9 @@ describe("traverse", () => {
 			const state = createTraversalState();
 
 			traverse(expr, { beatIndex: 0, phase: 0, cycle: 0, totalBeats: 1 }, state);
-			
+
 			clearProbDecisions(state);
-			
+
 			const out2 = traverse(expr, { beatIndex: 0, phase: 0, cycle: 1, totalBeats: 1 }, state);
 			expect(out2.gate[0]?.value).toBe(0);
 		});

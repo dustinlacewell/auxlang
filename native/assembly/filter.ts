@@ -45,3 +45,31 @@ export function set_mode(value: f32): void {
 export function clear(): void {
 	if (filter !== null) (filter as SVF).clear();
 }
+
+// State serialization for live re-eval
+// Uses same interface as reverb for consistency
+let stateBuffer: StaticArray<f32> | null = null;
+
+export function get_state_size(): i32 {
+	return 2; // ic1eq, ic2eq
+}
+
+export function alloc_state_buffer(size: i32): usize {
+	stateBuffer = new StaticArray<f32>(size);
+	return changetype<usize>(stateBuffer);
+}
+
+export function serialize_state(): i32 {
+	if (filter === null || stateBuffer === null) return 0;
+	const buf = stateBuffer as StaticArray<f32>;
+	unchecked(buf[0] = (filter as SVF).getIc1eq());
+	unchecked(buf[1] = (filter as SVF).getIc2eq());
+	return 2;
+}
+
+export function deserialize_state(): void {
+	if (filter === null || stateBuffer === null) return;
+	const buf = stateBuffer as StaticArray<f32>;
+	(filter as SVF).setIc1eq(unchecked(buf[0]));
+	(filter as SVF).setIc2eq(unchecked(buf[1]));
+}

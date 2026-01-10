@@ -157,6 +157,103 @@ export function voiceCount(expr: Expr): number {
 	}
 }
 
+// ============= Voice Projection =============
+
+/**
+ * Project a single voice from a polyphonic pattern.
+ *
+ * Given an expression and a voice index, returns a new AST representing
+ * only that voice's timeline. This eliminates all StackExpr nodes,
+ * replacing them with the appropriate branch for this voice.
+ *
+ * Key rules:
+ * - Stack: select the branch containing this voice index, recurse with adjusted index
+ * - Containers (seq, group, alt, tie): project each child with same voice index
+ * - Modifiers: project child, re-wrap with same modifier
+ * - Atoms (note, rest): return unchanged
+ *
+ * @param expr - The expression to project
+ * @param voiceIndex - Which voice to extract (0-indexed)
+ * @returns A mono AST for that voice
+ */
+export function projectVoice(expr: Expr, voiceIndex: number): Expr {
+	switch (expr.type) {
+		case "stack": {
+			// Find which branch contains this voice
+			let offset = 0;
+			for (const child of expr.children) {
+				const childVoices = voiceCount(child);
+				if (voiceIndex < offset + childVoices) {
+					// This branch contains our voice
+					return projectVoice(child, voiceIndex - offset);
+				}
+				offset += childVoices;
+			}
+			// Should never reach here if voiceIndex < voiceCount(expr)
+			throw new Error(`Voice index ${voiceIndex} out of range`);
+		}
+
+		case "seq":
+			return {
+				type: "seq",
+				children: expr.children.map((child) => projectVoice(child, voiceIndex)),
+			};
+
+		case "group":
+			return {
+				type: "group",
+				children: expr.children.map((child) => projectVoice(child, voiceIndex)),
+			};
+
+		case "alt":
+			return {
+				type: "alt",
+				children: expr.children.map((child) => projectVoice(child, voiceIndex)),
+			};
+
+		case "tie":
+			return {
+				type: "tie",
+				children: expr.children.map((child) => projectVoice(child, voiceIndex)),
+			};
+
+		case "multiply":
+			return { type: "multiply", child: projectVoice(expr.child, voiceIndex), count: expr.count };
+
+		case "replicate":
+			return { type: "replicate", child: projectVoice(expr.child, voiceIndex), count: expr.count };
+
+		case "elongate":
+			return { type: "elongate", child: projectVoice(expr.child, voiceIndex), count: expr.count };
+
+		case "euclidean":
+			return {
+				type: "euclidean",
+				child: projectVoice(expr.child, voiceIndex),
+				hits: expr.hits,
+				steps: expr.steps,
+			};
+
+		case "maybe":
+			return { type: "maybe", child: projectVoice(expr.child, voiceIndex), prob: expr.prob };
+
+		case "note":
+		case "rest":
+			return expr;
+	}
+}
+
+/**
+ * Decompose a polyphonic pattern into N mono patterns.
+ *
+ * @param expr - The expression to decompose
+ * @returns Array of mono ASTs, one per voice
+ */
+export function decomposePattern(expr: Expr): Expr[] {
+	const count = voiceCount(expr);
+	return Array.from({ length: count }, (_, i) => projectVoice(expr, i));
+}
+
 // ============= Runtime Output =============
 
 /** A single voice channel with its identity */

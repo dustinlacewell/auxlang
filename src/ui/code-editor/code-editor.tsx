@@ -1,8 +1,8 @@
-import { useRef, useEffect } from "react";
-import { EditorView, keymap } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
-import { createExtensions } from "./extensions";
+import { EditorView, keymap } from "@codemirror/view";
+import { useEffect, useRef } from "react";
 import { auxlangTheme } from "./auxlang-theme";
+import { createExtensions } from "./extensions";
 
 interface CodeEditorProps {
 	value: string;
@@ -11,12 +11,7 @@ interface CodeEditorProps {
 	className?: string;
 }
 
-export function CodeEditor({
-	value,
-	onChange,
-	onRun,
-	className = "",
-}: CodeEditorProps) {
+export function CodeEditor({ value, onChange, onRun, className = "" }: CodeEditorProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const viewRef = useRef<EditorView | null>(null);
 	const onChangeRef = useRef(onChange);
@@ -47,12 +42,7 @@ export function CodeEditor({
 
 		const state = EditorState.create({
 			doc: value,
-			extensions: [
-				...createExtensions(),
-				auxlangTheme,
-				runKeymap,
-				updateListener,
-			],
+			extensions: [...createExtensions(), auxlangTheme, runKeymap, updateListener],
 		});
 
 		const view = new EditorView({
@@ -82,7 +72,7 @@ export function CodeEditor({
 	return (
 		<div
 			ref={containerRef}
-			className={`border border-surface-700 rounded overflow-hidden [&_.cm-editor]:h-full [&_.cm-scroller]:overflow-auto ${className}`}
+			className={`border border-surface-700 rounded overflow-hidden ${className}`}
 		/>
 	);
 }

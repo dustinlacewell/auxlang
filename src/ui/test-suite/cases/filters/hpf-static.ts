@@ -5,5 +5,5 @@ export const hpfStatic: TestDefinition = {
 	category: "Filters",
 	name: "hpf - static",
 	desc: "Highpass at 500Hz - thin saw",
-	code: `return out(gain(hpf(saw(110)).cutoff(500)).amount(0.3))`,
+	code: `saw(110).hpf({ cutoff: 500 }).gain({ level: 0.3 }).out()`,
 };

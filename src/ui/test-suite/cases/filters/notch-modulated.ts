@@ -5,6 +5,8 @@ export const notchModulated: TestDefinition = {
 	category: "Filters",
 	name: "notch - modulated",
 	desc: "Notch with LFO modulation - phaser-like effect",
-	code: `let freq = scale(lfo(2)).min(200).max(2000)
-return out(gain(notch(noise()).cutoff(freq).resonance(0.7)).amount(0.3))`,
+	code: `noise()
+  .notch({ cutoff: lfo(2).min(200).max(2000), resonance: 0.7 })
+  .gain({ level: 0.3 })
+  .out()`,
 };

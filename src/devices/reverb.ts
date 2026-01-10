@@ -1,39 +1,22 @@
 import { device } from "../descriptor/device";
 import { inputs } from "../descriptor/inputs";
 
-// PolySignal format: {id: number, value: number}[]
-type PolySignal = Array<{ id: number; value: number }>;
-
 /**
  * Freeverb-style algorithmic reverb.
- * Sums input to mono, processes, broadcasts to all input voice IDs.
+ * Inputs/outputs are plain numbers.
  */
-export const reverb = device({
+export const reverb = device("reverb", {
 	inputs: inputs({ input: 0, room: 0.5, damp: 0.5, wet: 0.33, dry: 0.7 }),
-	outputs: ["out"],
+	outputs: ["audio"],
 	defaultInput: "input",
-	defaultOutput: "out",
+	defaultOutput: "audio",
 	wasmUrl: "/reverb.wasm",
 	process(inp, _cfg, state, sampleRate) {
-		const inputSig = (inp.input ?? []) as PolySignal;
-		const roomSig = (inp.room ?? []) as PolySignal;
-		const dampSig = (inp.damp ?? []) as PolySignal;
-		const wetSig = (inp.wet ?? []) as PolySignal;
-		const drySig = (inp.dry ?? []) as PolySignal;
-
-		const room = roomSig.length > 0 ? roomSig[0]!.value : 0.5;
-		const damp = dampSig.length > 0 ? dampSig[0]!.value : 0.5;
-		const wet = wetSig.length > 0 ? wetSig[0]!.value : 0.33;
-		const dry = drySig.length > 0 ? drySig[0]!.value : 0.7;
-
-		if (inputSig.length === 0) return { out: [] };
-
-		// Sum input channels to mono
-		let monoInput = 0;
-		for (const ch of inputSig) {
-			monoInput += ch.value;
-		}
-		monoInput /= inputSig.length;
+		const input = (inp.input as number) ?? 0;
+		const room = (inp.room as number) ?? 0.5;
+		const damp = (inp.damp as number) ?? 0.5;
+		const wet = (inp.wet as number) ?? 0.33;
+		const dry = (inp.dry as number) ?? 0.7;
 
 		// Try to use WASM reverb if available
 		// biome-ignore lint/suspicious/noExplicitAny: globalThis typing in worklet
@@ -65,11 +48,7 @@ export const reverb = device({
 				state.lastDry = dry;
 			}
 
-			const output = g.__nativeReverb.process(monoInput);
-
-			// Broadcast to all input voice IDs
-			const outSig: PolySignal = inputSig.map((ch) => ({ id: ch.id, value: output }));
-			return { out: outSig };
+			return { audio: g.__nativeReverb.process(input) };
 		}
 
 		// JS Fallback Implementation
@@ -111,7 +90,7 @@ export const reverb = device({
 				const store = filterStores[i] ?? 0;
 				const filtered = combOutput * (1 - damp) + store * damp;
 				filterStores[i] = filtered;
-				comb.buffer[comb.index] = monoInput + filtered * feedback;
+				comb.buffer[comb.index] = input + filtered * feedback;
 				comb.index = (comb.index + 1) % comb.buffer.length;
 				out += combOutput;
 			}
@@ -130,10 +109,6 @@ export const reverb = device({
 			}
 		}
 
-		const output = out * wet + monoInput * dry;
-
-		// Broadcast to all input voice IDs
-		const outSig: PolySignal = inputSig.map((ch) => ({ id: ch.id, value: output }));
-		return { out: outSig };
+		return { audio: out * wet + input * dry };
 	},
 });

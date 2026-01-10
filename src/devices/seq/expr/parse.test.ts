@@ -37,11 +37,7 @@ describe("parseExpr", () => {
 			const result = parseExpr("c4 ~ e4");
 			expect(result).toEqual({
 				type: "seq",
-				children: [
-					{ type: "note", pitch: "c4" },
-					{ type: "rest" },
-					{ type: "note", pitch: "e4" },
-				],
+				children: [{ type: "note", pitch: "c4" }, { type: "rest" }, { type: "note", pitch: "e4" }],
 			});
 		});
 	});

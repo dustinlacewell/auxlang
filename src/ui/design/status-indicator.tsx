@@ -11,9 +11,5 @@ const statusColorStyles: Record<PlaybackState, string> = {
 };
 
 export function StatusIndicator({ status }: StatusIndicatorProps) {
-	return (
-		<span
-			className={`inline-block w-2 h-2 rounded-full ${statusColorStyles[status]}`}
-		/>
-	);
+	return <span className={`inline-block w-2 h-2 rounded-full ${statusColorStyles[status]}`} />;
 }

@@ -6,7 +6,7 @@
  */
 
 import type { Graph, GraphNode } from "../types";
-import { computeGraphHashes, type TopologyHash } from "./topology-hash";
+import { type TopologyHash, computeGraphHashes } from "./topology-hash";
 
 /** Result of diffing two graphs */
 export interface GraphDiff {

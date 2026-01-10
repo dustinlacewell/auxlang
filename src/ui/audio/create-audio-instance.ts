@@ -7,6 +7,8 @@ const processorUrl = new URL("../../runtime/worklet/index.ts", import.meta.url).
 
 export async function createAudioInstance(): Promise<AudioInstance> {
 	const ctx = new AudioContext();
+	// Resume context (required for user-initiated audio)
+	await ctx.resume();
 	await ctx.audioWorklet.addModule(processorUrl);
 	const node = new AudioWorkletNode(ctx, "graph-processor");
 	node.connect(ctx.destination);

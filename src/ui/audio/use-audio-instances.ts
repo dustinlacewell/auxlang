@@ -1,13 +1,9 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import * as api from "@/editor/api";
 import { resetIdCounter } from "@/descriptor/identity";
 import { clearRegistry } from "@/descriptor/registry";
-import type { Graph } from "@/graph/types";
-import {
-	createAudioInstance,
-	stopInstance,
-	sendGraph,
-} from "./create-audio-instance";
+import * as api from "@/editor/api";
+import { clearOutputs, collectGraph } from "@/graph/out";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createAudioInstance, sendGraph, stopInstance } from "./create-audio-instance";
 import type { AudioInstance, PlaybackState } from "./types";
 
 interface InstanceState {
@@ -20,42 +16,41 @@ export function useAudioInstances() {
 	const instancesRef = useRef<Map<string, AudioInstance>>(new Map());
 
 	const play = useCallback(async (id: string, code: string) => {
-		// Stop existing instance for this id
-		const existing = instancesRef.current.get(id);
-		if (existing) {
-			stopInstance(existing);
-			instancesRef.current.delete(id);
-		}
-
-		// Reset descriptor state
+		// Reset descriptor state (needed for fresh ID generation)
 		resetIdCounter();
 		clearRegistry();
+		clearOutputs();
 
 		try {
-			// Evaluate code
-			const wrappedCode = code.includes("return") ? code : `return (${code})`;
-			const fn = new Function(...Object.keys(api), wrappedCode);
-			const result = fn(...Object.values(api));
+			// Evaluate code - out() calls register signals
+			const fn = new Function(...Object.keys(api), code);
+			fn(...Object.values(api));
 
-			// Create audio instance
-			const instance = await createAudioInstance();
-			instancesRef.current.set(id, instance);
-
-			// Send graph
-			if (result && typeof result === "object" && "nodes" in result) {
-				await sendGraph(instance, result as Graph);
+			// Collect all registered outputs into a graph
+			const graph = collectGraph();
+			if (!graph) {
 				setStates((prev) => {
 					const next = new Map(prev);
-					next.set(id, { state: "playing" });
+					next.set(id, { state: "error", error: "No out() calls in code" });
 					return next;
 				});
-			} else {
-				setStates((prev) => {
-					const next = new Map(prev);
-					next.set(id, { state: "error", error: "Code did not return a valid graph" });
-					return next;
-				});
+				return;
 			}
+
+			// Reuse existing instance for smooth re-evaluation (no clicks)
+			let instance = instancesRef.current.get(id);
+			if (!instance) {
+				instance = await createAudioInstance();
+				instancesRef.current.set(id, instance);
+			}
+
+			// Send graph (processor handles state preservation for matched nodes)
+			await sendGraph(instance, graph);
+			setStates((prev) => {
+				const next = new Map(prev);
+				next.set(id, { state: "playing" });
+				return next;
+			});
 		} catch (err) {
 			setStates((prev) => {
 				const next = new Map(prev);
@@ -90,7 +85,7 @@ export function useAudioInstances() {
 		(id: string): InstanceState => {
 			return states.get(id) ?? { state: "idle" };
 		},
-		[states]
+		[states],
 	);
 
 	// Cleanup on unmount

@@ -40,6 +40,4 @@ export interface CompiledGraph {
 }
 
 /** Message from main thread to worklet */
-export type WorkletMessage =
-	| { type: "setGraph"; graph: CompiledGraph }
-	| { type: "stop" };
+export type WorkletMessage = { type: "setGraph"; graph: CompiledGraph } | { type: "stop" };
