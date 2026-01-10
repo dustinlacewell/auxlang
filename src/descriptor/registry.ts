@@ -1,3 +1,4 @@
+import type { PolyDescriptor } from "./poly";
 import type { AnyDescriptor, DescriptorId, Signal } from "./types";
 
 /** Registry of all descriptors by ID (populated during descriptor creation) */
@@ -19,10 +20,11 @@ export function getDescriptor(id: DescriptorId): AnyDescriptor | undefined {
 }
 
 /**
- * Device factory - creates a new descriptor instance.
+ * Device factory - creates a new descriptor or poly instance.
  * The factory takes an optional signal for the default input.
+ * Returns poly when input is an array.
  */
-export type DeviceFactory = (input?: Signal) => AnyDescriptor;
+export type DeviceFactory = (input?: Signal) => AnyDescriptor | PolyDescriptor;
 
 /** Registry of device factories by name (for Uzu chaining) */
 const deviceRegistry = new Map<string, DeviceFactory>();

@@ -74,11 +74,16 @@ function createChainablePolyOutputRef(outputRefs: OutputRef[]): PolyOutputRef {
 								for (const [key, value] of Object.entries(params)) {
 									const setter = (result as unknown as Record<string, (v: Signal) => AnyDescriptor>)[key];
 									if (typeof setter === "function") {
-										// If param is poly, use corresponding voice; otherwise broadcast
-										const resolvedValue = isPoly(value)
-											? value.voices[voiceIndex] ?? value.voices[0]!
-											: value;
-										result = setter(resolvedValue as Signal);
+										// Distribute arrays/polys; broadcast scalars
+										let resolvedValue: Signal;
+										if (Array.isArray(value)) {
+											resolvedValue = value[voiceIndex % value.length]!;
+										} else if (isPoly(value)) {
+											resolvedValue = value.voices[voiceIndex % value.voices.length] as Signal;
+										} else {
+											resolvedValue = value as Signal;
+										}
+										result = setter(resolvedValue);
 									}
 								}
 								return result;
@@ -96,7 +101,22 @@ function createChainablePolyOutputRef(outputRefs: OutputRef[]): PolyOutputRef {
 }
 
 /**
- * Create a poly descriptor from an array of mono descriptors.
+ * Flatten an array that may contain nested polys into a flat array of mono descriptors.
+ */
+function flattenVoices(items: (AnyDescriptor | PolyDescriptor)[]): AnyDescriptor[] {
+	const result: AnyDescriptor[] = [];
+	for (const item of items) {
+		if (isPoly(item)) {
+			result.push(...(item.voices as AnyDescriptor[]));
+		} else {
+			result.push(item);
+		}
+	}
+	return result;
+}
+
+/**
+ * Create a poly descriptor from an array of descriptors (may include nested polys).
  *
  * The returned poly forwards method calls to each voice:
  * - Input setters return new poly with each voice updated
@@ -104,7 +124,10 @@ function createChainablePolyOutputRef(outputRefs: OutputRef[]): PolyOutputRef {
  * - Callable (default input) returns new poly
  * - `.voices` returns the array for manual iteration
  */
-export function poly(voices: AnyDescriptor[]): PolyDescriptor {
+export function poly(voicesInput: (AnyDescriptor | PolyDescriptor)[]): PolyDescriptor {
+	// Flatten any nested polys
+	const voices = flattenVoices(voicesInput);
+
 	if (voices.length === 0) {
 		throw new Error("poly() requires at least one voice");
 	}
@@ -128,6 +151,11 @@ export function poly(voices: AnyDescriptor[]): PolyDescriptor {
 				};
 			}
 
+			// .apply(fn) - call fn with this poly and return the result
+			if (prop === "apply") {
+				return <T>(fn: (p: PolyDescriptor) => T): T => fn(poly(voices));
+			}
+
 			// Output accessor - return chainable poly output ref
 			if (spec.outputs.includes(prop)) {
 				const outputRefs = voices
@@ -139,9 +167,18 @@ export function poly(voices: AnyDescriptor[]): PolyDescriptor {
 			// Input setter - forward to each voice, return new poly
 			if (prop in spec.inputs) {
 				return (value: Signal): PolyDescriptor => {
-					const newVoices = voices.map((v) => {
+					const newVoices = voices.map((v, voiceIndex) => {
 						const setter = (v as unknown as Record<string, (val: Signal) => AnyDescriptor>)[prop];
-						return setter?.(value) ?? v;
+						// If value is array, distribute; if poly, distribute; otherwise broadcast
+						let resolvedValue: Signal;
+						if (Array.isArray(value)) {
+							resolvedValue = value[voiceIndex % value.length]!;
+						} else if (isPoly(value)) {
+							resolvedValue = value.voices[voiceIndex % value.voices.length] as Signal;
+						} else {
+							resolvedValue = value;
+						}
+						return setter?.(resolvedValue) ?? v;
 					});
 					return poly(newVoices);
 				};
@@ -172,11 +209,16 @@ export function poly(voices: AnyDescriptor[]): PolyDescriptor {
 							for (const [key, value] of Object.entries(params)) {
 								const setter = (result as unknown as Record<string, (val: Signal) => AnyDescriptor>)[key];
 								if (typeof setter === "function") {
-									// If param is poly, use corresponding voice; otherwise broadcast
-									const resolvedValue = isPoly(value)
-										? value.voices[voiceIndex] ?? value.voices[0]!
-										: value;
-									result = setter(resolvedValue as Signal);
+									// Distribute arrays/polys; broadcast scalars
+									let resolvedValue: Signal;
+									if (Array.isArray(value)) {
+										resolvedValue = value[voiceIndex % value.length]!;
+									} else if (isPoly(value)) {
+										resolvedValue = value.voices[voiceIndex % value.voices.length] as Signal;
+									} else {
+										resolvedValue = value as Signal;
+									}
+									result = setter(resolvedValue);
 								}
 							}
 							return result;
@@ -193,9 +235,18 @@ export function poly(voices: AnyDescriptor[]): PolyDescriptor {
 		// Make poly callable - sets default input on each voice
 		apply(target, thisArg, args: [Signal]): PolyDescriptor {
 			const [value] = args;
-			const newVoices = voices.map((v) => {
+			const newVoices = voices.map((v, voiceIndex) => {
 				const callable = v as unknown as (val: Signal) => AnyDescriptor;
-				return callable(value);
+				// If value is array, distribute; if poly, distribute; otherwise broadcast
+				let resolvedValue: Signal;
+				if (Array.isArray(value)) {
+					resolvedValue = value[voiceIndex % value.length]!;
+				} else if (isPoly(value)) {
+					resolvedValue = value.voices[voiceIndex % value.voices.length] as Signal;
+				} else {
+					resolvedValue = value;
+				}
+				return callable(resolvedValue);
 			});
 			return poly(newVoices);
 		},

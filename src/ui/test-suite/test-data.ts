@@ -49,6 +49,7 @@ import { fxReverb } from "./cases/effects/reverb";
 import { fxReverbBig } from "./cases/effects/reverb-big";
 
 // Utilities
+import { utilApply } from "./cases/utilities/util-apply";
 import { utilGain } from "./cases/utilities/util-gain";
 import { utilGainEnv } from "./cases/utilities/util-gain-env";
 import { utilMix } from "./cases/utilities/util-mix";
@@ -97,6 +98,10 @@ import { seqMaybe } from "./cases/sequencing/seq-maybe";
 import { seqMaybeProb } from "./cases/sequencing/seq-maybe-prob";
 
 // Polyphony
+import { polyArrayDistribute } from "./cases/polyphony/poly-array-distribute";
+import { polyArrayGain } from "./cases/polyphony/poly-array-gain";
+import { polyArrayLfo } from "./cases/polyphony/poly-array-lfo";
+import { polyArrayWrap } from "./cases/polyphony/poly-array-wrap";
 import { polyBroadcastFilter } from "./cases/polyphony/poly-broadcast-filter";
 import { polyChord7th } from "./cases/polyphony/poly-chord-7th";
 import { polyChordStatic } from "./cases/polyphony/poly-chord-static";
@@ -166,6 +171,7 @@ export const tests: TestDefinition[] = [
 	utilSlew,
 	utilSlewAsym,
 	utilSah,
+	utilApply,
 
 	// Math
 	mathAdd,
@@ -218,6 +224,11 @@ export const tests: TestDefinition[] = [
 	polyNoiseChord,
 	polySeqChord,
 	polySeqMixed,
+	// Array distribution
+	polyArrayDistribute,
+	polyArrayWrap,
+	polyArrayGain,
+	polyArrayLfo,
 ];
 
 export function getTestsByCategory(): Map<string, TestDefinition[]> {
