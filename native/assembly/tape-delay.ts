@@ -222,4 +222,40 @@ export class TapeDelay {
 		this.flutterPhase = 0;
 		this.smoothedRandom = 0;
 	}
+
+	// State serialization for live re-eval
+	getStateSize(): i32 {
+		// Scalars: writePos, lpState, wowPhase, flutterPhase, randomState, smoothedRandom (6)
+		// Plus the buffer
+		return 6 + this.bufferSize;
+	}
+
+	serializeState(buf: StaticArray<f32>): i32 {
+		let idx = 0;
+		unchecked(buf[idx++] = <f32>this.writePos);
+		unchecked(buf[idx++] = this.lpState);
+		unchecked(buf[idx++] = this.wowPhase);
+		unchecked(buf[idx++] = this.flutterPhase);
+		unchecked(buf[idx++] = <f32>this.randomState);
+		unchecked(buf[idx++] = this.smoothedRandom);
+
+		for (let i = 0; i < this.bufferSize; i++) {
+			unchecked(buf[idx++] = this.buffer[i]);
+		}
+		return idx;
+	}
+
+	deserializeState(buf: StaticArray<f32>): void {
+		let idx = 0;
+		this.writePos = <i32>unchecked(buf[idx++]);
+		this.lpState = unchecked(buf[idx++]);
+		this.wowPhase = unchecked(buf[idx++]);
+		this.flutterPhase = unchecked(buf[idx++]);
+		this.randomState = <u32>unchecked(buf[idx++]);
+		this.smoothedRandom = unchecked(buf[idx++]);
+
+		for (let i = 0; i < this.bufferSize; i++) {
+			unchecked(this.buffer[i] = buf[idx++]);
+		}
+	}
 }

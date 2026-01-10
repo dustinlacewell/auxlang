@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
-import { useAudioPlayer } from "@/ui/audio/use-audio-player";
 import type { PlaybackState } from "@/ui/audio/types";
+import { useAudioPlayer } from "@/ui/audio/use-audio-player";
+import { useCallback, useState } from "react";
 
 const DEFAULT_CODE = `// "coastline" inspired - downtempo, Bbm9/Fm9
 // Original by @eddyflux - this is our interpretation
@@ -17,7 +17,7 @@ let rim = snare(rimSeq.gate).tone(0.7).decay(0.08).snappy(0.3)
 
 // Hats: varied subdivision
 let hatSeq = seq("[c1 <c1 c1 c1>]*<2 2 2 4>").trig(clk.trig)
-let hh = gain(hihat(hatSeq.gate).decay(0.03).tone(0.6)).amount(0.4)
+let hh = gain(hihat(hatSeq.gate).decay(0.03).tone(0.6)).level(0.4)
 
 // === CHORDS (Bbm9 → Fm9, alternating every 4 steps) ===
 let chordSeq = seq("<bb2 f2>@4").trig(clk.trig)
@@ -47,11 +47,11 @@ let melDry = mult(melFilt).b(melEnv.out)
 let melody = delay(melDry).time(0.333).feedback(0.3).mix(0.4)
 
 // === MIX ===
-let drums = mix(gain(kck).amount(0.7)).b(gain(rim).amount(0.4)).c(hh)
-let synths = mix(gain(bass).amount(0.5)).b(gain(chords).amount(0.35)).c(gain(melody).amount(0.25))
+let drums = mix(gain(kck).level(0.7)).b(gain(rim).level(0.4)).c(hh)
+let synths = mix(gain(bass).level(0.5)).b(gain(chords).level(0.35)).c(gain(melody).level(0.25))
 let master = mix(drums).b(synths)
 
-return out(gain(master).amount(0.65))`;
+return out(gain(master).level(0.65))`;
 
 interface EditorState {
 	code: string;

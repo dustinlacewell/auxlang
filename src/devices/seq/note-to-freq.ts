@@ -26,11 +26,7 @@ const NOTE_SEMITONES: Record<string, number> = {
  * noteToFreq('c', null, 4)  // 261.63
  * noteToFreq('c', '#', 4)   // 277.18
  */
-export function noteToFreq(
-	name: string,
-	accidental: "#" | "b" | null,
-	octave: number,
-): number {
+export function noteToFreq(name: string, accidental: "#" | "b" | null, octave: number): number {
 	const baseSemitone = NOTE_SEMITONES[name.toLowerCase()];
 	if (baseSemitone === undefined) {
 		throw new Error(`Invalid note name: ${name}`);
@@ -46,5 +42,5 @@ export function noteToFreq(
 
 	// Equal temperament: freq = 440 * 2^((midi - 69) / 12)
 	// A4 = MIDI 69 = 440Hz
-	return 440 * Math.pow(2, (midi - 69) / 12);
+	return 440 * 2 ** ((midi - 69) / 12);
 }

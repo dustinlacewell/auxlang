@@ -8,8 +8,15 @@
 /** Unique identifier for a descriptor instance */
 export type DescriptorId = string & { readonly brand: unique symbol };
 
-/** A signal source - either a constant or a reference to another descriptor's output */
-export type Signal = number | number[] | OutputRef;
+/**
+ * A signal source that can be passed to device inputs.
+ *
+ * - number: constant value
+ * - number[]: legacy poly format (deprecated, use poly() instead)
+ * - OutputRef: explicit reference to a descriptor's output
+ * - AnyDescriptor: shorthand for the descriptor's default output
+ */
+export type Signal = number | number[] | OutputRef | AnyDescriptor;
 
 /** Reference to a specific output of a descriptor */
 export interface OutputRef {

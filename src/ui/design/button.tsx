@@ -12,13 +12,7 @@ const variantStyles = {
 	default: "bg-surface-700 hover:bg-surface-600",
 };
 
-export function Button({
-	variant,
-	onClick,
-	children,
-	disabled,
-	className = "",
-}: ButtonProps) {
+export function Button({ variant, onClick, children, disabled, className = "" }: ButtonProps) {
 	return (
 		<button
 			type="button"

@@ -7,8 +7,6 @@ export const mathClip: TestDefinition = {
 	desc: "Saw wave hard-clipped for harsh distortion",
 	code: `let clk = clock(120)
 let s = seq("a2 a2 d3 a2").clk(clk.trig)
-let e = adsr(s.gate).attack(0.01).decay(0.1).sustain(0.4).release(0.1)
-let raw = mult(saw(s.cv)).by(3)
-let clipped = clip(raw).min(-0.5).max(0.5)
-return out(mult(lpf(clipped).cutoff(1500)).by(e.out))`,
+let e = s.gate.adsr({ attack: 0.01, decay: 0.1, sustain: 0.4, release: 0.1 })
+s.cv.saw().mult({ by: 3 }).clip({ min: -0.5, max: 0.5 }).lpf({ cutoff: 1500 }).mult({ by: e }).out()`,
 };

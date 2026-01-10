@@ -5,5 +5,5 @@ export const notchStatic: TestDefinition = {
 	category: "Filters",
 	name: "notch - static",
 	desc: "Notch at 500Hz - removes that frequency",
-	code: `return out(gain(notch(noise()).cutoff(500)).amount(0.3))`,
+	code: `noise().notch({ cutoff: 500 }).gain({ level: 0.3 }).out()`,
 };

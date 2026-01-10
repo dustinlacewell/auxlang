@@ -20,10 +20,7 @@ function simpleHash(str: string): string {
  * Constants become "const" (value excluded for stability).
  * Connections become the source node's hash + output name.
  */
-function hashInput(
-	input: CompiledInput,
-	nodeHashes: Map<string, TopologyHash>,
-): string {
+function hashInput(input: CompiledInput, nodeHashes: Map<string, TopologyHash>): string {
 	if (input.type === "constant") {
 		return "const";
 	}
@@ -46,10 +43,7 @@ function hashInput(
  * State clearing for config-derived caches (like seq's parsed pattern) happens
  * in hydrateGraph, not via hash differentiation.
  */
-function computeNodeHash(
-	node: CompiledNode,
-	nodeHashes: Map<string, TopologyHash>,
-): TopologyHash {
+function computeNodeHash(node: CompiledNode, nodeHashes: Map<string, TopologyHash>): TopologyHash {
 	const parts: string[] = [];
 
 	// Device type identity: use process function source
@@ -86,6 +80,9 @@ function computeGraphHashes(nodes: readonly CompiledNode[]): Map<string, Topolog
 /**
  * Diff two graphs to find node correspondence by topology.
  * Returns a map from new node ID to old node ID for matched nodes.
+ *
+ * When multiple nodes have the same hash (e.g., multiple seqs connected
+ * to the same clock), we match them by position within their hash group.
  */
 export function diffGraphs(
 	oldNodes: readonly CompiledNode[],
@@ -94,18 +91,30 @@ export function diffGraphs(
 	const oldHashes = computeGraphHashes(oldNodes);
 	const newHashes = computeGraphHashes(newNodes);
 
-	// Build reverse map: hash → old node ID
-	const oldByHash = new Map<TopologyHash, string>();
+	// Build reverse map: hash → list of old node IDs (preserving order)
+	const oldByHash = new Map<TopologyHash, string[]>();
 	for (const [id, hash] of oldHashes) {
-		oldByHash.set(hash, id);
+		const existing = oldByHash.get(hash);
+		if (existing) {
+			existing.push(id);
+		} else {
+			oldByHash.set(hash, [id]);
+		}
 	}
 
-	// Match new nodes to old nodes by hash
+	// Track which old nodes within each hash group have been matched
+	const hashMatchIndex = new Map<TopologyHash, number>();
+
+	// Match new nodes to old nodes by hash, respecting order within hash groups
 	const matched = new Map<string, string>();
 	for (const [newId, hash] of newHashes) {
-		const oldId = oldByHash.get(hash);
-		if (oldId !== undefined) {
-			matched.set(newId, oldId);
+		const oldIds = oldByHash.get(hash);
+		if (oldIds) {
+			const index = hashMatchIndex.get(hash) ?? 0;
+			if (index < oldIds.length) {
+				matched.set(newId, oldIds[index]!);
+				hashMatchIndex.set(hash, index + 1);
+			}
 		}
 	}
 

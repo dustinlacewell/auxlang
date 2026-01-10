@@ -1,13 +1,9 @@
-import { useState, useRef, useCallback } from "react";
-import * as api from "@/editor/api";
 import { resetIdCounter } from "@/descriptor/identity";
 import { clearRegistry } from "@/descriptor/registry";
-import type { Graph } from "@/graph/types";
-import {
-	createAudioInstance,
-	stopInstance,
-	sendGraph,
-} from "./create-audio-instance";
+import * as api from "@/editor/api";
+import { clearOutputs, collectGraph } from "@/graph/out";
+import { useCallback, useRef, useState } from "react";
+import { createAudioInstance, sendGraph, stopInstance } from "./create-audio-instance";
 import type { AudioInstance, PlaybackState } from "./types";
 
 export function useAudioPlayer() {
@@ -19,12 +15,20 @@ export function useAudioPlayer() {
 		// Reset descriptor state (needed for fresh ID generation)
 		resetIdCounter();
 		clearRegistry();
+		clearOutputs();
 
 		try {
-			// Evaluate code
-			const wrappedCode = code.includes("return") ? code : `return (${code})`;
-			const fn = new Function(...Object.keys(api), wrappedCode);
-			const result = fn(...Object.values(api));
+			// Evaluate code - out() calls register signals, no return needed
+			const fn = new Function(...Object.keys(api), code);
+			fn(...Object.values(api));
+
+			// Collect all registered outputs into a graph
+			const graph = collectGraph();
+			if (!graph) {
+				setState("error");
+				setError("No out() calls in code");
+				return;
+			}
 
 			// Create audio instance if needed (reuse existing for live re-eval)
 			if (!instanceRef.current) {
@@ -33,14 +37,9 @@ export function useAudioPlayer() {
 			}
 
 			// Send graph (processor handles state preservation for matched nodes)
-			if (result && typeof result === "object" && "nodes" in result) {
-				await sendGraph(instanceRef.current, result as Graph);
-				setState("playing");
-				setError(null);
-			} else {
-				setState("error");
-				setError("Code did not return a valid graph");
-			}
+			await sendGraph(instanceRef.current, graph);
+			setState("playing");
+			setError(null);
 		} catch (err) {
 			setState("error");
 			setError(String(err));

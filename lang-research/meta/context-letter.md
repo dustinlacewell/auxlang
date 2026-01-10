@@ -11,44 +11,35 @@ cd auxlang && pnpm dev
 ## What's Working
 
 - Descriptor system with lazy evaluation and full typing
-- AudioWorklet runtime with WASM support
-- Mini-notation sequencer with polyphony, probability, ties
-- Live re-evaluation with state preservation
+- Fluent chaining API: `seq("c4 e4").saw().lpf({ cutoff: 800 }).out()`
+- AudioWorklet runtime with WASM support (filter, reverb, tape delay)
+- Mini-notation sequencer with polyphony, probability, ties, euclidean
+- Live re-evaluation with seamless state preservation
 - Devices: oscillators, drums, filters, envelopes, reverb, delay
+
+## Quick Reference
+
+See `.claude/rules/auxlang-guide.md` for complete API reference covering:
+- Core concepts (signals, descriptors, devices)
+- Pattern syntax (mini-notation DSL)
+- JavaScript API (instantiation, chaining, output access)
+- Polyphony (pattern-level and JS-level)
 
 ## Current Focus
 
-**Major refactor in progress: eliminating runtime polyphony in favor of compile-time graph duplication.**
+**Mono/Uzu refactor** - Simplifying polyphony model.
 
 See the plans:
-- [plans/polyphony-decomposition.md](../plans/polyphony-decomposition.md) - The mono refactor
+- [plans/polyphony-decomposition.md](../plans/polyphony-decomposition.md) - Compile-time graph duplication
 - [plans/uzu-design.md](../plans/uzu-design.md) - Overall architecture vision
-- [plans/core-cleanup.md](../plans/core-cleanup.md) - Concrete cleanup tasks
-
-### What We're Doing
-
-Auxlang currently uses `PolySignal` (`{id, value}[]`) to track voice identity at runtime. Every device must iterate voices, key state by ID, etc. This is complex.
-
-KabelSalat (Felix's livecoding synth) uses compile-time graph duplication instead - polyphonic patterns expand to N separate mono signal chains. Devices are simple (mono in, mono out).
-
-**We're moving to the KabelSalat model:**
-
-1. Decompose polyphonic seq patterns into N mono ASTs at parse time
-2. Duplicate downstream graph for each voice
-3. Mix collapses voices to stereo at the end
-4. All devices become mono - no voice iteration
-
-### Why This Order
-
-Mono refactor first, then Uzu (the chaining syntax). The signal type affects everything else.
 
 ### Key Insight
 
-Polyrhythm works correctly with decomposition:
+Polyphonic patterns decompose into N mono seqs at parse time. Downstream devices duplicate per-voice. No runtime voice tracking needed.
+
+```javascript
+seq("{c4,e4,g4}").saw()  // Creates poly of 3 saws, each mono
 ```
-{c4 d4 e4, g3 a3}  // 3-against-2
-```
-Each voice becomes independent seq with own loop length. They phase naturally.
 
 ## Key Files
 
@@ -72,4 +63,4 @@ Each voice becomes independent seq with own loop length. They phase naturally.
 
 ## Decisions
 
-68 decisions in [decisions-made.md](decisions-made.md). Note: D034 (all signals are PolySignal) is being revisited by the mono refactor.
+83 decisions in [decisions-made.md](decisions-made.md). Recent: D082 (WASM state serialization), D083 (gain.level rename).

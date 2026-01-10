@@ -45,3 +45,31 @@
 | Q020 | Group + Elongate: `[c4 e4]@2` — stretch subdivisions or repeat group? | Resolved → D064 (stretch) |
 | Q021 | Backward compatibility: How to support existing patterns expecting `cv: number` (mono)? | Open |
 | Q022 | Stack probability: `{c4,e4,g4}?0.5` — roll per voice or all-or-nothing? | Resolved → D067 (all-or-nothing via AST traversal) |
+
+## Mono/Uzu Refactor
+
+| ID | Question | Status |
+|----|----------|--------|
+| Q023 | How does `.saw()` work on a poly descriptor? | Resolved → D074: poly propagates, method forwards to each voice |
+| Q024 | Do we need magic graph expansion in reify? | Resolved → No, poly infection handles it at construction time |
+| Q025 | Do multiple `out()` calls sum automatically? | Open — need to verify runtime behavior |
+| Q026 | How do devices register for Uzu chaining? | Resolved → `device('name', spec)` auto-registers |
+| Q027 | With Uzu, do we still need separate config vs inputs? | Open — leaning toward keeping config for non-signal data |
+| Q028 | How does stereo/pan work with mono signals? | Open — pan outputs stereo pair? metadata? out() param? |
+
+## Live Re-eval & Triggers
+
+| ID | Question | Status |
+|----|----------|--------|
+| Q029 | Should triggers be impulses or gates? | Resolved → D079: impulses (1 sample), check `trig > 0.5` |
+| Q030 | Do we need edge detection for trigger handling? | Resolved → D079: No, impulses eliminate need for edge detection |
+| Q031 | How does state survive graph swap? | Resolved → topology hash matching + TypedArray-aware deep clone + WASM serialization |
+| Q032 | How to handle effect tails during re-eval? | Resolved → D080/D082: crossfade (100ms) + WASM state serialization |
+| Q033 | How do WASM devices preserve state across re-eval? | Resolved → D082: serialize/deserialize interface, state copied between instances |
+
+## API Design
+
+| ID | Question | Status |
+|----|----------|--------|
+| Q034 | Should we have both `vca` and `gain`? | Resolved → D083: No, removed `vca`. Use `gain({ level: envelope })` |
+| Q035 | What should the gain modulation input be called? | Resolved → D083: `level` (not `amount` or `cv`) |

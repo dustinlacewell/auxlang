@@ -5,8 +5,6 @@ export const mathAbs: TestDefinition = {
 	category: "Math",
 	name: "abs - full-wave rectify",
 	desc: "LFO rectified for double-speed unipolar modulation",
-	code: `let l = lfo(2)
-let rectified = abs(l)
-let cutoff = add(mult(rectified).by(1500)).to(300)
-return out(gain(lpf(saw(55)).cutoff(cutoff).resonance(0.6)).amount(0.4))`,
+	code: `let cutoff = lfo(2).abs().mult({ by: 1500 }).add({ to: 300 })
+saw(55).lpf({ cutoff, resonance: 0.6 }).gain({ level: 0.4 }).out()`,
 };

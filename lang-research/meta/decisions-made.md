@@ -75,3 +75,13 @@
 | D071 | Polyrhythm via independent seq cycles | 2025-01-09 | `{c4 d4 e4, g3 a3}` becomes two seqs with different loop lengths (3 beats, 2 beats). They phase naturally - correct polyrhythm behavior. |
 | D072 | Explicit poly devices for non-pattern polyphony | 2025-01-09 | `poly(n)`, `chord([intervals])`, `spread(n, detune)` trigger graph duplication. Polyphony is always visible in code. |
 | D073 | Stereo only at mix/output | 2025-01-09 | Everything mono until final mix. Mix device has spread parameter for stereo positioning. Matches eurorack model. |
+| D074 | Poly propagates through chaining | 2025-01-09 | Method calls on poly forward to each voice, returning new poly. `seq("{c4,e4}").saw()` = poly of 2 saws. Infection continues until `.voices` or `.out()`. |
+| D075 | `.voices` unpacks poly to array | 2025-01-09 | User calls `.voices` to get array of mono descriptors for per-voice processing. Can then iterate with JS for individual routing. |
+| D076 | `.out()` accepts poly and sums | 2025-01-09 | Calling `.out()` on poly sends all voices to output, which sums them. No explicit `.mix()` required for basic case. |
+| D077 | Mono and Uzu refactors are coupled | 2025-01-09 | User-facing poly API (`.voices` + chaining) depends on Uzu syntax. Doing mono without Uzu leaves awkward API. Treat as unified refactor. |
+| D078 | Device registration via `device('name', spec)` | 2025-01-09 | First arg is name, auto-registers in global registry. Descriptor/poly proxies check registry for unknown props to enable chaining. |
+| D079 | Triggers are impulses, not gates | 2025-01-10 | Clock outputs `1` for exactly one sample, seq outputs `trig=1` when event starts. No edge detection needed - devices check `if (trig > 0.5)`. |
+| D080 | Crossfade re-enabled (100ms) | 2025-01-10 | With proper WASM state serialization, crossfade works correctly. Old and new graphs have separate WASM instances. |
+| D081 | Clock reset signal encodes BPM | 2025-01-10 | Clock outputs `-bpm` (negative) on first sample after reset, allowing downstream to sync. Normal: 0, trigger: 1, reset: -bpm. |
+| D082 | WASM state serialization interface | 2025-01-10 | WASM devices export `get_state_size`, `alloc_state_buffer`, `serialize_state`, `deserialize_state`. State copied between old→new instances during graph swap. |
+| D083 | Remove vca, rename gain.amount to gain.level | 2025-01-10 | `vca` was redundant with `gain`. Renamed `amount` to `level` for clarity - level is the modulation input for amplitude control. |

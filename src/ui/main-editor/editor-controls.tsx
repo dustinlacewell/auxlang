@@ -15,9 +15,7 @@ export function EditorControls({ onRun, onStop, isPlaying }: EditorControlsProps
 			<Button variant="stop" onClick={onStop} disabled={!isPlaying}>
 				⏹ Stop
 			</Button>
-			<span className="ml-2 text-sm text-surface-600 self-center">
-				Ctrl+Enter to run
-			</span>
+			<span className="ml-2 text-sm text-surface-600 self-center">Ctrl+Enter to run</span>
 		</div>
 	);
 }

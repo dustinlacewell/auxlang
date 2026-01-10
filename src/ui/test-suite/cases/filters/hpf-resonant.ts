@@ -5,5 +5,5 @@ export const hpfResonant: TestDefinition = {
 	category: "Filters",
 	name: "hpf - resonant",
 	desc: "Highpass with high resonance - should be stable",
-	code: `return out(gain(hpf(saw(55)).cutoff(400).resonance(0.85)).amount(0.3))`,
+	code: `saw(55).hpf({ cutoff: 400, resonance: 0.85 }).gain({ level: 0.3 }).out()`,
 };

@@ -15,8 +15,8 @@ export function TestSuiteApp() {
 				<div>
 					<h1 className="text-2xl font-bold mb-2">Auxlang Audio Test Suite</h1>
 					<p className="text-gray-400 text-sm">
-						Click "Play" on any test to hear it. Each test should produce a
-						distinct, recognizable sound. Click "Stop All" to silence everything.
+						Click "Play" on any test to hear it. Each test should produce a distinct, recognizable
+						sound. Click "Stop All" to silence everything.
 					</p>
 				</div>
 				<Button variant="stop" onClick={stopAll} className="ml-4 shrink-0">
@@ -34,7 +34,7 @@ export function TestSuiteApp() {
 								test={test}
 								state={state}
 								error={error}
-								onPlay={() => play(test.id, test.code)}
+								onPlay={(code) => play(test.id, code)}
 								onStop={() => stop(test.id)}
 							/>
 						);

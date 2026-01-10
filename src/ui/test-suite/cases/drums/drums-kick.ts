@@ -6,6 +6,8 @@ export const drumsKick: TestDefinition = {
 	name: "kick",
 	desc: "808-style kick drum - deep thump",
 	code: `let clk = clock(120)
-let seq1 = seq("c1 c1 c1 c1").clk(clk.trig)
-return out(kick(seq1.gate).pitch(50).decay(0.3).sweep(3))`,
+seq("c4 c4 c4 c4", { clk })
+  .trig
+  .kick({ pitch: 50, decay: 0.3, sweep: 3 })
+  .out()`,
 };

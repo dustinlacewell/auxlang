@@ -1,30 +1,30 @@
 # Current Task
 
-**Mono refactor** - Eliminating runtime polyphony via compile-time graph duplication
+**API cleanup and documentation** - Complete
 
-## What We're Doing
+## Completed
 
-Replacing `PolySignal` (`{id, value}[]`) with mono signals (`number`). Polyphony becomes graph structure, not signal format.
+1. ✅ Removed `vca` device (redundant with `gain`)
+2. ✅ Renamed `gain.amount` to `gain.level` for clarity
+3. ✅ Updated all usages across codebase (43 test files, editor, out.ts)
+4. ✅ Rewrote `.claude/rules/auxlang-guide.md` - comprehensive quick reference
 
-See [plans/polyphony-decomposition.md](../plans/polyphony-decomposition.md) for full design.
+## Key Changes
 
-## Steps
+**Device Cleanup (D083):**
+- `vca` removed - use `gain({ level: envelope })` for amplitude modulation
+- `gain.amount` → `gain.level` - clearer naming for modulation input
+- Files: `src/devices/gain.ts`, `src/editor/api.ts`, all test cases
 
-1. Implement `projectVoice(expr, voiceIndex)` - extract single voice's AST
-2. Implement `decomposePattern(expr)` - return array of mono ASTs
-3. Modify graph construction - N seqs for N-voice patterns
-4. Graph duplication - duplicate downstream devices per voice
-5. Mix insertion - collapse voices to stereo
-6. Simplify devices - remove all PolySignal handling
-7. Kill PolySignal - delete the type and utilities
+**Documentation:**
+- `.claude/rules/auxlang-guide.md` - Complete rewrite covering:
+  - Core concepts (signals, descriptors, devices)
+  - Pattern syntax (mini-notation DSL)
+  - JavaScript API (instantiation, chaining, output access)
+  - Polyphony (pattern-level, JS-level, voice access)
+  - Common patterns and gotchas
 
-## After Mono Refactor
+## Next Steps
 
-Uzu syntax refactor - method chaining, unified input model. See [plans/uzu-design.md](../plans/uzu-design.md).
-
-## Recent Wins
-
-- Blue Monday bass line working
-- Mix device sqrt(n) normalization
-- Group weighting for `@` modifier
-- Full plan docs for mono refactor and Uzu
+1. Mono/Uzu refactor (D069-D078)
+2. Document WASM device authoring with serialization interface

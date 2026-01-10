@@ -49,11 +49,11 @@ export function pitchToFreq(pitch: string): number {
 	if (accidental === "#") semitone += 1;
 	if (accidental === "b") semitone -= 1;
 
-	const octave = octaveStr ? parseInt(octaveStr, 10) : 4;
+	const octave = octaveStr ? Number.parseInt(octaveStr, 10) : 4;
 
 	// MIDI note number: C4 = 60
 	const midi = (octave + 1) * 12 + semitone;
 
 	// Equal temperament: freq = 440 * 2^((midi - 69) / 12)
-	return 440 * Math.pow(2, (midi - 69) / 12);
+	return 440 * 2 ** ((midi - 69) / 12);
 }

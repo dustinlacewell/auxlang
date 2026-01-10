@@ -398,3 +398,142 @@
   - `plans/uzu-design.md` - architecture vision
   - `plans/core-cleanup.md` - concrete redundancy fixes
   - Updated `meta/context-letter.md` with current focus
+
+### Mono/Uzu Implementation Session
+
+- **Implemented AST projection** (D070)
+  - `projectVoice(expr, voiceIndex)` extracts single voice timeline
+  - `decomposePattern(expr)` returns N mono ASTs
+  - 18 tests passing for various nesting scenarios
+  - Files: `src/devices/seq/expr/types.ts`, `project.test.ts`
+
+- **Studied KabelSalat poly handling**
+  - Poly infects downstream automatically
+  - `.ins` exposes voice array, `.map()` for per-voice ops
+  - `.mix()` collapses to mono/stereo
+  - `.out()` accepts poly directly
+
+- **Designed Auxlang poly propagation** (D074-D076)
+  - Poly descriptor forwards method calls to each voice
+  - `.voices` unpacks to array for manual iteration
+  - `.out()` accepts poly and sums all voices
+  - No magic in reify - infection handles graph duplication at construction
+
+- **Implemented poly.ts with method forwarding**
+  - Proxy forwards input/config setters to each voice
+  - Output accessors return PolyOutputRef
+  - Callable returns new poly with default input set
+
+- **Decided device registration** (D078)
+  - `device('name', spec)` auto-registers in global registry
+  - Descriptor proxy checks registry for unknown props
+  - Enables `seq(...).saw()` to resolve `saw` from registry
+
+- **Key realization** (D077)
+  - Mono and Uzu refactors are coupled
+  - User-facing poly API depends on chaining syntax
+  - Treat as unified refactor
+
+- **Next:** Implement device registry, update device() signature
+
+## 2025-01-10
+
+### Live Re-eval State Preservation (Final Fixes)
+
+- **Fixed TypedArray cloning bug**
+  - `JSON.parse(JSON.stringify(state))` destroys Float32Array → becomes plain object `{0: 1, 1: 2...}`
+  - Delay/reverb buffers were lost on state restore, causing crackle/artifacts
+  - Created `deepCloneState()` and `cloneValue()` in `runtime-graph.ts`
+  - Recursively handles Float32Array, Float64Array, Int32Array, Uint8Array
+  - Also handles nested objects and arrays containing TypedArrays
+
+- **Fixed false trigger issue on state restore**
+  - Root cause: `traversalState.probDecisions` Map doesn't survive JSON cloning
+  - When Map corrupted, mono-seq.ts recreated traversalState fresh
+  - Fresh state had `lastEventId = ""`, causing false `trig = 1` output
+  - Fixed by preserving `lastEventId` and `lastCV` from corrupted state during recreation
+
+- **Clarified trigger model** (D079-D081)
+  - Triggers are impulses: exactly one sample at value `1`, then `0`
+  - Clock outputs: `0` normally, `1` for trigger, `-bpm` for reset
+  - All devices use simple check: `if (trig > 0.5)` - no edge detection
+  - Deleted `edge-detect.ts` utility (was unnecessary complexity)
+
+- **Disabled crossfade** (D080)
+  - Set `CROSSFADE_MS = 0` in `processor.ts`
+  - With proper state preservation, instant swap works cleanly
+  - Crossfade was causing both old/new graphs to run during fade, doubling triggers
+
+- **Removed edge detection from all devices**
+  - Drums (kick, snare, hihat, clap): simple `if (trig > 0.5)`
+  - Utilities (sah, counter, clock-div): simple `if (trig > 0.5)`
+  - No `wasTrig`/`wasReset` state tracking needed anywhere
+
+- **Files changed**
+  - `src/runtime/processor/runtime-graph.ts` - TypedArray-aware deepCloneState
+  - `src/runtime/processor/topology-hash.ts` - Multi-node hash matching (from earlier)
+  - `src/runtime/worklet/processor.ts` - CROSSFADE_MS = 0
+  - `src/devices/seq/mono-seq.ts` - lastEventId preservation, impulse-based
+  - `src/devices/drums/*.ts` - Simple impulse checks
+  - `src/devices/clock-div.ts`, `counter.ts`, `sah.ts` - Simple impulse checks
+
+- **Result**: Live re-eval now works seamlessly - state preserved, no false triggers, no crackle
+- All 160 tests pass
+
+### WASM State Serialization
+
+- **Problem**: WASM devices (reverb, filter, tape delay) lost internal state during graph swap
+  - WASM state lives in linear memory, not JS `state` object
+  - Fresh WASM instances = reset delay buffers = audible artifacts ("foom" on reverb)
+
+- **Solution**: Standard WASM state serialization interface (D082)
+  - `get_state_size()` - Returns f32 count needed
+  - `alloc_state_buffer(size)` - Allocates buffer in WASM memory, returns pointer
+  - `serialize_state()` - Writes state to buffer
+  - `deserialize_state()` - Reads state from buffer
+
+- **Implementation**:
+  - Filter (SVF): 2 floats (ic1eq, ic2eq)
+  - Reverb (Dattorro): ~82K floats (12 delay lines + pre-delay + scalars)
+  - Tape delay: ~97K floats (delay buffer + modulation state)
+
+- **Graph swap flow**:
+  1. Serialize state from old WASM instances
+  2. Create fresh WASM instances
+  3. Call `init()` on new instances
+  4. Deserialize saved state into new instances
+  5. Crossfade works properly (100ms) since old/new have separate instances
+
+- **Files changed**:
+  - `native/assembly/svf.ts` - State getters/setters
+  - `native/assembly/filter.ts` - Serialization exports
+  - `native/assembly/dattorro.ts` - serializeState/deserializeState methods
+  - `native/assembly/index.ts` - Reverb serialization exports
+  - `native/assembly/tape-delay.ts` - serializeState/deserializeState methods
+  - `native/assembly/tape.ts` - Tape serialization exports
+  - `src/runtime/worklet/processor.ts` - serializeWasmState/deserializeWasmState helpers
+  - `src/runtime/processor/runtime-graph.ts` - Removed WeakMap init tracking
+
+- **Result**: Reverb/filter/delay tails preserved perfectly across re-eval
+
+### API Cleanup and Documentation
+
+- **Removed `vca` device** (D083)
+  - Redundant with `gain` - both just multiply input by a modulation signal
+  - `gain({ level: envelope })` is clearer than `vca({ cv: envelope })`
+  - Deleted from `src/devices/gain.ts` and `src/editor/api.ts`
+
+- **Renamed `gain.amount` to `gain.level`**
+  - `amount` was confusing - sounded like "how much gain"
+  - `level` clearly indicates amplitude control (0-1 from envelope, or any multiplier)
+  - Updated 43 test files, editor default code, and internal `out.ts` mixing
+
+- **Rewrote `.claude/rules/auxlang-guide.md`**
+  - Complete rewrite with proper structure:
+    1. Core concepts (signals, descriptors, devices)
+    2. Pattern syntax (mini-notation DSL)
+    3. JavaScript API (instantiation, variable semantics, output access, chaining)
+    4. Polyphony (pattern-level, JS-level with `poly()`, voice access via `.voices`)
+    5. Device categories with key inputs noted
+    6. Common patterns (copy-paste examples)
+    7. Key gotchas (variable capture issue, seq needs clock, etc.)

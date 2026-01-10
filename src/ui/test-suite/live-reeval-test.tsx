@@ -1,16 +1,13 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import * as api from "@/editor/api";
 import { resetIdCounter } from "@/descriptor/identity";
 import { clearRegistry } from "@/descriptor/registry";
+import * as api from "@/editor/api";
+import { clearOutputs, collectGraph } from "@/graph/out";
 import type { Graph } from "@/graph/types";
-import {
-	createAudioInstance,
-	stopInstance,
-	sendGraph,
-} from "@/ui/audio/create-audio-instance";
+import { createAudioInstance, sendGraph, stopInstance } from "@/ui/audio/create-audio-instance";
 import type { AudioInstance } from "@/ui/audio/types";
-import { Card } from "@/ui/design/card";
 import { Button } from "@/ui/design/button";
+import { Card } from "@/ui/design/card";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ReEvalTestCase {
 	id: string;
@@ -29,12 +26,12 @@ const testCases: ReEvalTestCase[] = [
 let s = seq("c3 g3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
-return out(gain(o).amount(e))`,
+return out(gain(o).level(e))`,
 		codeB: `let c = clock(120)
 let s = seq("e3 a3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
-return out(gain(o).amount(e))`,
+return out(gain(o).level(e))`,
 	},
 	{
 		id: "pattern-length-change",
@@ -44,12 +41,12 @@ return out(gain(o).amount(e))`,
 let s = seq("c3 e3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
-return out(gain(o).amount(e))`,
+return out(gain(o).level(e))`,
 		codeB: `let c = clock(120)
 let s = seq("c3 e3 g3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
-return out(gain(o).amount(e))`,
+return out(gain(o).level(e))`,
 	},
 	{
 		id: "bpm-change",
@@ -59,12 +56,12 @@ return out(gain(o).amount(e))`,
 let s = seq("c3 c#3 d3 d#3 e3 f3 f#3 g3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
-return out(gain(o).amount(e))`,
+return out(gain(o).level(e))`,
 		codeB: `let c = clock(180)
 let s = seq("c3 c#3 d3 d#3 e3 f3 f#3 g3").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.1)
-return out(gain(o).amount(e))`,
+return out(gain(o).level(e))`,
 	},
 	{
 		id: "long-note",
@@ -74,12 +71,12 @@ return out(gain(o).amount(e))`,
 let s = seq("gb2 bb8").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.3)
-return out(gain(o).amount(e))`,
+return out(gain(o).level(e))`,
 		codeB: `let c = clock(60)
 let s = seq("gb2 bb2").clk(c)
 let o = osc(s.cv)
 let e = env(s.gate).attack(0.01).release(0.3)
-return out(gain(o).amount(e))`,
+return out(gain(o).level(e))`,
 	},
 	{
 		id: "osc-type",
@@ -89,12 +86,12 @@ return out(gain(o).amount(e))`,
 let s = seq("c3 e3 g3").clk(c)
 let o = saw(s.cv)
 let e = env(s.gate).attack(0.01).release(0.2)
-return out(gain(o).amount(e))`,
+return out(gain(o).level(e))`,
 		codeB: `let c = clock(120)
 let s = seq("c3 e3 g3").clk(c)
 let o = sin(s.cv)
 let e = env(s.gate).attack(0.01).release(0.2)
-return out(gain(o).amount(e))`,
+return out(gain(o).level(e))`,
 	},
 	{
 		id: "filter-cutoff",
@@ -104,13 +101,13 @@ return out(gain(o).amount(e))`,
 let s = seq("c2 e2 g2 c3").clk(c)
 let o = saw(s.cv)
 let e = env(s.gate).attack(0.01).release(0.2)
-let f = lpf(gain(o).amount(e)).cutoff(800)
+let f = lpf(gain(o).level(e)).cutoff(800)
 return out(f)`,
 		codeB: `let c = clock(120)
 let s = seq("c2 e2 g2 c3").clk(c)
 let o = saw(s.cv)
 let e = env(s.gate).attack(0.01).release(0.2)
-let f = lpf(gain(o).amount(e)).cutoff(2000)
+let f = lpf(gain(o).level(e)).cutoff(2000)
 return out(f)`,
 	},
 ];
@@ -118,15 +115,12 @@ return out(f)`,
 function evaluateCode(code: string): Graph | null {
 	resetIdCounter();
 	clearRegistry();
+	clearOutputs();
 
 	try {
-		const wrappedCode = code.includes("return") ? code : `return (${code})`;
-		const fn = new Function(...Object.keys(api), wrappedCode);
-		const result = fn(...Object.values(api));
-
-		if (result && typeof result === "object" && "nodes" in result) {
-			return result as Graph;
-		}
+		const fn = new Function(...Object.keys(api), code);
+		fn(...Object.values(api));
+		return collectGraph();
 	} catch (err) {
 		console.error("Eval error:", err);
 	}
@@ -188,7 +182,7 @@ function ReEvalTestCard({ test }: TestCardProps) {
 				setError(`Failed to evaluate code ${which}`);
 			}
 		},
-		[isPlaying, test.codeA, test.codeB]
+		[isPlaying, test.codeA, test.codeB],
 	);
 
 	useEffect(() => {
@@ -234,16 +228,10 @@ function ReEvalTestCard({ test }: TestCardProps) {
 					</Button>
 				) : (
 					<>
-						<Button
-							variant={activeCode === "A" ? "play" : "default"}
-							onClick={() => switchTo("A")}
-						>
+						<Button variant={activeCode === "A" ? "play" : "default"} onClick={() => switchTo("A")}>
 							Switch to A
 						</Button>
-						<Button
-							variant={activeCode === "B" ? "play" : "default"}
-							onClick={() => switchTo("B")}
-						>
+						<Button variant={activeCode === "B" ? "play" : "default"} onClick={() => switchTo("B")}>
 							Switch to B
 						</Button>
 						<Button variant="stop" onClick={stop}>
@@ -253,11 +241,7 @@ function ReEvalTestCard({ test }: TestCardProps) {
 				)}
 			</div>
 
-			{error && (
-				<div className="mt-2 text-red-400 text-sm bg-red-900/20 p-2 rounded">
-					{error}
-				</div>
-			)}
+			{error && <div className="mt-2 text-red-400 text-sm bg-red-900/20 p-2 rounded">{error}</div>}
 		</Card>
 	);
 }
@@ -267,9 +251,9 @@ export function LiveReEvalTest() {
 		<div className="min-h-screen p-5 max-w-4xl mx-auto">
 			<h1 className="text-2xl font-bold mb-2">Live Re-Eval Test</h1>
 			<p className="text-gray-400 text-sm mb-4">
-				Test live code switching. Click "Start" to begin playback, then use
-				"Switch to A/B" to swap between code versions. The audio should
-				transition smoothly without resetting the pattern or causing clicks.
+				Test live code switching. Click "Start" to begin playback, then use "Switch to A/B" to swap
+				between code versions. The audio should transition smoothly without resetting the pattern or
+				causing clicks.
 			</p>
 
 			<div className="space-y-4">

@@ -10,16 +10,8 @@ declare class AudioWorkletProcessor {
 }
 declare function registerProcessor(name: string, processorCtor: typeof AudioWorkletProcessor): void;
 
-// Import and re-export PolySignal from poly-signal module
-import type { PolySignal, VoiceChannel } from "./poly-signal";
-export type { PolySignal, VoiceChannel };
-
-// Legacy format - used for serialization and constants
-export type LegacyPolySignal = number[];
-
 export interface SerializedSpec {
-	// Default values stored in legacy format (simple number arrays)
-	inputs: Record<string, { default: LegacyPolySignal }>;
+	inputs: Record<string, { default: number[] }>;
 	outputs: readonly string[];
 	defaultInput: string;
 	defaultOutput: string;
@@ -28,8 +20,7 @@ export interface SerializedSpec {
 
 export interface CompiledInput {
 	type: "constant" | "connection";
-	// Constants stored in legacy format
-	value?: LegacyPolySignal;
+	value?: number[];
 	nodeId?: string;
 	output?: string;
 }
@@ -47,24 +38,7 @@ export interface CompiledGraph {
 	outputNodeId: string;
 }
 
-export type WorkletMessage =
-	| { type: "setGraph"; graph: CompiledGraph }
-	| { type: "stop" };
+export type WorkletMessage = { type: "setGraph"; graph: CompiledGraph } | { type: "stop" };
 
 /** A hydrated config function */
 export type ConfigFn = (...args: unknown[]) => unknown;
-
-/** Runtime node with hydrated process function */
-export interface RuntimeNode {
-	id: string;
-	inputs: CompiledNode["inputs"];
-	config: Record<string, ConfigFn>;
-	defaultOutput: string;
-	process: (
-		inputs: Record<string, PolySignal>,
-		config: Record<string, ConfigFn>,
-		state: Record<string, unknown>,
-		sampleRate: number,
-	) => Record<string, number | PolySignal>;
-	state: Record<string, unknown>;
-}

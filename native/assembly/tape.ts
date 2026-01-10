@@ -70,3 +70,26 @@ export function set_age(value: f32): void {
 export function clear(): void {
 	if (delay !== null) (delay as TapeDelay).clear();
 }
+
+// State serialization for live re-eval
+let stateBuffer: StaticArray<f32> | null = null;
+
+export function get_state_size(): i32 {
+	if (delay === null) return 0;
+	return (delay as TapeDelay).getStateSize();
+}
+
+export function alloc_state_buffer(size: i32): usize {
+	stateBuffer = new StaticArray<f32>(size);
+	return changetype<usize>(stateBuffer);
+}
+
+export function serialize_state(): i32 {
+	if (delay === null || stateBuffer === null) return 0;
+	return (delay as TapeDelay).serializeState(stateBuffer as StaticArray<f32>);
+}
+
+export function deserialize_state(): void {
+	if (delay === null || stateBuffer === null) return;
+	(delay as TapeDelay).deserializeState(stateBuffer as StaticArray<f32>);
+}

@@ -11,19 +11,10 @@ export function EditorApp() {
 			<h1 className="text-2xl font-bold mb-4">Auxlang</h1>
 
 			<div className="mb-4">
-				<EditorControls
-					onRun={run}
-					onStop={stop}
-					isPlaying={state === "playing"}
-				/>
+				<EditorControls onRun={run} onStop={stop} isPlaying={state === "playing"} />
 			</div>
 
-			<CodeEditor
-				value={code}
-				onChange={setCode}
-				onRun={run}
-				className="h-[400px] mb-4"
-			/>
+			<CodeEditor value={code} onChange={setCode} onRun={run} className="mb-4" />
 
 			{error && <ErrorDisplay message={error} />}
 		</div>

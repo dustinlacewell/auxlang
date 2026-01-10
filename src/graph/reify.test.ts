@@ -173,3 +173,56 @@ describe("reify with config", () => {
 		expect(oscNode?.configBindings.waveform).toBe(squareWave);
 	});
 });
+
+describe("reify validation", () => {
+	beforeEach(() => {
+		resetIdCounter();
+		clearRegistry();
+	});
+
+	it("throws on invalid output name in OutputRef", () => {
+		const osc = device(oscSpec);
+		const filter = device(filterSpec);
+
+		// Manually create an invalid OutputRef (output "bogus" doesn't exist on osc)
+		const invalidRef = { descriptorId: osc._state.id, outputName: "bogus" };
+		const connected = filter(invalidRef as any);
+
+		expect(() => reify(connected)).toThrow(/bogus.*not.*output/i);
+	});
+
+	it("accepts valid output names", () => {
+		const osc = device(oscSpec);
+		const filter = device(filterSpec);
+
+		// Use the valid "out" output
+		const connected = filter(osc.out);
+
+		expect(() => reify(connected)).not.toThrow();
+	});
+
+	it("throws helpful error with available outputs listed", () => {
+		const multiOutput = device({
+			inputs: inputs({ freq: 440 }),
+			outputs: ["audio", "cv", "gate"] as const,
+			defaultInput: "freq" as const,
+			defaultOutput: "audio" as const,
+			process: () => ({ audio: 0, cv: 0, gate: 0 }),
+		});
+		const filter = device(filterSpec);
+
+		// Try to use non-existent output "trig"
+		const invalidRef = { descriptorId: multiOutput._state.id, outputName: "trig" };
+		const connected = filter(invalidRef as any);
+
+		try {
+			reify(connected);
+			expect.fail("Should have thrown");
+		} catch (e: any) {
+			expect(e.message).toContain("trig");
+			expect(e.message).toContain("audio");
+			expect(e.message).toContain("cv");
+			expect(e.message).toContain("gate");
+		}
+	});
+});

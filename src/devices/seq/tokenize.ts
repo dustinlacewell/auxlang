@@ -173,9 +173,7 @@ export function tokenize(input: string): Token[] {
 		}
 
 		// Unknown character
-		throw new Error(
-			`Unexpected character '${char}' at position ${position}`,
-		);
+		throw new Error(`Unexpected character '${char}' at position ${position}`);
 	}
 
 	tokens.push(makeToken("EOF", "", position));

@@ -7,7 +7,6 @@ export const mathInv: TestDefinition = {
 	desc: "Two detuned saws, one inverted - creates hollow sound",
 	code: `let freq = 110
 let saw1 = saw(freq)
-let saw2 = inv(saw(mult(freq).by(1.01)))
-let mixed = add(saw1).to(saw2)
-return out(gain(lpf(mixed).cutoff(2000)).amount(0.3))`,
+let saw2 = saw(freq * 1.01).inv()
+saw1.add({ to: saw2 }).lpf({ cutoff: 2000 }).gain({ level: 0.3 }).out()`,
 };

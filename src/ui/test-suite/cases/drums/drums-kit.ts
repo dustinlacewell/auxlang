@@ -6,9 +6,8 @@ export const drumsKit: TestDefinition = {
 	name: "drum kit combined",
 	desc: "All drums together - full beat",
 	code: `let clk = clock(120)
-let k = seq("c1 ~ ~ c1 c1 ~").clk(clk.trig)
-let s = seq("~ ~ c1 ~ ~ c1").clk(clk.trig)
-let h = seq("c1*6").clk(clk.trig)
-let drums = mix(kick(k.gate)).b(snare(s.gate)).c(gain(hihat(h.gate).decay(0.04)).amount(0.3))
-return out(gain(drums).amount(0.7))`,
+
+seq("c4 ~ c4 ~", { clk }).trig.kick({ decay: 0.4 }).out()
+seq("~ c4 ~ c4", { clk }).trig.snare({ snappy: 0.6 }).out()
+seq("c4*4", { clk }).trig.hihat({ decay: 0.04 }).gain({ level: 0.4 }).out()`,
 };

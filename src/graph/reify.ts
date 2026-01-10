@@ -81,6 +81,15 @@ function resolveInput(
 		if (!sourceDescriptor) {
 			throw new Error(`Unknown descriptor: ${signal.descriptorId}`);
 		}
+
+		// Validate that the output name exists on the source descriptor
+		const validOutputs = sourceDescriptor._state.spec.outputs;
+		if (!validOutputs.includes(signal.outputName)) {
+			throw new Error(
+				`"${signal.outputName}" is not an output of this device. Available outputs: ${validOutputs.join(", ")}`,
+			);
+		}
+
 		visitDependency(sourceDescriptor);
 		return {
 			type: "connection",

@@ -306,4 +306,79 @@ export class Dattorro {
 		this.lp3 = 0;
 		this.excPhase = 0;
 	}
+
+	// State serialization for live re-eval
+	// Returns total size needed for state buffer
+	getStateSize(): i32 {
+		let size = 0;
+		// Scalar state: lp1, lp2, lp3, excPhase, preDelayWrite (5 floats)
+		size += 5;
+		// Pre-delay buffer
+		size += this.preDelayLength;
+		// 12 delay lines: each has writePos, readPos, then buffer
+		for (let i = 0; i < 12; i++) {
+			const d = unchecked(this.delays[i]);
+			size += 2; // writePos, readPos as floats
+			size += d.mask + 1; // buffer size (power of 2)
+		}
+		return size;
+	}
+
+	// Serialize state into provided buffer, returns bytes written
+	serializeState(buf: StaticArray<f32>): i32 {
+		let idx = 0;
+
+		// Scalar state
+		unchecked(buf[idx++] = this.lp1);
+		unchecked(buf[idx++] = this.lp2);
+		unchecked(buf[idx++] = this.lp3);
+		unchecked(buf[idx++] = this.excPhase);
+		unchecked(buf[idx++] = <f32>this.preDelayWrite);
+
+		// Pre-delay buffer
+		for (let i = 0; i < this.preDelayLength; i++) {
+			unchecked(buf[idx++] = this.preDelay[i]);
+		}
+
+		// 12 delay lines
+		for (let i = 0; i < 12; i++) {
+			const d = unchecked(this.delays[i]);
+			unchecked(buf[idx++] = <f32>d.writePos);
+			unchecked(buf[idx++] = <f32>d.readPos);
+			const bufSize = d.mask + 1;
+			for (let j = 0; j < bufSize; j++) {
+				unchecked(buf[idx++] = d.buffer[j]);
+			}
+		}
+
+		return idx;
+	}
+
+	// Deserialize state from buffer
+	deserializeState(buf: StaticArray<f32>): void {
+		let idx = 0;
+
+		// Scalar state
+		this.lp1 = unchecked(buf[idx++]);
+		this.lp2 = unchecked(buf[idx++]);
+		this.lp3 = unchecked(buf[idx++]);
+		this.excPhase = unchecked(buf[idx++]);
+		this.preDelayWrite = <i32>unchecked(buf[idx++]);
+
+		// Pre-delay buffer
+		for (let i = 0; i < this.preDelayLength; i++) {
+			unchecked(this.preDelay[i] = buf[idx++]);
+		}
+
+		// 12 delay lines
+		for (let i = 0; i < 12; i++) {
+			const d = unchecked(this.delays[i]);
+			d.writePos = <i32>unchecked(buf[idx++]);
+			d.readPos = <i32>unchecked(buf[idx++]);
+			const bufSize = d.mask + 1;
+			for (let j = 0; j < bufSize; j++) {
+				unchecked(d.buffer[j] = buf[idx++]);
+			}
+		}
+	}
 }
