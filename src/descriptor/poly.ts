@@ -10,6 +10,8 @@
  *   // Creates poly of 2 seqs, then poly of 2 saws, then poly of 2 lpfs
  */
 
+import { isDescriptor } from "./is-descriptor";
+import { isPlainParamsObject } from "./is-params-object";
 import { getDeviceFactory, getOutputHandler } from "./registry";
 import type { AnyDescriptor, OutputRef, Signal } from "./types";
 
@@ -65,11 +67,17 @@ function createChainablePolyOutputRef(outputRefs: OutputRef[]): PolyOutputRef {
 			if (typeof prop === "string") {
 				const deviceFactory = getDeviceFactory(prop);
 				if (deviceFactory) {
-					return (params?: Record<string, Signal | PolyDescriptor>): PolyDescriptor => {
-						const newVoices = outputRefs.map((outputRef, voiceIndex) => {
+					return (params?: Record<string, Signal | PolyDescriptor> | Signal): PolyDescriptor => {
+						const newVoices = outputRefs.map((outputRef, _voiceIndex) => {
 							const device = deviceFactory(outputRef);
-							// Apply params if provided
-							if (params) {
+
+							// No params - just return device
+							if (params === undefined) {
+								return device;
+							}
+
+							// Plain object params - apply each as a setter
+							if (isPlainParamsObject(params)) {
 								let result = device;
 								for (const [key, value] of Object.entries(params)) {
 									const setter = (result as unknown as Record<string, (v: Signal) => AnyDescriptor>)[key];
@@ -77,9 +85,9 @@ function createChainablePolyOutputRef(outputRefs: OutputRef[]): PolyOutputRef {
 										// Distribute arrays/polys; broadcast scalars
 										let resolvedValue: Signal;
 										if (Array.isArray(value)) {
-											resolvedValue = value[voiceIndex % value.length]!;
+											resolvedValue = value[_voiceIndex % value.length]!;
 										} else if (isPoly(value)) {
-											resolvedValue = value.voices[voiceIndex % value.voices.length] as Signal;
+											resolvedValue = value.voices[_voiceIndex % value.voices.length] as Signal;
 										} else {
 											resolvedValue = value as Signal;
 										}
@@ -88,6 +96,24 @@ function createChainablePolyOutputRef(outputRefs: OutputRef[]): PolyOutputRef {
 								}
 								return result;
 							}
+
+							// Bare signal (lambda, number, etc.) - apply to first non-default input
+							// This enables: poly.add(x => x.delay().mult())
+							if (isDescriptor(device)) {
+								const spec = device._state.spec;
+								const inputNames = Object.keys(spec.inputs);
+								const nonDefaultInputs = inputNames.filter((name) => name !== spec.defaultInput);
+								if (nonDefaultInputs.length > 0) {
+									const firstNonDefault = nonDefaultInputs[0]!;
+									const setter = (device as unknown as Record<string, (v: Signal) => AnyDescriptor>)[
+										firstNonDefault
+									];
+									if (typeof setter === "function") {
+										return setter(params as Signal);
+									}
+								}
+							}
+
 							return device;
 						});
 						return poly(newVoices);
@@ -198,13 +224,19 @@ export function poly(voicesInput: (AnyDescriptor | PolyDescriptor)[]): PolyDescr
 			// Uzu chaining: look up device by name, forward to each voice
 			const deviceFactory = getDeviceFactory(prop);
 			if (deviceFactory) {
-				return (params?: Record<string, Signal | PolyDescriptor>): PolyDescriptor => {
-					const newVoices = voices.map((v, voiceIndex) => {
+				return (params?: Record<string, Signal | PolyDescriptor> | Signal): PolyDescriptor => {
+					const newVoices = voices.map((v, _voiceIndex) => {
 						// Get the default output from each voice and chain to new device
 						const outputRef = (v as unknown as Record<string, OutputRef>)[spec.defaultOutput];
 						const device = deviceFactory(outputRef);
-						// Apply params if provided
-						if (params) {
+
+						// No params - just return device
+						if (params === undefined) {
+							return device;
+						}
+
+						// Plain object params - apply each as a setter
+						if (isPlainParamsObject(params)) {
 							let result = device;
 							for (const [key, value] of Object.entries(params)) {
 								const setter = (result as unknown as Record<string, (val: Signal) => AnyDescriptor>)[key];
@@ -212,9 +244,9 @@ export function poly(voicesInput: (AnyDescriptor | PolyDescriptor)[]): PolyDescr
 									// Distribute arrays/polys; broadcast scalars
 									let resolvedValue: Signal;
 									if (Array.isArray(value)) {
-										resolvedValue = value[voiceIndex % value.length]!;
+										resolvedValue = value[_voiceIndex % value.length]!;
 									} else if (isPoly(value)) {
-										resolvedValue = value.voices[voiceIndex % value.voices.length] as Signal;
+										resolvedValue = value.voices[_voiceIndex % value.voices.length] as Signal;
 									} else {
 										resolvedValue = value as Signal;
 									}
@@ -223,6 +255,24 @@ export function poly(voicesInput: (AnyDescriptor | PolyDescriptor)[]): PolyDescr
 							}
 							return result;
 						}
+
+						// Bare signal (lambda, number, etc.) - apply to first non-default input
+						// This enables: poly.add(x => x.delay().mult())
+						if (isDescriptor(device)) {
+							const deviceSpec = device._state.spec;
+							const inputNames = Object.keys(deviceSpec.inputs);
+							const nonDefaultInputs = inputNames.filter((name) => name !== deviceSpec.defaultInput);
+							if (nonDefaultInputs.length > 0) {
+								const firstNonDefault = nonDefaultInputs[0]!;
+								const setter = (device as unknown as Record<string, (v: Signal) => AnyDescriptor>)[
+									firstNonDefault
+								];
+								if (typeof setter === "function") {
+									return setter(params as Signal);
+								}
+							}
+						}
+
 						return device;
 					});
 					return poly(newVoices);

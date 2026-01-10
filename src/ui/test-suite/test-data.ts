@@ -113,6 +113,18 @@ import { polySequencedChord } from "./cases/polyphony/poly-sequenced-chord";
 import { polyStackedFifths } from "./cases/polyphony/poly-stacked-fifths";
 import { polyUnisonDetune } from "./cases/polyphony/poly-unison-detune";
 
+// Lambda
+import { lambdaApplyBasic } from "./cases/lambda/lambda-apply-basic";
+import { lambdaFeedbackEcho } from "./cases/lambda/lambda-feedback-echo";
+import { lambdaFeedbackComb } from "./cases/lambda/lambda-feedback-comb";
+import { lambdaFeedbackKarplus } from "./cases/lambda/lambda-feedback-karplus";
+import { lambdaFeedbackPing } from "./cases/lambda/lambda-feedback-ping";
+import { lambdaInlineBinding } from "./cases/lambda/lambda-inline-binding";
+import { lambdaNestedApply } from "./cases/lambda/lambda-nested-apply";
+import { lambdaLfoRouting } from "./cases/lambda/lambda-lfo-routing";
+import { lambdaPolyFeedback } from "./cases/lambda/lambda-poly-feedback";
+import { lambdaSidechain } from "./cases/lambda/lambda-sidechain";
+
 import type { TestDefinition } from "./cases/types";
 
 export const tests: TestDefinition[] = [
@@ -229,6 +241,18 @@ export const tests: TestDefinition[] = [
 	polyArrayWrap,
 	polyArrayGain,
 	polyArrayLfo,
+
+	// Lambda
+	lambdaApplyBasic,
+	lambdaFeedbackEcho,
+	lambdaFeedbackComb,
+	lambdaFeedbackKarplus,
+	lambdaFeedbackPing,
+	lambdaInlineBinding,
+	lambdaNestedApply,
+	lambdaLfoRouting,
+	lambdaPolyFeedback,
+	lambdaSidechain,
 ];
 
 export function getTestsByCategory(): Map<string, TestDefinition[]> {
