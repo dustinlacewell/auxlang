@@ -9,6 +9,6 @@ export const chordMajor: TestDefinition = {
 chord(261.63, "maj")
   .saw()
   .lpf({ cutoff: 1200 })
-  .gain({ level: 0.2 })
+  .gain(0.2)
   .out()`,
 };

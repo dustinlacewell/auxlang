@@ -7,6 +7,6 @@ export const mathAdd: TestDefinition = {
 	desc: "Two oscs added - chord",
 	code: `osc(440)
   .add({ to: osc(550) })
-  .gain({ level: 0.2 })
+  .gain(0.2)
   .out()`,
 };

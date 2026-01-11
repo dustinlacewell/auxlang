@@ -10,6 +10,6 @@ export const mathAbs: TestDefinition = {
     cutoff: lfo(2).abs().mult({ by: 1500 }).add({ to: 300 }),
     resonance: 0.6
   })
-  .gain({ level: 0.4 })
+  .gain(0.4)
   .out()`,
 };

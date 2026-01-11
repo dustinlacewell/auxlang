@@ -12,7 +12,7 @@ clock(120)
     // Pad plays continuously but ducks when kick hits
     saw(110)
       .lpf({ cutoff: 600 })
-      .gain({ level: 0.4 })
+      .gain(0.4)
       // Invert kick envelope to create ducking (1 - env)
       .mult({
         by: kickSeq.gate
@@ -23,7 +23,7 @@ clock(120)
       })
       // Mix with the actual kick
       .add(kick(kickSeq.gate).mult({ by: 0.6 }))
-      .gain({ level: 0.4 })
+      .gain(0.4)
       .out()
   })`,
 };

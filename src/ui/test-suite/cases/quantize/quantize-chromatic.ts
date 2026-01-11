@@ -11,6 +11,6 @@ lfo(2)
   .quantize({ scaleName: "chromatic" })
   .sqr()
   .lpf({ cutoff: 3000 })
-  .gain({ level: 0.2 })
+  .gain(0.2)
   .out()`,
 };

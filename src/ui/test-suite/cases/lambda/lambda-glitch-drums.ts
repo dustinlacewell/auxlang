@@ -18,14 +18,14 @@ clock(130)
     c.seq("c1*4")
       .trig
       .hihat()
-      .gain({ level: 0.4 })
+      .gain(0.4)
       .out()
 
     // Snare on 2 and 4 with 80% probability
     c.seq("~ c1?.8 ~ c1")
       .trig
       .snare()
-      .gain({ level: 0.5 })
+      .gain(0.5)
       .out()
   })`,
 };

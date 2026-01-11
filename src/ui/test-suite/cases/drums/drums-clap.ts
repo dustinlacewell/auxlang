@@ -8,6 +8,6 @@ export const drumsClap: TestDefinition = {
 	code: `clock(120)
   .seq("~ c4 ~ c4")
   .trig
-  .clap({ decay: 0.2 })
+  .clap()
   .out()`,
 };

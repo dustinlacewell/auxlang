@@ -8,10 +8,6 @@ export const drumsSnare: TestDefinition = {
 	code: `clock(120)
   .seq("~ c4 ~ c4")
   .trig
-  .snare({
-    tone: 0.5,
-    decay: 0.15,
-    snappy: 0.5
-  })
+  .snare()
   .out()`,
 };

@@ -12,6 +12,6 @@ export const timeCounter: TestDefinition = {
   .mult({ by: 100 })
   .add({ to: 200 })
   .osc()
-  .gain({ level: 0.3 })
+  .gain(0.3)
   .out()`,
 };

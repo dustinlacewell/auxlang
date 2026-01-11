@@ -10,7 +10,7 @@ clock(60).seq("c3 f3 g3 c3")
   .chord("maj")
   .saw()
   .lpf({ cutoff: 800 })
-  .gain({ level: 0.15 })
+  .gain(0.15)
   .reverb({ mix: 0.3 })
   .out()`,
 };

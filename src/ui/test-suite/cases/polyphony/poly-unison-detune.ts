@@ -9,6 +9,6 @@ export const polyUnisonDetune: TestDefinition = {
 let f = 220
 saw([f * 0.995, f, f * 1.005, f * 1.01])
   .lpf({ cutoff: 2000 })
-  .gain({ level: 0.12 })
+  .gain(0.12)
   .out()`,
 };

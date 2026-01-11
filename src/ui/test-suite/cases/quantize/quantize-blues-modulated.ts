@@ -16,7 +16,7 @@ lfo(0.3)
   })
   .saw()
   .lpf({ cutoff: 1800, resonance: 0.2 })
-  .gain({ level: 0.3 })
+  .gain(0.3)
   .delay({ time: 0.15, feedback: 0.4, mix: 0.3 })
   .out()`,
 };

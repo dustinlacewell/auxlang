@@ -10,6 +10,6 @@ export const mathScale: TestDefinition = {
     cutoff: lfo(0.5).scale({ min: 200, max: 2000 }),
     resonance: 0.5
   })
-  .gain({ level: 0.4 })
+  .gain(0.4)
   .out()`,
 };

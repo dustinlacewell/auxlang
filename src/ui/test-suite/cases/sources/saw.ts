@@ -5,5 +5,5 @@ export const srcSaw: TestDefinition = {
 	category: "Sources",
 	name: "saw",
 	desc: "Sawtooth wave at 220Hz - bright, buzzy",
-	code: `saw(220).gain({ level: 0.2 }).out()`,
+	code: `saw(220).gain(0.2).out()`,
 };

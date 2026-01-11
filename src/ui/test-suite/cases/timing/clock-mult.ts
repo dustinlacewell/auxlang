@@ -9,6 +9,5 @@ export const timeClockMult: TestDefinition = {
   .trig
   .clockMult({ by: 2 })
   .hihat()
-  .decay(0.03)
   .out()`,
 };

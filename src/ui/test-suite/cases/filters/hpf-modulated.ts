@@ -10,6 +10,6 @@ export const hpfModulated: TestDefinition = {
     cutoff: lfo(2).min(200).max(2000),
     resonance: 0.7
   })
-  .gain({ level: 0.3 })
+  .gain(0.3)
   .out()`,
 };

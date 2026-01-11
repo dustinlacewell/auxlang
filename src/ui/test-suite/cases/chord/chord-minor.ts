@@ -9,6 +9,6 @@ export const chordMinor: TestDefinition = {
 chord(220, "min")
   .tri()
   .lpf({ cutoff: 1000 })
-  .gain({ level: 0.25 })
+  .gain(0.25)
   .out()`,
 };

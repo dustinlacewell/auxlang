@@ -5,5 +5,5 @@ export const notchResonant: TestDefinition = {
 	category: "Filters",
 	name: "notch - resonant",
 	desc: "Notch with high resonance - narrow notch",
-	code: `noise().notch({ cutoff: 800, resonance: 0.85 }).gain({ level: 0.3 }).out()`,
+	code: `noise().notch({ cutoff: 800, resonance: 0.85 }).gain(0.3).out()`,
 };

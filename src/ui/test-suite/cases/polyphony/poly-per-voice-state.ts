@@ -8,6 +8,6 @@ export const polyPerVoiceState: TestDefinition = {
 	code: `// Each channel gets independent state (phase)
 // You should hear a full chord, not a single tone
 osc([261.63, 329.63, 392.00])
-  .gain({ level: 0.2 })
+  .gain(0.2)
   .out()`,
 };

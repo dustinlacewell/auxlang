@@ -5,5 +5,5 @@ export const bpfStatic: TestDefinition = {
 	category: "Filters",
 	name: "bpf - static",
 	desc: "Bandpass at 800Hz - nasal tone",
-	code: `saw(110).bpf({ cutoff: 800 }).gain({ level: 0.4 }).out()`,
+	code: `saw(110).bpf({ cutoff: 800 }).gain(0.4).out()`,
 };

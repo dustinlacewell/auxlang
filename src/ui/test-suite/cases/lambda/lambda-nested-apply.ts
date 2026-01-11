@@ -36,7 +36,7 @@ clock(90)
       a: bassVoice,
       b: leadVoice
     })
-      .gain({ level: 0.3 })
+      .gain(0.3)
       .out()
   })`,
 };

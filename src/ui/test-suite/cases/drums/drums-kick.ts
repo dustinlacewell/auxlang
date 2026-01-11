@@ -8,10 +8,6 @@ export const drumsKick: TestDefinition = {
 	code: `clock(120)
   .seq("c4 c4 c4 c4")
   .trig
-  .kick({
-    pitch: 50,
-    decay: 0.3,
-    sweep: 3
-  })
+  .kick()
   .out()`,
 };

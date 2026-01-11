@@ -8,7 +8,7 @@ export const chordSeventh: TestDefinition = {
 	code: `// C major seventh
 chord(261.63, "maj7")
   .sin()
-  .gain({ level: 0.2 })
+  .gain(0.2)
   .reverb({ mix: 0.4 })
   .out()`,
 };

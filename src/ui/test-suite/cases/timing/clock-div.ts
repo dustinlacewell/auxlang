@@ -9,6 +9,5 @@ export const timeClockDiv: TestDefinition = {
   .trig
   .clockDiv({ by: 4 })
   .kick()
-  .decay(0.5)
   .out()`,
 };

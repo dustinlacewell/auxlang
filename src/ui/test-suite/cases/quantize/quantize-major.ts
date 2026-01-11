@@ -11,6 +11,6 @@ lfo(0.3)
   .quantize({ scaleName: "major" })
   .saw()
   .lpf({ cutoff: 2000 })
-  .gain({ level: 0.3 })
+  .gain(0.3)
   .out()`,
 };
