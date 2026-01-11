@@ -75,4 +75,5 @@ describe("spread device", () => {
 			expect(result.voices).toHaveLength(2);
 		}
 	});
+
 });

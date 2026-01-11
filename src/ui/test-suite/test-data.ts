@@ -148,6 +148,7 @@ import { monoCenter } from "./cases/stereo/mono-center";
 import { spreadArp } from "./cases/stereo/spread-arp";
 import { spreadChord } from "./cases/stereo/spread-chord";
 import { spreadPad } from "./cases/stereo/spread-pad";
+import { spreadWidthModulated } from "./cases/stereo/spread-width-modulated";
 import { stereoRoundRobin } from "./cases/stereo/stereo-round-robin";
 import { stereoTwoVoice } from "./cases/stereo/stereo-two-voice";
 
@@ -307,6 +308,7 @@ export const tests: TestDefinition[] = [
 	spreadChord,
 	spreadArp,
 	spreadPad,
+	spreadWidthModulated,
 ];
 
 export function getTestsByCategory(): Map<string, TestDefinition[]> {
