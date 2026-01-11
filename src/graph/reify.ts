@@ -5,6 +5,7 @@
 import { isDescriptor } from "../descriptor/guards/is-descriptor";
 import { isSignalLambda } from "../descriptor/guards/is-lambda";
 import { isOutputRef } from "../descriptor/guards/is-output-ref";
+import { isPoly, type PolyDescriptor } from "../descriptor/poly";
 import { getDescriptor } from "../descriptor/registry";
 import type { AnyDescriptor, ConfigValue, DescriptorId, Signal } from "../descriptor/types";
 import type { Graph, GraphNode, ResolvedInput } from "./types";
@@ -58,12 +59,24 @@ export function reify(output: AnyDescriptor): Graph {
 }
 
 function resolveInput(
-	signal: Signal | AnyDescriptor,
+	signal: Signal | AnyDescriptor | PolyDescriptor,
 	visitDependency: (d: AnyDescriptor) => void,
 ): ResolvedInput {
 	// Constant number or array
 	if (typeof signal === "number" || Array.isArray(signal)) {
 		return { type: "constant", value: signal };
+	}
+
+	// Poly descriptor - resolve to multi-connection for polyphonic devices
+	if (isPoly(signal)) {
+		const sources = signal.voices.map((voice) => {
+			visitDependency(voice);
+			return {
+				nodeId: voice._state.id,
+				output: voice._state.spec.defaultOutput,
+			};
+		});
+		return { type: "connections", sources };
 	}
 
 	// Descriptor - use its default output (D016)

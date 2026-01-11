@@ -1,5 +1,5 @@
 import type { PolyDescriptor } from "./poly";
-import type { AnyDescriptor, DescriptorId, Signal } from "./types";
+import type { AnyDescriptor, DescriptorId, DeviceSpec, Signal } from "./types";
 
 /** Registry of all descriptors by ID (populated during descriptor creation) */
 const descriptorRegistry = new Map<DescriptorId, AnyDescriptor>();
@@ -26,17 +26,28 @@ export function getDescriptor(id: DescriptorId): AnyDescriptor | undefined {
  */
 export type DeviceFactory = (chainedSignal?: Signal, ...args: unknown[]) => AnyDescriptor | PolyDescriptor;
 
+/** Device registration entry - factory plus spec for polyphonic checking */
+interface DeviceEntry {
+	factory: DeviceFactory;
+	spec: DeviceSpec;
+}
+
 /** Registry of device factories by name (for Uzu chaining) */
-const deviceRegistry = new Map<string, DeviceFactory>();
+const deviceRegistry = new Map<string, DeviceEntry>();
 
 /** Register a device factory by name (called by device()) */
-export function registerDevice(name: string, factory: DeviceFactory): void {
-	deviceRegistry.set(name, factory);
+export function registerDevice(name: string, factory: DeviceFactory, spec?: DeviceSpec): void {
+	deviceRegistry.set(name, { factory, spec: spec! });
 }
 
 /** Get a device factory by name (for chaining lookups) */
 export function getDeviceFactory(name: string): DeviceFactory | undefined {
-	return deviceRegistry.get(name);
+	return deviceRegistry.get(name)?.factory;
+}
+
+/** Get a device spec by name (for polyphonic checking) */
+export function getDeviceSpec(name: string): DeviceSpec | undefined {
+	return deviceRegistry.get(name)?.spec;
 }
 
 /** Clear device registry (for testing) */

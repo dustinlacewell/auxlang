@@ -14,7 +14,7 @@ import { applyBareSignal } from "./chaining/apply-bare-signal";
 import { isDescriptor } from "./guards/is-descriptor";
 import { isPlainParamsObject } from "./guards/is-params-object";
 import { createChainablePolyOutputRef, isPolyOutputRef, type PolyOutputRef } from "./proxy/poly-output-proxy";
-import { getDeviceFactory, getOutputHandler } from "./registry";
+import { getDeviceFactory, getDeviceSpec, getOutputHandler } from "./registry";
 import { resolveForVoice } from "./signals/resolve-for-voice";
 import type { AnyDescriptor, OutputRef, Signal } from "./types";
 
@@ -124,6 +124,19 @@ export function poly(voicesInput: (AnyDescriptor | PolyDescriptor)[]): PolyDescr
 			// Uzu chaining: look up device by name, forward to each voice
 			const deviceFactory = getDeviceFactory(prop);
 			if (deviceFactory) {
+				const deviceSpec = getDeviceSpec(prop);
+
+				// Polyphonic device: pass the poly directly instead of per-voice expansion
+				if (deviceSpec?.polyphonic) {
+					return (params?: Record<string, Signal | PolyDescriptor> | Signal): AnyDescriptor | PolyDescriptor => {
+						// Pass the entire poly as the default input
+						const thisPoly = poly(voices);
+						const device = deviceFactory(thisPoly, params);
+						return device;
+					};
+				}
+
+				// Normal device: forward to each voice
 				return (params?: Record<string, Signal | PolyDescriptor> | Signal): PolyDescriptor => {
 					const newVoices = voices.map((v, _voiceIndex) => {
 						// Get the default output from each voice and chain to new device

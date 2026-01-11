@@ -23,7 +23,7 @@ export function isPolyOutputRef(value: unknown): value is PolyOutputRef {
 type PolyDescriptor = { _poly: true; voices: readonly AnyDescriptor[] };
 
 // Forward declaration - will be passed in to avoid circular dependency
-type PolyFn = (voices: AnyDescriptor[]) => PolyDescriptor;
+type PolyFn = (voices: (AnyDescriptor | PolyDescriptor)[]) => PolyDescriptor;
 
 /**
  * Create a chainable PolyOutputRef.

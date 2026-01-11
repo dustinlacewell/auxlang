@@ -16,14 +16,20 @@ export interface SerializedSpec {
 	defaultInput: string;
 	defaultOutput: string;
 	processSource: string;
+	/** If true, device is polyphonic and uses processAll */
+	polyphonic?: boolean;
+	/** Process function source for polyphonic devices */
+	processAllSource?: string;
 }
 
 export interface CompiledInput {
-	type: "constant" | "connection" | "lambda";
+	type: "constant" | "connection" | "lambda" | "connections";
 	value?: number[];
 	nodeId?: string;
 	output?: string;
 	fnSource?: string;
+	/** For multi-connection (polyphonic) inputs */
+	sources?: { nodeId: string; output: string }[];
 }
 
 /** Serialized config - function source or plain data */
@@ -44,7 +50,16 @@ export interface CompiledGraph {
 	outputNodeId: string;
 }
 
-export type WorkletMessage = { type: "setGraph"; graph: CompiledGraph } | { type: "stop" };
+/** Stereo compiled graphs - separate graphs for left and right channels */
+export interface CompiledStereoGraph {
+	left: CompiledGraph;
+	right: CompiledGraph;
+}
+
+export type WorkletMessage =
+	| { type: "setGraph"; graph: CompiledGraph }
+	| { type: "setStereoGraph"; stereo: CompiledStereoGraph }
+	| { type: "stop" };
 
 /** A hydrated config function */
 export type ConfigFn = (...args: unknown[]) => unknown;

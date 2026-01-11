@@ -95,7 +95,17 @@ type HydratedLambda = (state: Record<string, unknown>, sampleRate: number, time:
 type InputBinding =
 	| { type: "constant"; value: number }
 	| { type: "connection"; sourceNodeIndex: number; outputName: string }
-	| { type: "lambda"; fn: HydratedLambda; state: Record<string, unknown> };
+	| { type: "lambda"; fn: HydratedLambda; state: Record<string, unknown> }
+	| { type: "connections"; sources: { sourceNodeIndex: number; outputName: string }[] };
+
+/** Hydrated processAll function for polyphonic devices */
+type HydratedProcessAll = (
+	inputs: Record<string, number | number[]>,
+	config: Record<string, ConfigVal>,
+	state: Record<string, unknown>,
+	sampleRate: number,
+	time: number,
+) => Record<string, number>;
 
 /**
  * Optimized runtime node with pre-allocated storage.
@@ -105,7 +115,7 @@ interface OptimizedNode {
 	/** Original node ID (for state preservation across graph swaps) */
 	id: string;
 
-	/** The hydrated process function */
+	/** The hydrated process function (for non-polyphonic devices) */
 	process: (
 		inputs: Record<string, number>,
 		config: Record<string, ConfigVal>,
@@ -113,6 +123,12 @@ interface OptimizedNode {
 		sampleRate: number,
 		time: number,
 	) => Record<string, number>;
+
+	/** The hydrated processAll function (for polyphonic devices) */
+	processAll?: HydratedProcessAll;
+
+	/** Whether this node is polyphonic (uses processAll instead of process) */
+	isPolyphonic: boolean;
 
 	/** Hydrated config values (functions or data) */
 	config: Record<string, ConfigVal>;
@@ -124,7 +140,7 @@ interface OptimizedNode {
 	defaultOutput: string;
 
 	/** Pre-allocated input record (mutated in place each sample) */
-	inputRecord: Record<string, number>;
+	inputRecord: Record<string, number | number[]>;
 
 	/** Pre-allocated output record (mutated in place each sample) */
 	outputRecord: Record<string, number>;
@@ -230,7 +246,7 @@ export class RuntimeGraph {
 		const outputNames = [...compiledNode.spec.outputs].sort();
 
 		// Pre-allocate input/output records with zero values
-		const inputRecord: Record<string, number> = {};
+		const inputRecord: Record<string, number | number[]> = {};
 		for (const name of inputNames) {
 			inputRecord[name] = 0;
 		}
@@ -265,6 +281,17 @@ export class RuntimeGraph {
 
 				return { type: "lambda", fn, state: lambdaState };
 			}
+			if (input.type === "connections") {
+				// Multi-connection for polyphonic devices
+				const sources = (input.sources ?? []).map((src) => {
+					const idx = idToIndex.get(src.nodeId);
+					return {
+						sourceNodeIndex: idx ?? 0,
+						outputName: src.output,
+					};
+				});
+				return { type: "connections", sources };
+			}
 			const sourceIndex = idToIndex.get(input.nodeId ?? "");
 			if (sourceIndex === undefined) {
 				return { type: "constant", value: 0 };
@@ -285,9 +312,18 @@ export class RuntimeGraph {
 			process = hydrateProcess(compiledNode.spec.processSource);
 		}
 
-		return {
+		// Check if this is a polyphonic device and hydrate processAll
+		const isPolyphonic = compiledNode.spec.polyphonic ?? false;
+		let processAll: HydratedProcessAll | undefined;
+		if (isPolyphonic && compiledNode.spec.processAllSource) {
+			// biome-ignore lint/security/noGlobalEval: required for dynamic function hydration
+			processAll = new Function(`return (${compiledNode.spec.processAllSource})`)() as HydratedProcessAll;
+		}
+
+		const node: OptimizedNode = {
 			id: compiledNode.id,
 			process,
+			isPolyphonic,
 			config: hydrateConfig(compiledNode.config),
 			state,
 			defaultOutput: compiledNode.spec.defaultOutput,
@@ -297,6 +333,10 @@ export class RuntimeGraph {
 			inputNames,
 			outputNames,
 		};
+		if (processAll) {
+			node.processAll = processAll;
+		}
+		return node;
 	}
 
 	/**
@@ -324,8 +364,15 @@ export class RuntimeGraph {
 				} else if (binding.type === "lambda") {
 					// Execute lambda with its own persistent state
 					node.inputRecord[inputName] = binding.fn(binding.state, sampleRate, time);
+				} else if (binding.type === "connections") {
+					// Multi-connection for polyphonic devices - gather all source values
+					const values = binding.sources.map((src) => {
+						const sourceNode = this.nodes[src.sourceNodeIndex];
+						return sourceNode?.outputRecord[src.outputName] ?? 0;
+					});
+					node.inputRecord[inputName] = values;
 				} else {
-					// Connection reads from current sample
+					// Single connection reads from current sample
 					const sourceNode = this.nodes[binding.sourceNodeIndex];
 					if (sourceNode) {
 						node.inputRecord[inputName] = sourceNode.outputRecord[binding.outputName] ?? 0;
@@ -333,8 +380,14 @@ export class RuntimeGraph {
 				}
 			}
 
-			// Call the device's process function
-			const result = node.process(node.inputRecord, node.config, node.state, sampleRate, time);
+			// Call the device's process function (or processAll for polyphonic)
+			let result: Record<string, number>;
+			if (node.isPolyphonic && node.processAll) {
+				result = node.processAll(node.inputRecord, node.config, node.state, sampleRate, time);
+			} else {
+				// Cast inputRecord to mono for non-polyphonic devices
+				result = node.process(node.inputRecord as Record<string, number>, node.config, node.state, sampleRate, time);
+			}
 
 			// Copy results to pre-allocated outputRecord
 			for (const outputName of node.outputNames) {
