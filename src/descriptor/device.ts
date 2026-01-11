@@ -196,15 +196,9 @@ export function device<const T extends DeviceSpecInput>(
 			for (const [key, def] of Object.entries(spec.config)) {
 				fullConfig[key] = configBindings[key] ?? def.default;
 			}
-			const result = expandFn(fullConfig, inputBindings);
-			// Apply any remaining input bindings to the expanded result
-			let finalResult = result;
-			for (const [key, value] of Object.entries(inputBindings)) {
-				if (key in spec.inputs && typeof (finalResult as any)[key] === "function") {
-					finalResult = (finalResult as any)[key](value);
-				}
-			}
-			return finalResult;
+			// expand function receives all inputs and returns the expanded graph
+			// No need to re-apply inputs - expand already consumed them
+			return expandFn(fullConfig, inputBindings);
 		}
 
 		return createDescriptor(spec, inputBindings, configBindings);

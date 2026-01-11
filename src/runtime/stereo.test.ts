@@ -5,9 +5,13 @@ import { resetIdCounter } from "../descriptor/identity";
 import { inputs } from "../descriptor/inputs";
 import { poly } from "../descriptor/poly";
 import { clearRegistry } from "../descriptor/registry";
+import { spread } from "../devices/spread";
 import { clearOutputs, collectStereoGraph, out } from "../graph/out";
 import { compile } from "./compile";
 import { RuntimeGraph } from "./processor/runtime-graph";
+
+// Ensure spread is registered (import side effect)
+void spread;
 
 // Simple oscillator that outputs its pitch value directly (for testing)
 const testOsc = device("testOsc", {
@@ -95,5 +99,82 @@ describe("stereo runtime", () => {
 		// 100 * 0.707 + 300 * 0.707 = 70.7 + 212.1 = 282.8
 		const expectedLeft = (100 + 300) / Math.sqrt(2);
 		expect(leftSample).toBeCloseTo(expectedLeft, 1);
+	});
+});
+
+describe("spread with width", () => {
+	beforeEach(() => {
+		resetIdCounter();
+		clearRegistry();
+		clearOutputs();
+	});
+
+	it("width=1 puts voice 0 left, voice 1 right", async () => {
+		const osc1 = testOsc(100);
+		const osc2 = testOsc(200);
+		poly([osc1, osc2]).spread({ width: 1 }).out();
+
+		const stereo = collectStereoGraph();
+		expect(stereo).not.toBeNull();
+
+		const leftCompiled = await compile(stereo!.left);
+		const rightCompiled = await compile(stereo!.right);
+
+		const leftGraph = new RuntimeGraph(leftCompiled, new Map());
+		const rightGraph = new RuntimeGraph(rightCompiled, new Map());
+
+		const leftSample = leftGraph.processSample(44100);
+		const rightSample = rightGraph.processSample(44100);
+
+		// width=1: voice 0 (100) full left, voice 1 (200) full right
+		expect(leftSample).toBeCloseTo(100, 1);
+		expect(rightSample).toBeCloseTo(200, 1);
+	});
+
+	it("width=-1 reverses stereo field", async () => {
+		const osc1 = testOsc(100);
+		const osc2 = testOsc(200);
+		poly([osc1, osc2]).spread({ width: -1 }).out();
+
+		const stereo = collectStereoGraph();
+		expect(stereo).not.toBeNull();
+
+		const leftCompiled = await compile(stereo!.left);
+		const rightCompiled = await compile(stereo!.right);
+
+		const leftGraph = new RuntimeGraph(leftCompiled, new Map());
+		const rightGraph = new RuntimeGraph(rightCompiled, new Map());
+
+		const leftSample = leftGraph.processSample(44100);
+		const rightSample = rightGraph.processSample(44100);
+
+		// width=-1: voice 0 (100) full RIGHT, voice 1 (200) full LEFT
+		expect(leftSample).toBeCloseTo(200, 1);
+		expect(rightSample).toBeCloseTo(100, 1);
+	});
+
+	it("width=0 produces mono (equal L/R)", async () => {
+		const osc1 = testOsc(100);
+		const osc2 = testOsc(200);
+		poly([osc1, osc2]).spread({ width: 0 }).out();
+
+		const stereo = collectStereoGraph();
+		expect(stereo).not.toBeNull();
+
+		const leftCompiled = await compile(stereo!.left);
+		const rightCompiled = await compile(stereo!.right);
+
+		const leftGraph = new RuntimeGraph(leftCompiled, new Map());
+		const rightGraph = new RuntimeGraph(rightCompiled, new Map());
+
+		const leftSample = leftGraph.processSample(44100);
+		const rightSample = rightGraph.processSample(44100);
+
+		// width=0: both voices centered, so L and R should be equal
+		// Each voice contributes 0.5 to both channels
+		// Left = 100*0.5 + 200*0.5 = 150
+		// Right = 100*0.5 + 200*0.5 = 150
+		expect(leftSample).toBeCloseTo(150, 1);
+		expect(rightSample).toBeCloseTo(150, 1);
 	});
 });
