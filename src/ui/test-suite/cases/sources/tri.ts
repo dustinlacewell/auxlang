@@ -5,5 +5,5 @@ export const srcTri: TestDefinition = {
 	category: "Sources",
 	name: "tri",
 	desc: "Triangle wave at 440Hz - soft, flute-like",
-	code: `tri(440).gain({ level: 0.3 }).out()`,
+	code: `tri(440).gain(0.3).out()`,
 };

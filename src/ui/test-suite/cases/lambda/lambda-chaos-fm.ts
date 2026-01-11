@@ -33,7 +33,7 @@ clock(60)
           release: 0.4
         })
       })
-      .gain({ level: 0.4 })
+      .gain(0.4)
       .out()
   })`,
 };

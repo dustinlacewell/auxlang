@@ -11,6 +11,6 @@ saw([55, 82.41, 110, 164.81, 220])
     cutoff: 800,
     resonance: 0.3
   })
-  .gain({ level: 0.1 })
+  .gain(0.1)
   .out()`,
 };

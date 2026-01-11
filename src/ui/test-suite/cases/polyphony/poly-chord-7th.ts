@@ -9,6 +9,6 @@ export const polyChord7th: TestDefinition = {
 // C4, E4, G4, B4
 saw([261.63, 329.63, 392.00, 493.88])
   .lpf({ cutoff: 1200 })
-  .gain({ level: 0.12 })
+  .gain(0.12)
   .out()`,
 };

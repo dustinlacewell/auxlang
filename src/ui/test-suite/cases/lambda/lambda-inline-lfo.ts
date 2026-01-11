@@ -14,6 +14,6 @@ saw(220)
       return Math.sin(t * 2 * Math.PI * 2) * 800 + 1000
     }
   })
-  .gain({ level: 0.3 })
+  .gain(0.3)
   .out()`,
 };

@@ -11,7 +11,7 @@ lfo(0.4)
   .quantize({ scaleName: "blues", root: 4, octave: 2 })
   .saw()
   .lpf({ cutoff: 1500, resonance: 0.3 })
-  .gain({ level: 0.3 })
+  .gain(0.3)
   .tape({ wow: 0.4, mix: 0.3 })
   .out()`,
 };

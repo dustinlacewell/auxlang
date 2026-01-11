@@ -5,5 +5,5 @@ export const srcSin: TestDefinition = {
 	category: "Sources",
 	name: "sin",
 	desc: "Explicit sine oscillator at 330Hz",
-	code: `sin(330).gain({ level: 0.3 }).out()`,
+	code: `sin(330).gain(0.3).out()`,
 };

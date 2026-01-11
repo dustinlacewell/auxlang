@@ -5,5 +5,5 @@ export const utilGain: TestDefinition = {
 	category: "Utilities",
 	name: "gain",
 	desc: "Volume control - quiet sine",
-	code: `osc(440).gain({ level: 0.1 }).out()`,
+	code: `osc(440).gain(0.1).out()`,
 };

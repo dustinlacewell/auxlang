@@ -11,6 +11,6 @@ export const polyArrayDistribute: TestDefinition = {
 // Voice 2: 4000 Hz cutoff (bright)
 saw([130.81, 261.63, 523.25])
   .lpf({ cutoff: [400, 1500, 4000] })
-  .gain({ level: 0.15 })
+  .gain(0.15)
   .out()`,
 };

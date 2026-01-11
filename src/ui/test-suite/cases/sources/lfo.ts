@@ -5,5 +5,5 @@ export const srcLfo: TestDefinition = {
 	category: "Sources",
 	name: "lfo",
 	desc: "LFO modulating pitch - audible wobble",
-	code: `osc(lfo(2).min(300).max(500)).gain({ level: 0.3 }).out()`,
+	code: `osc(lfo(2).min(300).max(500)).gain(0.3).out()`,
 };

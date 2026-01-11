@@ -5,5 +5,5 @@ export const srcSqr: TestDefinition = {
 	category: "Sources",
 	name: "sqr",
 	desc: "Square wave at 330Hz - hollow, clarinet-like",
-	code: `sqr(330).gain({ level: 0.2 }).out()`,
+	code: `sqr(330).gain(0.2).out()`,
 };

@@ -9,6 +9,6 @@ export const polyNoiseChord: TestDefinition = {
 // (This works because each channel has independent filter state)
 noise()
   .lpf({ cutoff: [400, 600, 800], resonance: 0.9 })
-  .gain({ level: 0.2 })
+  .gain(0.2)
   .out()`,
 };

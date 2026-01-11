@@ -12,6 +12,6 @@ saw((s, sr, t) => {
   return 200 + (cycleT / 2) * 600
 })
   .lpf({ cutoff: 1500 })
-  .gain({ level: 0.3 })
+  .gain(0.3)
   .out()`,
 };

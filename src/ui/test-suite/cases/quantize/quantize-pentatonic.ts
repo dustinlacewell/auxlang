@@ -10,7 +10,7 @@ lfo(0.2)
   .scale({ min: 150, max: 600 })
   .quantize({ scaleName: "minor pentatonic", root: 9 })
   .sin()
-  .gain({ level: 0.4 })
+  .gain(0.4)
   .reverb({ mix: 0.3 })
   .out()`,
 };

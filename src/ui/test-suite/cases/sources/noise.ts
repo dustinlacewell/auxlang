@@ -5,5 +5,5 @@ export const srcNoise: TestDefinition = {
 	category: "Sources",
 	name: "noise",
 	desc: "White noise - hissy, all frequencies",
-	code: `noise().gain({ level: 0.15 }).out()`,
+	code: `noise().gain(0.15).out()`,
 };

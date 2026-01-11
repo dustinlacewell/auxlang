@@ -9,6 +9,6 @@ export const timeClockSwing: TestDefinition = {
   .swing(0.3)
   .seq("c4*2")
   .trig
-  .hihat({ decay: 0.05 })
+  .hihat()
   .out()`,
 };

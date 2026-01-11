@@ -18,7 +18,7 @@ export const polySeqChord: TestDefinition = {
           release: 0.2
         })
       })
-      .gain({ level: 0.12 })
+      .gain(0.12)
       .out()
   )`,
 };

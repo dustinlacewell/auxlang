@@ -8,6 +8,6 @@ export const mathInv: TestDefinition = {
 	code: `saw(110)
   .add({ to: saw(111.1).inv() })
   .lpf({ cutoff: 2000 })
-  .gain({ level: 0.3 })
+  .gain(0.3)
   .out()`,
 };

@@ -18,7 +18,7 @@ export const polySeqMixed: TestDefinition = {
           release: 0.1
         })
       })
-      .gain({ level: 0.15 })
+      .gain(0.15)
       .out()
   )`,
 };

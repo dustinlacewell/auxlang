@@ -7,6 +7,6 @@ export const mathRingMod: TestDefinition = {
 	desc: "Two oscs multiplied - metallic sound",
 	code: `osc(440)
   .mult({ by: osc(110) })
-  .gain({ level: 0.3 })
+  .gain(0.3)
   .out()`,
 };

@@ -5,5 +5,5 @@ export const srcOsc: TestDefinition = {
 	category: "Sources",
 	name: "osc (sine)",
 	desc: "Pure sine wave at 440Hz - smooth, no harmonics",
-	code: `osc(440).gain({ level: 0.3 }).out()`,
+	code: `osc(440).gain(0.3).out()`,
 };

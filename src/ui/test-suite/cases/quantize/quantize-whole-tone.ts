@@ -11,6 +11,6 @@ lfo(0.15)
   .quantize({ scaleName: "whole tone" })
   .sin()
   .reverb({ room: 0.8, mix: 0.5 })
-  .gain({ level: 0.3 })
+  .gain(0.3)
   .out()`,
 };

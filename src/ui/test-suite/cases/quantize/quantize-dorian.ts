@@ -11,6 +11,6 @@ lfo(0.25)
   .quantize({ scaleName: "dorian", root: 2 })
   .tri()
   .lpf({ cutoff: 1200 })
-  .gain({ level: 0.3 })
+  .gain(0.3)
   .out()`,
 };

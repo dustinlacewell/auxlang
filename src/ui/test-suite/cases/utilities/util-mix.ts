@@ -10,6 +10,6 @@ export const utilMix: TestDefinition = {
   .c(saw(218.9))
   .d(saw(222.2))
   .lpf({ cutoff: 1200 })
-  .gain({ level: 0.15 })
+  .gain(0.15)
   .out()`,
 };

@@ -9,6 +9,6 @@ export const polyBroadcastFilter: TestDefinition = {
 let cut = lfo(0.5).min(400).max(2000)  // mono LFO
 saw([261.63, 329.63, 392.00])
   .lpf({ cutoff: cut })
-  .gain({ level: 0.15 })
+  .gain(0.15)
   .out()`,
 };
