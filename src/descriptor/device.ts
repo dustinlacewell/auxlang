@@ -13,6 +13,7 @@ import type {
 	Descriptor,
 	DescriptorState,
 	DeviceSpec,
+	ProcessAllFn,
 	ProcessFn,
 	Signal,
 } from "./types";
@@ -39,6 +40,11 @@ export interface DeviceInput<I extends string, C extends string, O extends strin
 	readonly positionalArgs?: readonly (I | C)[];
 	/** Expand function - replaces this device with other descriptors at construction */
 	readonly expand?: ExpandFn;
+	/** If true, device receives all poly voices instead of being expanded per-voice */
+	readonly polyphonic?: boolean;
+	// biome-ignore lint/suspicious/noExplicitAny: processAll functions have device-specific typed signatures
+	/** Process function for polyphonic devices - receives arrays for poly inputs */
+	readonly processAll?: ProcessAllFn<any, any, any>;
 }
 
 /** Extract config keys from an input object, defaulting to never if no config */
@@ -49,6 +55,9 @@ type AnyProcessFn = ProcessFn<any, any, any>;
 
 // Dummy no-op process for WASM devices (never called, WASM handles processing)
 const wasmNoopProcess: AnyProcessFn = () => ({});
+
+// biome-ignore lint/suspicious/noExplicitAny: processAll functions have device-specific typed signatures
+type AnyProcessAllFn = ProcessAllFn<any, any, any>;
 
 /** Device spec type for overload signatures */
 type DeviceSpecInput = {
@@ -61,6 +70,8 @@ type DeviceSpecInput = {
 	wasmUrl?: string;
 	positionalArgs?: readonly string[];
 	expand?: ExpandFn;
+	polyphonic?: boolean;
+	processAll?: AnyProcessAllFn;
 };
 
 /**
@@ -107,6 +118,11 @@ export function device<const T extends DeviceSpecInput>(
 		process,
 		processSource: process.toString(),
 		...(input.wasmUrl ? { wasmUrl: input.wasmUrl } : {}),
+		...(input.polyphonic ? { polyphonic: true } : {}),
+		...(input.processAll ? {
+			processAll: input.processAll,
+			processAllSource: input.processAll.toString(),
+		} : {}),
 	};
 
 	const positionalArgs = input.positionalArgs ?? [input.defaultInput];
@@ -196,7 +212,7 @@ export function device<const T extends DeviceSpecInput>(
 
 	// Register device factory if name provided
 	if (name) {
-		registerDevice(name, factory);
+		registerDevice(name, factory, spec);
 	}
 
 	// For devices with expand, return the factory function directly

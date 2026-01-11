@@ -97,6 +97,8 @@ function serializeSpec(spec: Graph["nodes"][number]["spec"]): SerializedSpec {
 		defaultInput: spec.defaultInput,
 		defaultOutput: spec.defaultOutput,
 		processSource: spec.processSource,
+		...(spec.polyphonic ? { polyphonic: true } : {}),
+		...(spec.processAllSource ? { processAllSource: spec.processAllSource } : {}),
 	};
 }
 
@@ -109,6 +111,13 @@ function compileInput(resolved: ResolvedInput): CompiledInput {
 
 	if (resolved.type === "lambda") {
 		return { type: "lambda", fnSource: resolved.fn.toString() };
+	}
+
+	if (resolved.type === "connections") {
+		return {
+			type: "connections",
+			sources: resolved.sources.map((s) => ({ nodeId: s.nodeId, output: s.output })),
+		};
 	}
 
 	return {

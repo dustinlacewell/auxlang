@@ -51,12 +51,28 @@ export function computeTopologyHash(
  * Hash an input binding.
  * - Constants become "const" (value excluded for stability)
  * - Connections become the source node's hash + output name
+ * - Multi-connections become hash of all sources joined
+ * - Lambdas become "lambda" (source excluded for stability)
  */
 function hashInput(input: ResolvedInput, nodeHashes: Map<string, TopologyHash>): string {
 	if (input.type === "constant") {
 		return "const";
 	}
-	// Connection: use the source node's topology hash
+	if (input.type === "lambda") {
+		return "lambda";
+	}
+	if (input.type === "connections") {
+		// Hash all source connections
+		const hashes = input.sources.map((src) => {
+			const sourceHash = nodeHashes.get(src.nodeId);
+			if (!sourceHash) {
+				throw new Error(`Missing hash for node ${src.nodeId}`);
+			}
+			return `${sourceHash}.${src.output}`;
+		});
+		return `[${hashes.join(",")}]`;
+	}
+	// Single connection: use the source node's topology hash
 	const sourceHash = nodeHashes.get(input.nodeId);
 	if (!sourceHash) {
 		throw new Error(`Missing hash for node ${input.nodeId}`);

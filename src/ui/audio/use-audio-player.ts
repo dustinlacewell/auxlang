@@ -1,9 +1,9 @@
 import { resetIdCounter } from "@/descriptor/identity";
 import { clearRegistry } from "@/descriptor/registry";
 import * as api from "@/editor/api";
-import { clearOutputs, collectGraph } from "@/graph/out";
+import { clearOutputs, collectStereoGraph } from "@/graph/out";
 import { useCallback, useRef, useState } from "react";
-import { createAudioInstance, sendGraph, stopInstance } from "./create-audio-instance";
+import { createAudioInstance, sendStereoGraph, stopInstance } from "./create-audio-instance";
 import type { AudioInstance, PlaybackState } from "./types";
 
 export function useAudioPlayer() {
@@ -22,9 +22,9 @@ export function useAudioPlayer() {
 			const fn = new Function(...Object.keys(api), code);
 			fn(...Object.values(api));
 
-			// Collect all registered outputs into a graph
-			const graph = collectGraph();
-			if (!graph) {
+			// Collect all registered outputs into stereo graphs
+			const stereo = collectStereoGraph();
+			if (!stereo) {
 				setState("error");
 				setError("No out() calls in code");
 				return;
@@ -36,8 +36,8 @@ export function useAudioPlayer() {
 				instanceRef.current = instance;
 			}
 
-			// Send graph (processor handles state preservation for matched nodes)
-			await sendGraph(instanceRef.current, graph);
+			// Send stereo graphs (processor handles state preservation for matched nodes)
+			await sendStereoGraph(instanceRef.current, stereo);
 			setState("playing");
 			setError(null);
 		} catch (err) {

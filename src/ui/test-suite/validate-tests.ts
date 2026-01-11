@@ -6,7 +6,7 @@
 import { resetIdCounter } from "@/descriptor/identity";
 import { clearRegistry } from "@/descriptor/registry";
 import * as api from "@/editor/api";
-import { clearOutputs, collectGraph } from "@/graph/out";
+import { clearOutputs, collectStereoGraph } from "@/graph/out";
 import { tests } from "./test-data";
 
 interface ValidationResult {
@@ -29,9 +29,9 @@ function validateTest(test: { id: string; name: string; category: string; code: 
 		const fn = new Function(...Object.keys(api), test.code);
 		fn(...Object.values(api));
 
-		// Collect graph
-		const graph = collectGraph();
-		if (!graph) {
+		// Collect stereo graph
+		const stereo = collectStereoGraph();
+		if (!stereo) {
 			return {
 				id: test.id,
 				name: test.name,
@@ -46,7 +46,7 @@ function validateTest(test: { id: string; name: string; category: string; code: 
 			name: test.name,
 			category: test.category,
 			success: true,
-			nodeCount: graph.nodes.length,
+			nodeCount: stereo.left.nodes.length,
 		};
 	} catch (err) {
 		return {

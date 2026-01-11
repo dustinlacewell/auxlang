@@ -51,6 +51,7 @@ export { slew } from "../devices/slew";
 export { sah } from "../devices/sah";
 export { pick } from "../devices/pick";
 export { quantize } from "../devices/quantize";
+export { spread } from "../devices/spread";
 
 // Math & Logic
 export {

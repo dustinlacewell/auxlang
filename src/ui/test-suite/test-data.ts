@@ -143,6 +143,14 @@ import { chordMinor } from "./cases/chord/chord-minor";
 import { chordSeventh } from "./cases/chord/chord-seventh";
 import { chordProgression } from "./cases/chord/chord-progression";
 
+// Stereo
+import { monoCenter } from "./cases/stereo/mono-center";
+import { spreadArp } from "./cases/stereo/spread-arp";
+import { spreadChord } from "./cases/stereo/spread-chord";
+import { spreadPad } from "./cases/stereo/spread-pad";
+import { stereoRoundRobin } from "./cases/stereo/stereo-round-robin";
+import { stereoTwoVoice } from "./cases/stereo/stereo-two-voice";
+
 import type { TestDefinition } from "./cases/types";
 
 export const tests: TestDefinition[] = [
@@ -291,6 +299,14 @@ export const tests: TestDefinition[] = [
 	chordMinor,
 	chordSeventh,
 	chordProgression,
+
+	// Stereo
+	monoCenter,
+	stereoTwoVoice,
+	stereoRoundRobin,
+	spreadChord,
+	spreadArp,
+	spreadPad,
 ];
 
 export function getTestsByCategory(): Map<string, TestDefinition[]> {

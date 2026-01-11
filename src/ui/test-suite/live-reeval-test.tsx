@@ -1,9 +1,8 @@
 import { resetIdCounter } from "@/descriptor/identity";
 import { clearRegistry } from "@/descriptor/registry";
 import * as api from "@/editor/api";
-import { clearOutputs, collectGraph } from "@/graph/out";
-import type { Graph } from "@/graph/types";
-import { createAudioInstance, sendGraph, stopInstance } from "@/ui/audio/create-audio-instance";
+import { clearOutputs, collectStereoGraph, type StereoGraph } from "@/graph/out";
+import { createAudioInstance, sendStereoGraph, stopInstance } from "@/ui/audio/create-audio-instance";
 import type { AudioInstance } from "@/ui/audio/types";
 import { Button } from "@/ui/design/button";
 import { Card } from "@/ui/design/card";
@@ -112,7 +111,7 @@ return out(f)`,
 	},
 ];
 
-function evaluateCode(code: string): Graph | null {
+function evaluateCode(code: string): StereoGraph | null {
 	resetIdCounter();
 	clearRegistry();
 	clearOutputs();
@@ -120,7 +119,7 @@ function evaluateCode(code: string): Graph | null {
 	try {
 		const fn = new Function(...Object.keys(api), code);
 		fn(...Object.values(api));
-		return collectGraph();
+		return collectStereoGraph();
 	} catch (err) {
 		console.error("Eval error:", err);
 	}
@@ -146,9 +145,9 @@ function ReEvalTestCard({ test }: TestCardProps) {
 			const instance = await createAudioInstance();
 			instanceRef.current = instance;
 
-			const graph = evaluateCode(test.codeA);
-			if (graph) {
-				await sendGraph(instance, graph);
+			const stereo = evaluateCode(test.codeA);
+			if (stereo) {
+				await sendStereoGraph(instance, stereo);
 				setIsPlaying(true);
 				setActiveCode("A");
 				setError(null);
@@ -173,9 +172,9 @@ function ReEvalTestCard({ test }: TestCardProps) {
 			if (!instanceRef.current || !isPlaying) return;
 
 			const code = which === "A" ? test.codeA : test.codeB;
-			const graph = evaluateCode(code);
-			if (graph) {
-				await sendGraph(instanceRef.current, graph);
+			const stereo = evaluateCode(code);
+			if (stereo) {
+				await sendStereoGraph(instanceRef.current, stereo);
 				setActiveCode(which);
 				setError(null);
 			} else {

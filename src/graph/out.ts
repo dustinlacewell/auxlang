@@ -8,6 +8,12 @@ import { gain } from "../devices/gain";
 import { reify } from "./reify";
 import type { Graph } from "./types";
 
+/** Stereo graph output - separate graphs for left and right channels */
+export interface StereoGraph {
+	left: Graph;
+	right: Graph;
+}
+
 /** Collected outputs for the current evaluation */
 let collectedOutputs: AnyDescriptor[] = [];
 
@@ -19,8 +25,8 @@ export function clearOutputs(): void {
 }
 
 /**
- * Get collected outputs and build final graph.
- * Mixes all collected signals with proper level scaling.
+ * Get collected outputs and build final graph (mono - deprecated).
+ * Use collectStereoGraph() for stereo support.
  */
 export function collectGraph(): Graph | null {
 	if (collectedOutputs.length === 0) {
@@ -29,6 +35,42 @@ export function collectGraph(): Graph | null {
 
 	const mixed = mixVoices(collectedOutputs);
 	return reify(mixed);
+}
+
+/**
+ * Get collected outputs and build stereo graphs.
+ * Distributes voices across L/R channels:
+ * - 1 voice: mono (same graph for both channels)
+ * - 2 voices: voice 0 = left, voice 1 = right
+ * - N voices: round-robin (evens = left, odds = right)
+ */
+export function collectStereoGraph(): StereoGraph | null {
+	if (collectedOutputs.length === 0) {
+		return null;
+	}
+
+	if (collectedOutputs.length === 1) {
+		// Mono: same graph for both channels
+		const graph = reify(collectedOutputs[0]!);
+		return { left: graph, right: graph };
+	}
+
+	if (collectedOutputs.length === 2) {
+		// Stereo: direct mapping
+		return {
+			left: reify(collectedOutputs[0]!),
+			right: reify(collectedOutputs[1]!),
+		};
+	}
+
+	// N voices: round-robin distribution
+	const leftVoices = collectedOutputs.filter((_, i) => i % 2 === 0);
+	const rightVoices = collectedOutputs.filter((_, i) => i % 2 === 1);
+
+	return {
+		left: reify(mixVoices(leftVoices)),
+		right: reify(mixVoices(rightVoices)),
+	};
 }
 
 /**

@@ -26,8 +26,15 @@ export type SignalLambda = (
  * - OutputRef: explicit reference to a descriptor's output
  * - AnyDescriptor: shorthand for the descriptor's default output
  * - SignalLambda: inline per-sample function
+ * - PolyDescriptor: polyphonic signal (for polyphonic devices)
  */
-export type Signal = number | number[] | OutputRef | AnyDescriptor | SignalLambda;
+export type Signal = number | number[] | OutputRef | AnyDescriptor | SignalLambda | PolyDescriptor;
+
+/** Forward declaration for PolyDescriptor (defined in poly.ts) */
+export interface PolyDescriptor {
+	readonly _poly: true;
+	readonly voices: readonly AnyDescriptor[];
+}
 
 /** Reference to a specific output of a descriptor */
 export interface OutputRef {
@@ -63,6 +70,11 @@ export interface DeviceSpec {
 	readonly processSource: string;
 	/** URL to WASM module for native devices */
 	readonly wasmUrl?: string;
+	/** If true, device receives all poly voices instead of being expanded per-voice */
+	readonly polyphonic?: boolean;
+	/** Process function for polyphonic devices - receives arrays for poly inputs */
+	readonly processAll?: ProcessAllFn;
+	readonly processAllSource?: string;
 }
 
 /**
@@ -77,6 +89,16 @@ export interface DeviceSpec {
  */
 export type ProcessFn<
 	I extends Record<string, number> = Record<string, number>,
+	C extends Record<string, ConfigValue> = Record<string, ConfigValue>,
+	O extends Record<string, number> = Record<string, number>,
+> = (inputs: I, config: C, state: Record<string, unknown>, sampleRate: number, time: number) => O;
+
+/**
+ * Process function for polyphonic devices.
+ * Poly inputs are passed as number arrays, mono inputs as single numbers.
+ */
+export type ProcessAllFn<
+	I extends Record<string, number | number[]> = Record<string, number | number[]>,
 	C extends Record<string, ConfigValue> = Record<string, ConfigValue>,
 	O extends Record<string, number> = Record<string, number>,
 > = (inputs: I, config: C, state: Record<string, unknown>, sampleRate: number, time: number) => O;

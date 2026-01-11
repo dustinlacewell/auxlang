@@ -7,7 +7,7 @@
 
 import { RuntimeGraph, type CollectedStates } from "../processor/runtime-graph";
 import { diffGraphs } from "../processor/topology-hash";
-import type { CompiledGraph, WorkletMessage } from "../processor/types";
+import type { CompiledGraph, CompiledStereoGraph, WorkletMessage } from "../processor/types";
 
 // AudioWorklet globals
 declare const sampleRate: number;
@@ -85,15 +85,20 @@ declare class AudioWorkletProcessor {
 }
 
 export class GraphProcessor extends AudioWorkletProcessor {
-	private graph: RuntimeGraph | null = null;
-	private oldCompiledGraph: CompiledGraph | null = null;
+	// Stereo graphs - left and right channels
+	private leftGraph: RuntimeGraph | null = null;
+	private rightGraph: RuntimeGraph | null = null;
+	private oldLeftCompiledGraph: CompiledGraph | null = null;
+	private oldRightCompiledGraph: CompiledGraph | null = null;
 
-	// WASM instances from current graph, keyed by node ID
+	// WASM instances from current graphs, keyed by node ID
 	// Used to serialize state before creating new instances
-	private wasmInstances = new Map<string, WebAssembly.Instance>();
+	private leftWasmInstances = new Map<string, WebAssembly.Instance>();
+	private rightWasmInstances = new Map<string, WebAssembly.Instance>();
 
 	// Crossfade state
-	private fadingOutGraph: RuntimeGraph | null = null;
+	private fadingOutLeftGraph: RuntimeGraph | null = null;
+	private fadingOutRightGraph: RuntimeGraph | null = null;
 	private fadeProgress = 1; // 1 = no fade active
 	private fadeDurationSamples = 0;
 
@@ -109,35 +114,86 @@ export class GraphProcessor extends AudioWorkletProcessor {
 	private handleMessage(message: WorkletMessage): void {
 		switch (message.type) {
 			case "setGraph":
-				this.swapGraph(message.graph);
+				// Legacy mono - treat as stereo with same graph for both channels
+				this.swapStereoGraph({ left: message.graph, right: message.graph });
+				break;
+			case "setStereoGraph":
+				this.swapStereoGraph(message.stereo);
 				break;
 			case "stop":
-				this.graph = null;
-				this.oldCompiledGraph = null;
-				this.fadingOutGraph = null;
+				this.leftGraph = null;
+				this.rightGraph = null;
+				this.oldLeftCompiledGraph = null;
+				this.oldRightCompiledGraph = null;
+				this.fadingOutLeftGraph = null;
+				this.fadingOutRightGraph = null;
 				this.fadeProgress = 1;
-				this.wasmInstances.clear();
+				this.leftWasmInstances.clear();
+				this.rightWasmInstances.clear();
 				break;
 		}
 	}
 
 	/**
-	 * Swap to a new graph, preserving state for topologically-matched nodes.
+	 * Swap to stereo graphs, preserving state for topologically-matched nodes.
 	 * WASM state is serialized from old instances and deserialized into new ones.
 	 */
-	private async swapGraph(newCompiledGraph: CompiledGraph): Promise<void> {
+	private async swapStereoGraph(stereo: CompiledStereoGraph): Promise<void> {
+		// Swap left channel
+		const leftResult = await this.swapSingleGraph(
+			stereo.left,
+			this.oldLeftCompiledGraph,
+			this.leftWasmInstances,
+			this.leftGraph,
+		);
+		this.leftGraph = leftResult.graph;
+		this.oldLeftCompiledGraph = stereo.left;
+		this.leftWasmInstances = leftResult.wasmInstances;
+
+		// Swap right channel
+		const rightResult = await this.swapSingleGraph(
+			stereo.right,
+			this.oldRightCompiledGraph,
+			this.rightWasmInstances,
+			this.rightGraph,
+		);
+		this.rightGraph = rightResult.graph;
+		this.oldRightCompiledGraph = stereo.right;
+		this.rightWasmInstances = rightResult.wasmInstances;
+
+		// Setup crossfade if we had existing graphs
+		if (leftResult.oldGraph || rightResult.oldGraph) {
+			this.fadingOutLeftGraph = leftResult.oldGraph;
+			this.fadingOutRightGraph = rightResult.oldGraph;
+			this.fadeProgress = 0;
+			this.fadeDurationSamples = Math.floor((GraphProcessor.CROSSFADE_MS / 1000) * sampleRate);
+		}
+	}
+
+	/**
+	 * Swap a single graph channel, returning the new graph and WASM instances.
+	 */
+	private async swapSingleGraph(
+		newCompiledGraph: CompiledGraph,
+		oldCompiledGraph: CompiledGraph | null,
+		oldWasmInstances: Map<string, WebAssembly.Instance>,
+		oldGraph: RuntimeGraph | null,
+	): Promise<{
+		graph: RuntimeGraph;
+		wasmInstances: Map<string, WebAssembly.Instance>;
+		oldGraph: RuntimeGraph | null;
+	}> {
 		// Compute node mapping to know which nodes match between old and new graphs
 		let nodeMapping: Map<string, string> | undefined;
-		if (this.oldCompiledGraph) {
-			nodeMapping = diffGraphs(this.oldCompiledGraph.nodes, newCompiledGraph.nodes);
+		if (oldCompiledGraph) {
+			nodeMapping = diffGraphs(oldCompiledGraph.nodes, newCompiledGraph.nodes);
 		}
 
 		// Serialize WASM state from old instances BEFORE creating new ones
-		// Map: new node ID → serialized state
 		const wasmStates = new Map<string, Float32Array>();
 		if (nodeMapping) {
 			for (const [newNodeId, oldNodeId] of nodeMapping) {
-				const oldInstance = this.wasmInstances.get(oldNodeId);
+				const oldInstance = oldWasmInstances.get(oldNodeId);
 				if (oldInstance) {
 					const state = serializeWasmState(oldInstance);
 					if (state) {
@@ -166,7 +222,6 @@ export class GraphProcessor extends AudioWorkletProcessor {
 				init(sampleRate);
 			}
 
-			// Restore state if we have it from matched old node
 			const savedState = wasmStates.get(nodeId);
 			if (savedState) {
 				deserializeWasmState(instance, savedState);
@@ -174,54 +229,55 @@ export class GraphProcessor extends AudioWorkletProcessor {
 		}
 
 		// Collect JS device states from current graph
-		const oldStates = this.graph?.collectStates();
-
-		// Start crossfade if we have an existing graph
-		if (this.graph) {
-			this.fadingOutGraph = this.graph;
-			this.fadeProgress = 0;
-			this.fadeDurationSamples = Math.floor((GraphProcessor.CROSSFADE_MS / 1000) * sampleRate);
-		}
+		const oldStates = oldGraph?.collectStates();
 
 		// Create new runtime graph with fresh WASM instances
-		this.graph = new RuntimeGraph(newCompiledGraph, newWasmInstances, oldStates, nodeMapping);
-		this.oldCompiledGraph = newCompiledGraph;
+		const graph = new RuntimeGraph(newCompiledGraph, newWasmInstances, oldStates, nodeMapping);
 
-		// Store new WASM instances for next swap
-		this.wasmInstances = newWasmInstances;
+		return {
+			graph,
+			wasmInstances: newWasmInstances,
+			oldGraph,
+		};
 	}
 
 	process(_inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
 		const output = outputs[0];
-		if (!output?.[0] || !this.graph) {
+		if (!output?.[0] || !this.leftGraph || !this.rightGraph) {
 			return true;
 		}
 
-		const channel = output[0];
-		const blockSize = channel.length;
+		const leftChannel = output[0];
+		const rightChannel = output[1] ?? output[0]; // Fallback to mono if no right channel
+		const blockSize = leftChannel.length;
 
 		for (let i = 0; i < blockSize; i++) {
-			const newSample = this.graph.processSample(sampleRate);
+			let leftSample = this.leftGraph.processSample(sampleRate);
+			let rightSample = this.rightGraph.processSample(sampleRate);
 
 			// Handle crossfade if active
-			if (this.fadeProgress < 1 && this.fadingOutGraph) {
-				const oldSample = this.fadingOutGraph.processSample(sampleRate);
-				const t = this.fadeProgress;
-				channel[i] = oldSample * (1 - t) + newSample * t;
+			if (this.fadeProgress < 1) {
+				if (this.fadingOutLeftGraph) {
+					const oldLeft = this.fadingOutLeftGraph.processSample(sampleRate);
+					const t = this.fadeProgress;
+					leftSample = oldLeft * (1 - t) + leftSample * t;
+				}
+				if (this.fadingOutRightGraph) {
+					const oldRight = this.fadingOutRightGraph.processSample(sampleRate);
+					const t = this.fadeProgress;
+					rightSample = oldRight * (1 - t) + rightSample * t;
+				}
 
 				this.fadeProgress += 1 / this.fadeDurationSamples;
 				if (this.fadeProgress >= 1) {
-					this.fadingOutGraph = null;
+					this.fadingOutLeftGraph = null;
+					this.fadingOutRightGraph = null;
 					this.fadeProgress = 1;
 				}
-			} else {
-				channel[i] = newSample;
 			}
-		}
 
-		// Copy to other channels if stereo
-		for (let ch = 1; ch < output.length; ch++) {
-			output[ch]?.set(channel);
+			leftChannel[i] = leftSample;
+			rightChannel[i] = rightSample;
 		}
 
 		return true;
