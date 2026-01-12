@@ -105,7 +105,12 @@ setOutputHandler(handleOutput);
  */
 function resolveToDescriptors(signal: Signal | AnyDescriptor | PolyDescriptor): AnyDescriptor[] {
 	if (isPoly(signal)) {
-		return signal.voices as AnyDescriptor[];
+		// With unified signals, voices can be any Signal type - recursively resolve each
+		const descriptors: AnyDescriptor[] = [];
+		for (const voice of signal.voices) {
+			descriptors.push(...resolveToDescriptors(voice));
+		}
+		return descriptors;
 	}
 
 	if (isDescriptor(signal)) {

@@ -128,23 +128,33 @@ export const seq = device("seq", {
 	defaultInput: "clk",
 	defaultOutput: "cv",
 	positionalArgs: ["pattern", "clk"],
-	expand(config, _inputBindings) {
+	expand(config, inputBindings) {
 		const pattern = (config.pattern as string) ?? "";
+		const clk = inputBindings.clk;
+
 		if (!pattern) {
 			// Empty pattern - return a silent mono seq
-			return createMonoSeqDevice({ type: "seq", children: [] });
+			const result = createMonoSeqDevice({ type: "seq", children: [] });
+			// Wire up the clk input if provided
+			return clk !== undefined ? result(clk) : result;
 		}
 
 		const expr = parseExpr(pattern);
 		const voices = voiceCount(expr);
 
 		if (voices === 1) {
-			return createMonoSeqDevice(expr);
+			const result = createMonoSeqDevice(expr);
+			// Wire up the clk input if provided
+			return clk !== undefined ? result(clk) : result;
 		}
 
 		// Poly - decompose into N mono patterns
 		const monoExprs = decomposePattern(expr);
-		const monoSeqs = monoExprs.map((monoExpr) => createMonoSeqDevice(monoExpr));
+		const monoSeqs = monoExprs.map((monoExpr) => {
+			const monoSeq = createMonoSeqDevice(monoExpr);
+			// Wire up the clk input to each voice if provided
+			return clk !== undefined ? monoSeq(clk) : monoSeq;
+		});
 		return poly(monoSeqs);
 	},
 });

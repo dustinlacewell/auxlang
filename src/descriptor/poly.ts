@@ -1,18 +1,16 @@
 /**
- * Poly descriptor - wraps multiple mono descriptors for polyphonic signals.
+ * Poly descriptor - wraps multiple signals for polyphonic processing.
  *
- * Poly propagates through method chaining (D074). When you call a method on
- * a poly, it forwards to each voice and returns a new poly. This continues
- * until you call `.voices` to unpack or `.out()` to sum.
+ * Poly is a simple container that maps operations across voices.
+ * It doesn't inspect voice types - any signal can be a voice.
  *
  * Example:
- *   seq("{c4,e4}").saw().lpf(800)
- *   // Creates poly of 2 seqs, then poly of 2 saws, then poly of 2 lpfs
+ *   poly([440, 550]).saw().lpf(800)
+ *   // Creates poly of 2 constants, then poly of 2 saws, then poly of 2 lpfs
  */
 
-import { applyBareSignal } from "./chaining/apply-bare-signal";
 import { isDescriptor } from "./guards/is-descriptor";
-import { isPlainParamsObject } from "./guards/is-params-object";
+import { isOutputRef } from "./guards/is-output-ref";
 import { createChainablePolyOutputRef, isPolyOutputRef, type PolyOutputRef } from "./proxy/poly-output-proxy";
 import { getDeviceFactory, getDeviceSpec, getOutputHandler } from "./registry";
 import { resolveForVoice } from "./signals/resolve-for-voice";
@@ -21,28 +19,27 @@ import type { AnyDescriptor, OutputRef, Signal } from "./types";
 // Re-export for external use
 export { isPolyOutputRef, type PolyOutputRef } from "./proxy/poly-output-proxy";
 
-/** A poly descriptor wrapping N mono descriptors */
+/** A poly descriptor wrapping N signals */
 export interface PolyDescriptor {
 	readonly _poly: true;
-	readonly voices: readonly AnyDescriptor[];
+	readonly voices: readonly Signal[];
 }
 
 /** Type guard for poly descriptors */
 export function isPoly(value: unknown): value is PolyDescriptor {
-	// Poly uses a function as proxy target (for `apply` support), so check both
 	if (value === null || value === undefined) return false;
 	if (typeof value !== "object" && typeof value !== "function") return false;
 	return "_poly" in value && (value as PolyDescriptor)._poly === true;
 }
 
 /**
- * Flatten an array that may contain nested polys into a flat array of mono descriptors.
+ * Flatten an array that may contain nested polys into a flat array of signals.
  */
-function flattenVoices(items: (AnyDescriptor | PolyDescriptor)[]): AnyDescriptor[] {
-	const result: AnyDescriptor[] = [];
+function flattenVoices(items: Signal[]): Signal[] {
+	const result: Signal[] = [];
 	for (const item of items) {
 		if (isPoly(item)) {
-			result.push(...(item.voices as AnyDescriptor[]));
+			result.push(...item.voices);
 		} else {
 			result.push(item);
 		}
@@ -51,37 +48,37 @@ function flattenVoices(items: (AnyDescriptor | PolyDescriptor)[]): AnyDescriptor
 }
 
 /**
- * Create a poly descriptor from an array of descriptors (may include nested polys).
+ * Create a poly descriptor from an array of signals.
  *
- * The returned poly forwards method calls to each voice:
- * - Input setters return new poly with each voice updated
- * - Output accessors return PolyOutputRef
- * - Callable (default input) returns new poly
+ * The poly proxy forwards method calls to device factories:
+ * - Device chaining: looks up factory, calls factory(voice) for each voice
+ * - Output accessors: returns PolyOutputRef for descriptor voices
  * - `.voices` returns the array for manual iteration
+ * - `.out()` registers all voices for output
  */
-export function poly(voicesInput: (AnyDescriptor | PolyDescriptor)[]): PolyDescriptor {
-	// Flatten any nested polys
+export function poly(voicesInput: Signal[]): PolyDescriptor {
 	const voices = flattenVoices(voicesInput);
 
 	if (voices.length === 0) {
 		throw new Error("poly() requires at least one voice");
 	}
 
-	// Safe because we check voices.length > 0 above
-	const spec = voices[0]!._state.spec;
-
-	const handler: ProxyHandler<{ _poly: true; voices: AnyDescriptor[] }> = {
+	const handler: ProxyHandler<{ _poly: true; voices: Signal[] }> = {
 		get(target, prop: string | symbol): unknown {
 			if (prop === "_poly") return true;
 			if (prop === "voices") return voices;
 			if (typeof prop === "symbol") return undefined;
 
-			// .out() - terminal output registration (registers all voices)
+			// .out() - terminal output registration
 			if (prop === "out") {
 				return () => {
 					const outputHandler = getOutputHandler();
 					if (outputHandler) {
-						outputHandler([...voices]);
+						// Only pass descriptor voices to output - constants/lambdas can't be outputs
+						const descriptorVoices = voices.filter(isDescriptor) as AnyDescriptor[];
+						if (descriptorVoices.length > 0) {
+							outputHandler(descriptorVoices);
+						}
 					}
 				};
 			}
@@ -91,104 +88,97 @@ export function poly(voicesInput: (AnyDescriptor | PolyDescriptor)[]): PolyDescr
 				return <T>(fn: (p: PolyDescriptor) => T): T => fn(poly(voices));
 			}
 
-			// Output accessor - return chainable poly output ref
-			if (spec.outputs.includes(prop)) {
-				const outputRefs = voices
-					.map((v) => (v as unknown as Record<string, OutputRef>)[prop])
-					.filter((ref): ref is OutputRef => ref !== undefined);
-				return createChainablePolyOutputRef(outputRefs, poly);
-			}
-
-			// Input setter - forward to each voice, return new poly
-			if (prop in spec.inputs) {
-				return (value: Signal): PolyDescriptor => {
-					const newVoices = voices.map((v, voiceIndex) => {
-						const setter = (v as unknown as Record<string, (val: Signal) => AnyDescriptor>)[prop];
-						return setter?.(resolveForVoice(value, voiceIndex)) ?? v;
-					});
-					return poly(newVoices);
-				};
-			}
-
-			// Config setter - forward to each voice, return new poly
-			if (prop in spec.config) {
-				return (value: unknown): PolyDescriptor => {
-					const newVoices = voices.map((v) => {
-						const setter = (v as unknown as Record<string, (val: unknown) => AnyDescriptor>)[prop];
-						return setter?.(value) ?? v;
-					});
-					return poly(newVoices);
-				};
-			}
-
-			// Uzu chaining: look up device by name, forward to each voice
+			// Device chaining: look up factory, call with each voice
 			const deviceFactory = getDeviceFactory(prop);
-			if (deviceFactory) {
-				const deviceSpec = getDeviceSpec(prop);
-
-				// Polyphonic device: pass the poly directly instead of per-voice expansion
-				if (deviceSpec?.polyphonic) {
-					return (params?: Record<string, Signal | PolyDescriptor> | Signal): AnyDescriptor | PolyDescriptor => {
-						// Pass the entire poly as the default input
-						const thisPoly = poly(voices);
-						const device = deviceFactory(thisPoly, params);
-						return device;
+			const deviceSpec = getDeviceSpec(prop);
+			if (deviceFactory && deviceSpec) {
+				// Polyphonic device: pass the poly directly
+				if (deviceSpec.polyphonic) {
+					return (params?: Signal): AnyDescriptor | PolyDescriptor => {
+						// Pass chain source as named param to defaultInput
+						// params goes as first positional (if provided)
+						const args = params !== undefined
+							? [params, { [deviceSpec.defaultInput]: poly(voices) }]
+							: [{ [deviceSpec.defaultInput]: poly(voices) }];
+						return deviceFactory(...args);
 					};
 				}
 
-				// Normal device: forward to each voice
-				return (params?: Record<string, Signal | PolyDescriptor> | Signal): PolyDescriptor => {
-					const newVoices = voices.map((v, _voiceIndex) => {
-						// Get the default output from each voice and chain to new device
-						const outputRef = (v as unknown as Record<string, OutputRef>)[spec.defaultOutput];
-						const device = deviceFactory(outputRef);
-
-						// No params - just return device
-						if (params === undefined) {
-							return device;
-						}
-
-						// Plain object params - apply each as a setter
-						if (isPlainParamsObject(params)) {
-							let result = device;
-							for (const [key, value] of Object.entries(params)) {
-								const setter = (result as unknown as Record<string, (val: Signal) => AnyDescriptor>)[key];
-								if (typeof setter === "function") {
-									result = setter(resolveForVoice(value as Signal, _voiceIndex));
-								}
-							}
-							return result;
-						}
-
-						// Bare signal (lambda, number, etc.) - apply to secondary input
-						if (isDescriptor(device)) {
-							return applyBareSignal(device, params as Signal);
-						}
-
-						return device;
+				// Normal device: map factory across voices
+				return (params?: Signal): PolyDescriptor => {
+					const newVoices = voices.map((voice, i) => {
+						const resolvedParams = params !== undefined ? resolveForVoice(params, i) : undefined;
+						// Pass chain source as named param to defaultInput
+						const args = resolvedParams !== undefined
+							? [resolvedParams, { [deviceSpec.defaultInput]: voice }]
+							: [{ [deviceSpec.defaultInput]: voice }];
+						return deviceFactory(...args);
 					});
 					return poly(newVoices);
 				};
+			}
+
+			// Output accessor - only works for descriptor voices
+			// Try to get the output from each voice that supports it
+			const outputRefs: OutputRef[] = [];
+			for (const voice of voices) {
+				if (isDescriptor(voice)) {
+					const ref = (voice as unknown as Record<string, unknown>)[prop];
+					// Use isOutputRef - can't use "in" operator on Proxy objects
+					if (isOutputRef(ref)) {
+						outputRefs.push(ref);
+					}
+				}
+			}
+			if (outputRefs.length > 0) {
+				return createChainablePolyOutputRef(outputRefs, poly);
+			}
+
+			// Input setter - check if all descriptor voices have this as a callable method
+			// This handles cases like seq("{c3,g3}").clk(clock(60))
+			const firstVoice = voices[0];
+			if (isDescriptor(firstVoice)) {
+				const method = (firstVoice as unknown as Record<string, unknown>)[prop];
+				if (typeof method === "function") {
+					// It's a method - return a function that applies it to all voices
+					return (value?: Signal): PolyDescriptor => {
+						const newVoices = voices.map((voice, i) => {
+							if (isDescriptor(voice)) {
+								const voiceMethod = (voice as unknown as Record<string, (v: Signal) => AnyDescriptor>)[prop];
+								if (typeof voiceMethod === "function") {
+									const resolvedValue = value !== undefined ? resolveForVoice(value, i) : undefined;
+									return voiceMethod(resolvedValue as Signal);
+								}
+							}
+							return voice;
+						});
+						return poly(newVoices);
+					};
+				}
 			}
 
 			return undefined;
 		},
 
-		// Make poly callable - sets default input on each voice
+		// Make poly callable - passes value to each voice via factory's default input
 		apply(target, thisArg, args: [Signal]): PolyDescriptor {
 			const [value] = args;
-			const newVoices = voices.map((v, voiceIndex) => {
-				const callable = v as unknown as (val: Signal) => AnyDescriptor;
-				return callable(resolveForVoice(value, voiceIndex));
+			const newVoices = voices.map((voice, i) => {
+				const resolvedValue = resolveForVoice(value, i);
+				// If voice is a descriptor, call it with the value
+				if (isDescriptor(voice)) {
+					return (voice as AnyDescriptor)(resolvedValue);
+				}
+				// Non-descriptor voices can't be called - return as-is
+				return voice;
 			});
 			return poly(newVoices);
 		},
 	};
 
-	// Need to use a function as the proxy target for `apply` to work
-	const callable = (() => {}) as unknown as { _poly: true; voices: AnyDescriptor[] };
+	const callable = (() => {}) as unknown as { _poly: true; voices: Signal[] };
 	callable._poly = true;
-	callable.voices = voices;
+	callable.voices = voices as Signal[];
 
 	return new Proxy(callable, handler) as unknown as PolyDescriptor;
 }
@@ -196,7 +186,7 @@ export function poly(voicesInput: (AnyDescriptor | PolyDescriptor)[]): PolyDescr
 /**
  * Get voice count from a signal source.
  */
-export function getVoiceCount(source: AnyDescriptor | PolyDescriptor): number {
+export function getVoiceCount(source: Signal): number {
 	if (isPoly(source)) {
 		return source.voices.length;
 	}
@@ -206,9 +196,9 @@ export function getVoiceCount(source: AnyDescriptor | PolyDescriptor): number {
 /**
  * Get individual voices from a signal source.
  */
-export function getVoices(source: AnyDescriptor | PolyDescriptor): AnyDescriptor[] {
+export function getVoices(source: Signal): Signal[] {
 	if (isPoly(source)) {
 		return [...source.voices];
 	}
-	return [source as AnyDescriptor];
+	return [source];
 }

@@ -1,10 +1,11 @@
-import { isOutputRef } from "./guards/is-output-ref";
 import { isPlainParamsObject } from "./guards/is-params-object";
 import { isSignalArray } from "./guards/is-signal-array";
 import { isDescriptor } from "./guards/is-descriptor";
 import { createDescriptorId } from "./identity";
-import { poly, type PolyDescriptor } from "./poly";
+import { isPoly, poly, type PolyDescriptor } from "./poly";
 import { createChainableOutput } from "./proxy/chainable-output";
+import { isPolyOutputRef } from "./proxy/poly-output-proxy";
+import { resolveForVoice } from "./signals/resolve-for-voice";
 import { getOutputHandler, registerDescriptor, registerDevice } from "./registry";
 import type {
 	AnyDescriptor,
@@ -13,10 +14,45 @@ import type {
 	Descriptor,
 	DescriptorState,
 	DeviceSpec,
+	BoundSignal,
 	ProcessAllFn,
 	ProcessFn,
 	Signal,
 } from "./types";
+
+/**
+ * Normalize a signal by converting descriptors to OutputRefs.
+ * Called at binding time so reify doesn't need to handle descriptors.
+ * Recursively normalizes poly voices - they can be any signal type.
+ */
+function normalizeSignal(signal: Signal): BoundSignal {
+	if (isDescriptor(signal)) {
+		return {
+			descriptorId: signal._state.id,
+			outputName: signal._state.spec.defaultOutput,
+		};
+	}
+
+	if (isPoly(signal)) {
+		// Recursively normalize each voice - voices can be any signal type
+		const voices = signal.voices.map((v) => normalizeSignal(v));
+		return { _poly: true, voices };
+	}
+
+	// number, number[], OutputRef, SignalLambda pass through
+	return signal as BoundSignal;
+}
+
+/**
+ * Normalize all signals in a bindings object.
+ */
+function normalizeBindings(bindings: Record<string, Signal>): Record<string, BoundSignal> {
+	const result: Record<string, BoundSignal> = {};
+	for (const [key, value] of Object.entries(bindings)) {
+		result[key] = normalizeSignal(value);
+	}
+	return result;
+}
 
 
 /** Expand function - runs at construction time to replace device with other descriptors */
@@ -75,6 +111,97 @@ type DeviceSpecInput = {
 };
 
 /**
+ * Create a device alias from an existing descriptor.
+ * When called, creates a fresh clone of the descriptor with overridden bindings.
+ */
+function createDeviceAlias(name: string, templateDescriptor: AnyDescriptor): AnyDescriptor {
+	const templateState = templateDescriptor._state;
+	const spec = templateState.spec;
+	const templateInputBindings = templateState.inputBindings;
+	const templateConfigBindings = templateState.configBindings;
+
+	const inputNames = Object.keys(spec.inputs);
+	const configNames = Object.keys(spec.config);
+
+	// Factory function for the alias
+	// Chaining is handled by ChainableOutput passing the chain source as a named param
+	// Uses spec.positionalArgs from the underlying device
+	const factory = (...args: unknown[]) => {
+		// Start with template bindings (these are already BoundSignal, need to allow overrides as Signal)
+		const inputBindings: Record<string, Signal> = { ...templateInputBindings };
+		const configBindings: Record<string, ConfigValue> = { ...templateConfigBindings };
+
+		// Consume positional args via positionalArgs order
+		let argIndex = 0;
+		for (const paramName of spec.positionalArgs) {
+			if (argIndex >= args.length) break;
+			const arg = args[argIndex];
+
+			// If we hit a params object, stop positional consumption
+			if (isPlainParamsObject(arg)) break;
+
+			const isInput = inputNames.includes(paramName);
+			const isConfig = configNames.includes(paramName);
+
+			if (isInput) {
+				inputBindings[paramName] = arg as Signal;
+			} else if (isConfig) {
+				configBindings[paramName] = arg as ConfigValue;
+			}
+			argIndex++;
+		}
+
+		// Merge all params objects (there may be multiple - user's + chain source)
+		for (const arg of args) {
+			if (isPlainParamsObject(arg)) {
+				const params = arg as Record<string, unknown>;
+				for (const [key, value] of Object.entries(params)) {
+					// Error if defaultInput already set (from positional or earlier params)
+					if (key === spec.defaultInput && inputBindings[key] !== undefined) {
+						throw new Error(
+							`Cannot set "${key}" - it's already bound. ` +
+							`When chaining, the chain source binds to "${key}".`
+						);
+					}
+					if (inputNames.includes(key)) {
+						inputBindings[key] = value as Signal;
+					} else if (configNames.includes(key)) {
+						configBindings[key] = value as ConfigValue;
+					}
+				}
+			}
+		}
+
+		return createDescriptor(spec, inputBindings, configBindings);
+	};
+
+	// Register device factory
+	registerDevice(name, factory, spec);
+
+	// Create a base descriptor using template bindings
+	const baseDescriptor = createDescriptor(spec, templateInputBindings, templateConfigBindings);
+
+	// Wrap factory in a proxy that also acts like the base descriptor
+	const descriptorFactory = new Proxy(factory, {
+		apply(target, _thisArg, args) {
+			return target(...args);
+		},
+		get(target, prop: string | symbol) {
+			if (prop === "_state") {
+				return (baseDescriptor as AnyDescriptor)._state;
+			}
+			const baseProp = (baseDescriptor as unknown as Record<string | symbol, unknown>)[prop];
+			if (baseProp !== undefined) {
+				return baseProp;
+			}
+			return (target as unknown as Record<string | symbol, unknown>)[prop];
+		},
+	});
+
+	return descriptorFactory as unknown as AnyDescriptor;
+}
+
+/**
  * Create a device with a name (registers for Uzu chaining).
  * @example device('saw', { inputs: { freq: 440 }, ... })
  */
@@ -91,12 +218,29 @@ export function device<const T extends DeviceSpecInput>(
 	spec: T,
 ): Descriptor<keyof T["inputs"] & string, ConfigKeys<T> & string, T["outputs"][number]>;
 
+/**
+ * Create a device alias from an existing descriptor (registers for Uzu chaining).
+ * The alias acts like the wrapped device, allowing overrides via positional args or params.
+ * @example device('shh', gain(0.2)) // saw(440).shh() or saw(440).shh(0.5)
+ */
+export function device(name: string, descriptor: AnyDescriptor): AnyDescriptor;
+
 export function device<const T extends DeviceSpecInput>(
 	nameOrSpec: string | T,
-	maybeSpec?: T,
+	maybeSpec?: T | AnyDescriptor,
 ): Descriptor<keyof T["inputs"] & string, ConfigKeys<T> & string, T["outputs"][number]> {
 	const name = typeof nameOrSpec === "string" ? nameOrSpec : undefined;
-	const input = typeof nameOrSpec === "string" ? maybeSpec! : nameOrSpec;
+
+	// Check if second arg is a descriptor (alias mode)
+	if (name && maybeSpec && isDescriptor(maybeSpec)) {
+		return createDeviceAlias(name, maybeSpec) as Descriptor<
+			keyof T["inputs"] & string,
+			ConfigKeys<T> & string,
+			T["outputs"][number]
+		>;
+	}
+
+	const input = typeof nameOrSpec === "string" ? (maybeSpec as T) : nameOrSpec;
 
 	// Convert config values to ConfigDef format
 	const configDefs: Record<string, ConfigDef> = {};
@@ -115,6 +259,7 @@ export function device<const T extends DeviceSpecInput>(
 		outputs: input.outputs,
 		defaultInput: input.defaultInput,
 		defaultOutput: input.defaultOutput,
+		positionalArgs: input.positionalArgs ?? [input.defaultInput],
 		process,
 		processSource: process.toString(),
 		...(input.wasmUrl ? { wasmUrl: input.wasmUrl } : {}),
@@ -124,45 +269,29 @@ export function device<const T extends DeviceSpecInput>(
 			processAllSource: input.processAll.toString(),
 		} : {}),
 	};
-
-	const positionalArgs = input.positionalArgs ?? [input.defaultInput];
 	const expandFn = input.expand;
 	const inputNames = Object.keys(spec.inputs);
 	const configNames = Object.keys(spec.config);
 
-	// Factory function that handles positional args and expand
-	// When chained (e.g., clock.seq("pattern")), first arg is an OutputRef/Descriptor
-	// When called directly (e.g., seq("pattern")), first arg is a positional arg
-	const factory = (firstArg?: unknown, ...restArgs: unknown[]) => {
+	// Factory function that handles positional args and params objects
+	// Chaining is handled by ChainableOutput passing the chain source as a named param
+	const factory = (...args: unknown[]) => {
 		const inputBindings: Record<string, Signal> = {};
 		const configBindings: Record<string, ConfigValue> = {};
 
-		// Detect if we're being chained: first arg is OutputRef or Descriptor
-		const isChained = firstArg !== undefined &&
-			(isOutputRef(firstArg) || isDescriptor(firstArg));
+		// Build effective positionalArgs: if defaultInput is not in positionalArgs,
+		// prepend it so that lpf(audio) routes audio to input (defaultInput)
+		const effectivePositionalArgs = !spec.positionalArgs.includes(spec.defaultInput)
+			? [spec.defaultInput, ...spec.positionalArgs]
+			: spec.positionalArgs;
 
-		// Collect args to consume via positionalArgs
-		const argsToConsume: unknown[] = isChained ? restArgs :
-			(firstArg !== undefined ? [firstArg, ...restArgs] : []);
-
-		// If chained, the chained signal goes directly to defaultInput
-		if (isChained) {
-			inputBindings[spec.defaultInput] = firstArg as Signal;
-		}
-
-		// Consume argsToConsume via positionalArgs order
-		// If chained, skip defaultInput in positionalArgs (it's already bound)
+		// Consume positional args via positionalArgs order
 		let argIndex = 0;
-		for (const paramName of positionalArgs) {
-			// Skip defaultInput if we're chained (it's already in inputBindings)
-			if (isChained && paramName === spec.defaultInput) {
-				continue;
-			}
+		for (const paramName of effectivePositionalArgs) {
+			if (argIndex >= args.length) break;
+			const arg = args[argIndex];
 
-			if (argIndex >= argsToConsume.length) break;
-			const arg = argsToConsume[argIndex];
-
-			// If we hit an object, stop positional consumption
+			// If we hit a params object, stop positional consumption
 			if (isPlainParamsObject(arg)) break;
 
 			const isInput = inputNames.includes(paramName);
@@ -176,15 +305,24 @@ export function device<const T extends DeviceSpecInput>(
 			argIndex++;
 		}
 
-		// If last arg is a params object, merge it
-		const lastArg = argsToConsume[argsToConsume.length - 1];
-		if (argsToConsume.length > 0 && isPlainParamsObject(lastArg)) {
-			const params = lastArg as Record<string, unknown>;
-			for (const [key, value] of Object.entries(params)) {
-				if (inputNames.includes(key)) {
-					inputBindings[key] = value as Signal;
-				} else if (configNames.includes(key)) {
-					configBindings[key] = value as ConfigValue;
+		// Merge all params objects (there may be multiple - user's + chain source)
+		// Later params override earlier ones, but error if defaultInput set twice
+		for (const arg of args) {
+			if (isPlainParamsObject(arg)) {
+				const params = arg as Record<string, unknown>;
+				for (const [key, value] of Object.entries(params)) {
+					// Error if defaultInput already set (from positional or earlier params)
+					if (key === spec.defaultInput && inputBindings[key] !== undefined) {
+						throw new Error(
+							`Cannot set "${key}" - it's already bound. ` +
+							`When chaining, the chain source binds to "${key}".`
+						);
+					}
+					if (inputNames.includes(key)) {
+						inputBindings[key] = value as Signal;
+					} else if (configNames.includes(key)) {
+						configBindings[key] = value as ConfigValue;
+					}
 				}
 			}
 		}
@@ -209,23 +347,34 @@ export function device<const T extends DeviceSpecInput>(
 		registerDevice(name, factory, spec);
 	}
 
-	// For devices with expand, return the factory function directly
-	// For regular devices, return a base descriptor
-	if (expandFn) {
-		// Cast is safe: factory returns the correct runtime shape
-		return factory as unknown as Descriptor<
-			keyof T["inputs"] & string,
-			ConfigKeys<T> & string,
-			T["outputs"][number]
-		>;
-	}
-
-	// Create the base descriptor for regular devices
+	// Create a base descriptor for when device is used without calling (e.g., out(saw))
 	const baseDescriptor = createDescriptor(spec, {}, {});
 
-	// Cast is safe: createDescriptor returns the correct runtime shape,
-	// and device() ensures the type parameters match the spec
-	return baseDescriptor as Descriptor<
+	// Wrap factory in a proxy that also acts like the base descriptor
+	// - When called: use factory (creates fresh descriptor with current ID counter)
+	// - When accessed via ._state, .outputName, etc: delegate to base descriptor
+	const descriptorFactory = new Proxy(factory, {
+		apply(target, _thisArg, args) {
+			// Always use factory - it creates fresh descriptors with correct IDs
+			// Even with no args, we need a fresh descriptor (not the stale baseDescriptor)
+			return target(...args);
+		},
+		get(target, prop: string | symbol) {
+			// Delegate descriptor-like properties to base descriptor
+			if (prop === "_state") {
+				return (baseDescriptor as AnyDescriptor)._state;
+			}
+			// For output names and input setters, delegate to base descriptor
+			const baseProp = (baseDescriptor as unknown as Record<string | symbol, unknown>)[prop];
+			if (baseProp !== undefined) {
+				return baseProp;
+			}
+			// For function properties (toString, etc)
+			return (target as unknown as Record<string | symbol, unknown>)[prop];
+		},
+	});
+
+	return descriptorFactory as unknown as Descriptor<
 		keyof T["inputs"] & string,
 		ConfigKeys<T> & string,
 		T["outputs"][number]
@@ -239,20 +388,48 @@ function createDescriptor(
 ): AnyDescriptor | PolyDescriptor {
 	const id = createDescriptorId();
 
-	// Check for array inputs - expand to poly
+	// Check for poly-expanding inputs: arrays, Poly, or PolyOutputRef
 	for (const [key, value] of Object.entries(inputBindings)) {
+		// Array input - expand to poly
 		if (isSignalArray(value)) {
 			const voices = value.map((v) =>
 				createDescriptor(spec, { ...inputBindings, [key]: v }, configBindings),
 			) as AnyDescriptor[];
 			return poly(voices);
 		}
+
+		// Poly input - expand to poly with distributed voices
+		if (isPoly(value)) {
+			const voices = value.voices.map((_, i) =>
+				createDescriptor(
+					spec,
+					{ ...inputBindings, [key]: resolveForVoice(value, i) },
+					configBindings,
+				),
+			) as AnyDescriptor[];
+			return poly(voices);
+		}
+
+		// PolyOutputRef input - expand to poly with distributed OutputRefs
+		if (isPolyOutputRef(value)) {
+			const voices = value._polyOutputs.map((outputRef) =>
+				createDescriptor(
+					spec,
+					{ ...inputBindings, [key]: outputRef },
+					configBindings,
+				),
+			) as AnyDescriptor[];
+			return poly(voices);
+		}
 	}
+
+	// Normalize signals: convert descriptors to OutputRefs
+	const normalizedBindings = normalizeBindings(inputBindings);
 
 	const state: DescriptorState = {
 		id,
 		spec,
-		inputBindings: inputBindings,
+		inputBindings: normalizedBindings,
 		configBindings,
 	};
 

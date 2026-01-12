@@ -1,5 +1,5 @@
-import type { Graph, ResolvedInput } from "../graph/types";
-import type { CompiledGraph, CompiledInput, CompiledNode, SerializedSpec } from "./types";
+import type { Graph, ResolvedInput, SourceInput } from "../graph/types";
+import type { CompiledGraph, CompiledInput, CompiledNode, CompiledSource, SerializedSpec } from "./types";
 
 /** Cache of fetched WASM modules by URL */
 const wasmCache = new Map<string, ArrayBuffer>();
@@ -116,7 +116,7 @@ function compileInput(resolved: ResolvedInput): CompiledInput {
 	if (resolved.type === "connections") {
 		return {
 			type: "connections",
-			sources: resolved.sources.map((s) => ({ nodeId: s.nodeId, output: s.output })),
+			sources: resolved.sources.map((s) => compileSource(s)),
 		};
 	}
 
@@ -124,5 +124,21 @@ function compileInput(resolved: ResolvedInput): CompiledInput {
 		type: "connection",
 		nodeId: resolved.nodeId,
 		output: resolved.output,
+	};
+}
+
+function compileSource(source: SourceInput): CompiledSource {
+	if (source.type === "constant") {
+		return { type: "constant", value: source.value };
+	}
+
+	if (source.type === "lambda") {
+		return { type: "lambda", fnSource: source.fn.toString() };
+	}
+
+	return {
+		type: "connection",
+		nodeId: source.nodeId,
+		output: source.output,
 	};
 }

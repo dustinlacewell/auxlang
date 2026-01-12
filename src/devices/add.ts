@@ -10,6 +10,7 @@ export const add = device("add", {
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
+	positionalArgs: ["to"],
 	process(inp, _cfg, _state, _sampleRate) {
 		const input = (inp.input as number) ?? 0;
 		const to = (inp.to as number) ?? 0;

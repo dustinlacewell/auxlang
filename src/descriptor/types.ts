@@ -19,21 +19,33 @@ export type SignalLambda = (
 ) => number;
 
 /**
- * A signal source that can be passed to device inputs.
+ * A signal source that can be passed to device inputs (user-facing).
  *
  * - number: constant value
- * - number[]: legacy poly format (deprecated, use poly() instead)
+ * - number[]: array for per-voice distribution
  * - OutputRef: explicit reference to a descriptor's output
- * - AnyDescriptor: shorthand for the descriptor's default output
+ * - AnyDescriptor: shorthand for the descriptor's default output (normalized to OutputRef at binding)
  * - SignalLambda: inline per-sample function
  * - PolyDescriptor: polyphonic signal (for polyphonic devices)
  */
 export type Signal = number | number[] | OutputRef | AnyDescriptor | SignalLambda | PolyDescriptor;
 
+/**
+ * Normalized signal - what gets stored in inputBindings after binding.
+ * Descriptors are converted to OutputRefs at binding time.
+ */
+export type BoundSignal = number | number[] | OutputRef | SignalLambda | BoundPoly;
+
+/** Poly with normalized voices (any signal type, normalized at binding time) */
+export interface BoundPoly {
+	readonly _poly: true;
+	readonly voices: readonly BoundSignal[];
+}
+
 /** Forward declaration for PolyDescriptor (defined in poly.ts) */
 export interface PolyDescriptor {
 	readonly _poly: true;
-	readonly voices: readonly AnyDescriptor[];
+	readonly voices: readonly Signal[];
 }
 
 /** Reference to a specific output of a descriptor */
@@ -66,6 +78,8 @@ export interface DeviceSpec {
 	readonly outputs: readonly string[];
 	readonly defaultInput: string;
 	readonly defaultOutput: string;
+	/** Order of positional arguments for the factory */
+	readonly positionalArgs: readonly string[];
 	readonly process: ProcessFn;
 	readonly processSource: string;
 	/** URL to WASM module for native devices */
@@ -107,7 +121,7 @@ export type ProcessAllFn<
 export interface DescriptorState {
 	readonly id: DescriptorId;
 	readonly spec: DeviceSpec;
-	readonly inputBindings: Record<string, Signal>;
+	readonly inputBindings: Record<string, BoundSignal>;
 	readonly configBindings: Record<string, ConfigValue>;
 }
 

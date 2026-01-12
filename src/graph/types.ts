@@ -15,12 +15,18 @@ export interface GraphNode {
 	readonly configBindings: Record<string, ConfigValue>;
 }
 
-/** A resolved input - constant, connection, lambda, or multi-connection for polyphonic */
+/** A single resolved source - constant, connection, or lambda (no nesting) */
+export type SourceInput =
+	| { readonly type: "constant"; readonly value: number }
+	| { readonly type: "connection"; readonly nodeId: DescriptorId; readonly output: string }
+	| { readonly type: "lambda"; readonly fn: SignalLambda };
+
+/** A resolved input - single source or multi-source for polyphonic */
 export type ResolvedInput =
 	| { readonly type: "constant"; readonly value: number | number[] }
 	| { readonly type: "connection"; readonly nodeId: DescriptorId; readonly output: string }
 	| { readonly type: "lambda"; readonly fn: SignalLambda }
-	| { readonly type: "connections"; readonly sources: readonly { nodeId: DescriptorId; output: string }[] };
+	| { readonly type: "connections"; readonly sources: readonly SourceInput[] };
 
 /** The complete runtime graph */
 export interface Graph {

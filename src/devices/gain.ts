@@ -8,7 +8,7 @@ import { inputs } from "../descriptor/inputs";
 export const gain = device("gain", {
 	inputs: inputs({ input: 0, level: 1 }),
 	outputs: ["signal"],
-	positionalArgs: ["input", "level"],
+	positionalArgs: ["level", "input"],
 	defaultInput: "input",
 	defaultOutput: "signal",
 	process(inp, _cfg, _state, _sampleRate) {

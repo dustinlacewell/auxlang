@@ -89,6 +89,15 @@ function hydrateWasmProcess(
 type HydratedLambda = (state: Record<string, unknown>, sampleRate: number, time: number) => number;
 
 /**
+ * A single source binding for poly voice resolution.
+ * Each source in a connections array can be a different type.
+ */
+type SourceBinding =
+	| { type: "constant"; value: number }
+	| { type: "connection"; sourceNodeIndex: number; outputName: string }
+	| { type: "lambda"; fn: HydratedLambda; state: Record<string, unknown> };
+
+/**
  * Pre-computed binding for resolving a node input.
  * Built once at hydration, used every sample without allocation.
  */
@@ -96,7 +105,7 @@ type InputBinding =
 	| { type: "constant"; value: number }
 	| { type: "connection"; sourceNodeIndex: number; outputName: string }
 	| { type: "lambda"; fn: HydratedLambda; state: Record<string, unknown> }
-	| { type: "connections"; sources: { sourceNodeIndex: number; outputName: string }[] };
+	| { type: "connections"; sources: SourceBinding[] };
 
 /** Hydrated processAll function for polyphonic devices */
 type HydratedProcessAll = (
@@ -282,12 +291,30 @@ export class RuntimeGraph {
 				return { type: "lambda", fn, state: lambdaState };
 			}
 			if (input.type === "connections") {
-				// Multi-connection for polyphonic devices
-				const sources = (input.sources ?? []).map((src) => {
-					const idx = idToIndex.get(src.nodeId);
+				// Multi-connection for polyphonic devices - each source can be different type
+				const sources: SourceBinding[] = (input.sources ?? []).map((src) => {
+					if (src.type === "constant") {
+						return { type: "constant", value: src.value };
+					}
+					if (src.type === "lambda") {
+						// Hydrate lambda function from source string
+						// biome-ignore lint/security/noGlobalEval: required for dynamic function hydration
+						const fn = new Function(`return (${src.fnSource})`)() as HydratedLambda;
+						// Each lambda in a poly gets its own state
+						const lambdaKey = `${compiledNode.id}:${name}:${(input.sources ?? []).indexOf(src)}`;
+						let lambdaState: Record<string, unknown> = {};
+						if (oldStates?.lambdaStates.has(lambdaKey)) {
+							lambdaState = deepCloneState(oldStates.lambdaStates.get(lambdaKey)!);
+						}
+						this.lambdaStates.set(lambdaKey, lambdaState);
+						return { type: "lambda", fn, state: lambdaState };
+					}
+					// Connection type
+					const idx = idToIndex.get(src.nodeId ?? "");
 					return {
+						type: "connection",
 						sourceNodeIndex: idx ?? 0,
-						outputName: src.output,
+						outputName: src.output ?? "out",
 					};
 				});
 				return { type: "connections", sources };
@@ -366,7 +393,15 @@ export class RuntimeGraph {
 					node.inputRecord[inputName] = binding.fn(binding.state, sampleRate, time);
 				} else if (binding.type === "connections") {
 					// Multi-connection for polyphonic devices - gather all source values
+					// Each source can be a different type (constant, connection, lambda)
 					const values = binding.sources.map((src) => {
+						if (src.type === "constant") {
+							return src.value;
+						}
+						if (src.type === "lambda") {
+							return src.fn(src.state, sampleRate, time);
+						}
+						// Connection type
 						const sourceNode = this.nodes[src.sourceNodeIndex];
 						return sourceNode?.outputRecord[src.outputName] ?? 0;
 					});
