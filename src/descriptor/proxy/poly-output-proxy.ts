@@ -1,7 +1,7 @@
 import { applyBareSignal } from "../chaining/apply-bare-signal";
 import { isDescriptor } from "../guards/is-descriptor";
 import { isPlainParamsObject } from "../guards/is-params-object";
-import { getDeviceFactory } from "../registry";
+import { getDeviceFactory, getDeviceSpec } from "../registry";
 import { resolveForVoice } from "../signals/resolve-for-voice";
 import type { AnyDescriptor, OutputRef, Signal } from "../types";
 
@@ -20,10 +20,10 @@ export function isPolyOutputRef(value: unknown): value is PolyOutputRef {
 	);
 }
 
-type PolyDescriptor = { _poly: true; voices: readonly AnyDescriptor[] };
+type PolyDescriptor = { _poly: true; voices: readonly Signal[] };
 
 // Forward declaration - will be passed in to avoid circular dependency
-type PolyFn = (voices: (AnyDescriptor | PolyDescriptor)[]) => PolyDescriptor;
+type PolyFn = (voices: Signal[]) => PolyDescriptor;
 
 /**
  * Create a chainable PolyOutputRef.
@@ -50,10 +50,12 @@ export function createChainablePolyOutputRef(
 			// Uzu chaining: look up device by name
 			if (typeof prop === "string") {
 				const deviceFactory = getDeviceFactory(prop);
-				if (deviceFactory) {
+				const deviceSpec = getDeviceSpec(prop);
+				if (deviceFactory && deviceSpec) {
 					return (params?: Record<string, Signal | PolyDescriptor> | Signal): PolyDescriptor => {
 						const newVoices = outputRefs.map((outputRef, voiceIndex) => {
-							const device = deviceFactory(outputRef);
+							// Pass chain source as named param to defaultInput
+							const device = deviceFactory({ [deviceSpec.defaultInput]: outputRef });
 
 							// No params - just return device
 							if (params === undefined) {

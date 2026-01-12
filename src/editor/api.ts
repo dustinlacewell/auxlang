@@ -6,6 +6,7 @@
  */
 
 export { device } from "../descriptor/device";
+export { poly } from "../descriptor/poly";
 
 // Oscillators
 export { osc, sin, sawOsc, tri, sqr } from "../devices/osc";

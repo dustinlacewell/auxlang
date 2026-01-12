@@ -22,14 +22,20 @@ export interface SerializedSpec {
 	processAllSource?: string;
 }
 
+/** A single compiled source for poly voices - can be constant, connection, or lambda */
+export type CompiledSource =
+	| { type: "constant"; value: number }
+	| { type: "connection"; nodeId: string; output: string }
+	| { type: "lambda"; fnSource: string };
+
 export interface CompiledInput {
 	type: "constant" | "connection" | "lambda" | "connections";
 	value?: number[];
 	nodeId?: string;
 	output?: string;
 	fnSource?: string;
-	/** For multi-connection (polyphonic) inputs */
-	sources?: { nodeId: string; output: string }[];
+	/** For multi-connection (polyphonic) inputs - each source can be different type */
+	sources?: readonly CompiledSource[];
 }
 
 /** Serialized config - function source or plain data */

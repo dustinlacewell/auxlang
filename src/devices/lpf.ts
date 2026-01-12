@@ -10,6 +10,7 @@ export const lpf = device("lpf", {
 	outputs: ["audio"],
 	defaultInput: "input",
 	defaultOutput: "audio",
+	positionalArgs: ["cutoff", "resonance"],
 	wasmUrl: "/filter.wasm",
 	process(inp, _cfg, state, sampleRate) {
 		const input = (inp.input as number) ?? 0;

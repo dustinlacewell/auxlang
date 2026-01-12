@@ -11,5 +11,7 @@ export function isPlainParamsObject(value: unknown): value is Record<string, Sig
 	if ("_feedback" in value) return false;
 	if ("descriptorId" in value) return false;
 	if ("_state" in value) return false;
+	if ("_poly" in value) return false;
+	if ("_polyOutputs" in value) return false;
 	return true;
 }

@@ -10,6 +10,7 @@ export const lfo = device("lfo", {
 	outputs: ["cv"],
 	defaultInput: "rate",
 	defaultOutput: "cv",
+	positionalArgs: ["min", "max", "phase"],
 	process(inp, _cfg, state, sampleRate) {
 		const rate = (inp.rate as number) ?? 1;
 		const min = (inp.min as number) ?? -1;

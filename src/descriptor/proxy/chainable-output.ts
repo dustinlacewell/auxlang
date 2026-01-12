@@ -1,7 +1,7 @@
-import { getDeviceFactory } from "../registry";
-import type { AnyDescriptor, DescriptorId, OutputRef } from "../types";
+import { getDeviceFactory, getDeviceSpec } from "../registry";
+import type { AnyDescriptor, DescriptorId, OutputRef, Signal } from "../types";
 
-type PolyDescriptor = { _poly: true; voices: readonly AnyDescriptor[] };
+type PolyDescriptor = { _poly: true; voices: readonly Signal[] };
 
 /**
  * Create a ChainableOutput - an OutputRef that's also callable for device chaining.
@@ -24,14 +24,16 @@ export function createChainableOutput(
 	// Accepts any number of positional args, passed through to the factory
 	const callable = (...args: unknown[]): AnyDescriptor | PolyDescriptor => {
 		const deviceFactory = getDeviceFactory(outputName);
-		if (!deviceFactory) {
+		const deviceSpec = getDeviceSpec(outputName);
+		if (!deviceFactory || !deviceSpec) {
 			throw new Error(`"${outputName}" is not a registered device`);
 		}
 		// Use the default output of the source descriptor as the chained signal
 		const sourceRef: OutputRef = { descriptorId, outputName: defaultOutput };
 
-		// Pass chained signal + all args to factory
-		return deviceFactory(sourceRef, ...args);
+		// Pass chain source as named param to defaultInput, after all user args
+		// This disambiguates chaining from positional args
+		return deviceFactory(...args, { [deviceSpec.defaultInput]: sourceRef });
 	};
 
 	// Proxy to make it both an OutputRef and chainable

@@ -33,12 +33,18 @@ export interface CompiledNode {
 	readonly wasmBytes?: ArrayBuffer;
 }
 
+/** A single compiled source for poly voices - can be constant, connection, or lambda */
+export type CompiledSource =
+	| { readonly type: "constant"; readonly value: number }
+	| { readonly type: "connection"; readonly nodeId: string; readonly output: string }
+	| { readonly type: "lambda"; readonly fnSource: string };
+
 /** A compiled input - constant, connection, lambda, or multi-connection for polyphonic */
 export type CompiledInput =
 	| { readonly type: "constant"; readonly value: PolySignal }
 	| { readonly type: "connection"; readonly nodeId: string; readonly output: string }
 	| { readonly type: "lambda"; readonly fnSource: string }
-	| { readonly type: "connections"; readonly sources: readonly { nodeId: string; output: string }[] };
+	| { readonly type: "connections"; readonly sources: readonly CompiledSource[] };
 
 /** A compiled graph ready for worklet execution */
 export interface CompiledGraph {

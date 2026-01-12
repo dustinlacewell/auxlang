@@ -29,7 +29,8 @@
       "Bash(grep:*)",
       "Bash(xargs sed:*)",
       "Bash(for dir in */)",
-      "Bash(pnpm exec vitest:*)"
+      "Bash(pnpm exec vitest:*)",
+      "Bash(node --import=tsx --no-warnings -e \"import { lfo } from ''./src/devices/lfo.ts''; console.log\\(lfo\\(1, 200, 2000\\)._state.inputBindings\\);\")"
     ]
   }
 }

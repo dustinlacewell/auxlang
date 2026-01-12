@@ -9,7 +9,7 @@
  * graph structure remains the same, even if values change.
  */
 
-import type { GraphNode, ResolvedInput } from "../types";
+import type { GraphNode, ResolvedInput, SourceInput } from "../types";
 
 /** A topological hash that identifies a node by its graph position */
 export type TopologyHash = string;
@@ -62,14 +62,8 @@ function hashInput(input: ResolvedInput, nodeHashes: Map<string, TopologyHash>):
 		return "lambda";
 	}
 	if (input.type === "connections") {
-		// Hash all source connections
-		const hashes = input.sources.map((src) => {
-			const sourceHash = nodeHashes.get(src.nodeId);
-			if (!sourceHash) {
-				throw new Error(`Missing hash for node ${src.nodeId}`);
-			}
-			return `${sourceHash}.${src.output}`;
-		});
+		// Hash all source connections - each source can be different type
+		const hashes = input.sources.map((src) => hashSource(src, nodeHashes));
 		return `[${hashes.join(",")}]`;
 	}
 	// Single connection: use the source node's topology hash
@@ -78,6 +72,25 @@ function hashInput(input: ResolvedInput, nodeHashes: Map<string, TopologyHash>):
 		throw new Error(`Missing hash for node ${input.nodeId}`);
 	}
 	return `${sourceHash}.${input.output}`;
+}
+
+/**
+ * Hash a single source in a connections array.
+ * Sources can be constants, connections, or lambdas.
+ */
+function hashSource(src: SourceInput, nodeHashes: Map<string, TopologyHash>): string {
+	if (src.type === "constant") {
+		return "const";
+	}
+	if (src.type === "lambda") {
+		return "lambda";
+	}
+	// Connection type
+	const sourceHash = nodeHashes.get(src.nodeId);
+	if (!sourceHash) {
+		throw new Error(`Missing hash for node ${src.nodeId}`);
+	}
+	return `${sourceHash}.${src.output}`;
 }
 
 /**

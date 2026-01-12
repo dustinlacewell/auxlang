@@ -1,5 +1,5 @@
 import type { PolyDescriptor } from "./poly";
-import type { AnyDescriptor, DescriptorId, DeviceSpec, Signal } from "./types";
+import type { AnyDescriptor, DescriptorId, DeviceSpec } from "./types";
 
 /** Registry of all descriptors by ID (populated during descriptor creation) */
 const descriptorRegistry = new Map<DescriptorId, AnyDescriptor>();
@@ -24,7 +24,7 @@ export function getDescriptor(id: DescriptorId): AnyDescriptor | undefined {
  * Takes positional args consumed in order, with optional trailing params object.
  * Returns poly when expand function creates polyphony.
  */
-export type DeviceFactory = (chainedSignal?: Signal, ...args: unknown[]) => AnyDescriptor | PolyDescriptor;
+export type DeviceFactory = (...args: unknown[]) => AnyDescriptor | PolyDescriptor;
 
 /** Device registration entry - factory plus spec for polyphonic checking */
 interface DeviceEntry {
