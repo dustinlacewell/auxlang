@@ -1,4 +1,4 @@
-import { useAudioInstances } from "@/ui/audio/use-audio-instances";
+import { useCore2Audio } from "@/ui/audio/use-core2-audio";
 import { Button } from "@/ui/design/button";
 import { TestCard } from "./test-card";
 import { TestCategory } from "./test-category";
@@ -7,7 +7,7 @@ import { getTestsByCategory } from "./test-data";
 const testsByCategory = getTestsByCategory();
 
 export function TestSuiteApp() {
-	const { getState, play, stop, stopAll } = useAudioInstances();
+	const { getState, play, stop, stopAll } = useCore2Audio();
 
 	return (
 		<div className="min-h-screen p-5 max-w-6xl mx-auto">

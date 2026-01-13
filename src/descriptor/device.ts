@@ -202,6 +202,118 @@ function createDeviceAlias(name: string, templateDescriptor: AnyDescriptor): Any
 }
 
 /**
+ * Create a device alias from an existing poly.
+ * Maps the alias operation across voices.
+ */
+function createPolyDeviceAlias(name: string, templatePoly: PolyDescriptor): PolyDescriptor {
+	// All voices share the same spec - get it from the first descriptor voice
+	const firstDescriptorVoice = templatePoly.voices.find(isDescriptor) as AnyDescriptor | undefined;
+	if (!firstDescriptorVoice) {
+		throw new Error(
+			`Cannot create device alias "${name}" from a poly with no descriptor voices.`
+		);
+	}
+
+	const spec = firstDescriptorVoice._state.spec;
+	const inputNames = Object.keys(spec.inputs);
+	const configNames = Object.keys(spec.config);
+
+	// Parse args once (same as descriptor alias)
+	const parseArgs = (args: unknown[]): { inputBindings: Record<string, Signal>; configBindings: Record<string, ConfigValue> } => {
+		const inputBindings: Record<string, Signal> = {};
+		const configBindings: Record<string, ConfigValue> = {};
+
+		// Consume positional args via positionalArgs order
+		let argIndex = 0;
+		for (const paramName of spec.positionalArgs) {
+			if (argIndex >= args.length) break;
+			const arg = args[argIndex];
+			if (isPlainParamsObject(arg)) break;
+
+			if (inputNames.includes(paramName)) {
+				inputBindings[paramName] = arg as Signal;
+			} else if (configNames.includes(paramName)) {
+				configBindings[paramName] = arg as ConfigValue;
+			}
+			argIndex++;
+		}
+
+		// Merge all params objects
+		for (const arg of args) {
+			if (isPlainParamsObject(arg)) {
+				const params = arg as Record<string, unknown>;
+				for (const [key, value] of Object.entries(params)) {
+					if (key === spec.defaultInput && inputBindings[key] !== undefined) {
+						throw new Error(
+							`Cannot set "${key}" - it's already bound. ` +
+							`When chaining, the chain source binds to "${key}".`
+						);
+					}
+					if (inputNames.includes(key)) {
+						inputBindings[key] = value as Signal;
+					} else if (configNames.includes(key)) {
+						configBindings[key] = value as ConfigValue;
+					}
+				}
+			}
+		}
+
+		return { inputBindings, configBindings };
+	};
+
+	// Factory function for the poly alias
+	const factory = (...args: unknown[]): PolyDescriptor => {
+		const { inputBindings, configBindings } = parseArgs(args);
+
+		// Map across template voices, merging parsed args into each
+		const newVoices = templatePoly.voices.map((voice) => {
+			if (isDescriptor(voice)) {
+				const voiceState = voice._state;
+				return createDescriptor(
+					voiceState.spec,
+					{ ...voiceState.inputBindings, ...inputBindings },
+					{ ...voiceState.configBindings, ...configBindings }
+				);
+			}
+			// Non-descriptor voices pass through (rare, but possible)
+			return voice;
+		});
+
+		return poly(newVoices);
+	};
+
+	// Register device factory with the spec from first voice
+	registerDevice(name, factory, spec);
+
+	// Return a poly that wraps the factory
+	// When accessed as a value, behaves like the template poly
+	// When called, uses the factory
+	const polyFactory = new Proxy(factory, {
+		apply(target, _thisArg, args) {
+			return target(...args);
+		},
+		has(_target, prop: string | symbol) {
+			// Support "in" operator for isPoly check
+			if (prop === "_poly") return true;
+			if (prop === "voices") return true;
+			return prop in templatePoly;
+		},
+		get(target, prop: string | symbol) {
+			if (prop === "_poly") return true;
+			if (prop === "voices") return templatePoly.voices;
+			// Delegate to template poly for other properties (out, apply, etc.)
+			const polyProp = (templatePoly as unknown as Record<string | symbol, unknown>)[prop];
+			if (polyProp !== undefined) {
+				return polyProp;
+			}
+			return (target as unknown as Record<string | symbol, unknown>)[prop];
+		},
+	});
+
+	return polyFactory as unknown as PolyDescriptor;
+}
+
+/**
  * Create a device with a name (registers for Uzu chaining).
  * @example device('saw', { inputs: { freq: 440 }, ... })
  */
@@ -231,8 +343,15 @@ export function device<const T extends DeviceSpecInput>(
 ): Descriptor<keyof T["inputs"] & string, ConfigKeys<T> & string, T["outputs"][number]> {
 	const name = typeof nameOrSpec === "string" ? nameOrSpec : undefined;
 
-	// Check if second arg is a descriptor (alias mode)
-	if (name && maybeSpec && isDescriptor(maybeSpec)) {
+	// Check if second arg is a descriptor or poly (alias mode)
+	if (name && maybeSpec && (isDescriptor(maybeSpec) || isPoly(maybeSpec))) {
+		if (isPoly(maybeSpec)) {
+			return createPolyDeviceAlias(name, maybeSpec) as unknown as Descriptor<
+				keyof T["inputs"] & string,
+				ConfigKeys<T> & string,
+				T["outputs"][number]
+			>;
+		}
 		return createDeviceAlias(name, maybeSpec) as Descriptor<
 			keyof T["inputs"] & string,
 			ConfigKeys<T> & string,

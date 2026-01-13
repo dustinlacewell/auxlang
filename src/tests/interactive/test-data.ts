@@ -27,8 +27,9 @@ import { hihatTests } from "./drums/hihat";
 import { clapTests } from "./drums/clap";
 
 // Modulators
+import { adTests } from "./modulators/ad";
 import { adsrTests } from "./modulators/adsr";
-import { envTests } from "./modulators/env";
+import { arTests } from "./modulators/ar";
 
 // Effects
 import { delayTests } from "./effects/delay";
@@ -41,8 +42,11 @@ import { mixTests } from "./utilities/mix";
 import { slewTests } from "./utilities/slew";
 import { sahTests } from "./utilities/sah";
 import { quantizeTests } from "./utilities/quantize";
-import { spreadTests } from "./utilities/spread";
 import { chordTests } from "./utilities/chord";
+
+// Stereo
+import { panTests } from "./stereo/pan";
+import { spreadTests } from "./stereo/spread";
 
 // Timing
 import { clockTests } from "./timing/clock";
@@ -81,8 +85,9 @@ export const tests: TestDefinition[] = [
 	...clapTests,
 
 	// Modulators
+	...adTests,
 	...adsrTests,
-	...envTests,
+	...arTests,
 
 	// Effects
 	...delayTests,
@@ -95,8 +100,11 @@ export const tests: TestDefinition[] = [
 	...slewTests,
 	...sahTests,
 	...quantizeTests,
-	...spreadTests,
 	...chordTests,
+
+	// Stereo
+	...panTests,
+	...spreadTests,
 
 	// Timing
 	...clockTests,

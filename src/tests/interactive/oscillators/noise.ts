@@ -32,7 +32,7 @@ export const noiseModMin: TestDefinition = {
 	category: "Oscillators",
 	name: "noise - modulated min",
 	desc: "Noise with LFO-modulated minimum (DC offset sweep)",
-	code: `noise({ min: lfo(0.5, -1, 0), max: 1 }).gain(0.3).out()`,
+	code: `noise({ min: sin(0.5, -1, 0), max: 1 }).gain(0.3).out()`,
 };
 
 export const noiseShowcase: TestDefinition = {
@@ -41,7 +41,7 @@ export const noiseShowcase: TestDefinition = {
 	name: "noise - showcase",
 	desc: "Filtered noise burst on triggers",
 	code: `clock(120).seq("c4 ~ c4 c4").apply(s =>
-  noise().lpf({ cutoff: 2000 }).gain({ level: s.gate.env({ attack: 0.01, release: 0.1 }) }).out()
+  noise().lpf({ cutoff: 2000 }).gain({ level: s.gate.ar({ attack: 0.01, release: 0.1 }) }).out()
 )`,
 };
 

@@ -36,7 +36,7 @@ export const snareModPitch: TestDefinition = {
 	name: "snare - modulated pitch",
 	desc: "Snare with varying body pitch",
 	code: `clock(120).seq("~ c4 ~ c4").apply(s =>
-  s.trig.snare({ pitch: lfo(0.25, 150, 220) }).out()
+  s.trig.snare({ pitch: sin(0.25, 150, 220) }).out()
 )`,
 };
 
@@ -46,7 +46,7 @@ export const snareModTone: TestDefinition = {
 	name: "snare - modulated tone",
 	desc: "Snare body/noise balance sweep",
 	code: `clock(120).seq("~ c4 ~ c4").apply(s =>
-  s.trig.snare({ tone: lfo(0.5, 0.1, 0.7) }).out()
+  s.trig.snare({ tone: sin(0.5, 0.1, 0.7) }).out()
 )`,
 };
 
@@ -56,7 +56,7 @@ export const snareModDecay: TestDefinition = {
 	name: "snare - modulated decay",
 	desc: "Snare with varying decay",
 	code: `clock(120).seq("~ c4 ~ c4").apply(s =>
-  s.trig.snare({ decay: lfo(0.25, 0.08, 0.25) }).out()
+  s.trig.snare({ decay: sin(0.25, 0.08, 0.25) }).out()
 )`,
 };
 
@@ -66,7 +66,7 @@ export const snareModSnappy: TestDefinition = {
 	name: "snare - modulated snappy",
 	desc: "Snare wire brightness sweep",
 	code: `clock(120).seq("~ c4 ~ c4").apply(s =>
-  s.trig.snare({ snappy: lfo(0.5, 0.3, 0.95) }).out()
+  s.trig.snare({ snappy: sin(0.5, 0.3, 0.95) }).out()
 )`,
 };
 

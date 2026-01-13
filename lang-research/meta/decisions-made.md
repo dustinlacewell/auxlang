@@ -85,3 +85,9 @@
 | D081 | Clock reset signal encodes BPM | 2025-01-10 | Clock outputs `-bpm` (negative) on first sample after reset, allowing downstream to sync. Normal: 0, trigger: 1, reset: -bpm. |
 | D082 | WASM state serialization interface | 2025-01-10 | WASM devices export `get_state_size`, `alloc_state_buffer`, `serialize_state`, `deserialize_state`. State copied between old→new instances during graph swap. |
 | D083 | Remove vca, rename gain.amount to gain.level | 2025-01-10 | `vca` was redundant with `gain`. Renamed `amount` to `level` for clarity - level is the modulation input for amplitude control. |
+| D084 | core2: Plain data nodes instead of proxy-wrapped descriptors | 2025-01-12 | API produces inspectable JSON graphs: `{ nodes: [...], output: 'id' }`. Nodes have id, device, inputs, config. References via `{ ref: 'id', out: 'name' }`. |
+| D085 | core2: Device expand hooks called at API time | 2025-01-12 | seq, chord, spread have expand hooks that return `Node | Node[]`. Called when device is invoked, not in a later pass. Enables compile-time poly decomposition. |
+| D086 | core2: Unified argument parsing | 2025-01-12 | `parseArgs()` extracted to shared module. Routes positional args to inputs vs config based on spec. Skips default input when chaining (already bound). |
+| D087 | core2: createDeviceNode for expand hook invocation | 2025-01-12 | Single function handles expand hook logic. Used by device factory, wrap chaining, and chainable-output-ref. Eliminates duplication. |
+| D088 | core2: wrapOutputRefArray for poly output chaining | 2025-01-12 | `polySeq.cv.tri()` works via wrapped array of OutputRefs. Each ref maps to new device when chaining. |
+| D089 | Config functions hydrated, not called | 2025-01-12 | Processor returns `fn` (the function) not `fn()` (its result). Devices call config functions themselves (e.g., `cfg.shape(phase)`). |

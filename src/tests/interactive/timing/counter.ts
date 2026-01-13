@@ -39,7 +39,7 @@ export const counterModMax: TestDefinition = {
 	name: "counter - modulated max",
 	desc: "Varying loop length",
 	code: `clock(120).apply(c =>
-  counter(c).max(lfo(0.1, 2, 8)).scale({ from: 0, to: 8, min: 200, max: 800 }).saw().gain(0.3).out()
+  counter(c).max(sin(0.1, 2, 8)).scale({ from: 0, to: 8, min: 200, max: 800 }).saw().gain(0.3).out()
 )`,
 };
 

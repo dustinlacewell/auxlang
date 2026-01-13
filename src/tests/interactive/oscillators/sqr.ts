@@ -33,7 +33,7 @@ export const sqrModFreq: TestDefinition = {
 	category: "Oscillators",
 	name: "sqr - modulated freq",
 	desc: "Square with LFO-modulated frequency",
-	code: `sqr(lfo(0.5, 100, 200)).out()`,
+	code: `sqr(sin(0.5, 100, 200)).out()`,
 };
 
 export const sqrShowcase: TestDefinition = {
@@ -42,7 +42,7 @@ export const sqrShowcase: TestDefinition = {
 	name: "sqr - showcase",
 	desc: "Classic 8-bit arpeggio",
 	code: `clock(240).seq("c4 e4 g4 c5 g4 e4").apply(s =>
-  s.cv.sqr().gain({ level: s.gate.env({ attack: 0.01, release: 0.05 }) }).out()
+  s.cv.sqr().gain({ level: s.gate.ar({ attack: 0.01, release: 0.05 }) }).out()
 )`,
 };
 

@@ -1,6 +1,6 @@
 # Auxlang Context
 
-Live-coding language for audio (and eventually visuals). Target: Steam game.
+Live-coding language for audio. Target: Steam game.
 
 ## Run It
 
@@ -8,64 +8,53 @@ Live-coding language for audio (and eventually visuals). Target: Steam game.
 cd auxlang && pnpm dev
 ```
 
+Open http://localhost:5173/test-suite - click Play on any test.
+
 ## What's Working
 
-- Descriptor system with lazy evaluation and full typing
+- **core2**: New plain-data graph architecture (all 177 tests pass)
 - Fluent chaining API: `seq("c4 e4").saw().lpf({ cutoff: 800 }).out()`
 - AudioWorklet runtime with WASM support (filter, reverb, tape delay)
 - Mini-notation sequencer with polyphony, probability, ties, euclidean
-- Live re-evaluation with seamless state preservation
+- Live re-evaluation with state preservation
 - Devices: oscillators, drums, filters, envelopes, reverb, delay
+- Device expand hooks for compile-time poly (seq, chord, spread)
 
 ## Quick Reference
 
-See `.claude/rules/auxlang-guide.md` for complete API reference covering:
-- Core concepts (signals, descriptors, devices)
-- Pattern syntax (mini-notation DSL)
-- JavaScript API (instantiation, chaining, output access)
-- Polyphony (pattern-level and JS-level)
+See `.claude/rules/auxlang-guide.md` for API reference.
 
-## Current Focus
+## Architecture
 
-**Inline Signal Lambdas** - Any device input accepts `(state, sr, time) => number`:
-
+core2 produces plain JSON graphs:
 ```javascript
-// Time parameter for simple time-based modulation
-saw(220).lpf({
-  cutoff: (s, sr, t) => Math.sin(t * 2 * Math.PI * 2) * 800 + 1000
-}).out()
-
-// Cyclic ramp using modulo
-saw((s, sr, t) => {
-  const cycleT = t % 2  // Reset every 2 seconds
-  return 200 + (cycleT / 2) * 600
-}).out()
+{
+  nodes: [
+    { id: 'saw1', device: 'saw', inputs: { freq: 440 }, config: {} },
+    { id: 'lpf1', device: 'lpf', inputs: { input: { ref: 'saw1', out: 'audio' } }, config: {} }
+  ],
+  output: 'lpf1'
+}
 ```
 
-- `state` - persistent object per input (survives across samples and re-eval)
-- `sampleRate` - typically 44100 or 48000
-- `time` - seconds since eval started (preserved across re-eval via `sampleCount`)
-
-## Key Files
-
+Key directories:
 | Area | Location |
 |------|----------|
-| Devices | `src/devices/` |
-| Sequencer | `src/devices/seq/` |
-| Descriptor system | `src/descriptor/` |
-| Graph compilation | `src/graph/` |
-| Worklet runtime | `src/runtime/` |
+| core2 devices | `src/core2/devices/` |
+| core2 API | `src/core2/api.ts` |
+| Wrap system | `src/core2/wrap/` |
+| Runtime | `src/core2/runtime/` |
+| v1 (legacy) | `src/devices/`, `src/descriptor/` |
 | WASM source | `native/assembly/` |
-| Test cases | `src/ui/test-suite/cases/` |
+| Test cases | `src/tests/interactive/` |
 
 ## Docs
 
-- [docs/audio-model.md](../../docs/audio-model.md) - eurorack metaphor, signal flow
-- [docs/sequencer.md](../../docs/sequencer.md) - mini-notation, polyphony
-- [docs/descriptors.md](../../docs/descriptors.md) - lazy evaluation system
+- [docs/audio-model.md](../../docs/audio-model.md) - eurorack metaphor
+- [docs/sequencer.md](../../docs/sequencer.md) - mini-notation
 - [docs/live-reeval.md](../../docs/live-reeval.md) - hot code swap
 - [docs/wasm-devices.md](../../docs/wasm-devices.md) - native DSP
 
 ## Decisions
 
-83 decisions in [decisions-made.md](decisions-made.md). Recent: D082 (WASM state serialization), D083 (gain.level rename).
+See [decisions-made.md](decisions-made.md) for architectural decisions.

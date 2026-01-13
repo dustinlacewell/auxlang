@@ -17,7 +17,7 @@ export const sahDefault: TestDefinition = {
 	name: "sah - defaults",
 	desc: "Sample noise as pitch CV",
 	code: `clock(120).seq("c4*4").apply(s =>
-  sah({ input: noise(), trig: s.trig }).scale({ from: -1, to: 1, min: 200, max: 800 }).tri().gain({ level: s.gate.env() }).out()
+  sah({ input: noise(), trig: s.trig }).scale({ from: -1, to: 1, min: 200, max: 800 }).tri().gain({ level: s.gate.ar() }).out()
 )`,
 };
 
@@ -27,7 +27,7 @@ export const sahAllParams: TestDefinition = {
 	name: "sah - all params",
 	desc: "Sample LFO as stepped pitch",
 	code: `clock(120).seq("c4*2").apply(s =>
-  sah({ input: lfo(3, 200, 800), trig: s.trig }).tri().gain({ level: s.gate.env() }).out()
+  sah({ input: sin(3, 200, 800), trig: s.trig }).tri().gain({ level: s.gate.ar() }).out()
 )`,
 };
 
@@ -37,7 +37,7 @@ export const sahModInput: TestDefinition = {
 	name: "sah - modulated input",
 	desc: "Sample complex modulation",
 	code: `clock(120).seq("c4*4").apply(s =>
-  sah({ input: lfo(7).scale({ from: -1, to: 1, min: 200, max: 600 }), trig: s.trig }).tri().gain({ level: s.gate.env() }).out()
+  sah({ input: sin(7).scale({ from: -1, to: 1, min: 200, max: 600 }), trig: s.trig }).tri().gain({ level: s.gate.ar() }).out()
 )`,
 };
 
@@ -51,7 +51,7 @@ export const sahShowcase: TestDefinition = {
     .scale({ from: -1, to: 1, min: 200, max: 800 })
     .quantize({ scale: "minor pentatonic" })
     .tri()
-    .gain({ level: s.gate.env({ attack: 0.01, release: 0.1 }) })
+    .gain({ level: s.gate.ar({ attack: 0.01, release: 0.1 }) })
     .out()
 )`,
 };

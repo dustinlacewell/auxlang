@@ -34,7 +34,7 @@ export const clapModDecay: TestDefinition = {
 	name: "clap - modulated decay",
 	desc: "Clap with varying tail length",
 	code: `clock(120).seq("~ c4 ~ c4").apply(s =>
-  s.trig.clap({ decay: lfo(0.25, 0.1, 0.4) }).out()
+  s.trig.clap({ decay: sin(0.25, 0.1, 0.4) }).out()
 )`,
 };
 
@@ -44,7 +44,7 @@ export const clapModTone: TestDefinition = {
 	name: "clap - modulated tone",
 	desc: "Clap brightness sweep",
 	code: `clock(120).seq("~ c4 ~ c4").apply(s =>
-  s.trig.clap({ tone: lfo(0.5, 0.2, 0.8) }).out()
+  s.trig.clap({ tone: sin(0.5, 0.2, 0.8) }).out()
 )`,
 };
 

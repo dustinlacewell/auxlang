@@ -33,7 +33,7 @@ export const lpfModCutoff: TestDefinition = {
 	category: "Filters",
 	name: "lpf - modulated cutoff",
 	desc: "Classic filter sweep with LFO",
-	code: `saw(110).lpf({ cutoff: lfo(0.5, 200, 2000) }).out()`,
+	code: `saw(110).lpf({ cutoff: sin(0.5, 200, 2000) }).out()`,
 };
 
 export const lpfModResonance: TestDefinition = {
@@ -41,7 +41,7 @@ export const lpfModResonance: TestDefinition = {
 	category: "Filters",
 	name: "lpf - modulated resonance",
 	desc: "Resonance sweep with fixed cutoff",
-	code: `saw(110).lpf({ cutoff: 800, resonance: lfo(0.3, 0, 0.8) }).out()`,
+	code: `saw(110).lpf({ cutoff: 800, resonance: sin(0.3, 0, 0.8) }).out()`,
 };
 
 export const lpfShowcase: TestDefinition = {

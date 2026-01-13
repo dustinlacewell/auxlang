@@ -73,3 +73,11 @@
 |----|----------|--------|
 | Q034 | Should we have both `vca` and `gain`? | Resolved → D083: No, removed `vca`. Use `gain({ level: envelope })` |
 | Q035 | What should the gain modulation input be called? | Resolved → D083: `level` (not `amount` or `cv`) |
+
+## core2 Architecture
+
+| ID | Question | Status |
+|----|----------|--------|
+| Q036 | Should devices be self-contained or can they rely on worklet globals? | Open — seq uses `globalThis.seqTraverse`. Consider pre-computing sequences at expand time. |
+| Q037 | How to handle v1 to core2 migration? | Open — both exist currently. Need deprecation plan. |
+| Q038 | Should expand hooks receive spec defaults or just user-provided config? | Resolved — user-provided only. Devices access constants from module scope (e.g., `CHORD_SEMITONES`). |

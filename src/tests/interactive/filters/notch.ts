@@ -33,7 +33,7 @@ export const notchModCutoff: TestDefinition = {
 	category: "Filters",
 	name: "notch - modulated cutoff",
 	desc: "Phaser-like effect with sweeping notch",
-	code: `saw(110).notch({ cutoff: lfo(0.2, 300, 1500), resonance: 0.7 }).out()`,
+	code: `saw(110).notch({ cutoff: sin(0.2, 300, 1500), resonance: 0.7 }).out()`,
 };
 
 export const notchModResonance: TestDefinition = {
@@ -41,7 +41,7 @@ export const notchModResonance: TestDefinition = {
 	category: "Filters",
 	name: "notch - modulated resonance",
 	desc: "Notch width modulation",
-	code: `saw(110).notch({ cutoff: 800, resonance: lfo(0.3, 0.3, 0.9) }).out()`,
+	code: `saw(110).notch({ cutoff: 800, resonance: sin(0.3, 0.3, 0.9) }).out()`,
 };
 
 export const notchShowcase: TestDefinition = {
@@ -49,7 +49,7 @@ export const notchShowcase: TestDefinition = {
 	category: "Filters",
 	name: "notch - showcase",
 	desc: "Slow phaser sweep",
-	code: `saw(55).notch({ cutoff: lfo(0.1, 100, 2000), resonance: 0.85 }).out()`,
+	code: `saw(55).notch({ cutoff: sin(0.1, 100, 2000), resonance: 0.85 }).out()`,
 };
 
 export const notchTests = [notchDefault, notchAllParams, notchModCutoff, notchModResonance, notchShowcase];

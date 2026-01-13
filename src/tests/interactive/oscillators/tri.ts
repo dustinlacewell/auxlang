@@ -33,7 +33,7 @@ export const triModFreq: TestDefinition = {
 	category: "Oscillators",
 	name: "tri - modulated freq",
 	desc: "Triangle with slow LFO modulation",
-	code: `tri(lfo(0.2, 200, 300)).out()`,
+	code: `tri(sin(0.2, 200, 300)).out()`,
 };
 
 export const triShowcase: TestDefinition = {

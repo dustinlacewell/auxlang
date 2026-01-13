@@ -1,0 +1,117 @@
+/**
+ * Pan - stereo panner that mixes down to mono then outputs L/R pair.
+ *
+ * Sums all input voices to mono, then applies panning to output 2 voices (L/R).
+ *
+ * Inputs:
+ *   input: signal - audio input (mono or poly, gets summed)
+ *   pan: number (default: 0) - position (-1=L, 0=center, 1=R)
+ *
+ * Outputs:
+ *   signal: panned output (always 2 voices: L, R)
+ */
+
+import { device } from "../device/device";
+import { inputs } from "../device/inputs";
+import type { OutputRef } from "../graph/output-ref";
+import type { NodeInput } from "../signal/node-input";
+import type { WrappedNode } from "../wrap/wrap";
+
+function isOutputRefArray(v: unknown): v is OutputRef[] {
+	return Array.isArray(v) && v.length > 0 && typeof v[0] === "object" && "ref" in (v[0] as object);
+}
+
+/**
+ * Creates an anonymous mixer device that sums N voices to mono.
+ */
+function createSummer(voiceCount: number) {
+	const voiceInputs: Record<string, number> = {};
+	for (let i = 0; i < voiceCount; i++) {
+		voiceInputs[`v${i}`] = 0;
+	}
+
+	return device({
+		inputs: inputs(voiceInputs),
+		outputs: ["signal"],
+		defaultInput: "v0",
+		defaultOutput: "signal",
+		process(inp) {
+			let sum = 0;
+			for (let i = 0; i < voiceCount; i++) {
+				sum += (inp[`v${i}`] as number) ?? 0;
+			}
+			return { signal: sum };
+		},
+	});
+}
+
+/** Anonymous device for left channel panning */
+const panLeft = device({
+	inputs: inputs({ input: 0, pan: 0 }),
+	outputs: ["signal"],
+	defaultInput: "input",
+	defaultOutput: "signal",
+	process(inp) {
+		const input = (inp.input as number) ?? 0;
+		const p = (inp.pan as number) ?? 0;
+		// leftGain = (1 - pan) / 2
+		const gain = (1 - p) / 2;
+		return { signal: input * gain };
+	},
+});
+
+/** Anonymous device for right channel panning */
+const panRight = device({
+	inputs: inputs({ input: 0, pan: 0 }),
+	outputs: ["signal"],
+	defaultInput: "input",
+	defaultOutput: "signal",
+	process(inp) {
+		const input = (inp.input as number) ?? 0;
+		const p = (inp.pan as number) ?? 0;
+		// rightGain = (1 + pan) / 2
+		const gain = (1 + p) / 2;
+		return { signal: input * gain };
+	},
+});
+
+export const pan = device("pan", {
+	inputs: inputs({ input: 0, pan: 0 }),
+	outputs: ["signal"],
+	defaultInput: "input",
+	defaultOutput: "signal",
+	polyphonic: true,
+	process(inp) {
+		// Fallback for when expand isn't used
+		return { signal: (inp.input as number) ?? 0 };
+	},
+	expand(_config, inputBindings) {
+		const input = inputBindings.input;
+		const panInput = inputBindings.pan ?? 0;
+
+		// Get mono signal - sum if poly
+		let mono: NodeInput;
+		if (isOutputRefArray(input)) {
+			if (input.length === 1) {
+				mono = input[0]!;
+			} else {
+				// Create a summer for N voices
+				const summer = createSummer(input.length);
+				const summerInputs: Record<string, NodeInput> = {};
+				for (let i = 0; i < input.length; i++) {
+					summerInputs[`v${i}`] = input[i]!;
+				}
+				const sumNode = summer(summerInputs);
+				mono = { ref: sumNode.id, out: "signal" };
+			}
+		} else {
+			mono = input as NodeInput;
+		}
+
+		// Create L and R channel nodes
+		const leftNode = panLeft({ input: mono, pan: panInput });
+		const rightNode = panRight({ input: mono, pan: panInput });
+
+		return [leftNode, rightNode] as [WrappedNode, WrappedNode];
+	},
+});

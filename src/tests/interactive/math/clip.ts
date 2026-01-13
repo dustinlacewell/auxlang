@@ -33,7 +33,7 @@ export const clipModMin: TestDefinition = {
 	category: "Math",
 	name: "clip - modulated min",
 	desc: "Varying clip floor",
-	code: `sin(110).mult(2).clip({ min: lfo(0.5, -1, 0), max: 1 }).out()`,
+	code: `sin(110).mult(2).clip({ min: sin(0.5, -1, 0), max: 1 }).out()`,
 };
 
 export const clipModMax: TestDefinition = {
@@ -41,7 +41,7 @@ export const clipModMax: TestDefinition = {
 	category: "Math",
 	name: "clip - modulated max",
 	desc: "Varying clip ceiling",
-	code: `sin(110).mult(2).clip({ min: -1, max: lfo(0.5, 0.3, 1) }).out()`,
+	code: `sin(110).mult(2).clip({ min: -1, max: sin(0.5, 0.3, 1) }).out()`,
 };
 
 export const clipShowcase: TestDefinition = {
@@ -51,7 +51,7 @@ export const clipShowcase: TestDefinition = {
 	desc: "Soft-to-hard distortion",
 	code: `clock(120).seq("c2 c2 eb2 g2").apply(s =>
   s.cv.saw()
-    .mult(lfo(0.25, 1, 4))
+    .mult(sin(0.25, 1, 4))
     .clip({ min: -0.8, max: 0.8 })
     .lpf({ cutoff: 500 })
     .gain({ level: s.gate.adsr() })

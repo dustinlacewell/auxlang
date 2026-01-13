@@ -18,7 +18,7 @@ export const clockDefault: TestDefinition = {
 	name: "clock - defaults",
 	desc: "120 BPM clock driving a sequence",
 	code: `clock().seq("c4 e4 g4 c5").apply(s =>
-  s.cv.saw().gain({ level: s.gate.env() }).out()
+  s.cv.saw().gain({ level: s.gate.ar() }).out()
 )`,
 };
 
@@ -28,7 +28,7 @@ export const clockAllParams: TestDefinition = {
 	name: "clock - all params",
 	desc: "Slow tempo with swing",
 	code: `clock({ bpm: 80, swing: 0.2 }).seq("c4 e4 g4 e4").apply(s =>
-  s.cv.saw().gain({ level: s.gate.env() }).out()
+  s.cv.saw().gain({ level: s.gate.ar() }).out()
 )`,
 };
 
@@ -37,8 +37,8 @@ export const clockModBpm: TestDefinition = {
 	category: "Timing",
 	name: "clock - modulated bpm",
 	desc: "Accelerating tempo",
-	code: `clock({ bpm: lfo(0.1, 80, 160) }).seq("c4 e4").apply(s =>
-  s.cv.saw().gain({ level: s.gate.env() }).out()
+	code: `clock({ bpm: sin(0.1, 80, 160) }).seq("c4 e4").apply(s =>
+  s.cv.saw().gain({ level: s.gate.ar() }).out()
 )`,
 };
 
@@ -47,8 +47,8 @@ export const clockModSwing: TestDefinition = {
 	category: "Timing",
 	name: "clock - modulated swing",
 	desc: "Varying swing amount",
-	code: `clock({ bpm: 120, swing: lfo(0.1, 0, 0.3) }).seq("c4 e4 g4 e4").apply(s =>
-  s.cv.saw().gain({ level: s.gate.env() }).out()
+	code: `clock({ bpm: 120, swing: sin(0.1, 0, 0.3) }).seq("c4 e4 g4 e4").apply(s =>
+  s.cv.saw().gain({ level: s.gate.ar() }).out()
 )`,
 };
 

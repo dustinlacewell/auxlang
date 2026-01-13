@@ -36,7 +36,7 @@ export const kickModPitch: TestDefinition = {
 	name: "kick - modulated pitch",
 	desc: "Kick with rising pitch per beat",
 	code: `clock(120).seq("c4 c4 c4 c4").apply(s =>
-  s.trig.kick({ pitch: lfo(0.25, 40, 80) }).out()
+  s.trig.kick({ pitch: sin(0.25, 40, 80) }).out()
 )`,
 };
 
@@ -46,7 +46,7 @@ export const kickModDecay: TestDefinition = {
 	name: "kick - modulated decay",
 	desc: "Kick with varying decay",
 	code: `clock(120).seq("c4 c4 c4 c4").apply(s =>
-  s.trig.kick({ decay: lfo(0.5, 0.1, 0.5) }).out()
+  s.trig.kick({ decay: sin(0.5, 0.1, 0.5) }).out()
 )`,
 };
 
@@ -56,7 +56,7 @@ export const kickModSweep: TestDefinition = {
 	name: "kick - modulated sweep",
 	desc: "Kick with varying pitch sweep",
 	code: `clock(120).seq("c4 c4 c4 c4").apply(s =>
-  s.trig.kick({ sweep: lfo(0.25, 2, 8) }).out()
+  s.trig.kick({ sweep: sin(0.25, 2, 8) }).out()
 )`,
 };
 
@@ -66,7 +66,7 @@ export const kickModClick: TestDefinition = {
 	name: "kick - modulated click",
 	desc: "Kick with varying click amount",
 	code: `clock(120).seq("c4 c4 c4 c4").apply(s =>
-  s.trig.kick({ click: lfo(0.5, 0, 0.8) }).out()
+  s.trig.kick({ click: sin(0.5, 0, 0.8) }).out()
 )`,
 };
 

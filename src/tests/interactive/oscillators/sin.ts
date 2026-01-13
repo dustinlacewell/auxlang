@@ -36,7 +36,7 @@ export const sinModFreq: TestDefinition = {
 	category: "Oscillators",
 	name: "sin - modulated freq",
 	desc: "Sine with vibrato from LFO",
-	code: `sin(lfo(5, 438, 442)).out()`,
+	code: `sin(sin(5, 438, 442)).out()`,
 };
 
 export const sinShowcase: TestDefinition = {

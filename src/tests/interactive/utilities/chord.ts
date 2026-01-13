@@ -34,7 +34,7 @@ export const chordModRoot: TestDefinition = {
 	category: "Utilities",
 	name: "chord - modulated root",
 	desc: "Chord with LFO-swept root",
-	code: `chord(lfo(0.2, 200, 300), "maj").tri().gain(0.3).spread().out()`,
+	code: `chord(sin(0.2, 200, 300), "maj").tri().gain(0.3).spread().out()`,
 };
 
 export const chordShowcase: TestDefinition = {
