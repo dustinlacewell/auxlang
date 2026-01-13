@@ -10,7 +10,7 @@ export const clap = device("clap", {
 	outputs: ["audio"],
 	defaultInput: "trig",
 	defaultOutput: "audio",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const trig = (inp.trig as number) ?? 0;
 		const decay = Math.max(0.05, (inp.decay as number) ?? 0.2);
 		const tone = Math.max(0, Math.min(1, (inp.tone as number) ?? 0.5));
@@ -87,6 +87,6 @@ export const clap = device("clap", {
 		state.lpState = lpState;
 		state.hpState = hpState;
 
-		return { audio };
+		out.audio = audio;
 	},
 });

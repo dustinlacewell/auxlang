@@ -16,7 +16,7 @@ export const poly = device("poly", {
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
-	process(inp) {
-		return { signal: (inp.input as number) ?? 0 };
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
+		out.signal = (inp.input as number) ?? 0;
 	},
 });

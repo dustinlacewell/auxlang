@@ -10,7 +10,7 @@ export const adsr = device("adsr", {
 	outputs: ["cv"],
 	defaultInput: "gate",
 	defaultOutput: "cv",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const gate = (inp.gate as number) ?? 0;
 		const attack = Math.max(0.0001, (inp.attack as number) ?? 0.01);
 		const decay = Math.max(0.0001, (inp.decay as number) ?? 0.1);
@@ -63,6 +63,6 @@ export const adsr = device("adsr", {
 		state.stage = newStage;
 		state.wasGate = gate;
 
-		return { cv: newLevel };
+		out.cv = newLevel;
 	},
 });

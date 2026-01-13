@@ -10,7 +10,7 @@ export const sah = device("sah", {
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
-	process(inp, _cfg, state, _sampleRate) {
+	process(inp, _cfg, state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const trig = (inp.trig as number) ?? 0;
 
@@ -21,6 +21,6 @@ export const sah = device("sah", {
 		}
 
 		state.held = held;
-		return { signal: held };
+		out.signal = held;
 	},
 });

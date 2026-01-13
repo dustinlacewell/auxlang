@@ -11,9 +11,9 @@ export const gain = device("gain", {
 	positionalArgs: ["level", "input"],
 	defaultInput: "input",
 	defaultOutput: "signal",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const level = (inp.level as number) ?? 1;
-		return { signal: input * level };
+		out.signal = input * level;
 	},
 });

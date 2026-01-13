@@ -23,40 +23,39 @@ export async function swapGraph(
 	oldRuntimeGraph: RuntimeGraph | null,
 ): Promise<SwapResult> {
 	const nodeMapping = oldGraph ? diffStereoGraphs(oldGraph, newGraph) : undefined;
-
-	const wasmStates = collectWasmStates(nodeMapping, oldWasmInstances);
-	const newWasmInstances = await createWasmInstances(newGraph, wasmStates);
-
+	const newWasmInstances = await createWasmInstances(newGraph, nodeMapping, oldWasmInstances);
 	const oldStates = oldRuntimeGraph?.collectStates();
 	const graph = new RuntimeGraph(newGraph, newWasmInstances, oldStates, nodeMapping);
 
 	return { graph, wasmInstances: newWasmInstances, oldGraph: oldRuntimeGraph };
 }
 
-function collectWasmStates(
-	nodeMapping: Map<string, string> | undefined,
-	oldWasmInstances: Map<string, WebAssembly.Instance>,
-): Map<string, Float32Array> {
-	const wasmStates = new Map<string, Float32Array>();
-	if (!nodeMapping) return wasmStates;
-
-	for (const [newNodeId, oldNodeId] of nodeMapping) {
-		const oldInstance = oldWasmInstances.get(oldNodeId);
-		if (oldInstance) {
-			const state = serializeWasmState(oldInstance);
-			if (state) wasmStates.set(newNodeId, state);
-		}
-	}
-	return wasmStates;
-}
-
+/**
+ * Create fresh WASM instances for all WASM nodes.
+ * We can't reuse instances because crossfade runs both graphs simultaneously.
+ * State is transferred via serialization/deserialization.
+ */
 async function createWasmInstances(
 	graph: WorkletStereoGraph,
-	wasmStates: Map<string, Float32Array>,
+	nodeMapping: Map<string, string> | undefined,
+	oldWasmInstances: Map<string, WebAssembly.Instance>,
 ): Promise<Map<string, WebAssembly.Instance>> {
 	const instances = new Map<string, WebAssembly.Instance>();
 	const wasmNodes = graph.nodes.filter((n) => n.wasmBytes);
 
+	// Collect state from old instances for matched nodes
+	const wasmStates = new Map<string, Float32Array>();
+	if (nodeMapping) {
+		for (const [newNodeId, oldNodeId] of nodeMapping) {
+			const oldInstance = oldWasmInstances.get(oldNodeId);
+			if (oldInstance) {
+				const state = serializeWasmState(oldInstance);
+				if (state) wasmStates.set(newNodeId, state);
+			}
+		}
+	}
+
+	// Instantiate all WASM nodes fresh
 	await Promise.all(
 		wasmNodes.map(async (node) => {
 			const instance = await instantiateWasm(node.wasmBytes!);
@@ -64,6 +63,7 @@ async function createWasmInstances(
 		}),
 	);
 
+	// Initialize and restore state
 	for (const [nodeId, instance] of instances) {
 		initWasm(instance, sampleRate);
 		const savedState = wasmStates.get(nodeId);

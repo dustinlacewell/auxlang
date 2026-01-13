@@ -65,7 +65,7 @@ export const quantize = device("quantize", {
 	defaultInput: "input",
 	defaultOutput: "freq",
 	positionalArgs: ["scaleName", "root", "octave", "range"],
-	process(inp, cfg, state, _sampleRate) {
+	process(inp, cfg, state, _sampleRate, _time, out) {
 		const inputFreq = (inp.input as number) ?? 440;
 		const root = (inp.root as number) ?? 0;
 		const octave = (inp.octave as number) ?? 3;
@@ -123,6 +123,6 @@ export const quantize = device("quantize", {
 			}
 		}
 
-		return { freq: nearest };
+		out.freq = nearest;
 	},
 });

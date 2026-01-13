@@ -11,7 +11,7 @@ export const delay = device("delay", {
 	outputs: ["audio"],
 	defaultInput: "input",
 	defaultOutput: "audio",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const time = Math.max(0, Math.min(2, (inp.time as number) ?? 0.25));
 		const feedback = Math.max(0, Math.min(0.99, (inp.feedback as number) ?? 0.3));
@@ -49,6 +49,6 @@ export const delay = device("delay", {
 		writeIndex = (writeIndex + 1) % maxSamples;
 		state.writeIndex = writeIndex;
 
-		return { audio: input * (1 - mix) + delayed * mix };
+		out.audio = input * (1 - mix) + delayed * mix;
 	},
 });

@@ -10,7 +10,7 @@ export const kick = device("kick", {
 	outputs: ["audio"],
 	defaultInput: "trig",
 	defaultOutput: "audio",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const trig = (inp.trig as number) ?? 0;
 		const basePitch = (inp.pitch as number) ?? 50;
 		const sweep = (inp.sweep as number) ?? 4;
@@ -55,6 +55,6 @@ export const kick = device("kick", {
 		state.pitchEnv = pitchEnv;
 		state.clickPhase = clickPhase;
 
-		return { audio };
+		out.audio = audio;
 	},
 });

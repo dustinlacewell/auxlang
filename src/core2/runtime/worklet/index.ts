@@ -2,7 +2,10 @@
  * Core2 worklet entry point.
  */
 
-// This import has a side-effect: it sets globalThis.seqTraverse
+// Legacy traverse (to be removed after cursor is verified)
 import "@/runtime/worklet/seq-traverse";
+
+// Cursor-based approach (shared with main thread)
+import "@/runtime/worklet/seq-cursor-bridge";
 
 import "./processor";

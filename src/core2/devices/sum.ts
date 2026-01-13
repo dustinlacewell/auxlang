@@ -14,12 +14,12 @@ export const sum = device("sum", {
 	defaultInput: "input",
 	defaultOutput: "signal",
 	polyphonic: true,
-	processAll(inp) {
+	processAll(inp, _cfg, _state, _sampleRate, _time, out) {
 		const voices = inp.input ?? [];
 		let total = 0;
 		for (const v of voices) {
 			total += v;
 		}
-		return { signal: total };
+		out.signal = total;
 	},
 });

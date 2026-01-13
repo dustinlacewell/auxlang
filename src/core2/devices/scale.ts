@@ -12,7 +12,7 @@ export const scale = device("scale", {
 	positionalArgs: ["min", "max"],
 	defaultInput: "input",
 	defaultOutput: "out",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const from = (inp.from as number) ?? -1;
 		const to = (inp.to as number) ?? 1;
@@ -23,6 +23,6 @@ export const scale = device("scale", {
 		const normalized = (input - from) / (to - from);
 		const scaled = min + normalized * (max - min);
 
-		return { out: scaled };
+		out.out = scaled;
 	},
 });

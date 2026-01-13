@@ -23,7 +23,7 @@ function createOsc(name: string, defaultShape: ShapeFn) {
 		defaultInput: "freq",
 		defaultOutput: "cv",
 		positionalArgs: ["freq", "min", "max", "phase"],
-		process(inp, cfg, state, sampleRate) {
+		process(inp, cfg, state, sampleRate, _time, out) {
 			const freq = (inp.freq as number) ?? 440;
 			const min = (inp.min as number) ?? -1;
 			const max = (inp.max as number) ?? 1;
@@ -36,7 +36,7 @@ function createOsc(name: string, defaultShape: ShapeFn) {
 			// Apply shape and scale to range
 			const raw = (cfg.shape as ShapeFn)(phase);
 			const normalized = (raw + 1) / 2;
-			return { cv: min + normalized * (max - min) };
+			out.cv = min + normalized * (max - min);
 		},
 	});
 }

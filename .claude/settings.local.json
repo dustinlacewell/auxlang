@@ -36,7 +36,8 @@
       "Bash(find:*)",
       "Bash(done)",
       "Bash(npx vite-node:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(npx vite:*)"
     ]
   }
 }

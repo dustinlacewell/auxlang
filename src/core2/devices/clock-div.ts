@@ -10,9 +10,17 @@ export const clockDiv = device("clockDiv", {
 	outputs: ["trig", "gate"],
 	defaultInput: "trig",
 	defaultOutput: "trig",
-	process(inp, _cfg, state, _sampleRate) {
+	process(inp, _cfg, state, _sampleRate, _time, out) {
 		const trig = (inp.trig as number) ?? 0;
 		const div = Math.max(1, Math.floor((inp.by as number) ?? 4));
+
+		// Forward reset signal (negative BPM from clock)
+		if (trig < -0.5) {
+			state.count = 0;
+			out.trig = trig; // Pass through reset signal
+			out.gate = 0;
+			return;
+		}
 
 		let count = (state.count as number) ?? 0;
 
@@ -28,7 +36,8 @@ export const clockDiv = device("clockDiv", {
 		const gate = count < div / 2 ? 1 : 0;
 
 		state.count = count;
-		return { trig: outTrig, gate };
+		out.trig = outTrig;
+		out.gate = gate;
 	},
 });
 
@@ -42,10 +51,20 @@ export const clockMult = device("clockMult", {
 	outputs: ["trig", "gate"],
 	defaultInput: "trig",
 	defaultOutput: "trig",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const trig = (inp.trig as number) ?? 0;
 		// Allow fractional multipliers for smooth tempo modulation
 		const mult = Math.max(0.1, (inp.by as number) ?? 2);
+
+		// Forward reset signal (negative BPM from clock)
+		if (trig < -0.5) {
+			state.phase = 0;
+			state.lastTrigSample = 0;
+			state.sampleCount = 0;
+			out.trig = trig; // Pass through reset signal
+			out.gate = 0;
+			return;
+		}
 
 		let phase = (state.phase as number) ?? 0;
 		let interval = (state.interval as number) ?? sampleRate;
@@ -80,6 +99,7 @@ export const clockMult = device("clockMult", {
 		state.lastTrigSample = lastTrigSample;
 		state.sampleCount = sampleCount;
 
-		return { trig: outTrig, gate };
+		out.trig = outTrig;
+		out.gate = gate;
 	},
 });
