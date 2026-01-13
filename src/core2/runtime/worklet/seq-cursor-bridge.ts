@@ -5,10 +5,10 @@
  * for use by the seq device process function.
  */
 
-import { createCursor } from "@/core2/devices/seq/cursor/create";
-import { stepCursor, resetCursor } from "@/core2/devices/seq/cursor/step";
-import { sampleCursor } from "@/core2/devices/seq/cursor/sample";
-import { countBeats } from "@/core2/devices/seq/expr/traverse";
+import { createCursor } from "../../devices/seq/cursor/create";
+import { stepCursor, resetCursor } from "../../devices/seq/cursor/step";
+import { sampleCursor } from "../../devices/seq/cursor/sample";
+import { countBeats } from "../../devices/seq/expr/traverse";
 
 // biome-ignore lint/suspicious/noExplicitAny: worklet global injection
 (globalThis as any).seqCursor = {
