@@ -14,7 +14,5 @@ clock(90)
         flutter: 0.3,
         saturation: 0.5,
         tone: 0.4,
-        age: 0.3
-      })
-      .out()
-  )
+        age: 0.3})
+      .out())

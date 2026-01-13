@@ -5,9 +5,8 @@ clock(60)
   .apply(s =>
     s.saw()
       .lpf(1500)
-      .gain(s.gate.ar({
-        attack: 0.01,
-        release: sin(0.15, 0.05, 0.6)
-      }))
-      .out()
-  )
+      .gain(
+        s
+          .gate
+          .ar({ attack: 0.01, release: sin(0.15, 0.05, 0.6) }))
+      .out())

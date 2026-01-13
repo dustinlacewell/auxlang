@@ -10,7 +10,5 @@ clock(120)
         time: 0.25,
         feedback: 0.55,
         mix: 0.5,
-        tone: sin(0.15, 0.1, 0.9)
-      })
-      .out()
-  )
+        tone: sin(0.15, 0.1, 0.9)})
+      .out())
