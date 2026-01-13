@@ -14,7 +14,6 @@ import type { OutputRef } from "../graph/output-ref";
 import type { ConfigValue } from "../signal/config-value";
 import type { NodeInput } from "../signal/node-input";
 import { setWrapFn, wrapOutputRef, wrapOutputRefArray } from "./chainable-output-ref";
-import { createVoicesAccessor, setVoiceRefWrapFn } from "./chainable-voice-ref";
 import { parseArgs } from "./parse-args";
 
 export type Wrapped<T extends Node | Node[]> = T extends Node[] ? WrappedArray : WrappedNode;
@@ -73,9 +72,9 @@ function wrapNode(node: Node): WrappedNode {
 				return <T>(fn: (node: WrappedNode) => T): T => fn(wrap(target) as WrappedNode);
 			}
 
-			// .voices accessor - returns proxy for voice access via VoiceRef
+			// .voices accessor - returns proxy for voice access via OutputRef with voice field
 			if (prop === "voices") {
-				return createVoicesAccessor(target.id, target.device);
+				return createVoicesAccessor(target.id, spec.defaultOutput);
 			}
 
 			// Output access: node.audio → ChainableOutputRef
@@ -226,6 +225,15 @@ function wrapArray(nodes: Node[]): WrappedArray {
 						);
 					}
 
+					// Polyphonic devices receive all voices as an array (spread, mix, etc.)
+					if (targetSpec.polyphonic) {
+						const refs: OutputRef[] = nodes.map((n) => ({ ref: n.id, out: spec.defaultOutput }));
+						const inputs = { ...parsedInputs, [targetSpec.defaultInput]: refs };
+						const result = createDeviceNode(prop, targetSpec, inputs, parsedConfig as Record<string, ConfigValue>);
+						return wrap(result);
+					}
+
+					// Non-polyphonic: map across each voice
 					const newNodes = nodes.flatMap((n, i) => {
 						const outputRef: OutputRef = { ref: n.id, out: spec.defaultOutput };
 						const resolvedInputs = resolveInputsForVoice(parsedInputs, i);
@@ -299,6 +307,33 @@ function resolveInputsForVoice(inputs: Record<string, NodeInput>, voiceIndex: nu
 	return result;
 }
 
-// Initialize the circular dependency bridges (must be after wrap is defined)
+/**
+ * Create a voices accessor proxy for a node.
+ * Returns a proxy that intercepts [N] to create OutputRefs with voice field.
+ */
+function createVoicesAccessor(nodeId: string, defaultOutput: string): OutputRef[] {
+	const handler: ProxyHandler<OutputRef[]> = {
+		get(_target, prop: string | symbol) {
+			if (typeof prop === "symbol") return undefined;
+
+			// Numeric index: voices[0] → ChainableOutputRef with voice=0
+			if (!Number.isNaN(Number(prop))) {
+				const voice = Number(prop);
+				const outputRef: OutputRef = { ref: nodeId, out: defaultOutput, voice };
+				return wrapOutputRef(outputRef);
+			}
+
+			// Array-like length (unknown at API time)
+			if (prop === "length") {
+				return undefined;
+			}
+
+			return undefined;
+		},
+	};
+
+	return new Proxy([] as OutputRef[], handler);
+}
+
+// Initialize the circular dependency bridge (must be after wrap is defined)
 setWrapFn(wrap);
-setVoiceRefWrapFn(wrap);

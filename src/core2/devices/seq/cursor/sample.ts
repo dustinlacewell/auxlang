@@ -2,6 +2,7 @@
  * Get output for current sample from cursor.
  *
  * O(1) per sample - scans forward through pre-sorted event list.
+ * Uses sample-perfect trigger detection based on event boundaries.
  */
 
 import type { Cursor, CursorOutput } from "./types";
@@ -9,11 +10,11 @@ import type { Cursor, CursorOutput } from "./types";
 /**
  * Get sequencer output for current sample.
  *
- * @param cursor - Cursor state (mutated: eventIndex, cv, lastTriggeredPath)
- * @param phase - Phase within current beat (0-1)
- * @param isNewBeat - True if this is the first sample of a new beat
+ * @param cursor - Cursor state (mutated: eventIndex, cv, lastTriggeredSample)
+ * @param sampleIndex - Sample index within current beat (0 to samplesPerBeat-1)
+ * @param samplesPerBeat - Total samples in one beat
  */
-export function sampleCursor(cursor: Cursor, phase: number, isNewBeat: boolean): CursorOutput {
+export function sampleCursor(cursor: Cursor, sampleIndex: number, samplesPerBeat: number): CursorOutput {
 	const events = cursor.events;
 
 	// No events this beat - output silence
@@ -21,11 +22,12 @@ export function sampleCursor(cursor: Cursor, phase: number, isNewBeat: boolean):
 		return { cv: cursor.lastCV, gate: 0, trig: 0 };
 	}
 
-	// Advance eventIndex if phase crossed into a new event
+	// Advance eventIndex if sampleIndex crossed into a new event
 	// Events are sorted by start, so we scan forward
 	while (cursor.eventIndex < events.length - 1) {
 		const next = events[cursor.eventIndex + 1]!;
-		if (phase >= next.start) {
+		const nextStartSample = Math.floor(next.start * samplesPerBeat);
+		if (sampleIndex >= nextStartSample) {
 			cursor.eventIndex++;
 		} else {
 			break;
@@ -33,20 +35,21 @@ export function sampleCursor(cursor: Cursor, phase: number, isNewBeat: boolean):
 	}
 
 	const event = events[cursor.eventIndex]!;
+	const eventStartSample = Math.floor(event.start * samplesPerBeat);
+	const eventEndSample = Math.floor(event.end * samplesPerBeat);
 
 	// Update CV
 	cursor.cv = event.freq;
 	cursor.lastCV = event.freq;
 
-	// Gate: on while phase is within event's range (with small gap for retrigger)
-	const gateEnd = event.end - 0.001;
-	const gate = phase >= event.start && phase < gateEnd ? 1 : 0;
+	// Gate: on while sampleIndex is within event's range (with 1 sample gap for retrigger)
+	const gate = sampleIndex >= eventStartSample && sampleIndex < eventEndSample - 1 ? 1 : 0;
 
-	// Trigger: 1 on first sample of this event
+	// Trigger: fires on exact sample when event starts, if this event should trigger
 	let trig = 0;
-	if (event.pathKey !== cursor.lastTriggeredPath) {
+	if (event.isTrigger && sampleIndex === eventStartSample && cursor.lastTriggeredSample !== eventStartSample) {
 		trig = 1;
-		cursor.lastTriggeredPath = event.pathKey;
+		cursor.lastTriggeredSample = eventStartSample;
 	}
 
 	return { cv: cursor.cv, gate, trig };

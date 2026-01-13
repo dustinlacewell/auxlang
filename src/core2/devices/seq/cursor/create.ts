@@ -25,7 +25,7 @@ export function createCursor(expr: Expr): Cursor {
 		lastCV: 0,
 		events,
 		eventIndex: 0,
-		lastTriggeredPath: "",
+		lastTriggeredSample: -1,
 	};
 
 	// Set initial CV from first event

@@ -52,7 +52,6 @@ export const seq = device("seq", {
 		// Track timing state
 		let samplesPerBeat = (state.samplesPerBeat as number) ?? 0;
 		let samplesSinceTrig = (state.samplesSinceTrig as number) ?? 0;
-		let isNewBeat = false;
 
 		// Handle clock events
 		if (isReset) {
@@ -62,7 +61,6 @@ export const seq = device("seq", {
 			beatIndex = 0;
 			cycleCount = 0;
 			api.resetCursor(cursor, expr);
-			isNewBeat = true;
 		} else if (isTrig) {
 			samplesSinceTrig = 0;
 			beatIndex++;
@@ -71,7 +69,6 @@ export const seq = device("seq", {
 				cycleCount++;
 			}
 			api.stepCursor(cursor, expr, beatIndex, cycleCount);
-			isNewBeat = true;
 		} else {
 			samplesSinceTrig++;
 		}
@@ -85,11 +82,8 @@ export const seq = device("seq", {
 			return;
 		}
 
-		// Calculate phase within beat
-		const phase = samplesPerBeat > 0 ? Math.min(samplesSinceTrig / samplesPerBeat, 0.999) : 0;
-
-		// Get output from cursor (O(1) - no tree traversal)
-		const output = api.sampleCursor(cursor, phase, isNewBeat);
+		// Get output from cursor using sample index (O(1) - no tree traversal)
+		const output = api.sampleCursor(cursor, samplesSinceTrig, samplesPerBeat);
 
 		// Update state
 		state.beatIndex = beatIndex;
@@ -111,7 +105,7 @@ export const seq = device("seq", {
 		}
 
 		const expr = parseExpr(pattern);
-		const voices = voiceCount(expr);
+		const voices = voiceCount(expr, "isolate");
 
 		if (voices === 1) {
 			const totalBeats = countBeats(expr);
@@ -119,7 +113,7 @@ export const seq = device("seq", {
 		}
 
 		// Poly - decompose into N mono patterns
-		const monoExprs = decomposePattern(expr);
+		const monoExprs = decomposePattern(expr, "isolate");
 		return monoExprs.map((monoExpr) => {
 			const totalBeats = countBeats(monoExpr);
 			return wrap(createNode("seq", { clk: clk ?? 0 }, { ...config, expr: monoExpr, totalBeats }));
