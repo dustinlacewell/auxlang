@@ -1,138 +1,23 @@
 /**
  * Interactive test data aggregator.
  *
- * Collects all device tests from individual files.
+ * Imports test cases from the virtual:interactive-tests module,
+ * which reads .js files from the cases/ directory.
  */
 
-import type { TestDefinition } from "./types";
+import rawTests from "virtual:interactive-tests";
 
-// Oscillators
-import { sawTests } from "./oscillators/saw";
-import { sinTests } from "./oscillators/sin";
-import { sqrTests } from "./oscillators/sqr";
-import { triTests } from "./oscillators/tri";
-import { noiseTests } from "./oscillators/noise";
-import { lfoTests } from "./oscillators/lfo";
+export interface TestDefinition {
+	id: string;
+	category: string;
+	device: string;
+	name: string;
+	desc: string;
+	code: string;
+	filePath: string;
+}
 
-// Filters
-import { lpfTests } from "./filters/lpf";
-import { hpfTests } from "./filters/hpf";
-import { bpfTests } from "./filters/bpf";
-import { notchTests } from "./filters/notch";
-
-// Drums
-import { kickTests } from "./drums/kick";
-import { snareTests } from "./drums/snare";
-import { hihatTests } from "./drums/hihat";
-import { clapTests } from "./drums/clap";
-
-// Modulators
-import { adTests } from "./modulators/ad";
-import { adsrTests } from "./modulators/adsr";
-import { arTests } from "./modulators/ar";
-
-// Effects
-import { delayTests } from "./effects/delay";
-import { reverbTests } from "./effects/reverb";
-import { nativeReverbTests } from "./effects/native-reverb";
-import { tapeTests } from "./effects/tape";
-
-// Utilities
-import { gainTests } from "./utilities/gain";
-import { mixTests } from "./utilities/mix";
-import { slewTests } from "./utilities/slew";
-import { sahTests } from "./utilities/sah";
-import { quantizeTests } from "./utilities/quantize";
-import { chordTests } from "./utilities/chord";
-import { pickTests } from "./utilities/pick";
-
-// Poly
-import { polyTests } from "./poly/poly";
-import { sumTests } from "./poly/sum";
-import { voicesTests } from "./poly/voices";
-
-// Stereo
-import { panTests } from "./stereo/pan";
-import { spreadTests } from "./stereo/spread";
-
-// Timing
-import { clockTests } from "./timing/clock";
-import { seqTests } from "./timing/seq";
-import { clockDivTests } from "./timing/clock-div";
-import { clockMultTests } from "./timing/clock-mult";
-import { counterTests } from "./timing/counter";
-
-// Math
-import { scaleTests } from "./math/scale";
-import { addTests } from "./math/add";
-import { multTests } from "./math/mult";
-import { clipTests } from "./math/clip";
-
-export { TestDefinition };
-
-export const tests: TestDefinition[] = [
-	// Oscillators
-	...sawTests,
-	...sinTests,
-	...sqrTests,
-	...triTests,
-	...noiseTests,
-	...lfoTests,
-
-	// Filters
-	...lpfTests,
-	...hpfTests,
-	...bpfTests,
-	...notchTests,
-
-	// Drums
-	...kickTests,
-	...snareTests,
-	...hihatTests,
-	...clapTests,
-
-	// Modulators
-	...adTests,
-	...adsrTests,
-	...arTests,
-
-	// Effects
-	...delayTests,
-	...reverbTests,
-	...nativeReverbTests,
-	...tapeTests,
-
-	// Utilities
-	...gainTests,
-	...mixTests,
-	...slewTests,
-	...sahTests,
-	...quantizeTests,
-	...chordTests,
-	...pickTests,
-
-	// Poly
-	...polyTests,
-	...sumTests,
-	...voicesTests,
-
-	// Stereo
-	...panTests,
-	...spreadTests,
-
-	// Timing
-	...clockTests,
-	...seqTests,
-	...clockDivTests,
-	...clockMultTests,
-	...counterTests,
-
-	// Math
-	...scaleTests,
-	...addTests,
-	...multTests,
-	...clipTests,
-];
+export const tests: TestDefinition[] = rawTests;
 
 export function getTestsByCategory(): Map<string, TestDefinition[]> {
 	const byCategory = new Map<string, TestDefinition[]>();

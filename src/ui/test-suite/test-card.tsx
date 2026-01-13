@@ -4,7 +4,7 @@ import { Button } from "@/ui/design/button";
 import { Card } from "@/ui/design/card";
 import { ErrorDisplay } from "@/ui/design/error-display";
 import { StatusIndicator } from "@/ui/design/status-indicator";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { TestDefinition } from "./test-data";
 
 interface TestCardProps {
@@ -17,6 +17,11 @@ interface TestCardProps {
 
 export function TestCard({ test, state, error, onPlay, onStop }: TestCardProps) {
 	const [code, setCode] = useState(test.code);
+
+	// Sync code when test changes (e.g., HMR update)
+	useEffect(() => {
+		setCode(test.code);
+	}, [test.code]);
 
 	const handlePlay = useCallback(() => {
 		onPlay(code);
