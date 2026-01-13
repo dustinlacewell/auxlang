@@ -38,17 +38,25 @@ Arrays indexed by voice ID. Length fixed at parse time.
 
 ## Architecture
 
-Stateful AST traversal per-sample. No flattening to events.
+Cursor-based pattern stepping:
+- **O(1) per sample**: Read cached cv/gate/trig from cursor
+- **O(tree) per beat**: Step cursor through AST on clock trigger
+
+The cursor maintains a path through the AST and cached output values. Only recomputes on beat boundaries.
 
 Probability decisions cached by AST node path + cycle.
+
+## State Preservation
+
+Cursor state survives re-eval via `deepCloneState()`. The cursor is a plain object with nested frames, correctly cloned for the new graph.
 
 ## Decisions
 
 - D053-D058: Voice creation and output shape
 - D059: Expression-based parser
-- D067: Stateful AST traversal
+- D067: Cursor-based stepping (not per-sample traversal)
 
 ## See Also
 
-- [src/devices/seq/](../src/devices/seq/) - implementation
-- [src/runtime/worklet/seq-traverse.ts](../src/runtime/worklet/seq-traverse.ts) - worklet traversal
+- [src/core2/devices/seq/](../src/core2/devices/seq/) - implementation
+- [src/core2/devices/seq/cursor/](../src/core2/devices/seq/cursor/) - cursor stepping logic

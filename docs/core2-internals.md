@@ -17,6 +17,8 @@ User Code → Nodes (plain data) → FlatGraph → expandPoly → RuntimeGraph �
 3. **WrappedArray** - Proxy around Node[] for poly operations
 4. **OutputRef** - Reference to a node's output: `{ ref: nodeId, out: outputName }`
 5. **ChainableOutputRef** - Proxy around OutputRef that enables chaining (`seq.cv.saw()`)
+6. **VoiceRef** - Symbolic reference to a specific voice: `{ type: "voiceRef", source: nodeId, index: N }`
+7. **ChainableVoiceRef** - Proxy around VoiceRef that enables chaining (`seq.voices[0].saw()`)
 
 ## The Wrap System
 
@@ -77,6 +79,42 @@ This is how `gain({ level: polyAdsr })` works - each of the 3 gains gets its cor
 See: `src/core2/wrap/wrap.ts` → `resolveInputsForVoice()`
 
 Compare with v1: `src/descriptor/signals/resolve-for-voice.ts`
+
+## VoiceRef: Symbolic Voice Access
+
+VoiceRef enables accessing individual voices from a poly source before expansion:
+
+```javascript
+let s = seq("{c4, e4, g4}")  // 3-voice poly seq
+s.voices[0].saw()            // Just the first voice
+s.voices[1].gate.adsr()      // Gate from second voice
+```
+
+### How VoiceRef Works
+
+1. **At API time**: `seq.voices[0]` creates a VoiceRef: `{ type: "voiceRef", source: "seq1", index: 0 }`
+2. **ChainableVoiceRef proxy**: Enables chaining (`.saw()`) and output access (`.gate`)
+3. **At expansion time**: VoiceRef is resolved to an OutputRef pointing to the actual expanded node
+
+### NodeInput Types
+
+A node input can be any of:
+- `number` - constant
+- `number[]` - poly constants (triggers expansion)
+- `OutputRef` - connection to node output
+- `OutputRef[]` - poly connections
+- `VoiceRef` - symbolic voice reference (resolved at expansion)
+- `VoiceRef[]` - array of voice references
+- `SignalLambda` - per-sample function
+
+### VoiceRef vs OutputRef
+
+- **OutputRef** points to a concrete node that exists now
+- **VoiceRef** is symbolic - the actual node doesn't exist until poly expansion
+
+This distinction matters because poly expansion creates new nodes. VoiceRef defers the resolution until after expansion, when the voice nodes actually exist.
+
+See: `src/core2/wrap/chainable-voice-ref.ts`, `src/core2/signal/node-input.ts`
 
 ## Config vs Inputs
 
@@ -167,6 +205,37 @@ src/core2/
 │   └── worklet/           # AudioWorklet processor
 └── api.ts                 # Exports for user code
 ```
+
+## State Preservation (Re-eval)
+
+When code is re-evaluated, the runtime preserves state:
+
+### Graph Swap Flow
+
+```
+1. swapGraph() called with new WorkletStereoGraph
+2. diffStereoGraphs() computes nodeMapping (newId → oldId)
+3. oldRuntimeGraph.collectStates() returns live state references
+4. RuntimeGraph constructor clones states for matched nodes
+5. Both graphs run in parallel during 3s crossfade
+```
+
+### Deep Clone
+
+`deepCloneState()` handles:
+- TypedArrays (Float32Array, etc.) - creates new instances
+- Plain objects - recursive clone
+- Arrays - map through cloneValue
+- Primitives - pass through
+
+This is critical for seq cursor state which contains nested objects.
+
+### WASM State
+
+WASM instances can't be shared (both graphs run simultaneously), so state is serialized:
+- `serializeWasmState()` reads state from old instance
+- New instance created and initialized
+- `deserializeWasmState()` writes state to new instance
 
 ## Debugging Tips
 

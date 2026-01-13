@@ -64,5 +64,6 @@ Helpers must be on `globalThis` or defined inside process.
 
 ## See Also
 
-- [src/descriptor/](../src/descriptor/) - implementation
-- [src/graph/reify.ts](../src/graph/reify.ts) - DAG to runtime graph
+- [src/core2/wrap/](../src/core2/wrap/) - core2 implementation (WrappedNode proxies)
+- [src/core2/graph/](../src/core2/graph/) - graph building
+- [docs/core2-internals.md](core2-internals.md) - detailed architecture

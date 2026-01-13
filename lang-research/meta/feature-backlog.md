@@ -14,8 +14,8 @@ Prioritized list of features to implement.
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Re-eval state preservation | **In Progress** | Port topology hash, state transfer, WASM serialization, crossfade from v1 |
-| Seq precomputation | Todo | Pre-compute sequence to lookup table at expand time; eliminates globalThis.seqTraverse dependency |
+| Re-eval state preservation | **Done** | Topology hash matching, deep clone (TypedArray-aware), WASM serialization, crossfade |
+| Seq cursor optimization | **Done** | O(1) per sample via cursor-based stepping; O(tree) only on beat boundaries |
 | Remove v1 | Blocked | After core2 is feature-complete |
 
 ## Tier 1: Core Pattern Power ✅ COMPLETE

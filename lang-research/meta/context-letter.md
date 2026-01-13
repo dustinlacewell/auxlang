@@ -12,11 +12,12 @@ Open http://localhost:5173/test-suite - click Play on any test.
 
 ## What's Working
 
-- **core2**: New plain-data graph architecture (all 177 tests pass)
+- **core2**: New plain-data graph architecture (all tests pass)
 - Fluent chaining API: `seq("c4 e4").saw().lpf({ cutoff: 800 }).out()`
 - AudioWorklet runtime with WASM support (filter, reverb, tape delay)
 - Mini-notation sequencer with polyphony, probability, ties, euclidean
-- Live re-evaluation with state preservation
+- Live re-evaluation with seamless state preservation and crossfade
+- Cursor-based seq stepping (O(1) per sample)
 - Devices: oscillators, drums, filters, envelopes, reverb, delay
 - Device expand hooks for compile-time poly (seq, chord, spread)
 

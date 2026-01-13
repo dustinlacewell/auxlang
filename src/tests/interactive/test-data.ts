@@ -49,6 +49,7 @@ import { pickTests } from "./utilities/pick";
 // Poly
 import { polyTests } from "./poly/poly";
 import { sumTests } from "./poly/sum";
+import { voicesTests } from "./poly/voices";
 
 // Stereo
 import { panTests } from "./stereo/pan";
@@ -113,6 +114,7 @@ export const tests: TestDefinition[] = [
 	// Poly
 	...polyTests,
 	...sumTests,
+	...voicesTests,
 
 	// Stereo
 	...panTests,

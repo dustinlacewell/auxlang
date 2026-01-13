@@ -1,7 +1,7 @@
 /**
  * Get output for current sample from cursor.
  *
- * This is O(1) - no tree traversal, just reads cached state.
+ * O(1) per sample - scans forward through pre-sorted event list.
  */
 
 import type { Cursor, CursorOutput } from "./types";
@@ -9,25 +9,45 @@ import type { Cursor, CursorOutput } from "./types";
 /**
  * Get sequencer output for current sample.
  *
- * @param cursor - Cursor state
+ * @param cursor - Cursor state (mutated: eventIndex, cv, lastTriggeredPath)
  * @param phase - Phase within current beat (0-1)
  * @param isNewBeat - True if this is the first sample of a new beat
  */
 export function sampleCursor(cursor: Cursor, phase: number, isNewBeat: boolean): CursorOutput {
-	// CV is always the cached value (sample-and-hold)
-	const cv = cursor.cv;
+	const events = cursor.events;
 
-	// Gate: on if we have a note, off near end for retrigger gap
-	let gate = 0;
-	if (cursor.gateOn) {
-		// Calculate phase within the note's duration
-		const notePhase = phase; // Already 0-1 within beat
-		const gateEnd = cursor.noteDuration - 0.001;
-		gate = notePhase < gateEnd ? 1 : 0;
+	// No events this beat - output silence
+	if (events.length === 0) {
+		return { cv: cursor.lastCV, gate: 0, trig: 0 };
 	}
 
-	// Trigger: 1 on first sample of a new note
-	const trig = isNewBeat && cursor.gateOn ? 1 : 0;
+	// Advance eventIndex if phase crossed into a new event
+	// Events are sorted by start, so we scan forward
+	while (cursor.eventIndex < events.length - 1) {
+		const next = events[cursor.eventIndex + 1]!;
+		if (phase >= next.start) {
+			cursor.eventIndex++;
+		} else {
+			break;
+		}
+	}
 
-	return { cv, gate, trig };
+	const event = events[cursor.eventIndex]!;
+
+	// Update CV
+	cursor.cv = event.freq;
+	cursor.lastCV = event.freq;
+
+	// Gate: on while phase is within event's range (with small gap for retrigger)
+	const gateEnd = event.end - 0.001;
+	const gate = phase >= event.start && phase < gateEnd ? 1 : 0;
+
+	// Trigger: 1 on first sample of this event
+	let trig = 0;
+	if (event.pathKey !== cursor.lastTriggeredPath) {
+		trig = 1;
+		cursor.lastTriggeredPath = event.pathKey;
+	}
+
+	return { cv: cursor.cv, gate, trig };
 }

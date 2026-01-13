@@ -24,17 +24,15 @@ The sequencer is factored out as a module. This enables:
 
 ## Signals
 
-All signals are `PolySignal = number[]`. Mono is 1-element array.
-
-Polyphony emerges from seq outputting multiple voices. Downstream devices process all channels automatically.
+In core2, signals are plain numbers at runtime. Polyphony is handled at compile time via graph expansion - a poly seq becomes N mono seq nodes.
 
 ## Decisions
 
 - D007: Eurorack metaphor
-- D034: All signals are PolySignal
 - D068: Mixdown uses sqrt(n) normalization
+- core2: Compile-time poly expansion
 
 ## See Also
 
-- [src/devices/](../src/devices/) - device implementations
-- [src/runtime/](../src/runtime/) - worklet execution
+- [src/core2/devices/](../src/core2/devices/) - device implementations
+- [src/core2/runtime/](../src/core2/runtime/) - worklet execution

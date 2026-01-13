@@ -1,5 +1,7 @@
 # Graphs and Polyphony
 
+> **Note**: This document describes the v1 descriptor system. For core2, see [core2-internals.md](core2-internals.md). The concepts are similar but implementation details differ.
+
 This document explains how Auxlang builds, compiles, and executes audio graphs—with particular attention to how polyphony works at each stage.
 
 ## The Two Worlds

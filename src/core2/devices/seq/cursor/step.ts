@@ -5,9 +5,8 @@
  */
 
 import type { Expr } from "../expr/types";
-import { countBeats } from "../expr/traverse";
 import type { Cursor } from "./types";
-import { findNoteAtBeat } from "./find-note";
+import { collectBeatEvents } from "./collect-events";
 
 /**
  * Step cursor to a new beat position.
@@ -18,8 +17,6 @@ import { findNoteAtBeat } from "./find-note";
  * @param cycle - Current cycle
  */
 export function stepCursor(cursor: Cursor, expr: Expr, beatIndex: number, cycle: number): void {
-	const totalBeats = countBeats(expr);
-
 	// Check if cycle changed - clear probability decisions
 	if (cycle !== cursor.cycle) {
 		// Clear by reassigning (plain object, not Map)
@@ -31,21 +28,20 @@ export function stepCursor(cursor: Cursor, expr: Expr, beatIndex: number, cycle:
 
 	cursor.beatIndex = beatIndex;
 
-	// Find the note at this beat
-	const note = findNoteAtBeat(expr, beatIndex, 0, totalBeats, "root", cursor.probDecisions, cycle);
+	// Collect all events within this beat (flattened from nested structure)
+	cursor.events = collectBeatEvents(expr, beatIndex, cursor.probDecisions, cycle);
+	cursor.eventIndex = 0;
 
-	if (note) {
-		cursor.cv = note.freq;
-		cursor.lastCV = note.freq;
+	// Set initial CV from first event (if any)
+	if (cursor.events.length > 0) {
+		const first = cursor.events[0]!;
+		cursor.cv = first.freq;
+		cursor.lastCV = first.freq;
 		cursor.gateOn = true;
-		cursor.noteDuration = note.duration;
-		cursor.noteStartBeat = note.beatStart;
 	} else {
-		// Rest or probability skip - gate off, keep last CV
+		// No events this beat - rest
 		cursor.cv = cursor.lastCV;
 		cursor.gateOn = false;
-		cursor.noteDuration = 0;
-		cursor.noteStartBeat = -1;
 	}
 }
 

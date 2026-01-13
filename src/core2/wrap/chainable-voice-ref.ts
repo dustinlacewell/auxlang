@@ -3,10 +3,12 @@
  *
  * Allows: seq("{c4,e4}").voices[0].saw() - where voices[0] returns a VoiceRef that can chain.
  * Also: seq("{c4,e4}").voices[0].gate.ad() - where .gate sets the output on the VoiceRef.
+ * Also: seq("{c4,e4}").voices[0].apply(v => v.saw().out()) - for inline binding.
  */
 
 import { createDeviceNode } from "../device/create-device-node";
 import { getDeviceFactory, getDeviceSpec } from "../device/registry";
+import { getBuilder } from "../graph/graph-builder";
 import type { Node } from "../graph/node";
 import type { ConfigValue } from "../signal/config-value";
 import type { VoiceRef } from "../signal/node-input";
@@ -37,6 +39,28 @@ export function wrapVoiceRef(voiceRef: VoiceRef, sourceDevice: string): Chainabl
 			// Plain VoiceRef properties pass through
 			if (prop === "type" || prop === "source" || prop === "index" || prop === "output") {
 				return target[prop as keyof VoiceRef];
+			}
+
+			// .apply(fn) - call fn with this chainable voice ref and return result
+			if (prop === "apply") {
+				return <T>(fn: (voiceRef: ChainableVoiceRef) => T): T => {
+					return fn(wrapVoiceRef(target, sourceDevice));
+				};
+			}
+
+			// .out() - output this voice directly
+			if (prop === "out") {
+				return () => {
+					const outSpec = getDeviceSpec("out");
+					if (!outSpec) throw new Error("out device not registered");
+					// VoiceRef is a valid NodeInput - will be resolved at expansion time
+					const outNode = createDeviceNode("out", outSpec, { input: target }, {});
+					if (Array.isArray(outNode)) {
+						for (const n of outNode) getBuilder().addNode(n);
+					} else {
+						getBuilder().addNode(outNode);
+					}
+				};
 			}
 
 			// Output access: voiceRef.gate → new VoiceRef with output set
