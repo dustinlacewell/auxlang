@@ -12,13 +12,14 @@ interface TestCardProps {
 	test: TestDefinition;
 	state: PlaybackState;
 	error?: string | undefined;
+	color?: string;
 	onPlay: (code: string) => void;
 	onStop: () => void;
 }
 
 const isDev = import.meta.env.DEV;
 
-export function TestCard({ test, state, error, onPlay, onStop }: TestCardProps) {
+export function TestCard({ test, state, error, color, onPlay, onStop }: TestCardProps) {
 	const [code, setCode] = useState(test.code);
 	const [name, setName] = useState(test.name);
 	const [desc, setDesc] = useState(test.desc);
@@ -112,7 +113,8 @@ export function TestCard({ test, state, error, onPlay, onStop }: TestCardProps) 
 				) : (
 					<span
 						onDoubleClick={() => isDev && setEditingName(true)}
-						className={isDev ? "cursor-pointer hover:text-accent-blue" : ""}
+						style={{ color }}
+						className={isDev ? "cursor-pointer hover:brightness-125" : ""}
 						title={isDev ? "Double-click to edit" : undefined}
 					>
 						{name}
