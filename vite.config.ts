@@ -12,7 +12,6 @@ export default defineConfig({
 			input: {
 				main: resolve(__dirname, "index.html"),
 				"test-suite": resolve(__dirname, "test-suite.html"),
-				"test-suite-core1": resolve(__dirname, "test-suite-core1.html"),
 				"core2-editor": resolve(__dirname, "core2-editor.html"),
 			},
 		},
