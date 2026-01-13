@@ -16,7 +16,7 @@ export const addDefault: TestDefinition = {
 	category: "Math",
 	name: "add - defaults",
 	desc: "Add LFO wobble to base pitch",
-	code: `sin(add(330).to(lfo(4, -15, 15))).out()`,
+	code: `sin(add(330).to(sin(4, -15, 15))).out()`,
 };
 
 export const addAllParams: TestDefinition = {
@@ -24,7 +24,7 @@ export const addAllParams: TestDefinition = {
 	category: "Math",
 	name: "add - all params",
 	desc: "Add two LFOs for complex modulation",
-	code: `sin(add(lfo(0.5, 300, 400)).to(lfo(6, -30, 30))).out()`,
+	code: `sin(add(sin(0.5, 300, 400)).to(sin(6, -30, 30))).out()`,
 };
 
 export const addModTo: TestDefinition = {
@@ -32,7 +32,7 @@ export const addModTo: TestDefinition = {
 	category: "Math",
 	name: "add - modulated to",
 	desc: "Vibrato with growing depth",
-	code: `sin(add(440).to(sin(6).mult(lfo(0.2, 5, 40)))).out()`,
+	code: `sin(add(440).to(sin(6).mult(sin(0.2, 5, 40)))).out()`,
 };
 
 export const addShowcase: TestDefinition = {

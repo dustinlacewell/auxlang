@@ -1,61 +1,51 @@
 # Current Task
 
-**Device expand/positionalArgs API** - Fixed and Working
+**Port re-evaluation infrastructure to core2**
 
-## What We Built
+## Problem
 
-Added `expand` and `positionalArgs` to device spec so devices like `seq` and `chord` can:
-1. Expand into poly descriptors at construction time
-2. Accept positional arguments in a defined order
+core2 processor creates fresh RuntimeGraphs on each `setStereoGraph` message, losing all state. V1 has seamless re-evaluation with:
 
-## Bugs Fixed
+1. Topology hash matching (nodes matched by device + connections, not config)
+2. State collection/transfer between matched nodes
+3. WASM state serialization (filter, reverb, delay preserve buffers)
+4. Crossfade between old and new graphs
 
-1. **Devices with expand returned base descriptor** - Fixed by returning factory function directly
-2. **Closure variable not surviving serialization** - Fixed by storing `semitoneOffset` in config as a function
-3. **Chained vs direct call detection** - Factory now checks if first arg is OutputRef/Descriptor to detect chaining
-4. **defaultInput consumed from positionalArgs when chained** - Fixed: when chained, defaultInput is skipped in positionalArgs loop
+## What to Port
 
-## Files Changed
+From `src/runtime/`:
+- `processor/topology-hash.ts` - diffGraphs() for node matching
+- `processor/runtime-graph.ts` - collectStates(), restoreStates(), deepCloneState()
+- `worklet/processor.ts` - serializeWasmState(), deserializeWasmState(), crossfade logic
 
-**Core:**
-- `src/descriptor/device.ts` - Added `expand`, `positionalArgs`, chaining detection, factory return for expand devices
-- `src/descriptor/registry.ts` - Updated DeviceFactory type for rest args
-- `src/descriptor/proxy/chainable-output.ts` - Pass all args to factory
+## Current core2 Processor
 
-**Devices:**
-- `src/devices/seq/seq.ts` - Refactored to use `device()` with `expand`, positionalArgs: ["pattern", "clk"]
-- `src/devices/chord.ts` - New device with `expand`, uses config function for semitone offset
-
-## The API
-
-```javascript
-// Device spec with expand and positionalArgs
-export const seq = device("seq", {
-  inputs: inputs({ clk: 0 }),
-  config: { pattern: "" },
-  positionalArgs: ["pattern", "clk"],  // Order for consuming args (pattern first!)
-  expand(config, inputBindings) {
-    // Return mono device or poly(devices)
-  },
-});
-
-// Usage:
-seq("c4 e4 g4")             // pattern positional
-seq("c4 e4", someClock)     // pattern then clk positional
-clock(120).seq("c4 e4 g4")  // clk from chain (defaultInput), pattern positional
-chord(261.63, "maj")        // root and chordName positional
-seq("c3").cv.chord("maj7")  // chained with config positional
+```typescript
+// src/core2/runtime/worklet/processor.ts
+private handleMessage(message: WorkletMessage): void {
+  if (message.type === "setStereoGraph") {
+    // BAD: creates fresh graphs, loses all state
+    this.leftGraph = new RuntimeGraph(message.stereo.left);
+    this.rightGraph = new RuntimeGraph(message.stereo.right);
+  }
+}
 ```
 
-## Positional Args Logic
+## Target
 
-1. If chained (first arg is OutputRef/Descriptor), it goes to defaultInput
-2. Remaining args consumed via positionalArgs order
-3. When chained, defaultInput is SKIPPED in positionalArgs (already bound)
-4. Stop at first plain object (which becomes named params)
-5. Trailing object merged as named params
+```typescript
+private handleMessage(message: WorkletMessage): void {
+  if (message.type === "setStereoGraph") {
+    // 1. Match new nodes to old by topology
+    // 2. Collect state from old (including WASM)
+    // 3. Create new RuntimeGraphs
+    // 4. Restore state to matched nodes
+    // 5. Set up crossfade
+  }
+}
+```
 
-## Test Cases
+## Files to Create/Modify
 
-- `src/ui/test-suite/cases/chord/` - 4 chord tests
-- All 171 unit tests pass
+- `src/core2/runtime/topology-hash.ts` - port from v1
+- `src/core2/runtime/worklet/processor.ts` - add re-eval logic

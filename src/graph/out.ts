@@ -144,7 +144,8 @@ function mixVoices(voices: AnyDescriptor[]): AnyDescriptor {
 	const scale = 1 / Math.sqrt(voices.length);
 
 	// Scale each voice, then sum
-	const scaled = voices.map((v) => gain(v).level(scale));
+	// Use explicit { input: v } to ensure audio goes to input, not level
+	const scaled = voices.map((v) => (gain as any)({ input: v, level: scale }));
 	let result = add(scaled[0]!).to(scaled[1]!);
 	for (let i = 2; i < scaled.length; i++) {
 		result = add(result).to(scaled[i]!);

@@ -21,7 +21,7 @@ export const quantizeDefault: TestDefinition = {
 	category: "Utilities",
 	name: "quantize - defaults",
 	desc: "Quantize LFO to major scale",
-	code: `lfo(0.5, 200, 800).quantize().tri().out()`,
+	code: `sin(0.5, 200, 800).quantize().tri().out()`,
 };
 
 export const quantizeAllParams: TestDefinition = {
@@ -29,7 +29,7 @@ export const quantizeAllParams: TestDefinition = {
 	category: "Utilities",
 	name: "quantize - all params",
 	desc: "Quantize to A minor pentatonic",
-	code: `lfo(0.3, 200, 600).quantize({ root: 9, octave: 3, range: 2, scale: "minor pentatonic" }).tri().out()`,
+	code: `sin(0.3, 200, 600).quantize({ root: 9, octave: 3, range: 2, scale: "minor pentatonic" }).tri().out()`,
 };
 
 export const quantizeModInput: TestDefinition = {
@@ -42,7 +42,7 @@ export const quantizeModInput: TestDefinition = {
     .scale({ from: -1, to: 1, min: 150, max: 600 })
     .quantize({ scale: "blues" })
     .tri()
-    .gain({ level: s.gate.env() })
+    .gain({ level: s.gate.ar() })
     .out()
 )`,
 };
@@ -53,11 +53,11 @@ export const quantizeShowcase: TestDefinition = {
 	name: "quantize - showcase",
 	desc: "Generative melody in dorian mode",
 	code: `clock(120).seq("c4*8").apply(s =>
-  sah({ input: lfo(3, 150, 500), trig: s.trig })
+  sah({ input: sin(3, 150, 500), trig: s.trig })
     .quantize({ scale: "dorian", root: 2 })
     .tri()
     .lpf({ cutoff: 1500 })
-    .gain({ level: s.gate.env({ attack: 0.01, release: 0.1 }) })
+    .gain({ level: s.gate.ar({ attack: 0.01, release: 0.1 }) })
     .out()
 )`,
 };

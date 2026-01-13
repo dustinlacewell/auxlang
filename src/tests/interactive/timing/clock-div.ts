@@ -19,8 +19,8 @@ export const clockDivDefault: TestDefinition = {
 	desc: "Fast notes with slow kick (div by 4)",
 	code: `clock(240).apply(c =>
   mix({
-    a: c.seq("c5 e5 g5 c6").apply(s => s.cv.tri().gain({ level: s.gate.env() })),
-    b: clockDiv(c).seq("c3").apply(s => s.cv.sin().gain({ level: s.gate.env({ release: 0.3 }) }))
+    a: c.seq("c5 e5 g5 c6").apply(s => s.cv.tri().gain({ level: s.gate.ar() })),
+    b: clockDiv(c).seq("c3").apply(s => s.cv.sin().gain({ level: s.gate.ar({ release: 0.3 }) }))
   }).out()
 )`,
 };
@@ -32,8 +32,8 @@ export const clockDivAllParams: TestDefinition = {
 	desc: "High arp with low bass (div by 2)",
 	code: `clock(240).apply(c =>
   mix({
-    a: c.seq("c5 e5").apply(s => s.cv.tri().gain({ level: s.gate.env() })),
-    b: clockDiv(c).by(2).seq("c3").apply(s => s.cv.sin().gain({ level: s.gate.env({ release: 0.2 }) }))
+    a: c.seq("c5 e5").apply(s => s.cv.tri().gain({ level: s.gate.ar() })),
+    b: clockDiv(c).by(2).seq("c3").apply(s => s.cv.sin().gain({ level: s.gate.ar({ release: 0.2 }) }))
   }).out()
 )`,
 };
@@ -45,8 +45,8 @@ export const clockDivModBy: TestDefinition = {
 	desc: "Varying division creates polyrhythm",
 	code: `clock(240).apply(c =>
   mix({
-    a: c.seq("c5 e5 g5 c6").apply(s => s.cv.tri().gain({ level: s.gate.env() })),
-    b: clockDiv(c).by(lfo(0.1, 2, 6)).seq("c3").apply(s => s.cv.sin().gain({ level: s.gate.env({ release: 0.2 }) }))
+    a: c.seq("c5 e5 g5 c6").apply(s => s.cv.tri().gain({ level: s.gate.ar() })),
+    b: clockDiv(c).by(sin(0.1, 2, 6)).seq("c3").apply(s => s.cv.sin().gain({ level: s.gate.ar({ release: 0.2 }) }))
   }).out()
 )`,
 };

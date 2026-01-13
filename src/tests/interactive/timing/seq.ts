@@ -21,7 +21,7 @@ export const seqDefault: TestDefinition = {
 	name: "seq - defaults",
 	desc: "Simple 4-note sequence",
 	code: `clock(120).seq("c4 e4 g4 c5").apply(s =>
-  s.cv.tri().gain({ level: s.gate.env() }).out()
+  s.cv.tri().gain({ level: s.gate.ar() }).out()
 )`,
 };
 
@@ -31,7 +31,7 @@ export const seqRests: TestDefinition = {
 	name: "seq - rests",
 	desc: "Sequence with rests",
 	code: `clock(120).seq("c4 ~ e4 ~").apply(s =>
-  s.cv.tri().gain({ level: s.gate.env() }).out()
+  s.cv.tri().gain({ level: s.gate.ar() }).out()
 )`,
 };
 
@@ -41,7 +41,7 @@ export const seqMultiply: TestDefinition = {
 	name: "seq - multiply",
 	desc: "Subdivided notes with * (4 fast, 2 medium, 1 slow)",
 	code: `clock(60).seq("c4*4 e4*2 g4").apply(s =>
-  s.cv.tri().gain({ level: s.gate.env({ attack: 0.01, release: 0.05 }) }).out()
+  s.cv.tri().gain({ level: s.gate.ar({ attack: 0.01, release: 0.05 }) }).out()
 )`,
 };
 
@@ -51,7 +51,7 @@ export const seqReplicate: TestDefinition = {
 	name: "seq - replicate",
 	desc: "Repeated notes with ! (4 separate beats)",
 	code: `clock(120).seq("c4!4 e4!2 g4!2").apply(s =>
-  s.cv.tri().gain({ level: s.gate.env() }).out()
+  s.cv.tri().gain({ level: s.gate.ar() }).out()
 )`,
 };
 
@@ -71,7 +71,7 @@ export const seqGroups: TestDefinition = {
 	name: "seq - groups",
 	desc: "Grouped subdivisions with []",
 	code: `clock(120).seq("[c4 e4] [g4 c5] e4 c4").apply(s =>
-  s.cv.tri().gain({ level: s.gate.env() }).out()
+  s.cv.tri().gain({ level: s.gate.ar() }).out()
 )`,
 };
 
@@ -81,7 +81,7 @@ export const seqAlternate: TestDefinition = {
 	name: "seq - alternate",
 	desc: "Alternating notes with <>",
 	code: `clock(120).seq("<c4 e4> <g4 c5>").apply(s =>
-  s.cv.tri().gain({ level: s.gate.env() }).out()
+  s.cv.tri().gain({ level: s.gate.ar() }).out()
 )`,
 };
 

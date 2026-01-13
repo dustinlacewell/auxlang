@@ -35,7 +35,7 @@ export const hihatModDecay: TestDefinition = {
 	name: "hihat - modulated decay",
 	desc: "Open/closed hi-hat pattern",
 	code: `clock(120).seq("c4*4").apply(s =>
-  s.trig.hihat({ decay: lfo(0.5, 0.03, 0.2) }).out()
+  s.trig.hihat({ decay: sin(0.5, 0.03, 0.2) }).out()
 )`,
 };
 
@@ -45,7 +45,7 @@ export const hihatModTone: TestDefinition = {
 	name: "hihat - modulated tone",
 	desc: "Hi-hat brightness sweep",
 	code: `clock(120).seq("c4*4").apply(s =>
-  s.trig.hihat({ tone: lfo(0.25, 0.3, 0.9) }).out()
+  s.trig.hihat({ tone: sin(0.25, 0.3, 0.9) }).out()
 )`,
 };
 
@@ -55,7 +55,7 @@ export const hihatModMetal: TestDefinition = {
 	name: "hihat - modulated metal",
 	desc: "Metallic to noisy transition",
 	code: `clock(120).seq("c4*4").apply(s =>
-  s.trig.hihat({ metal: lfo(0.5, 0.2, 0.9) }).out()
+  s.trig.hihat({ metal: sin(0.5, 0.2, 0.9) }).out()
 )`,
 };
 

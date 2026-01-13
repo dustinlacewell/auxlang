@@ -1,0 +1,147 @@
+/**
+ * Device factory - creates device functions that produce nodes.
+ */
+
+import type { NodeInput } from "../signal/node-input";
+import { normalizeSignal } from "../signal/normalize";
+import { wrap } from "../wrap/wrap";
+import type { ConfigValue } from "../signal/config-value";
+import { createNode } from "../graph/create-node";
+import { createDeviceNode } from "./create-device-node";
+import type { DeviceSpec } from "./device-spec";
+import type { InputDef } from "./input-def";
+import { registerDevice } from "./registry";
+import type { WrappedNode } from "../wrap/wrap";
+
+/**
+ * Input for device spec - allows shorthand without positionalArgs/config.
+ */
+export interface DeviceSpecInput {
+	inputs: Record<string, InputDef>;
+	outputs: readonly string[];
+	defaultInput: string;
+	defaultOutput: string;
+	positionalArgs?: readonly string[];
+	config?: Record<string, ConfigValue>;
+	process: DeviceSpec["process"];
+	wasmUrl?: string;
+	polyphonic?: boolean;
+	expand?: DeviceSpec["expand"];
+}
+
+function normalizeSpec(input: DeviceSpecInput): DeviceSpec {
+	const spec: DeviceSpec = {
+		inputs: input.inputs,
+		config: input.config ?? {},
+		outputs: input.outputs,
+		defaultInput: input.defaultInput,
+		defaultOutput: input.defaultOutput,
+		positionalArgs: input.positionalArgs ?? [],
+		process: input.process,
+	};
+
+	if (input.wasmUrl !== undefined) {
+		(spec as { wasmUrl: string }).wasmUrl = input.wasmUrl;
+	}
+	if (input.polyphonic !== undefined) {
+		(spec as { polyphonic: boolean }).polyphonic = input.polyphonic;
+	}
+	if (input.expand !== undefined) {
+		(spec as { expand: DeviceSpec["expand"] }).expand = input.expand;
+	}
+
+	return spec;
+}
+
+let anonCounter = 0;
+
+/**
+ * Create a named device (registers for chaining).
+ */
+export function device(name: string, specInput: DeviceSpecInput): DeviceFactory;
+
+/**
+ * Create an anonymous device (not registered for chaining).
+ */
+export function device(specInput: DeviceSpecInput): DeviceFactory;
+
+export function device(nameOrSpec: string | DeviceSpecInput, maybeSpec?: DeviceSpecInput): DeviceFactory {
+	const isAnonymous = typeof nameOrSpec !== "string";
+	const name = isAnonymous ? `_anon${++anonCounter}` : nameOrSpec;
+	const specInput = isAnonymous ? nameOrSpec : maybeSpec!;
+
+	const spec = normalizeSpec(specInput);
+	const positionalArgs = spec.positionalArgs ?? [];
+
+	let factory: DeviceFactory;
+
+	if (isAnonymous) {
+		// Anonymous device: creates node directly, no builder registration
+		factory = ((...args: unknown[]) => {
+			const { inputs, config } = parseFactoryArgs(args, spec, positionalArgs);
+			const node = createNode(name, inputs, config as Record<string, ConfigValue>);
+			return wrap(node);
+		}) as DeviceFactory;
+	} else {
+		// Named device: creates node and registers with builder
+		factory = ((...args: unknown[]) => {
+			const { inputs, config } = parseFactoryArgs(args, spec, positionalArgs);
+			const result = createDeviceNode(name, spec, inputs, config as Record<string, ConfigValue>);
+			return wrap(result);
+		}) as DeviceFactory;
+	}
+
+	registerDevice(name, factory, spec);
+
+	return factory;
+}
+
+export type DeviceFactory = ((...args: unknown[]) => WrappedNode) & { spec: DeviceSpec };
+
+function parseFactoryArgs(
+	args: unknown[],
+	spec: DeviceSpec,
+	positionalArgs: readonly string[],
+): { inputs: Record<string, NodeInput>; config: Record<string, unknown> } {
+	const inputs: Record<string, NodeInput> = {};
+	// Start with spec defaults, then override with user-provided values
+	const config: Record<string, unknown> = { ...spec.config };
+
+	let positionalIndex = 0;
+
+	for (const arg of args) {
+		if (isParamsObject(arg)) {
+			// Object params - distribute to inputs/config
+			for (const [key, value] of Object.entries(arg)) {
+				if (key in spec.inputs) {
+					inputs[key] = normalizeSignal(value);
+				} else if (key in spec.config) {
+					config[key] = value;
+				}
+			}
+		} else if (positionalIndex < positionalArgs.length) {
+			// Positional arg - check if it's an input or config
+			const paramName = positionalArgs[positionalIndex]!;
+			if (paramName in spec.inputs) {
+				inputs[paramName] = normalizeSignal(arg);
+			} else if (paramName in spec.config) {
+				config[paramName] = arg;
+			}
+			positionalIndex++;
+		} else if (positionalIndex === 0 && positionalArgs.length === 0) {
+			// No positional args defined, use default input
+			inputs[spec.defaultInput] = normalizeSignal(arg);
+			positionalIndex++;
+		}
+	}
+
+	return { inputs, config };
+}
+
+function isParamsObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value) && !isOutputRef(value);
+}
+
+function isOutputRef(value: unknown): boolean {
+	return typeof value === "object" && value !== null && "ref" in value && "out" in value;
+}

@@ -32,7 +32,7 @@ export const gainModLevel: TestDefinition = {
 	category: "Utilities",
 	name: "gain - modulated level",
 	desc: "Tremolo effect with LFO",
-	code: `saw(220).gain({ level: lfo(4, 0.3, 1) }).out()`,
+	code: `saw(220).gain({ level: sin(4, 0.3, 1) }).out()`,
 };
 
 export const gainShowcase: TestDefinition = {

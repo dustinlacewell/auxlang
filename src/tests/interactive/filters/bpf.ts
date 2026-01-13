@@ -33,7 +33,7 @@ export const bpfModCutoff: TestDefinition = {
 	category: "Filters",
 	name: "bpf - modulated cutoff",
 	desc: "Sweeping bandpass formant",
-	code: `noise().bpf({ cutoff: lfo(0.3, 300, 2000), resonance: 0.7 }).gain(3).out()`,
+	code: `noise().bpf({ cutoff: sin(0.3, 300, 2000), resonance: 0.7 }).gain(3).out()`,
 };
 
 export const bpfModResonance: TestDefinition = {
@@ -41,7 +41,7 @@ export const bpfModResonance: TestDefinition = {
 	category: "Filters",
 	name: "bpf - modulated resonance",
 	desc: "Resonance modulation on bandpass",
-	code: `saw(110).bpf({ cutoff: 800, resonance: lfo(0.5, 0.3, 0.9) }).gain(2).out()`,
+	code: `saw(110).bpf({ cutoff: 800, resonance: sin(0.5, 0.3, 0.9) }).gain(2).out()`,
 };
 
 export const bpfShowcase: TestDefinition = {
@@ -49,7 +49,7 @@ export const bpfShowcase: TestDefinition = {
 	category: "Filters",
 	name: "bpf - showcase",
 	desc: "Vowel-like formant on saw",
-	code: `saw(110).bpf({ cutoff: lfo(0.2, 400, 1200), resonance: 0.85 }).gain(3).out()`,
+	code: `saw(110).bpf({ cutoff: sin(0.2, 400, 1200), resonance: 0.85 }).gain(3).out()`,
 };
 
 export const bpfTests = [bpfDefault, bpfAllParams, bpfModCutoff, bpfModResonance, bpfShowcase];

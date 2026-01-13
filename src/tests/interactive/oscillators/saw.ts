@@ -34,7 +34,7 @@ export const sawModFreq: TestDefinition = {
 	category: "Oscillators",
 	name: "saw - modulated freq",
 	desc: "Sawtooth with LFO-modulated frequency",
-	code: `saw(lfo(2, 200, 400)).out()`,
+	code: `saw(sin(2, 200, 400)).out()`,
 };
 
 // Showcase: sequenced saw with envelope

@@ -32,7 +32,7 @@ export const multModBy: TestDefinition = {
 	category: "Math",
 	name: "mult - modulated by",
 	desc: "Tremolo with mult",
-	code: `saw(220).mult(lfo(4, 0.5, 1)).out()`,
+	code: `saw(220).mult(sin(4, 0.5, 1)).out()`,
 };
 
 export const multShowcase: TestDefinition = {

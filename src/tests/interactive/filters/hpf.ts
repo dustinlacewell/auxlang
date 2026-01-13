@@ -33,7 +33,7 @@ export const hpfModCutoff: TestDefinition = {
 	category: "Filters",
 	name: "hpf - modulated cutoff",
 	desc: "Highpass sweep with LFO",
-	code: `saw(110).hpf({ cutoff: lfo(0.5, 100, 800) }).out()`,
+	code: `saw(110).hpf({ cutoff: sin(0.5, 100, 800) }).out()`,
 };
 
 export const hpfModResonance: TestDefinition = {
@@ -41,7 +41,7 @@ export const hpfModResonance: TestDefinition = {
 	category: "Filters",
 	name: "hpf - modulated resonance",
 	desc: "Resonance modulation on highpass",
-	code: `saw(110).hpf({ cutoff: 400, resonance: lfo(0.2, 0, 0.6) }).out()`,
+	code: `saw(110).hpf({ cutoff: 400, resonance: sin(0.2, 0, 0.6) }).out()`,
 };
 
 export const hpfShowcase: TestDefinition = {
@@ -50,7 +50,7 @@ export const hpfShowcase: TestDefinition = {
 	name: "hpf - showcase",
 	desc: "Filtered hihat with sweep",
 	code: `clock(240).seq("c4*4").apply(s =>
-  s.trig.hihat().hpf({ cutoff: lfo(0.25, 2000, 10000) }).out()
+  s.trig.hihat().hpf({ cutoff: sin(0.25, 2000, 10000) }).out()
 )`,
 };
 

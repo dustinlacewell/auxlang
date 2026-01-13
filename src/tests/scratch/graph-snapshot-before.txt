@@ -1,0 +1,306 @@
+
+============================================================
+TEST: mono-saw
+CODE: saw(440).out()
+============================================================
+
+--- API Graph (before expandPoly) ---
+  saw1: saw
+    inputs: {"freq":440}
+    config: {}
+  out2: out
+    inputs: {"input":{"ref":"saw1","out":"cv"}}
+
+--- Expanded Graph (after expandPoly) ---
+  saw1: saw
+    inputs: {"freq":440}
+    config: {}
+  out2: out
+    inputs: {"input":{"ref":"saw1","out":"cv"}}
+
+--- Outputs ---
+  Left:  [out2]
+  Right: [out2]
+
+============================================================
+TEST: poly-array
+CODE: saw([220, 330, 440]).out()
+============================================================
+
+--- API Graph (before expandPoly) ---
+  saw1: saw
+    inputs: {"freq":[220,330,440]}
+    config: {}
+  out2: out
+    inputs: {"input":{"ref":"saw1","out":"cv"}}
+
+--- Expanded Graph (after expandPoly) ---
+  saw1.0: saw
+    inputs: {"freq":220}
+    config: {}
+  saw1.1: saw
+    inputs: {"freq":330}
+    config: {}
+  saw1.2: saw
+    inputs: {"freq":440}
+    config: {}
+  out2.0: out
+    inputs: {"input":{"ref":"saw1.0","out":"cv"}}
+  out2.1: out
+    inputs: {"input":{"ref":"saw1.1","out":"cv"}}
+  out2.2: out
+    inputs: {"input":{"ref":"saw1.2","out":"cv"}}
+
+--- Outputs ---
+  Left:  [out2.0, out2.2]
+  Right: [out2.1]
+
+============================================================
+TEST: poly-spread
+CODE: saw([220, 330, 440]).spread().out()
+============================================================
+
+--- API Graph (before expandPoly) ---
+  saw1: saw
+    inputs: {"freq":[220,330,440]}
+    config: {}
+  spread2: spread
+    inputs: {"input":{"ref":"saw1","out":"cv"}}
+  out3: out
+    inputs: {"input":{"ref":"spread2","out":"out"}}
+
+--- Expanded Graph (after expandPoly) ---
+  saw1.0: saw
+    inputs: {"freq":220}
+    config: {}
+  saw1.1: saw
+    inputs: {"freq":330}
+    config: {}
+  saw1.2: saw
+    inputs: {"freq":440}
+    config: {}
+  out3: out
+    inputs: {"input":{"ref":"spread2","out":"out"}}
+  add26: add
+    inputs: {"input":{"ref":"add25","out":"val"},"to":{"ref":"mult23","out":"val"}}
+  add28: add
+    inputs: {"input":{"ref":"add27","out":"val"},"to":{"ref":"mult24","out":"val"}}
+
+--- Outputs ---
+  Left:  [out3]
+  Right: [out3]
+
+============================================================
+TEST: seq-mono
+CODE: clock(120).seq("c4 e4").cv.saw().out()
+============================================================
+
+--- API Graph (before expandPoly) ---
+  clock1: clock
+    inputs: {"bpm":120}
+  seq2: seq
+    inputs: {"clk":{"ref":"clock1","out":"trig"}}
+    config: {"pattern":"c4 e4","expr":{"type":"seq","children":[{"type":"note","pitch":"c4"},{"type":"note","pitch":"e4"}]},"totalBeats":2}
+  saw3: saw
+    inputs: {"freq":{"ref":"seq2","out":"cv"}}
+    config: {}
+  out4: out
+    inputs: {"input":{"ref":"saw3","out":"cv"}}
+
+--- Expanded Graph (after expandPoly) ---
+  clock1: clock
+    inputs: {"bpm":120}
+  seq2: seq
+    inputs: {"clk":{"ref":"clock1","out":"trig"}}
+    config: {"pattern":"c4 e4","expr":{"type":"seq","children":[{"type":"note","pitch":"c4"},{"type":"note","pitch":"e4"}]},"totalBeats":2}
+  saw3: saw
+    inputs: {"freq":{"ref":"seq2","out":"cv"}}
+    config: {}
+  out4: out
+    inputs: {"input":{"ref":"saw3","out":"cv"}}
+
+--- Outputs ---
+  Left:  [out4]
+  Right: [out4]
+
+============================================================
+TEST: poly-clock-seq
+CODE: clock([120, 140]).seq("c4 e4").cv.saw().out()
+============================================================
+
+--- API Graph (before expandPoly) ---
+  clock1: clock
+    inputs: {"bpm":[120,140]}
+  seq2: seq
+    inputs: {"clk":{"ref":"clock1","out":"trig"}}
+    config: {"pattern":"c4 e4","expr":{"type":"seq","children":[{"type":"note","pitch":"c4"},{"type":"note","pitch":"e4"}]},"totalBeats":2}
+  saw3: saw
+    inputs: {"freq":{"ref":"seq2","out":"cv"}}
+    config: {}
+  out4: out
+    inputs: {"input":{"ref":"saw3","out":"cv"}}
+
+--- Expanded Graph (after expandPoly) ---
+  clock1.0: clock
+    inputs: {"bpm":120}
+  clock1.1: clock
+    inputs: {"bpm":140}
+  seq2.0: seq
+    inputs: {"clk":{"ref":"clock1.0","out":"trig"}}
+    config: {"pattern":"c4 e4","expr":{"type":"seq","children":[{"type":"note","pitch":"c4"},{"type":"note","pitch":"e4"}]},"totalBeats":2}
+  seq2.1: seq
+    inputs: {"clk":{"ref":"clock1.1","out":"trig"}}
+    config: {"pattern":"c4 e4","expr":{"type":"seq","children":[{"type":"note","pitch":"c4"},{"type":"note","pitch":"e4"}]},"totalBeats":2}
+  saw3.0: saw
+    inputs: {"freq":{"ref":"seq2.0","out":"cv"}}
+    config: {}
+  saw3.1: saw
+    inputs: {"freq":{"ref":"seq2.1","out":"cv"}}
+    config: {}
+  out4.0: out
+    inputs: {"input":{"ref":"saw3.0","out":"cv"}}
+  out4.1: out
+    inputs: {"input":{"ref":"saw3.1","out":"cv"}}
+
+--- Outputs ---
+  Left:  [out4.0]
+  Right: [out4.1]
+
+============================================================
+TEST: pan-static
+CODE: saw(440).pan(0.5).out()
+============================================================
+
+--- API Graph (before expandPoly) ---
+  saw1: saw
+    inputs: {"freq":440}
+    config: {}
+  pan2: pan
+    inputs: {"input":{"ref":"saw1","out":"cv"}}
+  out3: out
+    inputs: {"input":{"ref":"pan2","out":"signal"}}
+
+--- Expanded Graph (after expandPoly) ---
+  saw1: saw
+    inputs: {"freq":440}
+    config: {}
+  pan2: pan
+    inputs: {"input":{"ref":"saw1","out":"cv"}}
+  out3: out
+    inputs: {"input":{"ref":"pan2","out":"signal"}}
+
+--- Outputs ---
+  Left:  [out3]
+  Right: [out3]
+
+============================================================
+TEST: pan-modulated
+CODE: saw(440).pan(sin(0.5)).out()
+============================================================
+
+--- API Graph (before expandPoly) ---
+  saw1: saw
+    inputs: {"freq":440}
+    config: {}
+  sin2: sin
+    inputs: {"freq":0.5}
+    config: {}
+  pan3: pan
+    inputs: {"input":{"ref":"saw1","out":"cv"}}
+  out4: out
+    inputs: {"input":{"ref":"pan3","out":"signal"}}
+
+--- Expanded Graph (after expandPoly) ---
+  saw1: saw
+    inputs: {"freq":440}
+    config: {}
+  sin2: sin
+    inputs: {"freq":0.5}
+    config: {}
+  pan3: pan
+    inputs: {"input":{"ref":"saw1","out":"cv"}}
+  out4: out
+    inputs: {"input":{"ref":"pan3","out":"signal"}}
+
+--- Outputs ---
+  Left:  [out4]
+  Right: [out4]
+
+============================================================
+TEST: poly-pan
+CODE: saw([220, 330]).pan(0.3).out()
+============================================================
+
+--- API Graph (before expandPoly) ---
+  saw1: saw
+    inputs: {"freq":[220,330]}
+    config: {}
+  pan2: pan
+    inputs: {"input":{"ref":"saw1","out":"cv"}}
+  out3: out
+    inputs: {"input":{"ref":"pan2","out":"signal"}}
+
+--- Expanded Graph (after expandPoly) ---
+  saw1.0: saw
+    inputs: {"freq":220}
+    config: {}
+  saw1.1: saw
+    inputs: {"freq":330}
+    config: {}
+  out3: out
+    inputs: {"input":{"ref":"pan2","out":"signal"}}
+  mult8: mult
+    inputs: {"input":{"ref":"add4","out":"signal"},"by":{"ref":"sub6","out":"val"}}
+  mult9: mult
+    inputs: {"input":{"ref":"add4","out":"signal"},"by":{"ref":"add7","out":"signal"}}
+
+--- Outputs ---
+  Left:  [out3]
+  Right: [out3]
+
+============================================================
+TEST: spread-width-mod
+CODE: saw([220, 330, 440]).spread().width(sin(0.2)).out()
+============================================================
+
+--- API Graph (before expandPoly) ---
+  saw1: saw
+    inputs: {"freq":[220,330,440]}
+    config: {}
+  spread2: spread
+    inputs: {"input":{"ref":"saw1","out":"cv"}}
+  sin3: sin
+    inputs: {"freq":0.2}
+    config: {}
+  spread4: spread
+    inputs: {"input":{"ref":"saw1","out":"cv"}}
+  out5: out
+    inputs: {"input":{"ref":"spread4","out":"out"}}
+
+--- Expanded Graph (after expandPoly) ---
+  saw1.0: saw
+    inputs: {"freq":220}
+    config: {}
+  saw1.1: saw
+    inputs: {"freq":330}
+    config: {}
+  saw1.2: saw
+    inputs: {"freq":440}
+    config: {}
+  sin3: sin
+    inputs: {"freq":0.2}
+    config: {}
+  out5: out
+    inputs: {"input":{"ref":"spread4","out":"out"}}
+  add28: add
+    inputs: {"input":{"ref":"add27","out":"val"},"to":{"ref":"mult25","out":"val"}}
+  add30: add
+    inputs: {"input":{"ref":"add29","out":"val"},"to":{"ref":"mult26","out":"val"}}
+  add53: add
+    inputs: {"input":{"ref":"add52","out":"val"},"to":{"ref":"mult50","out":"val"}}
+  add55: add
+    inputs: {"input":{"ref":"add54","out":"val"},"to":{"ref":"mult51","out":"val"}}
+
+--- Outputs ---
+  Left:  [out5]
+  Right: [out5]
