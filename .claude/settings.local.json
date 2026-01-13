@@ -40,7 +40,11 @@
       "Bash(npx vite:*)",
       "Bash(timeout 10 npx vite build:*)",
       "Bash(timeout 15 npx vite build:*)",
-      "Bash(timeout 10 npx tsx:*)"
+      "Bash(timeout 10 npx tsx:*)",
+      "Bash(timeout 5 npx vite:*)",
+      "Bash(for:*)",
+      "Bash(do npx tsx \"$f\")",
+      "Bash(do echo \"=== $f ===\")"
     ]
   }
 }
