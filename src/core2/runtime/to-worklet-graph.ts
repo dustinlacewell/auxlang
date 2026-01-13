@@ -33,14 +33,21 @@ export async function toWorkletStereoGraph(runtime: StereoRuntimeGraph): Promise
 				inputDefaults[name] = { default: defaultVal };
 			}
 
-			const processSource = spec.process.toString();
-			specs[node.device] = {
+			const workletSpec: WorkletSpec = {
 				inputs: inputDefaults,
 				outputs: [...spec.outputs],
 				defaultInput: spec.defaultInput,
 				defaultOutput: spec.defaultOutput,
-				processSource,
 			};
+
+			// Serialize either process or processAll (not both)
+			if (spec.processAll) {
+				(workletSpec as { processAllSource: string }).processAllSource = spec.processAll.toString();
+			} else if (spec.process) {
+				(workletSpec as { processSource: string }).processSource = spec.process.toString();
+			}
+
+			specs[node.device] = workletSpec;
 		}
 
 		if (spec.wasmUrl) {
@@ -78,6 +85,11 @@ export async function toWorkletStereoGraph(runtime: StereoRuntimeGraph): Promise
 				inputs[name] = { type: "connection", nodeId: source.nodeId, output: source.output };
 			} else if (source.type === "lambda") {
 				inputs[name] = { type: "lambda", source: source.fn.toString() };
+			} else if (source.type === "connectionArray") {
+				inputs[name] = {
+					type: "connectionArray",
+					connections: source.connections.map((c) => ({ nodeId: c.nodeId, output: c.output })),
+				};
 			}
 		}
 

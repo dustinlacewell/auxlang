@@ -35,7 +35,8 @@
       "Bash(npm install:*)",
       "Bash(find:*)",
       "Bash(done)",
-      "Bash(npx vite-node:*)"
+      "Bash(npx vite-node:*)",
+      "Bash(xargs:*)"
     ]
   }
 }

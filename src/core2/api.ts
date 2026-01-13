@@ -52,6 +52,8 @@ export { clap } from "./devices/drums/clap";
 
 // Poly
 export { chord } from "./devices/chord";
+export { poly } from "./devices/poly";
+export { sum } from "./devices/sum";
 
 // Stereo
 export { pan } from "./devices/pan";

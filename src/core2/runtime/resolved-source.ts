@@ -10,4 +10,5 @@ import type { SignalLambda } from "../signal/signal-lambda";
 export type ResolvedSource =
 	| { readonly type: "constant"; readonly value: number }
 	| { readonly type: "connection"; readonly nodeId: NodeId; readonly output: string }
-	| { readonly type: "lambda"; readonly fn: SignalLambda };
+	| { readonly type: "lambda"; readonly fn: SignalLambda }
+	| { readonly type: "connectionArray"; readonly connections: readonly { nodeId: NodeId; output: string }[] };

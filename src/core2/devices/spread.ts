@@ -19,6 +19,9 @@ function isOutputRefArray(v: unknown): v is OutputRef[] {
  * Creates an anonymous mixer device for a specific voice count and channel (L or R).
  * The device has inputs: width, v0, v1, ... vN-1
  * Process sums: sum of (voice[i] * gain[i]) where gain is based on pan position.
+ *
+ * NOTE: voiceCount and isLeft must be passed via config, not closure, because
+ * process functions are serialized to the worklet where closures aren't available.
  */
 function createMixer(voiceCount: number, isLeft: boolean) {
 	const voiceInputs: Record<string, number> = { width: 1 };
@@ -31,16 +34,18 @@ function createMixer(voiceCount: number, isLeft: boolean) {
 		outputs: ["val"],
 		defaultInput: "v0",
 		defaultOutput: "val",
-		process(inp) {
+		config: { voiceCount, isLeft },
+		process(inp, cfg) {
 			const width = (inp.width as number) ?? 1;
-			const n = voiceCount;
+			const n = cfg.voiceCount as number;
+			const left = cfg.isLeft as boolean;
 			let sum = 0;
 
 			for (let i = 0; i < n; i++) {
 				const voice = (inp[`v${i}`] as number) ?? 0;
 				const basePan = n === 1 ? 0 : -1 + (2 * i) / (n - 1);
 				const pan = basePan * width;
-				const gain = isLeft ? (1 - pan) / 2 : (1 + pan) / 2;
+				const gain = left ? (1 - pan) / 2 : (1 + pan) / 2;
 				sum += voice * gain;
 			}
 

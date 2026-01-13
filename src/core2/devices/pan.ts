@@ -23,6 +23,9 @@ function isOutputRefArray(v: unknown): v is OutputRef[] {
 
 /**
  * Creates an anonymous mixer device that sums N voices to mono.
+ *
+ * NOTE: voiceCount must be passed via config, not closure, because
+ * process functions are serialized to the worklet where closures aren't available.
  */
 function createSummer(voiceCount: number) {
 	const voiceInputs: Record<string, number> = {};
@@ -35,9 +38,11 @@ function createSummer(voiceCount: number) {
 		outputs: ["signal"],
 		defaultInput: "v0",
 		defaultOutput: "signal",
-		process(inp) {
+		config: { voiceCount },
+		process(inp, cfg) {
+			const n = cfg.voiceCount as number;
 			let sum = 0;
-			for (let i = 0; i < voiceCount; i++) {
+			for (let i = 0; i < n; i++) {
 				sum += (inp[`v${i}`] as number) ?? 0;
 			}
 			return { signal: sum };

@@ -5,7 +5,7 @@
 import { getDeviceSpec } from "../device/registry";
 import type { Node } from "../graph/node";
 import type { OutputRef } from "../graph/output-ref";
-import type { NodeInput } from "./node-input";
+import { isVoiceRef, isVoiceRefArray, type NodeInput } from "./node-input";
 
 /**
  * Check if value is a Node (has id, device, inputs).
@@ -26,10 +26,16 @@ function isNode(value: unknown): value is Node {
 }
 
 /**
- * Check if value is an OutputRef.
+ * Check if value is an OutputRef (but not a VoiceRef which also has ref-like structure).
  */
 function isOutputRef(value: unknown): value is OutputRef {
-	return typeof value === "object" && value !== null && "ref" in value && "out" in value;
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"ref" in value &&
+		"out" in value &&
+		!("type" in value) // VoiceRef has type: "voiceRef"
+	);
 }
 
 /**
@@ -56,6 +62,7 @@ function isNodeArray(value: unknown): value is Node[] {
  * - Node → OutputRef (using default output)
  * - Node[] (WrappedArray) → pass through as-is (resolved per-voice later)
  * - OutputRef → pass through
+ * - VoiceRef, VoiceRef[] → pass through (resolved at expansion time)
  * - number, number[], SignalLambda → pass through
  */
 export function normalizeSignal(value: unknown): NodeInput {
@@ -66,13 +73,22 @@ export function normalizeSignal(value: unknown): NodeInput {
 		return { ref: value.id, out: defaultOutput };
 	}
 
-	// WrappedArray (poly of nodes) - pass through as-is
-	// Will be resolved per-voice in resolveInputsForVoice during poly chaining
+	// Array of nodes → array of OutputRefs
 	if (isNodeArray(value)) {
-		return value as unknown as NodeInput;
+		const arr = Array.isArray(value) ? value : Array.from(value as Iterable<Node>);
+		return arr.map((node) => {
+			const spec = getDeviceSpec(node.device);
+			const defaultOutput = spec?.defaultOutput ?? "out";
+			return { ref: node.id, out: defaultOutput } as OutputRef;
+		});
 	}
 
 	if (isOutputRef(value)) {
+		return value;
+	}
+
+	// VoiceRef and VoiceRef[] - pass through, resolved at expansion time
+	if (isVoiceRef(value) || isVoiceRefArray(value)) {
 		return value;
 	}
 

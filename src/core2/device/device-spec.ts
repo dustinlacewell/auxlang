@@ -6,7 +6,7 @@ import type { ConfigValue } from "../signal/config-value";
 import type { NodeInput } from "../signal/node-input";
 import type { WrappedNode } from "../wrap/wrap";
 import type { InputDef } from "./input-def";
-import type { ProcessFn } from "./process-fn";
+import type { ProcessAllFn, ProcessFn } from "./process-fn";
 
 export interface DeviceSpec {
 	readonly inputs: Record<string, InputDef>;
@@ -15,7 +15,8 @@ export interface DeviceSpec {
 	readonly defaultInput: string;
 	readonly defaultOutput: string;
 	readonly positionalArgs?: readonly string[];
-	readonly process: ProcessFn;
+	readonly process?: ProcessFn;
+	readonly processAll?: ProcessAllFn;
 	readonly wasmUrl?: string;
 	/**
 	 * If true, device handles poly internally instead of being expanded.

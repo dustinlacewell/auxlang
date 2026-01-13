@@ -14,6 +14,7 @@ import type { OutputRef } from "../graph/output-ref";
 import type { ConfigValue } from "../signal/config-value";
 import type { NodeInput } from "../signal/node-input";
 import { setWrapFn, wrapOutputRef, wrapOutputRefArray } from "./chainable-output-ref";
+import { createVoicesAccessor, setVoiceRefWrapFn } from "./chainable-voice-ref";
 import { parseArgs } from "./parse-args";
 
 export type Wrapped<T extends Node | Node[]> = T extends Node[] ? WrappedArray : WrappedNode;
@@ -70,6 +71,11 @@ function wrapNode(node: Node): WrappedNode {
 			// .apply(fn) - call fn with this wrapped node and return the result
 			if (prop === "apply") {
 				return <T>(fn: (node: WrappedNode) => T): T => fn(wrap(target) as WrappedNode);
+			}
+
+			// .voices accessor - returns proxy for voice access via VoiceRef
+			if (prop === "voices") {
+				return createVoicesAccessor(target.id, target.device);
 			}
 
 			// Output access: node.audio → ChainableOutputRef
@@ -293,5 +299,6 @@ function resolveInputsForVoice(inputs: Record<string, NodeInput>, voiceIndex: nu
 	return result;
 }
 
-// Initialize the circular dependency bridge (must be after wrap is defined)
+// Initialize the circular dependency bridges (must be after wrap is defined)
 setWrapFn(wrap);
+setVoiceRefWrapFn(wrap);

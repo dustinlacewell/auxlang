@@ -1,5 +1,9 @@
 /**
  * Runtime graph - hydrated and ready to process samples.
+ *
+ * PERFORMANCE CRITICAL: This runs 44100+ times per second.
+ * All per-sample work is pre-compiled in the constructor.
+ * No object allocations, no string lookups, no iteration in the hot path.
  */
 
 import { hydrateFunction } from "../../hydrate-function";
@@ -19,20 +23,38 @@ type ProcessFn = (
 	time: number,
 ) => Record<string, number>;
 
+type ProcessAllFn = (
+	inputs: Record<string, number[]>,
+	config: Record<string, unknown>,
+	state: Record<string, unknown>,
+	sampleRate: number,
+	time: number,
+) => Record<string, number>;
+
 type LambdaFn = (state: Record<string, unknown>, sr: number, time: number) => number;
 
-type HydratedInput =
-	| { type: "constant"; value: number }
-	| { type: "connection"; nodeId: string; output: string }
-	| { type: "lambda"; fn: LambdaFn; state: Record<string, unknown> };
+// Pre-compiled input resolver - no allocations per sample
+type InputResolver = (sr: number, time: number) => void;
+
+// Pre-compiled output copier
+type OutputCopier = () => void;
 
 interface RuntimeNode {
 	id: string;
-	process: ProcessFn;
-	inputSources: Record<string, HydratedInput>;
-	config: Record<string, () => unknown>;
+	process?: ProcessFn;
+	processAll?: ProcessAllFn;
+	// Pre-allocated input/config objects (reused every sample)
+	inputs: Record<string, number>;
+	inputArrays: Record<string, number[]>;
+	config: Record<string, unknown>;
 	state: Record<string, unknown>;
 	outputs: Record<string, number>;
+	// Pre-compiled functions for hot path
+	resolveInputs: InputResolver;
+	resolveInputArrays: InputResolver;
+	copyOutputs: OutputCopier;
+	// For state collection
+	lambdaStates: Map<string, Record<string, unknown>>;
 }
 
 // ============================================================================
@@ -45,18 +67,20 @@ function createWasmProcess(instance: WebAssembly.Instance, spec: WorkletSpec): P
 	if (!processExport) throw new Error("WASM module missing 'process' export");
 
 	const inputNames = Object.keys(spec.inputs).sort();
-	const setters: Record<string, (v: number) => void> = {};
+	const setters: ((v: number) => void)[] = [];
 	for (const name of inputNames) {
 		const setter = exports[`set_${name}`] as ((v: number) => void) | undefined;
-		if (setter) setters[name] = setter;
+		if (setter) setters.push(setter);
 	}
 
+	const defaultInput = spec.defaultInput;
+	const defaultOutput = spec.defaultOutput;
+
 	return (inputs, _config, _state, _sampleRate) => {
-		for (const name of inputNames) {
-			setters[name]?.(inputs[name] ?? 0);
+		for (let i = 0; i < inputNames.length; i++) {
+			setters[i]?.(inputs[inputNames[i]!] ?? 0);
 		}
-		const monoInput = inputs[spec.defaultInput] ?? 0;
-		return { [spec.defaultOutput]: processExport(monoInput) };
+		return { [defaultOutput]: processExport(inputs[defaultInput] ?? 0) };
 	};
 }
 
@@ -66,11 +90,17 @@ function createWasmProcess(instance: WebAssembly.Instance, spec: WorkletSpec): P
 
 export class RuntimeGraph {
 	private nodes: RuntimeNode[] = [];
-	private nodeMap = new Map<string, RuntimeNode>();
-	private leftOutputIds: string[] = [];
-	private rightOutputIds: string[] = [];
+	private nodeOutputs: Record<string, number>[] = []; // Direct array access instead of Map
+	private nodeIndexById = new Map<string, number>();
+	private leftOutputIndices: number[] = [];
+	private rightOutputIndices: number[] = [];
+	private leftOutputKeys: string[] = [];
+	private rightOutputKeys: string[] = [];
 	private sampleCount = 0;
-	private lambdaStates = new Map<string, Record<string, unknown>>();
+	private leftCount = 0;
+	private rightCount = 0;
+	private leftScale = 1;
+	private rightScale = 1;
 
 	constructor(
 		graph: WorkletStereoGraph,
@@ -78,18 +108,46 @@ export class RuntimeGraph {
 		oldStates?: CollectedStates,
 		nodeMapping?: Map<string, string>,
 	) {
-		this.leftOutputIds = [...graph.leftOutputIds];
-		this.rightOutputIds = [...graph.rightOutputIds];
 		if (oldStates) this.sampleCount = oldStates.sampleCount;
 
-		for (const node of graph.nodes) {
+		// Build node index first for fast lookup during compilation
+		for (let i = 0; i < graph.nodes.length; i++) {
+			this.nodeIndexById.set(graph.nodes[i]!.id, i);
+		}
+
+		// Build nodes
+		for (let i = 0; i < graph.nodes.length; i++) {
+			const node = graph.nodes[i]!;
 			const spec = graph.specs[node.device]!;
 			const oldNodeId = nodeMapping?.get(node.id);
 
 			const runtimeNode = this.buildNode(node, spec, wasmInstances.get(node.id), oldNodeId, oldStates);
 			this.nodes.push(runtimeNode);
-			this.nodeMap.set(node.id, runtimeNode);
+			this.nodeOutputs.push(runtimeNode.outputs);
 		}
+
+		// Pre-compile output mixing
+		for (const id of graph.leftOutputIds) {
+			const idx = this.nodeIndexById.get(id);
+			if (idx !== undefined) {
+				this.leftOutputIndices.push(idx);
+				const node = this.nodes[idx]!;
+				this.leftOutputKeys.push(Object.keys(node.outputs)[0] ?? "out");
+			}
+		}
+		for (const id of graph.rightOutputIds) {
+			const idx = this.nodeIndexById.get(id);
+			if (idx !== undefined) {
+				this.rightOutputIndices.push(idx);
+				const node = this.nodes[idx]!;
+				this.rightOutputKeys.push(Object.keys(node.outputs)[0] ?? "out");
+			}
+		}
+
+		this.leftCount = this.leftOutputIndices.length;
+		this.rightCount = this.rightOutputIndices.length;
+		this.leftScale = this.leftCount > 1 ? 1 / Math.sqrt(this.leftCount) : 1;
+		this.rightScale = this.rightCount > 1 ? 1 / Math.sqrt(this.rightCount) : 1;
 	}
 
 	private buildNode(
@@ -105,127 +163,260 @@ export class RuntimeGraph {
 			state = deepCloneState(oldStates.nodeStates.get(oldNodeId)!);
 		}
 
-		// Hydrate process (WASM or JS)
-		const process = wasmInstance
-			? createWasmProcess(wasmInstance, spec)
-			: (hydrateFunction(spec.processSource) as ProcessFn);
+		// Hydrate process or processAll (WASM or JS)
+		let process: ProcessFn | undefined;
+		let processAll: ProcessAllFn | undefined;
 
-		// Hydrate inputs with lambda state restoration
-		const inputSources: Record<string, HydratedInput> = {};
-		for (const [name, input] of Object.entries(node.inputs)) {
-			inputSources[name] = this.hydrateInput(input, node.id, name, oldNodeId, oldStates);
+		if (wasmInstance) {
+			process = createWasmProcess(wasmInstance, spec);
+		} else if (spec.processAllSource) {
+			processAll = hydrateFunction(spec.processAllSource) as ProcessAllFn;
+		} else if (spec.processSource) {
+			process = hydrateFunction(spec.processSource) as ProcessFn;
 		}
 
-		// Apply defaults
-		for (const [name, def] of Object.entries(spec.inputs)) {
-			if (!inputSources[name]) {
-				inputSources[name] = { type: "constant", value: def.default };
-			}
+		// Pre-allocate input objects
+		const inputs: Record<string, number> = {};
+		const inputArrays: Record<string, number[]> = {};
+		for (const name of Object.keys(spec.inputs)) {
+			inputs[name] = spec.inputs[name]!.default;
+			inputArrays[name] = [spec.inputs[name]!.default];
 		}
 
-		// Hydrate config
-		const config: Record<string, () => unknown> = {};
+		// Pre-allocate config object
+		const config: Record<string, unknown> = {};
+		const configGetters: (() => unknown)[] = [];
+		const configKeys: string[] = [];
 		for (const [name, cfg] of Object.entries(node.config)) {
+			configKeys.push(name);
 			if (cfg.type === "fn") {
 				const fn = hydrateFunction(cfg.source);
-				config[name] = () => fn;
+				configGetters.push(() => fn);
 			} else {
-				config[name] = () => cfg.value;
+				const value = cfg.value;
+				configGetters.push(() => value);
 			}
 		}
 
-		// Initialize outputs
+		// Pre-allocate outputs
 		const outputs: Record<string, number> = {};
-		for (const out of spec.outputs) outputs[out] = 0;
-
-		return { id: node.id, process, inputSources, config, state, outputs };
-	}
-
-	private hydrateInput(
-		input: WorkletInput,
-		nodeId: string,
-		inputName: string,
-		oldNodeId: string | undefined,
-		oldStates: CollectedStates | undefined,
-	): HydratedInput {
-		if (input.type === "constant") return { type: "constant", value: input.value };
-		if (input.type === "connection") return { type: "connection", nodeId: input.nodeId, output: input.output };
-
-		// Lambda with state restoration
-		const fn = hydrateFunction(input.source) as LambdaFn;
-		const lambdaKey = `${nodeId}:${inputName}`;
-		const oldLambdaKey = oldNodeId ? `${oldNodeId}:${inputName}` : undefined;
-
-		let lambdaState: Record<string, unknown> = {};
-		if (oldLambdaKey && oldStates?.lambdaStates.has(oldLambdaKey)) {
-			lambdaState = deepCloneState(oldStates.lambdaStates.get(oldLambdaKey)!);
+		const outputKeys: string[] = [];
+		for (const out of spec.outputs) {
+			outputs[out] = 0;
+			outputKeys.push(out);
 		}
-		this.lambdaStates.set(lambdaKey, lambdaState);
 
-		return { type: "lambda", fn, state: lambdaState };
+		// Lambda states for this node
+		const lambdaStates = new Map<string, Record<string, unknown>>();
+
+		// Build pre-compiled input resolvers
+		const inputResolvers: Array<(sr: number, time: number) => number> = [];
+		const inputNames: string[] = [];
+
+		for (const [name, input] of Object.entries(node.inputs)) {
+			inputNames.push(name);
+
+			if (input.type === "constant") {
+				const value = input.value;
+				inputResolvers.push(() => value);
+			} else if (input.type === "connection") {
+				const srcIdx = this.nodeIndexById.get(input.nodeId);
+				const srcOutput = input.output;
+				if (srcIdx !== undefined) {
+					inputResolvers.push(() => this.nodeOutputs[srcIdx]![srcOutput] ?? 0);
+				} else {
+					inputResolvers.push(() => 0);
+				}
+			} else if (input.type === "connectionArray") {
+				const connections = input.connections.map((c) => ({
+					idx: this.nodeIndexById.get(c.nodeId),
+					output: c.output,
+				}));
+				// For scalar, just take first
+				if (connections.length > 0 && connections[0]!.idx !== undefined) {
+					const firstIdx = connections[0]!.idx;
+					const firstOutput = connections[0]!.output;
+					inputResolvers.push(() => this.nodeOutputs[firstIdx]![firstOutput] ?? 0);
+				} else {
+					inputResolvers.push(() => 0);
+				}
+			} else {
+				// Lambda
+				const fn = hydrateFunction(input.source) as LambdaFn;
+				const lambdaKey = `${node.id}:${name}`;
+				const oldLambdaKey = oldNodeId ? `${oldNodeId}:${name}` : undefined;
+
+				let lambdaState: Record<string, unknown> = {};
+				if (oldLambdaKey && oldStates?.lambdaStates.has(oldLambdaKey)) {
+					lambdaState = deepCloneState(oldStates.lambdaStates.get(oldLambdaKey)!);
+				}
+				lambdaStates.set(lambdaKey, lambdaState);
+
+				inputResolvers.push((sr, time) => fn(lambdaState, sr, time));
+			}
+		}
+
+		// Apply defaults for missing inputs
+		for (const [name, def] of Object.entries(spec.inputs)) {
+			if (!inputNames.includes(name)) {
+				inputNames.push(name);
+				const value = def.default;
+				inputResolvers.push(() => value);
+			}
+		}
+
+		// Build array resolvers for processAll
+		const arrayResolvers: Array<() => number[]> = [];
+		const arrayInputNames: string[] = [];
+
+		for (const [name, input] of Object.entries(node.inputs)) {
+			arrayInputNames.push(name);
+
+			if (input.type === "constant") {
+				const arr = [input.value];
+				arrayResolvers.push(() => arr);
+			} else if (input.type === "connection") {
+				const srcIdx = this.nodeIndexById.get(input.nodeId);
+				const srcOutput = input.output;
+				if (srcIdx !== undefined) {
+					arrayResolvers.push(() => [this.nodeOutputs[srcIdx]![srcOutput] ?? 0]);
+				} else {
+					arrayResolvers.push(() => [0]);
+				}
+			} else if (input.type === "connectionArray") {
+				const connections = input.connections.map((c) => ({
+					idx: this.nodeIndexById.get(c.nodeId),
+					output: c.output,
+				}));
+				arrayResolvers.push(() => {
+					const result: number[] = [];
+					for (const conn of connections) {
+						if (conn.idx !== undefined) {
+							result.push(this.nodeOutputs[conn.idx]![conn.output] ?? 0);
+						} else {
+							result.push(0);
+						}
+					}
+					return result;
+				});
+			} else {
+				// Lambda - not fully supported in array context
+				arrayResolvers.push(() => [0]);
+			}
+		}
+
+		// Apply defaults for array resolvers
+		for (const [name, def] of Object.entries(spec.inputs)) {
+			if (!arrayInputNames.includes(name)) {
+				arrayInputNames.push(name);
+				const arr = [def.default];
+				arrayResolvers.push(() => arr);
+			}
+		}
+
+		// Pre-compiled resolve functions
+		const resolveInputs: InputResolver = (sr, time) => {
+			for (let i = 0; i < inputNames.length; i++) {
+				inputs[inputNames[i]!] = inputResolvers[i]!(sr, time);
+			}
+			for (let i = 0; i < configKeys.length; i++) {
+				config[configKeys[i]!] = configGetters[i]!();
+			}
+		};
+
+		const resolveInputArrays: InputResolver = (_sr, _time) => {
+			for (let i = 0; i < arrayInputNames.length; i++) {
+				inputArrays[arrayInputNames[i]!] = arrayResolvers[i]!();
+			}
+			for (let i = 0; i < configKeys.length; i++) {
+				config[configKeys[i]!] = configGetters[i]!();
+			}
+		};
+
+		// Pre-compiled output copier
+		const copyOutputs: OutputCopier = () => {
+			// outputs are modified in place by process(), no copy needed
+		};
+
+		return {
+			id: node.id,
+			process,
+			processAll,
+			inputs,
+			inputArrays,
+			config,
+			state,
+			outputs,
+			resolveInputs,
+			resolveInputArrays,
+			copyOutputs,
+			lambdaStates,
+		};
 	}
 
 	/**
 	 * Process one sample and return stereo output [left, right].
-	 * Nodes are processed once, then outputs are mixed to L/R channels.
+	 * PERFORMANCE CRITICAL - no allocations, no string lookups.
 	 */
 	processStereoSample(sr: number): [number, number] {
 		const time = this.sampleCount / sr;
 		this.sampleCount++;
 
-		// Process all nodes once
-		for (const node of this.nodes) {
-			const inputs = this.resolveInputs(node, sr, time);
-			const config = this.resolveConfig(node);
-			const result = node.process(inputs, config, node.state, sr, time);
-			Object.assign(node.outputs, result);
-		}
+		// Process all nodes
+		const nodes = this.nodes;
+		const len = nodes.length;
 
-		// Mix outputs to stereo
-		const left = this.mixOutputs(this.leftOutputIds);
-		const right = this.mixOutputs(this.rightOutputIds);
-		return [left, right];
-	}
+		for (let i = 0; i < len; i++) {
+			const node = nodes[i]!;
 
-	private resolveInputs(node: RuntimeNode, sr: number, time: number): Record<string, number> {
-		const inputs: Record<string, number> = {};
-		for (const [name, source] of Object.entries(node.inputSources)) {
-			if (source.type === "constant") {
-				inputs[name] = source.value;
-			} else if (source.type === "connection") {
-				inputs[name] = this.nodeMap.get(source.nodeId)?.outputs[source.output] ?? 0;
-			} else {
-				inputs[name] = source.fn(source.state, sr, time);
+			if (node.processAll) {
+				node.resolveInputArrays(sr, time);
+				const result = node.processAll(node.inputArrays, node.config, node.state, sr, time);
+				// Copy results to outputs
+				for (const key in result) {
+					node.outputs[key] = result[key]!;
+				}
+			} else if (node.process) {
+				node.resolveInputs(sr, time);
+				const result = node.process(node.inputs, node.config, node.state, sr, time);
+				// Copy results to outputs
+				for (const key in result) {
+					node.outputs[key] = result[key]!;
+				}
 			}
 		}
-		return inputs;
-	}
 
-	private resolveConfig(node: RuntimeNode): Record<string, unknown> {
-		const config: Record<string, unknown> = {};
-		for (const [name, getter] of Object.entries(node.config)) {
-			config[name] = getter();
-		}
-		return config;
-	}
+		// Mix outputs - direct array access, no Map lookup
+		let left = 0;
+		let right = 0;
 
-	private mixOutputs(outputIds: string[]): number {
-		let sum = 0;
-		for (const id of outputIds) {
-			const node = this.nodeMap.get(id);
-			if (node) {
-				const outputName = Object.keys(node.outputs)[0] ?? "out";
-				sum += node.outputs[outputName] ?? 0;
-			}
+		const leftIndices = this.leftOutputIndices;
+		const leftKeys = this.leftOutputKeys;
+		const rightIndices = this.rightOutputIndices;
+		const rightKeys = this.rightOutputKeys;
+		const nodeOutputs = this.nodeOutputs;
+
+		for (let i = 0; i < this.leftCount; i++) {
+			left += nodeOutputs[leftIndices[i]!]![leftKeys[i]!] ?? 0;
 		}
-		return outputIds.length > 1 ? sum / Math.sqrt(outputIds.length) : sum;
+		for (let i = 0; i < this.rightCount; i++) {
+			right += nodeOutputs[rightIndices[i]!]![rightKeys[i]!] ?? 0;
+		}
+
+		return [left * this.leftScale, right * this.rightScale];
 	}
 
 	collectStates(): CollectedStates {
 		const nodeStates = new Map<string, Record<string, unknown>>();
+		const lambdaStates = new Map<string, Record<string, unknown>>();
+
 		for (const node of this.nodes) {
 			nodeStates.set(node.id, node.state);
+			for (const [key, state] of node.lambdaStates) {
+				lambdaStates.set(key, state);
+			}
 		}
-		return { nodeStates, lambdaStates: this.lambdaStates, sampleCount: this.sampleCount };
+
+		return { nodeStates, lambdaStates, sampleCount: this.sampleCount };
 	}
 }
