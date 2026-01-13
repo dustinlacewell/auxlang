@@ -4,4 +4,7 @@ poly([
   sin(sin(0.3, 200, 250)),
   sin(sin(0.5, 300, 350)),
   sin(sin(0.7, 400, 450))
-]).sum().gain(0.2).out()
+])
+  .sum()
+  .gain(0.2)
+  .out()

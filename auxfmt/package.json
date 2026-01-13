@@ -10,7 +10,8 @@
   "scripts": {
     "build": "tsc",
     "test": "npx tsx src/format.test.ts",
-    "fmt": "npx tsx src/cli.ts"
+    "fmt": "npx tsx src/cli.ts",
+    "fmt:tests": "npx tsx src/format-tests.ts"
   },
   "dependencies": {
     "acorn": "^8.14.0"

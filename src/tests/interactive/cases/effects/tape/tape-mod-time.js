@@ -10,7 +10,5 @@ clock(90)
         time: sin(0.2, 0.1, 0.4),
         feedback: 0.45,
         wow: 0.1,
-        flutter: 0.1
-      })
-      .out()
-  )
+        flutter: 0.1})
+      .out())

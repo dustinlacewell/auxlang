@@ -1,3 +1,11 @@
 // scale - defaults
 // Map LFO from [-1,1] to [0,1]
-saw(sin().scale().scale({ from: 0, to: 1, min: 200, max: 400 })).out()
+saw(
+  sin()
+    .scale()
+    .scale({
+      from: 0,
+      to: 1,
+      min: 200,
+      max: 400}))
+  .out()

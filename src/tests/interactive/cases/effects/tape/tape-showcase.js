@@ -12,7 +12,5 @@ clock(75)
         saturation: 0.5,
         tone: 0.35,
         wow: 0.4,
-        flutter: 0.2
-      })
-      .out()
-  )
+        flutter: 0.2})
+      .out())

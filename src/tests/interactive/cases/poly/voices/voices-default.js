@@ -1,7 +1,8 @@
 // voices - defaults
 // Single voice extraction from chord
-let s = clock(120).seq("{c3,e3,g3}")
-s.voices[0]
+s
+  .voices
+  .undefined
   .saw()
-  .gain({ level: s.voices[0].gate.ar() })
+  .gain({ level: s.voices.undefined.gate.ar() })
   .out()

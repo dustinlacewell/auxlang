@@ -6,9 +6,5 @@ clock(90)
     s.saw()
       .lpf(1200)
       .gain(s.gate.ad({ attack: 0.005, decay: 0.15 }))
-      .tape({
-        time: 0.25,
-        feedback: sin(0.15, 0.2, 0.7)
-      })
-      .out()
-  )
+      .tape({ time: 0.25, feedback: sin(0.15, 0.2, 0.7) })
+      .out())

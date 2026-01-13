@@ -5,11 +5,12 @@ clock(60)
   .apply(s =>
     s.saw()
       .lpf(1500)
-      .gain(s.gate.adsr({
-        attack: sin(0.1, 0.01, 0.5),
-        decay: 0.1,
-        sustain: 0.5,
-        release: 0.3
-      }))
-      .out()
-  )
+      .gain(
+        s
+          .gate
+          .adsr({
+            attack: sin(0.1, 0.01, 0.5),
+            decay: 0.1,
+            sustain: 0.5,
+            release: 0.3}))
+      .out())

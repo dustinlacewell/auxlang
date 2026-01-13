@@ -9,7 +9,5 @@ clock(90)
       .tape({
         saturation: sin(0.15, 0.1, 0.8),
         feedback: 0.45,
-        mix: 0.55
-      })
-      .out()
-  )
+        mix: 0.55})
+      .out())

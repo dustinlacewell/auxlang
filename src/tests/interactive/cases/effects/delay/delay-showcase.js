@@ -10,7 +10,5 @@ clock(120)
         time: 0.25,
         feedback: 0.5,
         mix: 0.4,
-        tone: 0.4
-      })
-      .out()
-  )
+        tone: 0.4})
+      .out())

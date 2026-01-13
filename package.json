@@ -7,7 +7,9 @@
     "build": "tsc && vite build",
     "test": "vitest",
     "lint": "biome check src/",
-    "format": "biome format --write src/"
+    "format": "biome format --write src/",
+    "auxfmt": "npx tsx auxfmt/src/cli.ts",
+    "auxfmt:tests": "npx tsx auxfmt/src/format-tests.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",

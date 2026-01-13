@@ -6,9 +6,5 @@ clock(90)
     s.saw()
       .lpf(1200)
       .gain(s.gate.ad({ attack: 0.005, decay: 0.12 }))
-      .reverb({
-        room: sin(0.1, 0.3, 0.95),
-        mix: 0.5
-      })
-      .out()
-  )
+      .reverb({ room: sin(0.1, 0.3, 0.95), mix: 0.5 })
+      .out())

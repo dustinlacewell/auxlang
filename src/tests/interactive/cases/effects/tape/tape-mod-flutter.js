@@ -6,10 +6,5 @@ clock(90)
     s.saw()
       .lpf(1200)
       .gain(s.gate.ad({ attack: 0.005, decay: 0.15 }))
-      .tape({
-        wow: 0.15,
-        flutter: sin(0.2, 0.05, 0.5),
-        feedback: 0.5
-      })
-      .out()
-  )
+      .tape({ wow: 0.15, flutter: sin(0.2, 0.05, 0.5), feedback: 0.5 })
+      .out())
