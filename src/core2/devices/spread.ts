@@ -59,6 +59,7 @@ export const spread = device("spread", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
+	positionalArgs: ["width"],
 	polyphonic: true,
 	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		// Fallback for mono - just pass through

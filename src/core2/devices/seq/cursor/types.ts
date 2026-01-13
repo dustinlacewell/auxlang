@@ -50,8 +50,8 @@ export interface Cursor {
 	events: BeatEvent[];
 	/** Index of current event in events array */
 	eventIndex: number;
-	/** Path key of last triggered event (for trigger detection) */
-	lastTriggeredPath: string;
+	/** Sample index of last triggered event (for sample-perfect trigger detection) */
+	lastTriggeredSample: number;
 }
 
 /**
@@ -65,8 +65,8 @@ export interface BeatEvent {
 	start: number;
 	/** End position within beat (0-1) */
 	end: number;
-	/** Path key for trigger detection */
-	pathKey: string;
+	/** Whether this event should trigger (false for tied continuations) */
+	isTrigger: boolean;
 }
 
 /**

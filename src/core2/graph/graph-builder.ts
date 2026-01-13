@@ -15,6 +15,10 @@ export class GraphBuilder {
 		this.nodes.set(node.id, node);
 	}
 
+	getNode(id: NodeId): Node | undefined {
+		return this.nodes.get(id);
+	}
+
 	getNodes(): Node[] {
 		return Array.from(this.nodes.values());
 	}

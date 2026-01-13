@@ -31,6 +31,7 @@ export function stepCursor(cursor: Cursor, expr: Expr, beatIndex: number, cycle:
 	// Collect all events within this beat (flattened from nested structure)
 	cursor.events = collectBeatEvents(expr, beatIndex, cursor.probDecisions, cycle);
 	cursor.eventIndex = 0;
+	cursor.lastTriggeredSample = -1; // Reset for new beat
 
 	// Set initial CV from first event (if any)
 	if (cursor.events.length > 0) {

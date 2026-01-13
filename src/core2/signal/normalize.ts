@@ -5,7 +5,7 @@
 import { getDeviceSpec } from "../device/registry";
 import type { Node } from "../graph/node";
 import type { OutputRef } from "../graph/output-ref";
-import { isVoiceRef, isVoiceRefArray, type NodeInput } from "./node-input";
+import type { NodeInput } from "./node-input";
 
 /**
  * Check if value is a Node (has id, device, inputs).
@@ -26,15 +26,14 @@ function isNode(value: unknown): value is Node {
 }
 
 /**
- * Check if value is an OutputRef (but not a VoiceRef which also has ref-like structure).
+ * Check if value is an OutputRef.
  */
 function isOutputRef(value: unknown): value is OutputRef {
 	return (
 		typeof value === "object" &&
 		value !== null &&
 		"ref" in value &&
-		"out" in value &&
-		!("type" in value) // VoiceRef has type: "voiceRef"
+		"out" in value
 	);
 }
 
@@ -60,9 +59,8 @@ function isNodeArray(value: unknown): value is Node[] {
 /**
  * Normalize a signal value for binding to an input.
  * - Node → OutputRef (using default output)
- * - Node[] (WrappedArray) → pass through as-is (resolved per-voice later)
- * - OutputRef → pass through
- * - VoiceRef, VoiceRef[] → pass through (resolved at expansion time)
+ * - Node[] (WrappedArray) → OutputRef[]
+ * - OutputRef (with optional voice) → pass through
  * - number, number[], SignalLambda → pass through
  */
 export function normalizeSignal(value: unknown): NodeInput {
@@ -84,11 +82,6 @@ export function normalizeSignal(value: unknown): NodeInput {
 	}
 
 	if (isOutputRef(value)) {
-		return value;
-	}
-
-	// VoiceRef and VoiceRef[] - pass through, resolved at expansion time
-	if (isVoiceRef(value) || isVoiceRefArray(value)) {
 		return value;
 	}
 

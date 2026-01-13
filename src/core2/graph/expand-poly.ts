@@ -5,20 +5,21 @@
  * Nodes are processed in topological order (dependencies first).
  *
  * For each node:
- *   1. Resolve VoiceRefs to OutputRefs
- *   2. If polyphonic: don't duplicate, call expand with poly inputs (or keep for processAll)
+ *   1. Count upstream voices (OutputRefs without voice field contribute their source's voice count)
+ *   2. If polyphonic device: don't duplicate, call expand with poly inputs (or keep for processAll)
  *   3. Else if upstream is poly: duplicate N times, call expand on each if it has one
  *   4. Else: keep as-is, call expand if it has one
  *
- * nodeMap is updated after each node so downstream sees expanded refs.
+ * OutputRef with voice field pins to that specific voice and doesn't trigger expansion.
  */
 
 import { getDeviceSpec } from "../device/registry";
 import { resetNodeCounter } from "./create-node";
 import type { FlatGraph } from "./flat-graph";
+import { withBuilder } from "./graph-builder";
 import type { Node, NodeId } from "./node";
 import type { OutputRef } from "./output-ref";
-import { isVoiceRef, isVoiceRefArray, type NodeInput, type VoiceRef } from "../signal/node-input";
+import type { NodeInput } from "../signal/node-input";
 import type { WrappedNode } from "../wrap/wrap";
 
 /** Extract plain Node from WrappedNode */
@@ -40,7 +41,7 @@ export interface StereoGraph {
 
 /**
  * Expands a flat graph by processing nodes topologically.
- * Handles VoiceRef resolution, poly duplication, and device expansion.
+ * Handles poly duplication and device expansion.
  */
 export function expandPoly(graph: FlatGraph): StereoGraph {
 	// Reset node counter for deterministic IDs during expansion
@@ -60,26 +61,28 @@ export function expandPoly(graph: FlatGraph): StereoGraph {
 	for (const node of sorted) {
 		const spec = getDeviceSpec(node.device);
 
-		// First: resolve VoiceRefs to OutputRefs (upstream already processed)
-		const inputsWithResolvedVoiceRefs = resolveVoiceRefs(node.inputs, nodeMap, spec?.defaultOutput ?? "out");
-
-		// Then: resolve OutputRefs using nodeMap
-		const resolvedInputs = resolveOutputRefs(inputsWithResolvedVoiceRefs, nodeMap);
-
-		// Determine if this node needs duplication based on upstream poly
-		const upstreamVoiceCount = getUpstreamVoiceCount(inputsWithResolvedVoiceRefs, nodeMap);
+		// Determine voice count from upstream poly sources
+		// OutputRefs with voice field are pinned and don't contribute
+		const upstreamVoiceCount = getUpstreamVoiceCount(node.inputs, nodeMap);
 
 		if (spec?.polyphonic) {
 			// Polyphonic device: don't duplicate
+			const resolvedInputs = resolveInputs(node.inputs, nodeMap);
+
 			if (spec.expand) {
-				// Call expand with poly inputs
-				const result = spec.expand(node.config, resolvedInputs);
+				// Use withBuilder to capture ALL nodes created during expand (including intermediates)
+				const { result, nodes: createdNodes } = withBuilder(() =>
+					spec.expand!(node.config, resolvedInputs),
+				);
 				const outputNodes = Array.isArray(result) ? result : [result];
 				const expandedNodes = outputNodes.map(extractNode);
+				// Add intermediate nodes (those not in output), then output nodes
+				const outputIds = new Set(expandedNodes.map((n) => n.id));
+				const intermediateNodes = createdNodes.filter((n) => !outputIds.has(n.id));
+				newNodes.push(...intermediateNodes);
 				newNodes.push(...expandedNodes);
 				nodeMap.set(node.id, expandedNodes.map((n) => n.id));
 			} else {
-				// No expand - keep node for processAll at runtime
 				const newNode: Node = { ...node, inputs: resolvedInputs };
 				newNodes.push(newNode);
 				nodeMap.set(node.id, [node.id]);
@@ -89,20 +92,24 @@ export function expandPoly(graph: FlatGraph): StereoGraph {
 			const cloneIds: NodeId[] = [];
 
 			for (let v = 0; v < upstreamVoiceCount; v++) {
-				const voiceInputs = pickVoiceInputs(inputsWithResolvedVoiceRefs, v, nodeMap);
+				const voiceInputs = pickVoiceInputs(node.inputs, v, nodeMap);
 
 				if (spec?.expand) {
-					// Call expand for each duplicate
-					const result = spec.expand(node.config, voiceInputs);
+					// Use withBuilder to capture ALL nodes created during expand
+					const { result, nodes: createdNodes } = withBuilder(() =>
+						spec.expand!(node.config, voiceInputs),
+					);
 					const outputNodes = Array.isArray(result) ? result : [result];
 					const expandedNodes = outputNodes.map(extractNode);
+					// Add intermediate nodes (those not in output), then output nodes
+					const outputIds = new Set(expandedNodes.map((n) => n.id));
+					const intermediateNodes = createdNodes.filter((n) => !outputIds.has(n.id));
+					newNodes.push(...intermediateNodes);
 					newNodes.push(...expandedNodes);
 
-					// Use the last output as the "output" for this voice
 					const lastNode = expandedNodes[expandedNodes.length - 1]!;
 					cloneIds.push(lastNode.id);
 				} else {
-					// No expand - just create duplicated node
 					const newId = `${node.id}.${v}`;
 					const newNode: Node = { ...node, id: newId, inputs: voiceInputs };
 					newNodes.push(newNode);
@@ -113,14 +120,22 @@ export function expandPoly(graph: FlatGraph): StereoGraph {
 			nodeMap.set(node.id, cloneIds);
 		} else {
 			// Mono - no duplication needed
+			const resolvedInputs = resolveInputs(node.inputs, nodeMap);
+
 			if (spec?.expand) {
-				const result = spec.expand(node.config, resolvedInputs);
+				// Use withBuilder to capture ALL nodes created during expand
+				const { result, nodes: createdNodes } = withBuilder(() =>
+					spec.expand!(node.config, resolvedInputs),
+				);
 				const outputNodes = Array.isArray(result) ? result : [result];
 				const expandedNodes = outputNodes.map(extractNode);
+				// Add intermediate nodes (those not in output), then output nodes
+				const outputIds = new Set(expandedNodes.map((n) => n.id));
+				const intermediateNodes = createdNodes.filter((n) => !outputIds.has(n.id));
+				newNodes.push(...intermediateNodes);
 				newNodes.push(...expandedNodes);
 				nodeMap.set(node.id, expandedNodes.map((n) => n.id));
 			} else {
-				// No expand - just update refs and keep node
 				const newNode: Node = { ...node, inputs: resolvedInputs };
 				newNodes.push(newNode);
 				nodeMap.set(node.id, [node.id]);
@@ -129,7 +144,6 @@ export function expandPoly(graph: FlatGraph): StereoGraph {
 	}
 
 	// Find out nodes and distribute L/R
-	// Each out node independently distributes its voices to stereo
 	const outNodes = graph.nodes.filter((n) => n.device === "out");
 	const leftOutputIds: NodeId[] = [];
 	const rightOutputIds: NodeId[] = [];
@@ -138,11 +152,9 @@ export function expandPoly(graph: FlatGraph): StereoGraph {
 		const expandedIds = nodeMap.get(outNode.id) || [outNode.id];
 
 		if (expandedIds.length === 1) {
-			// Mono: send to both L and R
 			leftOutputIds.push(expandedIds[0]!);
 			rightOutputIds.push(expandedIds[0]!);
 		} else {
-			// Poly: distribute round-robin (even → L, odd → R)
 			for (let i = 0; i < expandedIds.length; i++) {
 				if (i % 2 === 0) {
 					leftOutputIds.push(expandedIds[i]!);
@@ -162,7 +174,6 @@ export function expandPoly(graph: FlatGraph): StereoGraph {
 
 /**
  * Topological sort - dependencies before dependents.
- * Handles OutputRef, OutputRef[], VoiceRef, and VoiceRef[] as dependencies.
  */
 function topologicalSort(nodes: readonly Node[]): Node[] {
 	const nodeById = new Map(nodes.map((n) => [n.id, n]));
@@ -177,12 +188,6 @@ function topologicalSort(nodes: readonly Node[]): Node[] {
 			} else if (isOutputRefArray(value)) {
 				for (const ref of value) {
 					deps.get(node.id)!.add(ref.ref);
-				}
-			} else if (isVoiceRef(value)) {
-				deps.get(node.id)!.add(value.source);
-			} else if (isVoiceRefArray(value)) {
-				for (const ref of value) {
-					deps.get(node.id)!.add(ref.source);
 				}
 			}
 		}
@@ -207,7 +212,6 @@ function topologicalSort(nodes: readonly Node[]): Node[] {
 		const node = nodeById.get(id)!;
 		result.push(node);
 
-		// Decrease in-degree of nodes that depend on this one
 		for (const other of nodes) {
 			if (deps.get(other.id)?.has(id)) {
 				const newDegree = inDegree.get(other.id)! - 1;
@@ -227,91 +231,12 @@ function topologicalSort(nodes: readonly Node[]): Node[] {
 }
 
 /**
- * Resolve VoiceRefs to OutputRefs.
- * VoiceRef { source, index, output? } → OutputRef { ref: expandedId, out }
- */
-function resolveVoiceRefs(
-	inputs: Record<string, unknown>,
-	nodeMap: Map<NodeId, NodeId[]>,
-	defaultOutput: string,
-): Record<string, NodeInput> {
-	const result: Record<string, NodeInput> = {};
-
-	for (const [key, value] of Object.entries(inputs)) {
-		if (isVoiceRef(value)) {
-			result[key] = resolveOneVoiceRef(value, nodeMap, defaultOutput);
-		} else if (isVoiceRefArray(value)) {
-			result[key] = value.map((vr) => resolveOneVoiceRef(vr, nodeMap, defaultOutput));
-		} else {
-			result[key] = value as NodeInput;
-		}
-	}
-
-	return result;
-}
-
-function resolveOneVoiceRef(vr: VoiceRef, nodeMap: Map<NodeId, NodeId[]>, defaultOutput: string): OutputRef {
-	const upstreamIds = nodeMap.get(vr.source);
-	if (!upstreamIds) {
-		throw new Error(`VoiceRef source "${vr.source}" not found in nodeMap`);
-	}
-	if (vr.index >= upstreamIds.length) {
-		throw new Error(`VoiceRef index ${vr.index} out of range for "${vr.source}" (has ${upstreamIds.length} voices)`);
-	}
-	return {
-		ref: upstreamIds[vr.index]!,
-		out: vr.output ?? defaultOutput,
-	};
-}
-
-/**
- * Resolve OutputRefs by updating refs to point to expanded nodes.
- * If upstream was expanded to poly, creates array of refs.
- */
-function resolveOutputRefs(
-	inputs: Record<string, NodeInput>,
-	nodeMap: Map<NodeId, NodeId[]>,
-): Record<string, NodeInput> {
-	const result: Record<string, NodeInput> = {};
-
-	for (const [key, value] of Object.entries(inputs)) {
-		if (isOutputRef(value)) {
-			const upstreamIds = nodeMap.get(value.ref);
-			if (upstreamIds && upstreamIds.length > 1) {
-				// Upstream expanded to poly - create array of refs
-				result[key] = upstreamIds.map((id): OutputRef => ({ ref: id, out: value.out }));
-			} else if (upstreamIds && upstreamIds.length === 1) {
-				// Upstream is mono but may have different ID
-				result[key] = { ref: upstreamIds[0]!, out: value.out };
-			} else {
-				result[key] = value;
-			}
-		} else if (isOutputRefArray(value)) {
-			// Already an array - resolve each ref
-			result[key] = value.map((ref) => {
-				const upstreamIds = nodeMap.get(ref.ref);
-				if (upstreamIds && upstreamIds.length === 1) {
-					return { ref: upstreamIds[0]!, out: ref.out };
-				}
-				return ref;
-			});
-		} else if (isNumberArray(value)) {
-			// Keep number arrays as-is (they're poly sources)
-			result[key] = value;
-		} else {
-			result[key] = value;
-		}
-	}
-
-	return result;
-}
-
-/**
  * Get the voice count from upstream nodes.
- * Called after VoiceRefs are resolved to OutputRefs.
+ * OutputRefs with voice field are pinned and contribute 1.
+ * OutputRefs without voice field contribute their source's voice count.
  */
 function getUpstreamVoiceCount(
-	inputs: Record<string, NodeInput>,
+	inputs: Record<string, unknown>,
 	nodeMap: Map<NodeId, NodeId[]>,
 ): number {
 	let maxCount = 1;
@@ -322,6 +247,10 @@ function getUpstreamVoiceCount(
 		} else if (isOutputRefArray(value)) {
 			maxCount = Math.max(maxCount, value.length);
 		} else if (isOutputRef(value)) {
+			// Pinned voice refs don't trigger expansion
+			if (value.voice !== undefined) {
+				continue;
+			}
 			const upstreamIds = nodeMap.get(value.ref);
 			if (upstreamIds) {
 				maxCount = Math.max(maxCount, upstreamIds.length);
@@ -333,11 +262,65 @@ function getUpstreamVoiceCount(
 }
 
 /**
- * Pick inputs for a specific voice index.
- * Arrays get indexed, refs get remapped to the voice's upstream node.
+ * Resolve all inputs for a mono node or polyphonic device.
+ * Expands OutputRefs to arrays if upstream is poly (and not pinned).
+ */
+function resolveInputs(
+	inputs: Record<string, unknown>,
+	nodeMap: Map<NodeId, NodeId[]>,
+): Record<string, NodeInput> {
+	const result: Record<string, NodeInput> = {};
+
+	for (const [key, value] of Object.entries(inputs)) {
+		if (isOutputRef(value)) {
+			if (value.voice !== undefined) {
+				// Pinned: resolve to specific voice
+				const upstreamIds = nodeMap.get(value.ref);
+				if (upstreamIds) {
+					const targetId = upstreamIds[value.voice % upstreamIds.length]!;
+					result[key] = { ref: targetId, out: value.out };
+				} else {
+					result[key] = { ref: value.ref, out: value.out };
+				}
+			} else {
+				// Not pinned: expand to array if poly
+				const upstreamIds = nodeMap.get(value.ref);
+				if (upstreamIds && upstreamIds.length > 1) {
+					result[key] = upstreamIds.map((id): OutputRef => ({ ref: id, out: value.out }));
+				} else if (upstreamIds && upstreamIds.length === 1) {
+					result[key] = { ref: upstreamIds[0]!, out: value.out };
+				} else {
+					result[key] = value;
+				}
+			}
+		} else if (isOutputRefArray(value)) {
+			result[key] = value.map((ref) => {
+				const upstreamIds = nodeMap.get(ref.ref);
+				if (ref.voice !== undefined && upstreamIds) {
+					const targetId = upstreamIds[ref.voice % upstreamIds.length]!;
+					return { ref: targetId, out: ref.out };
+				} else if (upstreamIds && upstreamIds.length === 1) {
+					return { ref: upstreamIds[0]!, out: ref.out };
+				}
+				return ref;
+			});
+		} else if (isNumberArray(value)) {
+			result[key] = value;
+		} else {
+			result[key] = value as NodeInput;
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Pick inputs for a specific voice index during duplication.
+ * Pinned refs resolve to their specific voice.
+ * Non-pinned refs pick from the voice array.
  */
 function pickVoiceInputs(
-	inputs: Record<string, NodeInput>,
+	inputs: Record<string, unknown>,
 	voiceIndex: number,
 	nodeMap: Map<NodeId, NodeId[]>,
 ): Record<string, NodeInput> {
@@ -349,7 +332,10 @@ function pickVoiceInputs(
 		} else if (isOutputRefArray(value)) {
 			const ref = value[voiceIndex % value.length]!;
 			const upstreamIds = nodeMap.get(ref.ref);
-			if (upstreamIds && upstreamIds.length > 1) {
+			if (ref.voice !== undefined && upstreamIds) {
+				const targetId = upstreamIds[ref.voice % upstreamIds.length]!;
+				result[key] = { ref: targetId, out: ref.out };
+			} else if (upstreamIds && upstreamIds.length > 1) {
 				result[key] = { ref: upstreamIds[voiceIndex % upstreamIds.length]!, out: ref.out };
 			} else if (upstreamIds && upstreamIds.length === 1) {
 				result[key] = { ref: upstreamIds[0]!, out: ref.out };
@@ -358,7 +344,11 @@ function pickVoiceInputs(
 			}
 		} else if (isOutputRef(value)) {
 			const upstreamIds = nodeMap.get(value.ref);
-			if (upstreamIds && upstreamIds.length > 1) {
+			if (value.voice !== undefined && upstreamIds) {
+				// Pinned: always resolve to the specific voice
+				const targetId = upstreamIds[value.voice % upstreamIds.length]!;
+				result[key] = { ref: targetId, out: value.out };
+			} else if (upstreamIds && upstreamIds.length > 1) {
 				result[key] = { ref: upstreamIds[voiceIndex % upstreamIds.length]!, out: value.out };
 			} else if (upstreamIds && upstreamIds.length === 1) {
 				result[key] = { ref: upstreamIds[0]!, out: value.out };
@@ -366,7 +356,7 @@ function pickVoiceInputs(
 				result[key] = value;
 			}
 		} else {
-			result[key] = value;
+			result[key] = value as NodeInput;
 		}
 	}
 
@@ -378,7 +368,7 @@ function isNumberArray(value: unknown): value is number[] {
 }
 
 function isOutputRef(value: unknown): value is OutputRef {
-	return typeof value === "object" && value !== null && "ref" in value && "out" in value && !("type" in value);
+	return typeof value === "object" && value !== null && "ref" in value && "out" in value;
 }
 
 function isOutputRefArray(value: unknown): value is OutputRef[] {

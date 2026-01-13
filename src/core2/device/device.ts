@@ -8,6 +8,7 @@ import { wrap } from "../wrap/wrap";
 import type { ConfigValue } from "../signal/config-value";
 import { createNode } from "../graph/create-node";
 import { createDeviceNode } from "./create-device-node";
+import { getBuilder } from "../graph/graph-builder";
 import type { DeviceSpec } from "./device-spec";
 import type { InputDef } from "./input-def";
 import { registerDevice } from "./registry";
@@ -98,10 +99,12 @@ export function device(nameOrSpec: string | DeviceSpecInput, maybeSpec?: DeviceS
 	let factory: DeviceFactory;
 
 	if (isAnonymous) {
-		// Anonymous device: creates node directly, no builder registration
+		// Anonymous device: creates node and registers with builder
+		// (same as named devices - needed for expand() to capture intermediate nodes)
 		factory = ((...args: unknown[]) => {
 			const { inputs, config } = parseFactoryArgs(args, spec, positionalArgs);
 			const node = createNode(name, inputs, config as Record<string, ConfigValue>);
+			getBuilder().addNode(node);
 			return wrap(node);
 		}) as DeviceFactory;
 	} else {
