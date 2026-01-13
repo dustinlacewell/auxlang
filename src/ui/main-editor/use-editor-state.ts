@@ -1,3 +1,9 @@
+import * as api from "@/core2/api";
+import { collect } from "@/core2/eval/collect";
+import { reset } from "@/core2/eval/reset";
+import { runCode } from "@/core2/eval/run-code";
+import { expandPoly, type StereoGraph } from "@/core2/graph/expand-poly";
+import type { FlatGraph } from "@/core2/graph/flat-graph";
 import type { PlaybackState } from "@/ui/audio/types";
 import { useCore2Audio } from "@/ui/audio/use-core2-audio";
 import { useCallback, useState } from "react";
@@ -27,14 +33,37 @@ interface EditorState {
 	error: string | null;
 	run: () => Promise<void>;
 	stop: () => void;
+	/** Pre-expansion graph (before poly expansion) */
+	preGraph: FlatGraph | null;
+	/** Post-expansion stereo graph */
+	stereoGraph: StereoGraph | null;
 }
 
 export function useEditorState(defaultCode: string = DEFAULT_CODE): EditorState {
 	const [code, setCode] = useState(defaultCode);
+	const [preGraph, setPreGraph] = useState<FlatGraph | null>(null);
+	const [stereoGraph, setStereoGraph] = useState<StereoGraph | null>(null);
 	const { getState, play, stop } = useCore2Audio();
 
 	const run = useCallback(async () => {
-		await play("main", code);
+		try {
+			// Evaluate code and capture intermediate graphs
+			reset();
+			runCode(code, api);
+			const graph = collect();
+			setPreGraph(graph);
+
+			const expanded = expandPoly(graph);
+			setStereoGraph(expanded);
+
+			// Play audio
+			await play("main", code);
+		} catch (err) {
+			// Error will be captured by play(), but clear graphs on error
+			setPreGraph(null);
+			setStereoGraph(null);
+			await play("main", code); // Let play handle the error state
+		}
 	}, [code, play]);
 
 	const instanceState = getState("main");
@@ -46,5 +75,7 @@ export function useEditorState(defaultCode: string = DEFAULT_CODE): EditorState 
 		error: instanceState.error ?? null,
 		run,
 		stop: () => stop("main"),
+		preGraph,
+		stereoGraph,
 	};
 }

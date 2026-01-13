@@ -64,8 +64,9 @@
 | Q029 | Should triggers be impulses or gates? | Resolved → D079: impulses (1 sample), check `trig > 0.5` |
 | Q030 | Do we need edge detection for trigger handling? | Resolved → D079: No, impulses eliminate need for edge detection |
 | Q031 | How does state survive graph swap? | Resolved → topology hash matching + TypedArray-aware deep clone + WASM serialization |
-| Q032 | How to handle effect tails during re-eval? | Resolved → D080/D082: crossfade (100ms) + WASM state serialization |
+| Q032 | How to handle effect tails during re-eval? | Resolved → D080/D082: crossfade (3s) + WASM state serialization |
 | Q033 | How do WASM devices preserve state across re-eval? | Resolved → D082: serialize/deserialize interface, state copied between instances |
+| Q039 | How does seq cursor state survive graph swap? | Resolved → cursor is plain object, deepCloneState handles nested objects correctly |
 
 ## API Design
 
@@ -78,6 +79,6 @@
 
 | ID | Question | Status |
 |----|----------|--------|
-| Q036 | Should devices be self-contained or can they rely on worklet globals? | Open — seq uses `globalThis.seqTraverse`. Consider pre-computing sequences at expand time. |
+| Q036 | Should devices be self-contained or can they rely on worklet globals? | Resolved → seq uses `globalThis.seqCursor` for cursor API. Acceptable for now. |
 | Q037 | How to handle v1 to core2 migration? | Open — both exist currently. Need deprecation plan. |
 | Q038 | Should expand hooks receive spec defaults or just user-provided config? | Resolved — user-provided only. Devices access constants from module scope (e.g., `CHORD_SEMITONES`). |

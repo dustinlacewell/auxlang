@@ -23,9 +23,24 @@ Per-node WASM instantiation for independent state.
 export function init(sampleRate: f32): void
 export function process(input: f32): f32
 export function set_<param>(value: f32): void
+
+// Optional: state preservation for re-eval
+export function get_state_size(): i32
+export function serialize(ptr: i32): void
+export function deserialize(ptr: i32): void
 ```
 
 Setters called per-sample for audio-rate modulation.
+
+## State Serialization
+
+For re-eval state preservation, WASM devices can export serialize/deserialize functions. The runtime:
+1. Calls `get_state_size()` to allocate buffer
+2. Calls `serialize(ptr)` to write state to buffer
+3. Creates new WASM instance for new graph
+4. Calls `deserialize(ptr)` to restore state
+
+This preserves filter state, delay buffers, reverb tails across code changes.
 
 ## TS Device Wrapper
 
@@ -58,4 +73,4 @@ cp native/build/reverb.wasm public/
 ## See Also
 
 - [native/assembly/](../native/assembly/) - WASM source
-- [lang-research/plans/native-modules.md](../lang-research/plans/native-modules.md) - roadmap
+- [src/core2/runtime/worklet/graph/wasm-state.ts](../src/core2/runtime/worklet/graph/wasm-state.ts) - serialization helpers

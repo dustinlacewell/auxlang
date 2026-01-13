@@ -12,8 +12,8 @@
  */
 
 import type { WorkletMessage, WorkletStereoGraph } from "../worklet-types";
-import { RuntimeGraph } from "./graph/runtime-graph";
-import { swapGraph, type SwapResult } from "./graph/swap-graph";
+import type { RuntimeGraph } from "./graph/runtime-graph";
+import { swapGraph } from "./graph/swap-graph";
 
 declare const sampleRate: number;
 
@@ -59,34 +59,6 @@ class Core2Processor extends AudioWorkletProcessor {
 			this.fadingOutGraph = result.oldGraph;
 			this.fadeProgress = 0;
 			this.fadeDurationSamples = Math.floor((Core2Processor.CROSSFADE_MS / 1000) * sampleRate);
-
-			// EVIDENCE: Compare old and new graph BEFORE processing any samples
-			console.log("========== GRAPH SWAP COMPARISON ==========");
-
-			// Dump state BEFORE processing
-			const oldStateBefore = this.fadingOutGraph.dumpNodeStates();
-			const newStateBefore = result.graph.dumpNodeStates();
-			RuntimeGraph.compareGraphs("INITIAL STATE (before processing)", oldStateBefore, newStateBefore);
-
-			// Process one sample on both graphs
-			const [oldL, oldR] = this.fadingOutGraph.processStereoSample(sampleRate);
-			const [newL, newR] = result.graph.processStereoSample(sampleRate);
-
-			// Dump state AFTER processing
-			const oldStateAfter = this.fadingOutGraph.dumpNodeStates();
-			const newStateAfter = result.graph.dumpNodeStates();
-			RuntimeGraph.compareGraphs("AFTER 1 SAMPLE", oldStateAfter, newStateAfter);
-
-			console.log(`\nOLD graph output: L=${oldL.toFixed(6)}, R=${oldR.toFixed(6)}`);
-			console.log(`NEW graph output: L=${newL.toFixed(6)}, R=${newR.toFixed(6)}`);
-			console.log(`DIFFERENCE: L=${Math.abs(newL - oldL).toFixed(6)}, R=${Math.abs(newR - oldR).toFixed(6)}`);
-
-			if (Math.abs(newL - oldL) > 0.0001 || Math.abs(newR - oldR) > 0.0001) {
-				console.log("!!! MISMATCH DETECTED - GRAPHS ARE NOT IDENTICAL !!!");
-			} else {
-				console.log("OK: Graphs produce identical output");
-			}
-			console.log("============================================");
 		}
 
 		this.graph = result.graph;

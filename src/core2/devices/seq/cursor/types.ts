@@ -46,6 +46,27 @@ export interface Cursor {
 	probDecisions: Record<string, boolean>;
 	/** Last CV for sample-and-hold */
 	lastCV: number;
+	/** Flattened events for current beat (sorted by start time) */
+	events: BeatEvent[];
+	/** Index of current event in events array */
+	eventIndex: number;
+	/** Path key of last triggered event (for trigger detection) */
+	lastTriggeredPath: string;
+}
+
+/**
+ * A note event within a beat, with fractional timing.
+ * Flattened from arbitrarily nested groups/subdivisions.
+ */
+export interface BeatEvent {
+	/** Frequency to output */
+	freq: number;
+	/** Start position within beat (0-1) */
+	start: number;
+	/** End position within beat (0-1) */
+	end: number;
+	/** Path key for trigger detection */
+	pathKey: string;
 }
 
 /**

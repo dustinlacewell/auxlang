@@ -37,7 +37,9 @@
       "Bash(done)",
       "Bash(npx vite-node:*)",
       "Bash(xargs:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(timeout 10 npx vite build:*)",
+      "Bash(timeout 15 npx vite build:*)"
     ]
   }
 }

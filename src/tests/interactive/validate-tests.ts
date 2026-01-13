@@ -3,10 +3,9 @@
  * Run with: npx tsx src/tests/interactive/validate-tests.ts
  */
 
-import { resetIdCounter } from "@/descriptor/identity";
-import { clearRegistry } from "@/descriptor/registry";
-import * as api from "@/editor/api";
-import { clearOutputs, collectStereoGraph } from "@/graph/out";
+import { reset } from "@/core2/eval/reset";
+import * as api from "@/core2/api";
+import { getBuilder } from "@/core2/graph/graph-builder";
 import { tests } from "./test-data";
 
 interface ValidationResult {
@@ -20,18 +19,17 @@ interface ValidationResult {
 
 function validateTest(test: { id: string; name: string; category: string; code: string }): ValidationResult {
 	// Reset state before each test
-	resetIdCounter();
-	clearRegistry();
-	clearOutputs();
+	reset();
 
 	try {
 		// Evaluate code
 		const fn = new Function(...Object.keys(api), test.code);
 		fn(...Object.values(api));
 
-		// Collect stereo graph
-		const stereo = collectStereoGraph();
-		if (!stereo) {
+		// Check that nodes were created
+		const nodes = getBuilder().getNodes();
+		const hasOut = nodes.some((n) => n.device === "out");
+		if (!hasOut) {
 			return {
 				id: test.id,
 				name: test.name,
@@ -46,7 +44,7 @@ function validateTest(test: { id: string; name: string; category: string; code: 
 			name: test.name,
 			category: test.category,
 			success: true,
-			nodeCount: stereo.left.nodes.length,
+			nodeCount: nodes.length,
 		};
 	} catch (err) {
 		return {
