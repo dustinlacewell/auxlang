@@ -2,6 +2,7 @@
  * GraphBuilder - accumulates nodes during API execution.
  *
  * Central collector that devices add nodes to. Reset between evaluations.
+ * During expand(), we swap in a temporary builder to capture created nodes.
  */
 
 import type { FlatGraph } from "./flat-graph";
@@ -14,9 +15,13 @@ export class GraphBuilder {
 		this.nodes.set(node.id, node);
 	}
 
+	getNodes(): Node[] {
+		return Array.from(this.nodes.values());
+	}
+
 	build(): FlatGraph {
 		return {
-			nodes: Array.from(this.nodes.values()),
+			nodes: this.getNodes(),
 		};
 	}
 }
@@ -33,4 +38,20 @@ export function getBuilder(): GraphBuilder {
 
 export function resetBuilder(): void {
 	currentBuilder = new GraphBuilder();
+}
+
+/**
+ * Swap in a new builder, run a function, swap back.
+ * Returns the nodes created during the function execution.
+ */
+export function withBuilder<T>(fn: () => T): { result: T; nodes: Node[] } {
+	const previous = currentBuilder;
+	const temp = new GraphBuilder();
+	currentBuilder = temp;
+	try {
+		const result = fn();
+		return { result, nodes: temp.getNodes() };
+	} finally {
+		currentBuilder = previous;
+	}
 }

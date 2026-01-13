@@ -5,6 +5,7 @@
  * Nodes are topologically sorted and inputs are resolved to sources.
  */
 
+import { getDeviceSpec } from "../device/registry";
 import type { StereoGraph } from "../graph/expand-poly";
 import type { Node, NodeId } from "../graph/node";
 import type { OutputRef } from "../graph/output-ref";
@@ -32,10 +33,12 @@ export function compile(graph: StereoGraph): StereoRuntimeGraph {
 
 	// Build runtime nodes
 	const nodes: RuntimeNode[] = sorted.map((node) => {
+		const spec = getDeviceSpec(node.device);
+		const isProcessAll = spec?.processAll !== undefined;
 		const inputSources: Record<string, ResolvedSource> = {};
 
 		for (const [name, binding] of Object.entries(node.inputs)) {
-			inputSources[name] = resolveSource(binding);
+			inputSources[name] = resolveSource(binding, isProcessAll);
 		}
 
 		return {
@@ -53,7 +56,7 @@ export function compile(graph: StereoGraph): StereoRuntimeGraph {
 	};
 }
 
-function resolveSource(binding: unknown): ResolvedSource {
+function resolveSource(binding: unknown, allowArrays = false): ResolvedSource {
 	if (binding === undefined || binding === null) {
 		return { type: "constant", value: 0 };
 	}
@@ -71,7 +74,17 @@ function resolveSource(binding: unknown): ResolvedSource {
 	}
 
 	if (Array.isArray(binding)) {
-		throw new Error("Unexpected array in binding after expansion - run expandPoly first");
+		if (!allowArrays) {
+			throw new Error("Unexpected array in binding after expansion - run expandPoly first");
+		}
+		// For processAll devices, convert OutputRef[] to connectionArray
+		if (binding.length > 0 && isOutputRef(binding[0])) {
+			return {
+				type: "connectionArray",
+				connections: binding.map((ref: OutputRef) => ({ nodeId: ref.ref, output: ref.out })),
+			};
+		}
+		throw new Error("Array binding must contain OutputRefs");
 	}
 
 	throw new Error(`Unknown binding type: ${typeof binding}`);
@@ -88,6 +101,10 @@ function topologicalSort(nodes: readonly Node[]): Node[] {
 		for (const value of Object.values(node.inputs)) {
 			if (isOutputRef(value)) {
 				deps.get(node.id)!.add(value.ref);
+			} else if (isOutputRefArray(value)) {
+				for (const ref of value) {
+					deps.get(node.id)!.add(ref.ref);
+				}
 			}
 		}
 	}
@@ -133,4 +150,8 @@ function topologicalSort(nodes: readonly Node[]): Node[] {
 
 function isOutputRef(value: unknown): value is OutputRef {
 	return typeof value === "object" && value !== null && "ref" in value && "out" in value;
+}
+
+function isOutputRefArray(value: unknown): value is OutputRef[] {
+	return Array.isArray(value) && value.length > 0 && isOutputRef(value[0]);
 }

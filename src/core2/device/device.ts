@@ -23,23 +23,45 @@ export interface DeviceSpecInput {
 	defaultOutput: string;
 	positionalArgs?: readonly string[];
 	config?: Record<string, ConfigValue>;
-	process: DeviceSpec["process"];
+	process?: DeviceSpec["process"];
+	processAll?: DeviceSpec["processAll"];
 	wasmUrl?: string;
 	polyphonic?: boolean;
 	expand?: DeviceSpec["expand"];
 }
 
-function normalizeSpec(input: DeviceSpecInput): DeviceSpec {
-	const spec: DeviceSpec = {
+function normalizeSpec(name: string, input: DeviceSpecInput): DeviceSpec {
+	// Validate: expand and processAll are mutually exclusive
+	if (input.expand && input.processAll) {
+		throw new Error(`Device "${name}": expand and processAll are mutually exclusive`);
+	}
+
+	// Validate: polyphonic devices must have either expand or processAll
+	if (input.polyphonic && !input.expand && !input.processAll) {
+		throw new Error(`Device "${name}": polyphonic devices must have expand or processAll`);
+	}
+
+	// Validate: processAll requires polyphonic
+	if (input.processAll && !input.polyphonic) {
+		throw new Error(`Device "${name}": processAll requires polyphonic: true`);
+	}
+
+	// Build spec, only adding optional fields if defined
+	const spec = {
 		inputs: input.inputs,
 		config: input.config ?? {},
 		outputs: input.outputs,
 		defaultInput: input.defaultInput,
 		defaultOutput: input.defaultOutput,
 		positionalArgs: input.positionalArgs ?? [],
-		process: input.process,
-	};
+	} as DeviceSpec;
 
+	if (input.process !== undefined) {
+		(spec as { process: DeviceSpec["process"] }).process = input.process;
+	}
+	if (input.processAll !== undefined) {
+		(spec as { processAll: DeviceSpec["processAll"] }).processAll = input.processAll;
+	}
 	if (input.wasmUrl !== undefined) {
 		(spec as { wasmUrl: string }).wasmUrl = input.wasmUrl;
 	}
@@ -70,7 +92,7 @@ export function device(nameOrSpec: string | DeviceSpecInput, maybeSpec?: DeviceS
 	const name = isAnonymous ? `_anon${++anonCounter}` : nameOrSpec;
 	const specInput = isAnonymous ? nameOrSpec : maybeSpec!;
 
-	const spec = normalizeSpec(specInput);
+	const spec = normalizeSpec(name, specInput);
 	const positionalArgs = spec.positionalArgs ?? [];
 
 	let factory: DeviceFactory;

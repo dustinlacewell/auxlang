@@ -34,6 +34,7 @@ import { arTests } from "./modulators/ar";
 // Effects
 import { delayTests } from "./effects/delay";
 import { reverbTests } from "./effects/reverb";
+import { nativeReverbTests } from "./effects/native-reverb";
 import { tapeTests } from "./effects/tape";
 
 // Utilities
@@ -43,6 +44,11 @@ import { slewTests } from "./utilities/slew";
 import { sahTests } from "./utilities/sah";
 import { quantizeTests } from "./utilities/quantize";
 import { chordTests } from "./utilities/chord";
+import { pickTests } from "./utilities/pick";
+
+// Poly
+import { polyTests } from "./poly/poly";
+import { sumTests } from "./poly/sum";
 
 // Stereo
 import { panTests } from "./stereo/pan";
@@ -92,6 +98,7 @@ export const tests: TestDefinition[] = [
 	// Effects
 	...delayTests,
 	...reverbTests,
+	...nativeReverbTests,
 	...tapeTests,
 
 	// Utilities
@@ -101,6 +108,11 @@ export const tests: TestDefinition[] = [
 	...sahTests,
 	...quantizeTests,
 	...chordTests,
+	...pickTests,
+
+	// Poly
+	...polyTests,
+	...sumTests,
 
 	// Stereo
 	...panTests,

@@ -4,7 +4,7 @@
  * Simplified from v1:
  * - Specs sent once, nodes reference by device name
  * - No poly complexity in worklet (handled by expandPoly)
- * - Inputs are always scalar after expansion
+ * - Inputs are always scalar after expansion (except processAll devices)
  */
 
 /** Serialized device spec - just what the worklet needs to execute */
@@ -13,7 +13,8 @@ export interface WorkletSpec {
 	readonly outputs: readonly string[];
 	readonly defaultInput: string;
 	readonly defaultOutput: string;
-	readonly processSource: string;
+	readonly processSource?: string;
+	readonly processAllSource?: string;
 }
 
 /** Serialized config value */
@@ -25,7 +26,8 @@ export type WorkletConfig =
 export type WorkletInput =
 	| { readonly type: "constant"; readonly value: number }
 	| { readonly type: "connection"; readonly nodeId: string; readonly output: string }
-	| { readonly type: "lambda"; readonly source: string };
+	| { readonly type: "lambda"; readonly source: string }
+	| { readonly type: "connectionArray"; readonly connections: readonly { nodeId: string; output: string }[] };
 
 /** A node ready for worklet execution */
 export interface WorkletNode {

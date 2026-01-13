@@ -27,6 +27,14 @@ function hashInput(input: WorkletInput, nodeHashes: Map<string, TopologyHash>): 
 	if (input.type === "lambda") {
 		return "lambda";
 	}
+	if (input.type === "connectionArray") {
+		// Hash each connection in the array
+		const connectionHashes = input.connections.map((c) => {
+			const sourceHash = nodeHashes.get(c.nodeId);
+			return sourceHash ? `${sourceHash}.${c.output}` : "unknown";
+		});
+		return `[${connectionHashes.join(",")}]`;
+	}
 	// Connection
 	const sourceHash = nodeHashes.get(input.nodeId);
 	if (!sourceHash) {
@@ -49,14 +57,15 @@ function hashInput(input: WorkletInput, nodeHashes: Map<string, TopologyHash>): 
  */
 function computeNodeHash(
 	node: WorkletNode,
-	specs: Record<string, { processSource: string }>,
+	specs: Record<string, { processSource?: string; processAllSource?: string }>,
 	nodeHashes: Map<string, TopologyHash>,
 ): TopologyHash {
 	const parts: string[] = [];
 
-	// Device type identity: use process function source
+	// Device type identity: use process or processAll function source
 	const spec = specs[node.device];
-	parts.push(`type:${spec?.processSource ?? node.device}`);
+	const sourceId = spec?.processSource ?? spec?.processAllSource ?? node.device;
+	parts.push(`type:${sourceId}`);
 
 	// Input connection structure (sorted for determinism)
 	const inputNames = Object.keys(node.inputs).sort();
@@ -74,7 +83,7 @@ function computeNodeHash(
 }
 
 interface GraphLike {
-	specs: Record<string, { processSource: string }>;
+	specs: Record<string, { processSource?: string; processAllSource?: string }>;
 	nodes: readonly WorkletNode[];
 }
 
