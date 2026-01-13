@@ -10,7 +10,7 @@ export const clock = device("clock", {
 	outputs: ["trig", "gate"],
 	defaultInput: "bpm",
 	defaultOutput: "trig",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const bpm = (inp.bpm as number) ?? 120;
 		const swing = Math.max(0, Math.min(0.5, (inp.swing as number) ?? 0));
 
@@ -24,7 +24,9 @@ export const clock = device("clock", {
 			state.phase = 0;
 			state.beatCount = 0;
 			// Reset signal: negative value encodes BPM for downstream devices
-			return { trig: -bpm, gate: 0 };
+			out.trig = -bpm;
+			out.gate = 0;
+			return;
 		}
 
 		const isOddBeat = beatCount % 2 === 1;
@@ -42,6 +44,7 @@ export const clock = device("clock", {
 			state.phase = newPhase;
 		}
 
-		return { trig, gate };
+		out.trig = trig;
+		out.gate = gate;
 	},
 });

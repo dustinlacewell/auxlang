@@ -10,7 +10,7 @@ export const snare = device("snare", {
 	outputs: ["audio"],
 	defaultInput: "trig",
 	defaultOutput: "audio",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const trig = (inp.trig as number) ?? 0;
 		const pitch = (inp.pitch as number) ?? 180;
 		const tone = Math.max(0, Math.min(1, (inp.tone as number) ?? 0.4));
@@ -66,6 +66,6 @@ export const snare = device("snare", {
 		state.lpState = lpState;
 		state.hpState = hpState;
 
-		return { audio };
+		out.audio = audio;
 	},
 });

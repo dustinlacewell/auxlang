@@ -6,101 +6,27 @@
  * No object allocations, no string lookups, no iteration in the hot path.
  */
 
-import { hydrateFunction } from "../../hydrate-function";
-import type { WorkletInput, WorkletSpec, WorkletStereoGraph } from "../../worklet-types";
+import type { WorkletStereoGraph } from "../../worklet-types";
 import type { CollectedStates } from "./collected-states";
-import { deepCloneState } from "./deep-clone-state";
-
-// ============================================================================
-// Types
-// ============================================================================
-
-type ProcessFn = (
-	inputs: Record<string, number>,
-	config: Record<string, unknown>,
-	state: Record<string, unknown>,
-	sampleRate: number,
-	time: number,
-) => Record<string, number>;
-
-type ProcessAllFn = (
-	inputs: Record<string, number[]>,
-	config: Record<string, unknown>,
-	state: Record<string, unknown>,
-	sampleRate: number,
-	time: number,
-) => Record<string, number>;
-
-type LambdaFn = (state: Record<string, unknown>, sr: number, time: number) => number;
-
-// Pre-compiled input resolver - no allocations per sample
-type InputResolver = (sr: number, time: number) => void;
-
-// Pre-compiled output copier
-type OutputCopier = () => void;
-
-interface RuntimeNode {
-	id: string;
-	process?: ProcessFn;
-	processAll?: ProcessAllFn;
-	// Pre-allocated input/config objects (reused every sample)
-	inputs: Record<string, number>;
-	inputArrays: Record<string, number[]>;
-	config: Record<string, unknown>;
-	state: Record<string, unknown>;
-	outputs: Record<string, number>;
-	// Pre-compiled functions for hot path
-	resolveInputs: InputResolver;
-	resolveInputArrays: InputResolver;
-	copyOutputs: OutputCopier;
-	// For state collection
-	lambdaStates: Map<string, Record<string, unknown>>;
-}
-
-// ============================================================================
-// Hydration
-// ============================================================================
-
-function createWasmProcess(instance: WebAssembly.Instance, spec: WorkletSpec): ProcessFn {
-	const exports = instance.exports as Record<string, unknown>;
-	const processExport = exports.process as ((input: number) => number) | undefined;
-	if (!processExport) throw new Error("WASM module missing 'process' export");
-
-	const inputNames = Object.keys(spec.inputs).sort();
-	const setters: ((v: number) => void)[] = [];
-	for (const name of inputNames) {
-		const setter = exports[`set_${name}`] as ((v: number) => void) | undefined;
-		if (setter) setters.push(setter);
-	}
-
-	const defaultInput = spec.defaultInput;
-	const defaultOutput = spec.defaultOutput;
-
-	return (inputs, _config, _state, _sampleRate) => {
-		for (let i = 0; i < inputNames.length; i++) {
-			setters[i]?.(inputs[inputNames[i]!] ?? 0);
-		}
-		return { [defaultOutput]: processExport(inputs[defaultInput] ?? 0) };
-	};
-}
-
-// ============================================================================
-// RuntimeGraph
-// ============================================================================
+import { buildRuntimeNode } from "./node/build-node";
+import type { RuntimeNode } from "./node/types";
 
 export class RuntimeGraph {
 	private nodes: RuntimeNode[] = [];
-	private nodeOutputs: Record<string, number>[] = []; // Direct array access instead of Map
+	private nodeOutputs: Record<string, number>[] = [];
 	private nodeIndexById = new Map<string, number>();
+
+	// Pre-compiled output mixing
 	private leftOutputIndices: number[] = [];
 	private rightOutputIndices: number[] = [];
 	private leftOutputKeys: string[] = [];
 	private rightOutputKeys: string[] = [];
-	private sampleCount = 0;
 	private leftCount = 0;
 	private rightCount = 0;
 	private leftScale = 1;
 	private rightScale = 1;
+
+	private sampleCount = 0;
 
 	constructor(
 		graph: WorkletStereoGraph,
@@ -110,37 +36,56 @@ export class RuntimeGraph {
 	) {
 		if (oldStates) this.sampleCount = oldStates.sampleCount;
 
-		// Build node index first for fast lookup during compilation
+		this.buildNodeIndex(graph);
+		this.buildNodes(graph, wasmInstances, oldStates, nodeMapping);
+		this.buildOutputMixing(graph);
+	}
+
+	private buildNodeIndex(graph: WorkletStereoGraph): void {
 		for (let i = 0; i < graph.nodes.length; i++) {
 			this.nodeIndexById.set(graph.nodes[i]!.id, i);
 		}
+	}
 
-		// Build nodes
+	private buildNodes(
+		graph: WorkletStereoGraph,
+		wasmInstances: Map<string, WebAssembly.Instance>,
+		oldStates: CollectedStates | undefined,
+		nodeMapping: Map<string, string> | undefined,
+	): void {
 		for (let i = 0; i < graph.nodes.length; i++) {
 			const node = graph.nodes[i]!;
 			const spec = graph.specs[node.device]!;
-			const oldNodeId = nodeMapping?.get(node.id);
 
-			const runtimeNode = this.buildNode(node, spec, wasmInstances.get(node.id), oldNodeId, oldStates);
+			const runtimeNode = buildRuntimeNode({
+				node,
+				spec,
+				wasmInstance: wasmInstances.get(node.id),
+				oldNodeId: nodeMapping?.get(node.id),
+				oldStates,
+				nodeIndexById: this.nodeIndexById,
+				nodeOutputs: this.nodeOutputs,
+			});
+
 			this.nodes.push(runtimeNode);
 			this.nodeOutputs.push(runtimeNode.outputs);
 		}
+	}
 
-		// Pre-compile output mixing
+	private buildOutputMixing(graph: WorkletStereoGraph): void {
 		for (const id of graph.leftOutputIds) {
 			const idx = this.nodeIndexById.get(id);
 			if (idx !== undefined) {
 				this.leftOutputIndices.push(idx);
-				const node = this.nodes[idx]!;
-				this.leftOutputKeys.push(Object.keys(node.outputs)[0] ?? "out");
+				this.leftOutputKeys.push(Object.keys(this.nodes[idx]!.outputs)[0] ?? "out");
 			}
 		}
+
 		for (const id of graph.rightOutputIds) {
 			const idx = this.nodeIndexById.get(id);
 			if (idx !== undefined) {
 				this.rightOutputIndices.push(idx);
-				const node = this.nodes[idx]!;
-				this.rightOutputKeys.push(Object.keys(node.outputs)[0] ?? "out");
+				this.rightOutputKeys.push(Object.keys(this.nodes[idx]!.outputs)[0] ?? "out");
 			}
 		}
 
@@ -148,210 +93,6 @@ export class RuntimeGraph {
 		this.rightCount = this.rightOutputIndices.length;
 		this.leftScale = this.leftCount > 1 ? 1 / Math.sqrt(this.leftCount) : 1;
 		this.rightScale = this.rightCount > 1 ? 1 / Math.sqrt(this.rightCount) : 1;
-	}
-
-	private buildNode(
-		node: WorkletStereoGraph["nodes"][number],
-		spec: WorkletSpec,
-		wasmInstance: WebAssembly.Instance | undefined,
-		oldNodeId: string | undefined,
-		oldStates: CollectedStates | undefined,
-	): RuntimeNode {
-		// Restore state from matched old node
-		let state: Record<string, unknown> = {};
-		if (oldNodeId && oldStates?.nodeStates.has(oldNodeId)) {
-			state = deepCloneState(oldStates.nodeStates.get(oldNodeId)!);
-		}
-
-		// Hydrate process or processAll (WASM or JS)
-		let process: ProcessFn | undefined;
-		let processAll: ProcessAllFn | undefined;
-
-		if (wasmInstance) {
-			process = createWasmProcess(wasmInstance, spec);
-		} else if (spec.processAllSource) {
-			processAll = hydrateFunction(spec.processAllSource) as ProcessAllFn;
-		} else if (spec.processSource) {
-			process = hydrateFunction(spec.processSource) as ProcessFn;
-		}
-
-		// Pre-allocate input objects
-		const inputs: Record<string, number> = {};
-		const inputArrays: Record<string, number[]> = {};
-		for (const name of Object.keys(spec.inputs)) {
-			inputs[name] = spec.inputs[name]!.default;
-			inputArrays[name] = [spec.inputs[name]!.default];
-		}
-
-		// Pre-allocate config object
-		const config: Record<string, unknown> = {};
-		const configGetters: (() => unknown)[] = [];
-		const configKeys: string[] = [];
-		for (const [name, cfg] of Object.entries(node.config)) {
-			configKeys.push(name);
-			if (cfg.type === "fn") {
-				const fn = hydrateFunction(cfg.source);
-				configGetters.push(() => fn);
-			} else {
-				const value = cfg.value;
-				configGetters.push(() => value);
-			}
-		}
-
-		// Pre-allocate outputs
-		const outputs: Record<string, number> = {};
-		const outputKeys: string[] = [];
-		for (const out of spec.outputs) {
-			outputs[out] = 0;
-			outputKeys.push(out);
-		}
-
-		// Lambda states for this node
-		const lambdaStates = new Map<string, Record<string, unknown>>();
-
-		// Build pre-compiled input resolvers
-		const inputResolvers: Array<(sr: number, time: number) => number> = [];
-		const inputNames: string[] = [];
-
-		for (const [name, input] of Object.entries(node.inputs)) {
-			inputNames.push(name);
-
-			if (input.type === "constant") {
-				const value = input.value;
-				inputResolvers.push(() => value);
-			} else if (input.type === "connection") {
-				const srcIdx = this.nodeIndexById.get(input.nodeId);
-				const srcOutput = input.output;
-				if (srcIdx !== undefined) {
-					inputResolvers.push(() => this.nodeOutputs[srcIdx]![srcOutput] ?? 0);
-				} else {
-					inputResolvers.push(() => 0);
-				}
-			} else if (input.type === "connectionArray") {
-				const connections = input.connections.map((c) => ({
-					idx: this.nodeIndexById.get(c.nodeId),
-					output: c.output,
-				}));
-				// For scalar, just take first
-				if (connections.length > 0 && connections[0]!.idx !== undefined) {
-					const firstIdx = connections[0]!.idx;
-					const firstOutput = connections[0]!.output;
-					inputResolvers.push(() => this.nodeOutputs[firstIdx]![firstOutput] ?? 0);
-				} else {
-					inputResolvers.push(() => 0);
-				}
-			} else {
-				// Lambda
-				const fn = hydrateFunction(input.source) as LambdaFn;
-				const lambdaKey = `${node.id}:${name}`;
-				const oldLambdaKey = oldNodeId ? `${oldNodeId}:${name}` : undefined;
-
-				let lambdaState: Record<string, unknown> = {};
-				if (oldLambdaKey && oldStates?.lambdaStates.has(oldLambdaKey)) {
-					lambdaState = deepCloneState(oldStates.lambdaStates.get(oldLambdaKey)!);
-				}
-				lambdaStates.set(lambdaKey, lambdaState);
-
-				inputResolvers.push((sr, time) => fn(lambdaState, sr, time));
-			}
-		}
-
-		// Apply defaults for missing inputs
-		for (const [name, def] of Object.entries(spec.inputs)) {
-			if (!inputNames.includes(name)) {
-				inputNames.push(name);
-				const value = def.default;
-				inputResolvers.push(() => value);
-			}
-		}
-
-		// Build array resolvers for processAll
-		const arrayResolvers: Array<() => number[]> = [];
-		const arrayInputNames: string[] = [];
-
-		for (const [name, input] of Object.entries(node.inputs)) {
-			arrayInputNames.push(name);
-
-			if (input.type === "constant") {
-				const arr = [input.value];
-				arrayResolvers.push(() => arr);
-			} else if (input.type === "connection") {
-				const srcIdx = this.nodeIndexById.get(input.nodeId);
-				const srcOutput = input.output;
-				if (srcIdx !== undefined) {
-					arrayResolvers.push(() => [this.nodeOutputs[srcIdx]![srcOutput] ?? 0]);
-				} else {
-					arrayResolvers.push(() => [0]);
-				}
-			} else if (input.type === "connectionArray") {
-				const connections = input.connections.map((c) => ({
-					idx: this.nodeIndexById.get(c.nodeId),
-					output: c.output,
-				}));
-				arrayResolvers.push(() => {
-					const result: number[] = [];
-					for (const conn of connections) {
-						if (conn.idx !== undefined) {
-							result.push(this.nodeOutputs[conn.idx]![conn.output] ?? 0);
-						} else {
-							result.push(0);
-						}
-					}
-					return result;
-				});
-			} else {
-				// Lambda - not fully supported in array context
-				arrayResolvers.push(() => [0]);
-			}
-		}
-
-		// Apply defaults for array resolvers
-		for (const [name, def] of Object.entries(spec.inputs)) {
-			if (!arrayInputNames.includes(name)) {
-				arrayInputNames.push(name);
-				const arr = [def.default];
-				arrayResolvers.push(() => arr);
-			}
-		}
-
-		// Pre-compiled resolve functions
-		const resolveInputs: InputResolver = (sr, time) => {
-			for (let i = 0; i < inputNames.length; i++) {
-				inputs[inputNames[i]!] = inputResolvers[i]!(sr, time);
-			}
-			for (let i = 0; i < configKeys.length; i++) {
-				config[configKeys[i]!] = configGetters[i]!();
-			}
-		};
-
-		const resolveInputArrays: InputResolver = (_sr, _time) => {
-			for (let i = 0; i < arrayInputNames.length; i++) {
-				inputArrays[arrayInputNames[i]!] = arrayResolvers[i]!();
-			}
-			for (let i = 0; i < configKeys.length; i++) {
-				config[configKeys[i]!] = configGetters[i]!();
-			}
-		};
-
-		// Pre-compiled output copier
-		const copyOutputs: OutputCopier = () => {
-			// outputs are modified in place by process(), no copy needed
-		};
-
-		return {
-			id: node.id,
-			process,
-			processAll,
-			inputs,
-			inputArrays,
-			config,
-			state,
-			outputs,
-			resolveInputs,
-			resolveInputArrays,
-			copyOutputs,
-			lambdaStates,
-		};
 	}
 
 	/**
@@ -371,22 +112,14 @@ export class RuntimeGraph {
 
 			if (node.processAll) {
 				node.resolveInputArrays(sr, time);
-				const result = node.processAll(node.inputArrays, node.config, node.state, sr, time);
-				// Copy results to outputs
-				for (const key in result) {
-					node.outputs[key] = result[key]!;
-				}
+				node.processAll(node.inputArrays, node.config, node.state, sr, time, node.outputs);
 			} else if (node.process) {
 				node.resolveInputs(sr, time);
-				const result = node.process(node.inputs, node.config, node.state, sr, time);
-				// Copy results to outputs
-				for (const key in result) {
-					node.outputs[key] = result[key]!;
-				}
+				node.process(node.inputs, node.config, node.state, sr, time, node.outputs);
 			}
 		}
 
-		// Mix outputs - direct array access, no Map lookup
+		// Mix outputs
 		let left = 0;
 		let right = 0;
 
@@ -418,5 +151,80 @@ export class RuntimeGraph {
 		}
 
 		return { nodeStates, lambdaStates, sampleCount: this.sampleCount };
+	}
+
+	/**
+	 * Dump all node outputs and critical state for comparison.
+	 */
+	dumpNodeStates(): Map<string, { outputs: Record<string, number>; state: Record<string, unknown> }> {
+		const dump = new Map<string, { outputs: Record<string, number>; state: Record<string, unknown> }>();
+		for (const node of this.nodes) {
+			dump.set(node.id, {
+				outputs: { ...node.outputs },
+				state: { ...node.state },
+			});
+		}
+		return dump;
+	}
+
+	/**
+	 * Compare two graphs' node states and log differences.
+	 */
+	static compareGraphs(
+		label: string,
+		oldDump: Map<string, { outputs: Record<string, number>; state: Record<string, unknown> }>,
+		newDump: Map<string, { outputs: Record<string, number>; state: Record<string, unknown> }>,
+	): void {
+		console.log(`\n=== ${label} ===`);
+		for (const [nodeId, oldData] of oldDump) {
+			const newData = newDump.get(nodeId);
+			if (!newData) {
+				console.log(`  [${nodeId}] MISSING in new graph!`);
+				continue;
+			}
+
+			// Compare outputs
+			let outputsDiffer = false;
+			const outputDiffs: string[] = [];
+			for (const key of Object.keys(oldData.outputs)) {
+				const oldVal = oldData.outputs[key] ?? 0;
+				const newVal = newData.outputs[key] ?? 0;
+				if (Math.abs(oldVal - newVal) > 0.0001) {
+					outputsDiffer = true;
+					outputDiffs.push(`${key}: ${oldVal.toFixed(4)} vs ${newVal.toFixed(4)}`);
+				}
+			}
+
+			if (outputsDiffer) {
+				console.log(`  [${nodeId}] OUTPUT MISMATCH: ${outputDiffs.join(", ")}`);
+			}
+
+			// Compare critical state (skip complex objects like cursor)
+			const stateKeys = ["beatIndex", "phase", "level", "stage", "wasGate", "samplesPerBeat", "samplesSinceTrig"];
+			const stateDiffs: string[] = [];
+			for (const key of stateKeys) {
+				const oldVal = oldData.state[key];
+				const newVal = newData.state[key];
+				if (oldVal !== undefined || newVal !== undefined) {
+					if (typeof oldVal === "number" && typeof newVal === "number") {
+						if (Math.abs(oldVal - newVal) > 0.0001) {
+							stateDiffs.push(`${key}: ${oldVal.toFixed(2)} vs ${newVal.toFixed(2)}`);
+						}
+					} else if (oldVal !== newVal) {
+						stateDiffs.push(`${key}: ${JSON.stringify(oldVal)} vs ${JSON.stringify(newVal)}`);
+					}
+				}
+			}
+			if (stateDiffs.length > 0) {
+				console.log(`  [${nodeId}] STATE MISMATCH: ${stateDiffs.join(", ")}`);
+			}
+		}
+
+		// Check for nodes in new but not in old
+		for (const nodeId of newDump.keys()) {
+			if (!oldDump.has(nodeId)) {
+				console.log(`  [${nodeId}] NEW node not in old graph`);
+			}
+		}
 	}
 }

@@ -41,10 +41,10 @@ const chordTone = device({
 	outputs: ["freq"],
 	defaultInput: "root",
 	defaultOutput: "freq",
-	process(inp, cfg) {
+	process(inp, cfg, _state, _sampleRate, _time, out) {
 		const rootFreq = (inp.root as number) ?? 261.63;
 		const semi = (cfg.semi as number) ?? 0;
-		return { freq: rootFreq * Math.pow(2, semi / 12) };
+		out.freq = rootFreq * Math.pow(2, semi / 12);
 	},
 });
 
@@ -55,9 +55,9 @@ export const chord = device("chord", {
 	defaultInput: "root",
 	defaultOutput: "freq",
 	positionalArgs: ["root", "chordName"],
-	process(inp) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		// Fallback for mono - just pass through root
-		return { freq: (inp.root as number) ?? 261.63 };
+		out.freq = (inp.root as number) ?? 261.63;
 	},
 	expand(config, inputBindings) {
 		const chordName = (config.chordName as string) ?? "maj";

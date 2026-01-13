@@ -5,8 +5,11 @@
  * It sets up global utilities and registers the graph processor.
  */
 
-// This import has a side-effect: it sets globalThis.seqTraverse
+// Legacy traverse (to be removed after cursor is verified)
 import "./seq-traverse";
+
+// Cursor-based approach (shared with main thread)
+import "./seq-cursor-bridge";
 
 // Now safe to import processor which registers the worklet
 import "./processor";

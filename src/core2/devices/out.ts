@@ -21,7 +21,7 @@ export const outDevice = device("out", {
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
-	process(inp) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const gain = (inp.gain as number) ?? 1;
 		const sidechain = (inp.sidechain as number) ?? 0;
@@ -29,6 +29,6 @@ export const outDevice = device("out", {
 		// Sidechain ducking: 0 = no duck, 1 = full duck
 		const duck = 1 - Math.max(0, Math.min(1, sidechain));
 
-		return { signal: input * gain * duck };
+		out.signal = input * gain * duck;
 	},
 });

@@ -10,7 +10,7 @@ export const slew = device("slew", {
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const rise = Math.max(0.0001, (inp.rise as number) ?? 0.1);
 		const fall = Math.max(0.0001, (inp.fall as number) ?? 0.1);
@@ -27,6 +27,6 @@ export const slew = device("slew", {
 		}
 
 		state.current = newValue;
-		return { signal: newValue };
+		out.signal = newValue;
 	},
 });

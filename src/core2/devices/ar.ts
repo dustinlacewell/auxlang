@@ -11,7 +11,7 @@ export const ar = device("ar", {
 	outputs: ["cv"],
 	defaultInput: "gate",
 	defaultOutput: "cv",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const gate = (inp.gate as number) ?? 0;
 		const attack = Math.max(0.0001, (inp.attack as number) ?? 0.01);
 		const release = Math.max(0.0001, (inp.release as number) ?? 0.1);
@@ -55,6 +55,6 @@ export const ar = device("ar", {
 		state.stage = newStage;
 		state.wasGate = gate;
 
-		return { cv: newLevel };
+		out.cv = newLevel;
 	},
 });

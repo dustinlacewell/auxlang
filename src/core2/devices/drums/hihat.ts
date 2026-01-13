@@ -10,7 +10,7 @@ export const hihat = device("hihat", {
 	outputs: ["audio"],
 	defaultInput: "trig",
 	defaultOutput: "audio",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const trig = (inp.trig as number) ?? 0;
 		const decay = Math.max(0.005, (inp.decay as number) ?? 0.05);
 		const tone = Math.max(0, Math.min(1, (inp.tone as number) ?? 0.6));
@@ -72,6 +72,6 @@ export const hihat = device("hihat", {
 		state.amp = amp;
 		state.hpState = hpState;
 
-		return { audio };
+		out.audio = audio;
 	},
 });

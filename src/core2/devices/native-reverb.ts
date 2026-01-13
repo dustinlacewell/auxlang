@@ -22,8 +22,8 @@ export const nativeReverb = device("nativeReverb", {
 	defaultInput: "input",
 	defaultOutput: "audio",
 	wasmUrl: "/native.wasm",
-	process(inp) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		// WASM-only - placeholder
-		return { audio: (inp.input as number) ?? 0 };
+		out.audio = (inp.input as number) ?? 0;
 	},
 });

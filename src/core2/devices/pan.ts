@@ -39,13 +39,13 @@ function createSummer(voiceCount: number) {
 		defaultInput: "v0",
 		defaultOutput: "signal",
 		config: { voiceCount },
-		process(inp, cfg) {
+		process(inp, cfg, _state, _sampleRate, _time, out) {
 			const n = cfg.voiceCount as number;
 			let sum = 0;
 			for (let i = 0; i < n; i++) {
 				sum += (inp[`v${i}`] as number) ?? 0;
 			}
-			return { signal: sum };
+			out.signal = sum;
 		},
 	});
 }
@@ -56,12 +56,12 @@ const panLeft = device({
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
-	process(inp) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const p = (inp.pan as number) ?? 0;
 		// leftGain = (1 - pan) / 2
 		const gain = (1 - p) / 2;
-		return { signal: input * gain };
+		out.signal = input * gain;
 	},
 });
 
@@ -71,12 +71,12 @@ const panRight = device({
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
-	process(inp) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const p = (inp.pan as number) ?? 0;
 		// rightGain = (1 + pan) / 2
 		const gain = (1 + p) / 2;
-		return { signal: input * gain };
+		out.signal = input * gain;
 	},
 });
 
@@ -86,9 +86,9 @@ export const pan = device("pan", {
 	defaultInput: "input",
 	defaultOutput: "signal",
 	polyphonic: true,
-	process(inp) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		// Fallback for when expand isn't used
-		return { signal: (inp.input as number) ?? 0 };
+		out.signal = (inp.input as number) ?? 0;
 	},
 	expand(_config, inputBindings) {
 		const input = inputBindings.input;

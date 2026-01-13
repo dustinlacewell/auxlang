@@ -10,7 +10,7 @@ export const counter = device("counter", {
 	outputs: ["count", "wrap"],
 	defaultInput: "trig",
 	defaultOutput: "count",
-	process(inp, _cfg, state, _sampleRate) {
+	process(inp, _cfg, state, _sampleRate, _time, out) {
 		const trig = (inp.trig as number) ?? 0;
 		const reset = (inp.reset as number) ?? 0;
 		const max = Math.floor((inp.max as number) ?? 0);
@@ -29,6 +29,7 @@ export const counter = device("counter", {
 		}
 
 		state.count = count;
-		return { count, wrap };
+		out.count = count;
+		out.wrap = wrap;
 	},
 });

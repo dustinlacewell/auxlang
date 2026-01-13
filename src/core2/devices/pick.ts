@@ -12,9 +12,9 @@ export function pick(_voiceId: number) {
 		outputs: ["signal"],
 		defaultInput: "input",
 		defaultOutput: "signal",
-		process(inp, _cfg, _state, _sampleRate) {
+		process(inp, _cfg, _state, _sampleRate, _time, out) {
 			const input = (inp.input as number) ?? 0;
-			return { signal: input };
+			out.signal = input;
 		},
 	});
 }

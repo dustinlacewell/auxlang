@@ -7,10 +7,10 @@ export const mult = device("mult", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const by = (inp.by as number) ?? 1;
-		return { val: input * by };
+		out.val = input * by;
 	},
 });
 
@@ -20,10 +20,10 @@ export const sub = device("sub", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const from = (inp.from as number) ?? 0;
-		return { val: from - input };
+		out.val = from - input;
 	},
 });
 
@@ -33,11 +33,11 @@ export const clip = device("clip", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const min = (inp.min as number) ?? -1;
 		const max = (inp.max as number) ?? 1;
-		return { val: Math.max(min, Math.min(max, input)) };
+		out.val = Math.max(min, Math.min(max, input));
 	},
 });
 
@@ -47,14 +47,14 @@ export const scale = device("scale", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const from = (inp.from as number) ?? -1;
 		const to = (inp.to as number) ?? 1;
 		const min = (inp.min as number) ?? 0;
 		const max = (inp.max as number) ?? 1;
 		const normalized = (input - from) / (to - from);
-		return { val: min + normalized * (max - min) };
+		out.val = min + normalized * (max - min);
 	},
 });
 
@@ -64,9 +64,9 @@ export const abs = device("abs", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
-		return { val: Math.abs(input) };
+		out.val = Math.abs(input);
 	},
 });
 
@@ -76,9 +76,9 @@ export const inv = device("inv", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
-		return { val: -input };
+		out.val = -input;
 	},
 });
 
@@ -88,10 +88,10 @@ export const div = device("div", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const by = (inp.by as number) ?? 1;
-		return { val: by === 0 ? 0 : input / by };
+		out.val = by === 0 ? 0 : input / by;
 	},
 });
 
@@ -101,10 +101,10 @@ export const mod = device("mod", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const by = (inp.by as number) ?? 1;
-		return { val: by === 0 ? 0 : input % by };
+		out.val = by === 0 ? 0 : input % by;
 	},
 });
 
@@ -114,10 +114,10 @@ export const gte = device("gte", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const than = (inp.than as number) ?? 0;
-		return { val: input >= than ? 1 : 0 };
+		out.val = input >= than ? 1 : 0;
 	},
 });
 
@@ -127,10 +127,10 @@ export const lt = device("lt", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const than = (inp.than as number) ?? 0;
-		return { val: input < than ? 1 : 0 };
+		out.val = input < than ? 1 : 0;
 	},
 });
 
@@ -140,10 +140,10 @@ export const eq = device("eq", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const to = (inp.to as number) ?? 0;
-		return { val: Math.abs(input - to) < 0.0001 ? 1 : 0 };
+		out.val = Math.abs(input - to) < 0.0001 ? 1 : 0;
 	},
 });
 
@@ -153,10 +153,10 @@ export const and = device("and", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const withVal = (inp.with as number) ?? 0;
-		return { val: input > 0.5 && withVal > 0.5 ? 1 : 0 };
+		out.val = input > 0.5 && withVal > 0.5 ? 1 : 0;
 	},
 });
 
@@ -166,10 +166,10 @@ export const or = device("or", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const withVal = (inp.with as number) ?? 0;
-		return { val: input > 0.5 || withVal > 0.5 ? 1 : 0 };
+		out.val = input > 0.5 || withVal > 0.5 ? 1 : 0;
 	},
 });
 
@@ -179,8 +179,8 @@ export const not = device("not", {
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
-		return { val: input > 0.5 ? 0 : 1 };
+		out.val = input > 0.5 ? 0 : 1;
 	},
 });

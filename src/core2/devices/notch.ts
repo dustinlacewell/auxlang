@@ -11,7 +11,7 @@ export const notch = device("notch", {
 	defaultInput: "input",
 	defaultOutput: "audio",
 	wasmUrl: "/filter.wasm",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const cutoff = (inp.cutoff as number) ?? 1000;
 		const resonance = (inp.resonance as number) ?? 0.5;
@@ -47,6 +47,6 @@ export const notch = device("notch", {
 		state.y2 = y1;
 		state.y1 = y0;
 
-		return { audio: y0 };
+		out.audio = y0;
 	},
 });

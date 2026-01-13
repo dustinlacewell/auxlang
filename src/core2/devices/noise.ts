@@ -10,9 +10,9 @@ export const noise = device("noise", {
 	outputs: ["audio"],
 	defaultInput: "min",
 	defaultOutput: "audio",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const min = (inp.min as number) ?? -1;
 		const max = (inp.max as number) ?? 1;
-		return { audio: min + Math.random() * (max - min) };
+		out.audio = min + Math.random() * (max - min);
 	},
 });

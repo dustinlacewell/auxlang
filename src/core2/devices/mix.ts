@@ -10,7 +10,7 @@ export const mix = device("mix", {
 	outputs: ["signal"],
 	defaultInput: "a",
 	defaultOutput: "signal",
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const a = (inp.a as number) ?? 0;
 		const b = (inp.b as number) ?? 0;
 		const c = (inp.c as number) ?? 0;
@@ -24,6 +24,6 @@ export const mix = device("mix", {
 		const activeCount = (hasA ? 1 : 0) + (hasB ? 1 : 0) + (hasC ? 1 : 0) + (hasD ? 1 : 0);
 		const scale = activeCount > 0 ? 1 / Math.sqrt(activeCount) : 1;
 
-		return { signal: (a + b + c + d) * scale };
+		out.signal = (a + b + c + d) * scale;
 	},
 });

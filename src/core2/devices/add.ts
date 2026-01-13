@@ -11,9 +11,9 @@ export const add = device("add", {
 	defaultInput: "input",
 	defaultOutput: "signal",
 	positionalArgs: ["to"],
-	process(inp, _cfg, _state, _sampleRate) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const to = (inp.to as number) ?? 0;
-		return { signal: input + to };
+		out.signal = input + to;
 	},
 });

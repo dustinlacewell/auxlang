@@ -52,13 +52,31 @@ function stopInstance(inst: AudioInstance): void {
 }
 
 async function evalToStereo(code: string): Promise<WorkletStereoGraph> {
+	const t0 = performance.now();
+
 	reset();
 	runCode(code, api);
+	const t1 = performance.now();
 
 	const graph = collect();
+	const t2 = performance.now();
+
 	const expanded = expandPoly(graph);
+	const t3 = performance.now();
+
 	const stereo = compile(expanded);
-	return toWorkletStereoGraph(stereo);
+	const t4 = performance.now();
+
+	const worklet = await toWorkletStereoGraph(stereo);
+	const t5 = performance.now();
+
+	console.log(
+		`[eval] runCode: ${(t1 - t0).toFixed(1)}ms, collect: ${(t2 - t1).toFixed(1)}ms, ` +
+			`expand: ${(t3 - t2).toFixed(1)}ms, compile: ${(t4 - t3).toFixed(1)}ms, ` +
+			`toWorklet: ${(t5 - t4).toFixed(1)}ms, TOTAL: ${(t5 - t0).toFixed(1)}ms`,
+	);
+
+	return worklet;
 }
 
 export function useCore2Audio() {

@@ -35,7 +35,7 @@ function createMixer(voiceCount: number, isLeft: boolean) {
 		defaultInput: "v0",
 		defaultOutput: "val",
 		config: { voiceCount, isLeft },
-		process(inp, cfg) {
+		process(inp, cfg, _state, _sampleRate, _time, out) {
 			const width = (inp.width as number) ?? 1;
 			const n = cfg.voiceCount as number;
 			const left = cfg.isLeft as boolean;
@@ -49,7 +49,7 @@ function createMixer(voiceCount: number, isLeft: boolean) {
 				sum += voice * gain;
 			}
 
-			return { val: sum };
+			out.val = sum;
 		},
 	});
 }
@@ -60,9 +60,9 @@ export const spread = device("spread", {
 	defaultInput: "input",
 	defaultOutput: "val",
 	polyphonic: true,
-	process(inp) {
+	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		// Fallback for mono - just pass through
-		return { val: (inp.input as number) ?? 0 };
+		out.val = (inp.input as number) ?? 0;
 	},
 	expand(config, inputBindings) {
 		const input = inputBindings.input;

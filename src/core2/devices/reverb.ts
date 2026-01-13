@@ -11,7 +11,7 @@ export const reverb = device("reverb", {
 	defaultInput: "input",
 	defaultOutput: "audio",
 	wasmUrl: "/reverb.wasm",
-	process(inp, _cfg, state, sampleRate) {
+	process(inp, _cfg, state, sampleRate, _time, out) {
 		const input = (inp.input as number) ?? 0;
 		const room = (inp.room as number) ?? 0.5;
 		const damp = (inp.damp as number) ?? 0.5;
@@ -42,7 +42,8 @@ export const reverb = device("reverb", {
 				state.lastMix = mix;
 			}
 
-			return { audio: g.__nativeReverb.process(input) };
+			out.audio = g.__nativeReverb.process(input);
+			return;
 		}
 
 		// JS Fallback Implementation
@@ -76,7 +77,7 @@ export const reverb = device("reverb", {
 
 		const feedback = room * 0.28 + 0.7;
 
-		let out = 0;
+		let wet = 0;
 		for (let i = 0; i < 8; i++) {
 			const comb = combsL[i];
 			if (comb) {
@@ -86,23 +87,23 @@ export const reverb = device("reverb", {
 				filterStores[i] = filtered;
 				comb.buffer[comb.index] = input + filtered * feedback;
 				comb.index = (comb.index + 1) % comb.buffer.length;
-				out += combOutput;
+				wet += combOutput;
 			}
 		}
 
-		out *= 0.125;
+		wet *= 0.125;
 
 		for (let i = 0; i < 4; i++) {
 			const allpass = allpassesL[i];
 			if (allpass) {
 				const buffered = allpass.buffer[allpass.index] ?? 0;
-				const allpassOut = buffered - out;
-				allpass.buffer[allpass.index] = out + buffered * 0.5;
+				const allpassOut = buffered - wet;
+				allpass.buffer[allpass.index] = wet + buffered * 0.5;
 				allpass.index = (allpass.index + 1) % allpass.buffer.length;
-				out = allpassOut;
+				wet = allpassOut;
 			}
 		}
 
-		return { audio: out * mix + input * (1 - mix) };
+		out.audio = wet * mix + input * (1 - mix);
 	},
 });
