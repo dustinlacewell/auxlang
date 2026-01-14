@@ -6,6 +6,7 @@
  */
 
 import type { Expr } from "../expr/types";
+import type { AltState } from "../expr/generic-traverse";
 
 /**
  * A position in the pattern tree - path from root to current node.
@@ -44,6 +45,8 @@ export interface Cursor {
 	noteStartBeat: number;
 	/** Probability decisions for this cycle (plain object for serialization) */
 	probDecisions: Record<string, boolean>;
+	/** Alt positions for nested alternations */
+	altPositions: Record<string, AltState>;
 	/** Last CV for sample-and-hold */
 	lastCV: number;
 	/** Flattened events for current beat (sorted by start time) */

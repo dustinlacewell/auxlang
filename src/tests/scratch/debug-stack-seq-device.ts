@@ -3,7 +3,7 @@
  */
 
 import { parseExpr } from "@/core2/devices/seq/expr/parse";
-import { countBeats } from "@/core2/devices/seq/expr/traverse";
+import { countBeats } from "@/core2/devices/seq/expr/count-beats";
 import { extractPositionsForBeat } from "@/core2/devices/seq/extract-beat-positions";
 import { createCursor } from "@/core2/devices/seq/cursor/create";
 import { resetCursor, stepCursor } from "@/core2/devices/seq/cursor/step";

@@ -7,6 +7,7 @@
 import type { Expr } from "../expr/types";
 import type { Cursor } from "./types";
 import { collectBeatEvents } from "./collect-events";
+import type { TraversalState } from "../expr/generic-traverse";
 
 /**
  * Step cursor to a new beat position.
@@ -28,8 +29,14 @@ export function stepCursor(cursor: Cursor, expr: Expr, beatIndex: number, cycle:
 
 	cursor.beatIndex = beatIndex;
 
+	// Build traversal state from cursor's stored state
+	const state: TraversalState = {
+		probDecisions: cursor.probDecisions,
+		altPositions: cursor.altPositions,
+	};
+
 	// Collect all events within this beat (flattened from nested structure)
-	cursor.events = collectBeatEvents(expr, beatIndex, cursor.probDecisions, cycle);
+	cursor.events = collectBeatEvents(expr, beatIndex, state, cycle);
 	cursor.eventIndex = 0;
 	cursor.lastTriggeredSample = -1; // Reset for new beat
 
@@ -53,6 +60,9 @@ export function resetCursor(cursor: Cursor, expr: Expr): void {
 	// Clear by reassigning (plain object, not Map)
 	for (const key in cursor.probDecisions) {
 		delete cursor.probDecisions[key];
+	}
+	for (const key in cursor.altPositions) {
+		delete cursor.altPositions[key];
 	}
 	cursor.cycle = 0;
 	stepCursor(cursor, expr, 0, 0);

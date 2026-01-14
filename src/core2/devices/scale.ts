@@ -8,7 +8,7 @@ import { device } from "../device/device";
 export const scale = device("scale", {
 	inputs: { input: 0, from: -1, to: 1, min: 0, max: 1 },
 	outputs: ["out"],
-	positionalArgs: ["min", "max"],
+	positionalArgs: ["min", "max", "from", "to"],
 	defaultInput: "input",
 	defaultOutput: "out",
 	process(inp, _cfg, _state, _sampleRate, _time, out) {

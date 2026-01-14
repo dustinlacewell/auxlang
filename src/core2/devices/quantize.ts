@@ -46,62 +46,67 @@ const SCALE_SEMITONES: Record<string, number[]> = {
 };
 
 /**
- * Quantize a frequency to the nearest note in a scale.
+ * Quantize a control signal into notes from a scale.
  *
  * Usage:
- *   lfo(0.5).scale({ min: 200, max: 800 }).quantize({ scale: "major" })
- *   noise().scale({ min: 200, max: 600 }).quantize({ scale: "minor pentatonic", root: 9 })
+ *   noise().sin(.1, 0, 1)
+ *     .quantize("minor pentatonic", $`c3`, $`c5`, 0, 1)
  *
- * Root is 0-11 semitones from C (0=C, 2=D, 4=E, 5=F, 7=G, 9=A, 11=B)
- * Range is number of octaves (can be fractional, e.g. 2.5 for 2.5 octaves)
- * Scales: major, minor, dorian, phrygian, lydian, mixolydian, locrian,
- *         minor pentatonic, major pentatonic, blues, whole tone, chromatic
+ *  Low/high describe the frequency band to cover (e.g. base note + top note).
+ *  Min/max describe the expected input range that should be mapped to that band.
+ *  If min/max are omitted the raw input is interpreted as Hertz directly.
  */
+
 export const quantize = device("quantize", {
-	inputs: { input: 440, root: 0, octave: 3, range: 4 },
+	inputs: { input: 0, low: 220, high: 880, min: -1, max: 1 },
 	config: { scales: SCALE_SEMITONES, scaleName: "major" },
-	outputs: ["freq"],
+	outputs: ["freq", "trig", "gate"],
 	defaultInput: "input",
 	defaultOutput: "freq",
-	positionalArgs: ["scaleName", "root", "octave", "range"],
+	positionalArgs: ["scaleName", "low", "high", "min", "max"],
 	process(inp, cfg, state, _sampleRate, _time, out) {
-		const inputFreq = inp.input
-		const root = inp.root
-		const octave = inp.octave
-		const range = inp.range
+		const freqToMidi = (freq: number): number => 69 + 12 * Math.log2(freq / 440);
+		const midiToFreq = (midi: number): number => 440 * 2 ** ((midi - 69) / 12);
+
+		const rawInput = inp.input;
+		const lowFreq = Math.max(inp.low, 1);
+		const highFreq = Math.max(inp.high, lowFreq + 1e-6);
 		const scaleName = (cfg.scaleName as string) ?? "major";
 		const scales = cfg.scales as Record<string, number[]>;
+		const minInput = inp.min;
+		const maxInput = inp.max;
 
 		// Get semitones for this scale
 		const semitones = scales[scaleName] ?? scales.major ?? [0, 2, 4, 5, 7, 9, 11];
 
+		const minMidi = freqToMidi(lowFreq);
+		const maxMidi = freqToMidi(highFreq);
+
+		let inputFreq = rawInput;
+		const shouldNormalize =
+			minInput !== null &&
+			maxInput !== null &&
+			Number.isFinite(minInput) &&
+			Number.isFinite(maxInput) &&
+			maxInput !== minInput;
+		if (shouldNormalize) {
+			const normalized = Math.min(Math.max((rawInput - minInput) / (maxInput - minInput), 0), 1);
+			const targetMidi = minMidi + normalized * (maxMidi - minMidi);
+			inputFreq = midiToFreq(targetMidi);
+		}
+
 		// Check if we need to rebuild the frequency table
-		// Range determines how many octaves: integer part = full octaves, fractional = partial
-		const cacheKey = `${scaleName}-${root}-${octave}-${range}`;
+		const cacheKey = `${scaleName}-${lowFreq}-${highFreq}`;
 		if (state.cacheKey !== cacheKey) {
 			state.cacheKey = cacheKey;
 			const freqs: number[] = [];
-			const rootMidi = 12 + octave * 12 + root;
+			const allowed = new Set(semitones.map((s) => ((s % 12) + 12) % 12));
+			const rootMidi = Math.round(minMidi);
 
-			// Calculate octave span centered around the base octave
-			const halfRange = range / 2;
-			const startOct = Math.floor(-halfRange);
-			const endOct = Math.ceil(halfRange);
-
-			// Calculate semitone boundaries for fractional range
-			const minSemi = rootMidi + startOct * 12;
-			const maxSemi = rootMidi + range * 12 + startOct * 12;
-
-			for (let oct = startOct; oct < endOct; oct++) {
-				for (let i = 0; i < semitones.length; i++) {
-					const semi = semitones[i];
-					if (semi !== undefined) {
-						const midi = rootMidi + oct * 12 + semi;
-						// Only include notes within the range
-						if (midi >= minSemi && midi <= maxSemi) {
-							freqs.push(440 * Math.pow(2, (midi - 69) / 12));
-						}
-					}
+			for (let midi = Math.floor(minMidi); midi <= Math.ceil(maxMidi); midi++) {
+				const rel = ((midi - rootMidi) % 12 + 12) % 12;
+				if (allowed.has(rel)) {
+					freqs.push(midiToFreq(midi));
 				}
 			}
 			state.frequencies = freqs.sort((a, b) => a - b);
@@ -122,6 +127,14 @@ export const quantize = device("quantize", {
 			}
 		}
 
+		const prev = state.lastFreq as number | undefined;
+		const changed = prev === undefined || Math.abs(prev - nearest) > 1e-6;
+		state.lastFreq = nearest;
+		const gate = changed ? 1 : ((state.gate as number | undefined) ?? 1);
+		state.gate = gate;
+
 		out.freq = nearest;
+		out.trig = changed ? 1 : 0;
+		out.gate = gate;
 	},
 });

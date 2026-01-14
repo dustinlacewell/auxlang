@@ -13,6 +13,7 @@ interface PlayableEditorProps {
 	className?: string;
 	maxHeight?: string;
 	graphId?: string | undefined;
+	error?: string | null;
 }
 
 export function PlayableEditor({
@@ -24,12 +25,19 @@ export function PlayableEditor({
 	className = "",
 	maxHeight,
 	graphId,
+	error,
 }: PlayableEditorProps) {
 	const isPlaying = state === "playing";
 
 	return (
 		<div className={`border border-surface-600 rounded overflow-hidden ${className}`}>
-			<div className={`flex justify-end bg-surface-700 border-b border-surface-600 ${CHROME_HEIGHT_CLASS}`}>
+			<div className={`flex items-center gap-2 bg-surface-700 border-b border-surface-600 ${CHROME_HEIGHT_CLASS} px-2`}>
+				{error && (
+					<span className="text-accent-red text-xs font-mono truncate max-w-md">
+						{error}
+					</span>
+				)}
+				<div className="flex-1" />
 				<ChromeButton onClick={onPlay} title="Play (Ctrl+Enter)">
 					{isPlaying ? <RefreshCw size={12} /> : <Play size={12} />}
 				</ChromeButton>
