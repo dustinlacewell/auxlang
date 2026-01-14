@@ -3,23 +3,34 @@ import { EditorView, keymap } from "@codemirror/view";
 import { useEffect, useRef } from "react";
 import { auxlangTheme } from "./auxlang-theme";
 import { createExtensions } from "./extensions";
+import {
+	visualizationUpdateEffect,
+	visualizationStateExtension,
+	type ActiveNote,
+	type ActiveDevice,
+} from "./visualization-state";
+import { getAudioInstance, onVisualizationUpdate, type NoteDecoration } from "../../core2/runtime/audio-instance";
+import type { SourcePosition } from "../../core2/eval/source-map";
 
 interface CodeEditorProps {
 	value: string;
 	onChange: (value: string) => void;
 	onRun?: () => void;
 	className?: string;
+	graphId?: string;
 }
 
-export function CodeEditor({ value, onChange, onRun, className = "" }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, onRun, className = "", graphId }: CodeEditorProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const viewRef = useRef<EditorView | null>(null);
 	const onChangeRef = useRef(onChange);
 	const onRunRef = useRef(onRun);
+	const graphIdRef = useRef(graphId);
 
 	// Keep refs up to date
 	onChangeRef.current = onChange;
 	onRunRef.current = onRun;
+	graphIdRef.current = graphId;
 
 	useEffect(() => {
 		if (!containerRef.current) return;
@@ -42,7 +53,7 @@ export function CodeEditor({ value, onChange, onRun, className = "" }: CodeEdito
 
 		const state = EditorState.create({
 			doc: value,
-			extensions: [...createExtensions(), auxlangTheme, runKeymap, updateListener],
+			extensions: [...createExtensions(), auxlangTheme, runKeymap, updateListener, visualizationStateExtension],
 		});
 
 		const view = new EditorView({
@@ -59,7 +70,40 @@ export function CodeEditor({ value, onChange, onRun, className = "" }: CodeEdito
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	// Sync external value changes (e.g., loading a different file)
+	useEffect(() => {
+		if (!graphId || !viewRef.current) return;
+
+		let unsubscribe: (() => void) | undefined;
+
+		getAudioInstance().then((audioInstance) => {
+			unsubscribe = onVisualizationUpdate(audioInstance, graphId, (intensities, notes) => {
+				const view = viewRef.current;
+				if (!view) return;
+
+				// Convert NoteDecoration[] to ActiveNote[] (absolute positions with kind)
+				const activeNotes: ActiveNote[] = notes?.map(n => ({ 
+					from: n.start, 
+					to: n.end, 
+					kind: n.kind ?? "note" 
+				})) ?? [];
+
+				// Convert SourcePosition -> intensity map to ActiveDevice[]
+				const activeDevices: ActiveDevice[] = [];
+				for (const [pos, intensity] of intensities) {
+					activeDevices.push({ from: pos.start, to: pos.end, intensity });
+				}
+
+				view.dispatch({
+					effects: visualizationUpdateEffect.of({ activeNotes, activeDevices }),
+				});
+			});
+		}).catch(console.error);
+
+		return () => {
+			unsubscribe?.();
+		};
+	}, [graphId]);
+
 	useEffect(() => {
 		const view = viewRef.current;
 		if (view && view.state.doc.toString() !== value) {

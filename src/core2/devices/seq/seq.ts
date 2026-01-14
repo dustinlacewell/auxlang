@@ -11,6 +11,7 @@ import { wrap } from "../../wrap/wrap";
 import { parseExpr } from "./expr/parse";
 import { countBeats } from "./expr/traverse";
 import { decomposePattern, voiceCount, type Expr } from "./expr/types";
+import { captureSeqPositionByPattern, captureSeqPositionByPatternForAll } from "../../eval/source-map";
 
 export const seq = device("seq", {
 	inputs: { clk: 0 },
@@ -20,7 +21,7 @@ export const seq = device("seq", {
 	defaultOutput: "cv",
 	positionalArgs: ["pattern", "clk"],
 
-	process(inp, cfg, state, sampleRate, _time, out) {
+	process(inp, cfg, state, sampleRate, _time, out, ctx) {
 		const expr = cfg.expr as Expr | null;
 		const totalBeats = cfg.totalBeats as number;
 
@@ -53,12 +54,14 @@ export const seq = device("seq", {
 		let samplesSinceTrig = (state.samplesSinceTrig as number) ?? 0;
 
 		// Handle clock events
+		let justReset = false;
 		if (isReset) {
 			const bpm = -clk;
 			samplesPerBeat = (60 / bpm) * sampleRate;
 			samplesSinceTrig = 0;
 			beatIndex = 0;
 			cycleCount = 0;
+			justReset = true;
 			api.resetCursor(cursor, expr);
 		} else if (isTrig) {
 			samplesSinceTrig = 0;
@@ -84,6 +87,26 @@ export const seq = device("seq", {
 		// Get output from cursor using sample index (O(1) - no tree traversal)
 		const output = api.sampleCursor(cursor, samplesSinceTrig, samplesPerBeat);
 
+		// Emit decorations with fractional beat position for sub-beat precision
+		// Throttle to ~60fps (every ~735 samples at 44100Hz), but always emit on reset/trig
+		const decorationInterval = Math.floor(sampleRate / 60);
+		const shouldEmitDecoration = justReset || isTrig || samplesSinceTrig % decorationInterval === 0;
+		
+		const pattern = cfg.pattern as string;
+		if (pattern && beatIndex >= 0 && samplesPerBeat > 0 && shouldEmitDecoration) {
+			// biome-ignore lint/suspicious/noExplicitAny: worklet global
+			const extractPositions = (globalThis as any).extractPositionsForBeat;
+			if (extractPositions) {
+				// Calculate fractional beat position: beatIndex + fraction within beat
+				const beatFraction = samplesSinceTrig / samplesPerBeat;
+				const beatPosition = beatIndex + beatFraction;
+				// Pass cursor's probDecisions so visualization matches audio
+				// biome-ignore lint/suspicious/noExplicitAny: cursor type from worklet global
+				const positions = extractPositions(expr, pattern, beatPosition, cycleCount, (cursor as any).probDecisions);
+				ctx.emitDecorations(positions);
+			}
+		}
+
 		// Update state
 		state.beatIndex = beatIndex;
 		state.cycleCount = cycleCount;
@@ -100,7 +123,9 @@ export const seq = device("seq", {
 		const clk = inputBindings.clk;
 
 		if (!pattern) {
-			return wrap(createNode("seq", { clk: clk ?? 0 }, { ...config, expr: null, totalBeats: 0 }));
+			const node = createNode("seq", { clk: clk ?? 0 }, { ...config, expr: null, totalBeats: 0 });
+			captureSeqPositionByPattern(node.id, pattern);
+			return wrap(node);
 		}
 
 		const expr = parseExpr(pattern);
@@ -108,14 +133,20 @@ export const seq = device("seq", {
 
 		if (voices === 1) {
 			const totalBeats = countBeats(expr);
-			return wrap(createNode("seq", { clk: clk ?? 0 }, { ...config, expr, totalBeats }));
+			const node = createNode("seq", { clk: clk ?? 0 }, { ...config, expr, totalBeats });
+			captureSeqPositionByPattern(node.id, pattern);
+			return wrap(node);
 		}
 
 		// Poly - decompose into N mono patterns
+		// All voices map to the same source position
 		const monoExprs = decomposePattern(expr, "isolate");
-		return monoExprs.map((monoExpr) => {
+		const nodes = monoExprs.map((monoExpr) => {
 			const totalBeats = countBeats(monoExpr);
-			return wrap(createNode("seq", { clk: clk ?? 0 }, { ...config, expr: monoExpr, totalBeats }));
+			return createNode("seq", { clk: clk ?? 0 }, { ...config, expr: monoExpr, totalBeats });
 		});
+		// Capture same position for all voice nodes using pattern lookup
+		captureSeqPositionByPatternForAll(nodes.map(n => n.id), pattern);
+		return nodes.map(node => wrap(node));
 	},
 });

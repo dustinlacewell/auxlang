@@ -19,13 +19,14 @@ interface TestCardProps {
 	state: PlaybackState;
 	error?: string | undefined;
 	color?: string;
+	graphId?: string | undefined;
 	onPlay: (code: string) => void;
 	onStop: () => void;
 }
 
 const isDev = import.meta.env.DEV;
 
-export function TestCard({ test, state, error, color, onPlay, onStop }: TestCardProps) {
+export function TestCard({ test, state, error, color, graphId, onPlay, onStop }: TestCardProps) {
 	const [code, setCode] = useState(test.code);
 	const [name, setName] = useState(test.name);
 	const [desc, setDesc] = useState(test.desc);
@@ -276,6 +277,7 @@ export function TestCard({ test, state, error, color, onPlay, onStop }: TestCard
 				onPlay={handlePlay}
 				onStop={onStop}
 				className="mb-2"
+				{...(graphId ? { graphId } : {})}
 			/>
 			{isDev && hasChanges && (
 				<Button variant="default" onClick={handleSave} disabled={saving} className="w-full">

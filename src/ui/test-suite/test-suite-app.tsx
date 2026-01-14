@@ -175,7 +175,7 @@ export function TestSuiteApp() {
 						{Array.from(deviceMap.entries()).map(([device, tests]) =>
 							tests.map((test) => {
 								const visible = isTestVisible(category, device);
-								const { state, error } = getState(test.id);
+								const { state, error, graphId } = getState(test.id);
 								return (
 									<div key={test.id} className={visible ? "" : "hidden"}>
 										<TestCard
@@ -183,6 +183,7 @@ export function TestSuiteApp() {
 											state={state}
 											error={error}
 											color={color}
+											graphId={graphId}
 											onPlay={(code) => play(test.id, code)}
 											onStop={() => stop(test.id)}
 										/>

@@ -12,6 +12,7 @@ interface PlayableEditorProps {
 	onStop: () => void;
 	className?: string;
 	maxHeight?: string;
+	graphId?: string | undefined;
 }
 
 export function PlayableEditor({
@@ -22,6 +23,7 @@ export function PlayableEditor({
 	onStop,
 	className = "",
 	maxHeight,
+	graphId,
 }: PlayableEditorProps) {
 	const isPlaying = state === "playing";
 
@@ -37,7 +39,13 @@ export function PlayableEditor({
 				</ChromeButton>
 			</div>
 			<div style={maxHeight ? { maxHeight } : undefined} className={maxHeight ? "overflow-y-auto" : ""}>
-				<CodeEditor value={value} onChange={onChange} onRun={onPlay} className="text-xs border-0" />
+				<CodeEditor 
+					value={value} 
+					onChange={onChange} 
+					onRun={onPlay} 
+					className="text-xs border-0"
+					{...(graphId ? { graphId } : {})}
+				/>
 			</div>
 		</div>
 	);

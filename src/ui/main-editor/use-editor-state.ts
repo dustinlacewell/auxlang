@@ -8,23 +8,35 @@ import type { PlaybackState } from "@/ui/audio/types";
 import { useCore2Audio } from "@/ui/audio/use-core2-audio";
 import { useCallback, useState } from "react";
 
-const DEFAULT_CODE = `
-let clk = clock(130)
+const DEFAULT_CODE = `let clk = clock(180)
 
-// Pentatonic bass line (A minor pentatonic)
-let bass = seq("a1 ~ c2 d2 ~ e2 g2 ~", { clk })
-bass
+clk
+  .seq("a1 ~ c2 d2 ~ e2 <g2 [g3 g2]> ~")
+  .apply(s=>s
   .saw()
-  .lpf({ cutoff: 600, resonance: 0.2 })
-  .gain(bass.gate.adsr({ attack: 0.01, decay: 0.2, sustain: 0.4, release: 0.1 }))
+  .lpf(600, 0.2)
+  .gain(s.gate.adsr(0.01, 0.2, 0.4, 0.1))
+  .nativeReverb()
+  .gain(0.3)
+  .out())
+
+clk
+  .clockMult(2)
+  .seq("c4 c4 c4?.8 c4 c4*4?")
+  .trig
+  .hihat({ decay: 0.1, tone: 0.7 })
+  .gain(0.6)
   .out()
 
-// Hi-hats, offbeat 16ths
-seq("~ c4", { clk: clockMult(clk).by(4) })
-  .trig
-  .hihat({ decay: 0.03, tone: 0.7 })
-  .gain({ amount: 0.6 })
-  .out()`;
+clk
+  .clockDiv(4)
+  .seq("{<c4 c3>,<e4 [e3 f3]>,<g4 g3>}")
+  .apply(s=>s
+    .cv
+    .tri()
+    .gain(s.gate.adsr())
+    .tape()
+    .out())`;
 
 interface EditorState {
 	code: string;
@@ -33,6 +45,7 @@ interface EditorState {
 	error: string | null;
 	run: () => Promise<void>;
 	stop: () => void;
+	graphId: string | undefined;
 	/** Pre-expansion graph (before poly expansion) */
 	preGraph: FlatGraph | null;
 	/** Post-expansion stereo graph */
@@ -75,6 +88,7 @@ export function useEditorState(defaultCode: string = DEFAULT_CODE): EditorState 
 		error: instanceState.error ?? null,
 		run,
 		stop: () => stop("main"),
+		graphId: instanceState.graphId,
 		preGraph,
 		stereoGraph,
 	};

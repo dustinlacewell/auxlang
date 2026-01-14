@@ -26,6 +26,29 @@ export type InputsToArray<T extends Record<string, number | number[]>> = {
 };
 
 /**
+ * Decoration to be applied in the editor.
+ * Uses noteId for stable targeting that persists through code edits.
+ */
+export interface Decoration {
+	noteId: string;
+	start: number;
+	end: number;
+}
+
+/**
+ * Context provided to process functions for non-audio operations.
+ */
+export interface ProcessContext {
+	/**
+	 * Emit decorations for this node's source code.
+	 * Only call when state changes (e.g., beat boundaries), not every sample.
+	 * 
+	 * @param decorations - Array of character ranges to highlight
+	 */
+	emitDecorations(decorations: Decoration[]): void;
+}
+
+/**
  * Typed process function - receives inputs matching the device's input definition.
  */
 export type TypedProcessFn<I extends Record<string, number | number[]>> = (
@@ -35,6 +58,7 @@ export type TypedProcessFn<I extends Record<string, number | number[]>> = (
 	sampleRate: number,
 	time: number,
 	out: Record<string, number>,
+	ctx: ProcessContext,
 ) => void;
 
 /**
@@ -47,6 +71,7 @@ export type TypedProcessAllFn<I extends Record<string, number | number[]>> = (
 	sampleRate: number,
 	time: number,
 	out: Record<string, number>,
+	ctx: ProcessContext,
 ) => void;
 
 /**

@@ -14,6 +14,7 @@
 import type { WorkletMessage, WorkletStereoGraph } from "../worklet-types";
 import type { RuntimeGraph } from "./graph/runtime-graph";
 import { swapGraph } from "./graph/swap-graph";
+import type { NodeMetrics, SequencerMetrics } from "./graph/visualization-metrics";
 
 declare const sampleRate: number;
 
@@ -27,16 +28,16 @@ declare class AudioWorkletProcessor {
 }
 
 class Core2Processor extends AudioWorkletProcessor {
-	// Single graph (processes once, outputs to L/R)
-	private graph: RuntimeGraph | null = null;
-	private oldGraph: WorkletStereoGraph | null = null;
+	private graphs = new Map<string, RuntimeGraph>();
+	private oldGraphs = new Map<string, WorkletStereoGraph>();
 	private wasmInstances = new Map<string, WebAssembly.Instance>();
 
-	// Crossfade
-	private fadingOutGraph: RuntimeGraph | null = null;
-	private fadeProgress = 1;
-	private fadeDurationSamples = 0;
-	private static readonly CROSSFADE_MS = 3000;
+	private fadingGraphs = new Map<string, {
+		graph: RuntimeGraph;
+		fadeProgress: number;
+		fadeDurationSamples: number;
+	}>();
+	private static readonly CROSSFADE_MS = 100;
 
 	constructor() {
 		super();
@@ -45,75 +46,138 @@ class Core2Processor extends AudioWorkletProcessor {
 
 	private handleMessage(message: WorkletMessage): void {
 		if (message.type === "setStereoGraph") {
-			this.swapStereoGraph(message.stereo);
+			this.swapStereoGraph(message.stereo, message.graphId);
 		} else if (message.type === "stop") {
-			this.clearAll();
+			if (message.graphId) {
+				this.stopGraph(message.graphId);
+			} else {
+				this.clearAll();
+			}
 		}
 	}
 
-	private async swapStereoGraph(stereo: WorkletStereoGraph): Promise<void> {
-		const result = await swapGraph(stereo, this.oldGraph, this.wasmInstances, this.graph);
+	private async swapStereoGraph(stereo: WorkletStereoGraph, graphId: string): Promise<void> {
+		const oldGraph = this.oldGraphs.get(graphId) || null;
+		const currentGraph = this.graphs.get(graphId) || null;
+		const result = await swapGraph(stereo, oldGraph, this.wasmInstances, currentGraph);
 
-		// Start crossfade from old graph
 		if (result.oldGraph) {
-			this.fadingOutGraph = result.oldGraph;
-			this.fadeProgress = 0;
-			this.fadeDurationSamples = Math.floor((Core2Processor.CROSSFADE_MS / 1000) * sampleRate);
+			this.fadingGraphs.set(graphId, {
+				graph: result.oldGraph,
+				fadeProgress: 0,
+				fadeDurationSamples: Math.floor((Core2Processor.CROSSFADE_MS / 1000) * sampleRate),
+			});
 		}
 
-		this.graph = result.graph;
-		this.oldGraph = stereo;
+		// Set up decoration callback for this graph
+		result.graph.setDecorationCallback((nodeId, decorations) => {
+			this.emitDecorations(graphId, nodeId, decorations);
+		});
+
+		this.graphs.set(graphId, result.graph);
+		this.oldGraphs.set(graphId, stereo);
 		this.wasmInstances = result.wasmInstances;
 	}
 
+	private stopGraph(graphId: string): void {
+		this.graphs.delete(graphId);
+		this.oldGraphs.delete(graphId);
+		this.fadingGraphs.delete(graphId);
+	}
+
 	private clearAll(): void {
-		this.graph = null;
-		this.oldGraph = null;
-		this.fadingOutGraph = null;
-		this.fadeProgress = 1;
+		this.graphs.clear();
+		this.oldGraphs.clear();
+		this.fadingGraphs.clear();
 		this.wasmInstances.clear();
 	}
 
 	process(_inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
 		const output = outputs[0];
-		if (!output?.[0] || !this.graph) return true;
+		if (!output?.[0]) return true;
 
 		const left = output[0];
 		const right = output[1] ?? output[0];
 
 		for (let i = 0; i < left.length; i++) {
-			let [l, r] = this.graph.processStereoSample(sampleRate);
+			let l = 0;
+			let r = 0;
 
-			// Apply crossfade if transitioning
-			if (this.fadeProgress < 1) {
-				[l, r] = this.applyCrossfade(l, r);
+			for (const [graphId, graph] of this.graphs) {
+				let [gl, gr] = graph.processStereoSample(sampleRate);
+
+				const fading = this.fadingGraphs.get(graphId);
+				if (fading) {
+					[gl, gr] = this.applyCrossfade(gl, gr, fading);
+					
+					// Clean up fading graph when crossfade completes
+					if (fading.fadeProgress >= 1.0) {
+						this.fadingGraphs.delete(graphId);
+					}
+				}
+
+				l += gl;
+				r += gr;
 			}
 
 			left[i] = l;
 			right[i] = r;
 		}
 
+		for (const [graphId, graph] of this.graphs) {
+			const metrics = graph.collectVisualizationMetrics();
+			if (metrics) {
+				this.emitVisualizationMetrics(graphId, metrics);
+			}
+		}
+
 		return true;
 	}
 
-	private applyCrossfade(newLeft: number, newRight: number): [number, number] {
-		const t = this.fadeProgress;
-		let l = newLeft;
-		let r = newRight;
+	private applyCrossfade(
+		newLeft: number,
+		newRight: number,
+		fading: { graph: RuntimeGraph; fadeProgress: number; fadeDurationSamples: number }
+	): [number, number] {
+		const t = fading.fadeProgress;
+		const [oldL, oldR] = fading.graph.processStereoSample(sampleRate);
+		const l = oldL * (1 - t) + newLeft * t;
+		const r = oldR * (1 - t) + newRight * t;
 
-		if (this.fadingOutGraph) {
-			const [oldL, oldR] = this.fadingOutGraph.processStereoSample(sampleRate);
-			l = oldL * (1 - t) + newLeft * t;
-			r = oldR * (1 - t) + newRight * t;
-		}
-
-		this.fadeProgress += 1 / this.fadeDurationSamples;
-		if (this.fadeProgress >= 1) {
-			this.fadingOutGraph = null;
-			this.fadeProgress = 1;
-		}
+		fading.fadeProgress += 1 / fading.fadeDurationSamples;
 
 		return [l, r];
+	}
+
+	private emitVisualizationMetrics(
+		graphId: string,
+		data: { audio: Map<string, NodeMetrics>; sequencers: Map<string, SequencerMetrics> }
+	): void {
+		const audioObj: Record<string, NodeMetrics> = {};
+		for (const [id, metric] of data.audio) {
+			audioObj[id] = metric;
+		}
+
+		const seqObj: Record<string, SequencerMetrics> = {};
+		for (const [id, metric] of data.sequencers) {
+			seqObj[id] = metric;
+		}
+
+		this.port.postMessage({
+			type: "visualization",
+			graphId,
+			audio: audioObj,
+			sequencers: seqObj,
+		});
+	}
+
+	private emitDecorations(graphId: string, nodeId: string, decorations: Array<{ start: number; end: number }>): void {
+		this.port.postMessage({
+			type: "decorations",
+			graphId,
+			nodeId,
+			decorations,
+		});
 	}
 }
 

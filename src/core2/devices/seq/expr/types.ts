@@ -14,11 +14,15 @@
 export interface NoteExpr {
 	readonly type: "note";
 	readonly pitch: string; // e.g. "c4", "f#3", "bb2"
+	readonly srcStart?: number; // Source position start (for visualization)
+	readonly srcEnd?: number;   // Source position end
 }
 
 /** Rest atom - silence */
 export interface RestExpr {
 	readonly type: "rest";
+	readonly srcStart?: number; // Source position start (for visualization)
+	readonly srcEnd?: number;   // Source position end
 }
 
 /** Top-level sequence - children laid out sequentially, each = 1 beat */
@@ -31,12 +35,16 @@ export interface SeqExpr {
 export interface GroupExpr {
 	readonly type: "group";
 	readonly children: Expr[];
+	readonly srcStart?: number;
+	readonly srcEnd?: number;
 }
 
 /** Alternation <...> - cycle through children each pattern cycle */
 export interface AltExpr {
 	readonly type: "alt";
 	readonly children: Expr[];
+	readonly srcStart?: number;
+	readonly srcEnd?: number;
 }
 
 /**
@@ -71,6 +79,8 @@ export interface MultiplyExpr {
 	readonly type: "multiply";
 	readonly child: Expr;
 	readonly count: number;
+	readonly srcStart?: number; // Position of the * operator
+	readonly srcEnd?: number;   // End of the number
 }
 
 /** Replicate !n - repeat child n times sequentially (adds beats) */
@@ -78,6 +88,8 @@ export interface ReplicateExpr {
 	readonly type: "replicate";
 	readonly child: Expr;
 	readonly count: number;
+	readonly srcStart?: number;
+	readonly srcEnd?: number;
 }
 
 /** Elongate @n - stretch child across n beats */
@@ -85,6 +97,8 @@ export interface ElongateExpr {
 	readonly type: "elongate";
 	readonly child: Expr;
 	readonly count: number;
+	readonly srcStart?: number;
+	readonly srcEnd?: number;
 }
 
 /** Euclidean (k,n) - distribute child across k of n steps using Bjorklund algorithm */
@@ -93,6 +107,8 @@ export interface EuclideanExpr {
 	readonly child: Expr;
 	readonly hits: number;
 	readonly steps: number;
+	readonly srcStart?: number;
+	readonly srcEnd?: number;
 }
 
 /** Maybe ?p - probability of playing (default 0.5) */
