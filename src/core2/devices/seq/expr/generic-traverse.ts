@@ -74,6 +74,7 @@ export function traverseExpr<TContext>(
 	pathKey: string,
 	visitor: ExprVisitor<TContext>,
 	context: TContext,
+	inStack = false,
 ): void {
 	switch (expr.type) {
 		case "note":
@@ -87,17 +88,34 @@ export function traverseExpr<TContext>(
 			break;
 
 		case "seq":
-			traverseSeq(
-				expr.children,
-				beatStart,
-				duration,
-				cycle,
-				probDecisions,
-				inTie,
-				pathKey,
-				visitor,
-				context,
-			);
+			// Inside a stack, sequences behave like alternations
+			if (inStack && expr.children.length > 1) {
+				const selected = cycle % expr.children.length;
+				traverseExpr(
+					expr.children[selected]!,
+					beatStart,
+					duration,
+					cycle,
+					probDecisions,
+					inTie,
+					`${pathKey}.seq${selected}`,
+					visitor,
+					context,
+					false,
+				);
+			} else {
+				traverseSeq(
+					expr.children,
+					beatStart,
+					duration,
+					cycle,
+					probDecisions,
+					inTie,
+					pathKey,
+					visitor,
+					context,
+				);
+			}
 			break;
 
 		case "group":
@@ -137,6 +155,7 @@ export function traverseExpr<TContext>(
 		case "stack":
 			// Stacks play all children in parallel - traverse all for visualization
 			// Each child gets the full duration (they overlap in time)
+			// Pass inStack=true so nested sequences behave like alternations
 			visitor.enterExpr?.(expr, beatStart, duration, context);
 			for (let i = 0; i < expr.children.length; i++) {
 				const child = expr.children[i]!;
@@ -150,6 +169,7 @@ export function traverseExpr<TContext>(
 					`${pathKey}.stack${i}`,
 					visitor,
 					context,
+					true,
 				);
 			}
 			break;
