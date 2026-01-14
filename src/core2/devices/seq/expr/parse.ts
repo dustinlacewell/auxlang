@@ -147,27 +147,48 @@ function parseAtom(state: ParserState): Expr {
 	// Note
 	const noteToken = match(state, "NOTE");
 	if (noteToken) {
-		return { type: "note", pitch: noteToken.value.toLowerCase() } satisfies NoteExpr;
+		return { 
+			type: "note", 
+			pitch: noteToken.value.toLowerCase(),
+			srcStart: noteToken.position,
+			srcEnd: noteToken.position + noteToken.value.length,
+		} satisfies NoteExpr;
 	}
 
 	// Rest
-	if (match(state, "REST")) {
-		return { type: "rest" } satisfies RestExpr;
+	const restToken = match(state, "REST");
+	if (restToken) {
+		return { 
+			type: "rest",
+			srcStart: restToken.position,
+			srcEnd: restToken.position + restToken.value.length,
+		} satisfies RestExpr;
 	}
 
 	// Group [...]
-	if (match(state, "LBRACKET")) {
+	const lbracket = match(state, "LBRACKET");
+	if (lbracket) {
 		const inner = parseSeqExpr(state);
-		expect(state, "RBRACKET");
-		// Unwrap single-child seq into group
-		return { type: "group", children: inner.children } satisfies GroupExpr;
+		const rbracket = expect(state, "RBRACKET");
+		return { 
+			type: "group", 
+			children: inner.children,
+			srcStart: lbracket.position,
+			srcEnd: rbracket.position + 1,
+		} satisfies GroupExpr;
 	}
 
 	// Alternation <...>
-	if (match(state, "LANGLE")) {
+	const langle = match(state, "LANGLE");
+	if (langle) {
 		const inner = parseSeqExpr(state);
-		expect(state, "RANGLE");
-		return { type: "alt", children: inner.children } satisfies AltExpr;
+		const rangle = expect(state, "RANGLE");
+		return { 
+			type: "alt", 
+			children: inner.children,
+			srcStart: langle.position,
+			srcEnd: rangle.position + 1,
+		} satisfies AltExpr;
 	}
 
 	// Stack {...}
@@ -204,7 +225,8 @@ function wrapSeq(seq: SeqExpr): Expr {
 /** Try to parse a modifier, return modified expr or null */
 function parseModifier(state: ParserState, child: Expr): Expr | null {
 	// Multiply *n or *<alt>
-	if (match(state, "MULTIPLY")) {
+	const multToken = match(state, "MULTIPLY");
+	if (multToken) {
 		// Check for alternating multiply: *<1 2>
 		if (check(state, "LANGLE")) {
 			const altExpr = parseAtom(state) as AltExpr;
@@ -214,6 +236,8 @@ function parseModifier(state: ParserState, child: Expr): Expr | null {
 				child,
 				// Store -1 to signal "use alt", actual counts in child
 				count: -1,
+				srcStart: multToken.position,
+				srcEnd: altExpr.srcEnd ?? multToken.position + 1,
 				// Attach the alt as a nested structure
 			} satisfies MultiplyExpr;
 			// Actually, let's handle this differently - wrap the count in an expression
@@ -224,35 +248,44 @@ function parseModifier(state: ParserState, child: Expr): Expr | null {
 			type: "multiply",
 			child,
 			count: Number.parseInt(num.value, 10),
+			srcStart: num.position,
+			srcEnd: num.position + num.value.length,
 		} satisfies MultiplyExpr;
 	}
 
 	// Replicate !n
-	if (match(state, "REPLICATE")) {
+	const repToken = match(state, "REPLICATE");
+	if (repToken) {
 		const num = expect(state, "NUMBER");
 		return {
 			type: "replicate",
 			child,
 			count: Number.parseInt(num.value, 10),
+			srcStart: num.position,
+			srcEnd: num.position + num.value.length,
 		} satisfies ReplicateExpr;
 	}
 
 	// Elongate @n
-	if (match(state, "ELONGATE")) {
+	const elongToken = match(state, "ELONGATE");
+	if (elongToken) {
 		const num = expect(state, "NUMBER");
 		return {
 			type: "elongate",
 			child,
 			count: Number.parseInt(num.value, 10),
+			srcStart: num.position,
+			srcEnd: num.position + num.value.length,
 		} satisfies ElongateExpr;
 	}
 
 	// Euclidean (k,n)
-	if (match(state, "LPAREN")) {
+	const lparen = match(state, "LPAREN");
+	if (lparen) {
 		const hits = expect(state, "NUMBER");
 		expect(state, "COMMA");
 		const steps = expect(state, "NUMBER");
-		expect(state, "RPAREN");
+		const rparen = expect(state, "RPAREN");
 
 		// Check for nested euclidean - error per design decision
 		if (child.type === "euclidean") {
@@ -264,6 +297,8 @@ function parseModifier(state: ParserState, child: Expr): Expr | null {
 			child,
 			hits: Number.parseInt(hits.value, 10),
 			steps: Number.parseInt(steps.value, 10),
+			srcStart: hits.position,
+			srcEnd: steps.position + steps.value.length,
 		} satisfies EuclideanExpr;
 	}
 

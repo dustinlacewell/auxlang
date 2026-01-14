@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sequencer Visualization Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+            font-family: monospace;
+        }
+        #container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        #editor {
+            width: 100%;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin-right: 10px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #444;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            background: #222;
+            border: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Sequencer Visualization Test</h1>
+        <div id="editor"></div>
+        <button id="play">Play</button>
+        <button id="stop">Stop</button>
+        <div id="status">Ready</div>
+    </div>
+
+    <script type="module">
+        import { playWithVisualization, stopGraphById } from '../core2/eval/play.ts';
+        import { CodeEditor } from '../ui/code-editor/code-editor.tsx';
+        import { createRoot } from 'react-dom/client';
+        import { createElement } from 'react';
+
+        const testCode = `const clk = clock(120);
+seq("0 1 2 3", clk);
+seq("4 5 6 7", clk);`;
+
+        let graphId = null;
+        let code = testCode;
+
+        const root = createRoot(document.getElementById('editor'));
+        
+        function render() {
+            root.render(createElement(CodeEditor, {
+                value: code,
+                onChange: (newCode) => { code = newCode; },
+                graphId: graphId,
+            }));
+        }
+
+        render();
+
+        document.getElementById('play').addEventListener('click', async () => {
+            try {
+                graphId = `test-${Date.now()}`;
+                await playWithVisualization(code, graphId);
+                document.getElementById('status').textContent = `Playing (graphId: ${graphId})`;
+                render();
+            } catch (err) {
+                document.getElementById('status').textContent = `Error: ${err.message}`;
+                console.error(err);
+            }
+        });
+
+        document.getElementById('stop').addEventListener('click', () => {
+            if (graphId) {
+                stopGraphById(graphId);
+                graphId = null;
+                document.getElementById('status').textContent = 'Stopped';
+                render();
+            }
+        });
+    </script>
+</body>
+</html>

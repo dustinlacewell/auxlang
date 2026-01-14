@@ -4,6 +4,7 @@
 
 import type { WorkletConfig, WorkletInput, WorkletSpec } from "../../../worklet-types";
 import type { CollectedStates } from "../collected-states";
+import type { ProcessContext } from "../../../../device/process-fn";
 
 export type ProcessFn = (
 	inputs: Record<string, number>,
@@ -12,6 +13,7 @@ export type ProcessFn = (
 	sampleRate: number,
 	time: number,
 	out: Record<string, number>,
+	ctx: ProcessContext,
 ) => void;
 
 export type ProcessAllFn = (
@@ -21,6 +23,7 @@ export type ProcessAllFn = (
 	sampleRate: number,
 	time: number,
 	out: Record<string, number>,
+	ctx: ProcessContext,
 ) => void;
 
 export type LambdaFn = (state: Record<string, unknown>, sr: number, time: number) => number;

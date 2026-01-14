@@ -2,107 +2,29 @@
  * React hook for core2 audio - manages multiple audio instances for test suite.
  */
 
-import * as api from "@/core2/api";
-import { collect } from "@/core2/eval/collect";
-import { reset } from "@/core2/eval/reset";
-import { runCode } from "@/core2/eval/run-code";
-import { expandPoly } from "@/core2/graph/expand-poly";
-import { compile } from "@/core2/runtime/compile";
-import { toWorkletStereoGraph } from "@/core2/runtime/to-worklet-graph";
-import type { WorkletMessage, WorkletStereoGraph } from "@/core2/runtime/worklet-types";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { playWithVisualization, stopGraphById } from "@/core2/eval/play";
+import { useCallback, useState } from "react";
 import type { PlaybackState } from "./types";
-
-// @ts-expect-error - Vite handles ?url imports
-import workletUrl from "@/core2/runtime/worklet/index.ts?url";
-
-interface AudioInstance {
-	context: AudioContext;
-	node: AudioWorkletNode;
-}
 
 interface InstanceState {
 	state: PlaybackState;
 	error?: string;
-}
-
-async function createAudioInstance(): Promise<AudioInstance> {
-	const context = new AudioContext();
-	await context.audioWorklet.addModule(workletUrl);
-
-	const node = new AudioWorkletNode(context, "core2-processor", {
-		numberOfInputs: 0,
-		numberOfOutputs: 1,
-		outputChannelCount: [2],
-	});
-
-	node.connect(context.destination);
-	return { context, node };
-}
-
-function sendStereoGraph(inst: AudioInstance, stereo: WorkletStereoGraph): void {
-	const message: WorkletMessage = { type: "setStereoGraph", stereo };
-	inst.node.port.postMessage(message);
-}
-
-function stopInstance(inst: AudioInstance): void {
-	const message: WorkletMessage = { type: "stop" };
-	inst.node.port.postMessage(message);
-	inst.context.close();
-}
-
-async function evalToStereo(code: string): Promise<WorkletStereoGraph> {
-	const t0 = performance.now();
-
-	reset();
-	runCode(code, api);
-	const t1 = performance.now();
-
-	const graph = collect();
-	const t2 = performance.now();
-
-	const expanded = expandPoly(graph);
-	const t3 = performance.now();
-
-	const stereo = compile(expanded);
-	const t4 = performance.now();
-
-	const worklet = await toWorkletStereoGraph(stereo);
-	const t5 = performance.now();
-
-	console.log(
-		`[eval] runCode: ${(t1 - t0).toFixed(1)}ms, collect: ${(t2 - t1).toFixed(1)}ms, ` +
-			`expand: ${(t3 - t2).toFixed(1)}ms, compile: ${(t4 - t3).toFixed(1)}ms, ` +
-			`toWorklet: ${(t5 - t4).toFixed(1)}ms, TOTAL: ${(t5 - t0).toFixed(1)}ms`,
-	);
-
-	return worklet;
+	graphId?: string;
 }
 
 export function useCore2Audio() {
 	const [states, setStates] = useState<Map<string, InstanceState>>(new Map());
-	const instancesRef = useRef<Map<string, AudioInstance>>(new Map());
 
 	const play = useCallback(async (id: string, code: string) => {
 		try {
-			const stereo = await evalToStereo(code);
-
-			// Reuse existing instance for smooth re-evaluation
-			let instance = instancesRef.current.get(id);
-			if (!instance) {
-				instance = await createAudioInstance();
-				instancesRef.current.set(id, instance);
-			}
-
-			// Resume context if suspended
-			if (instance.context.state === "suspended") {
-				await instance.context.resume();
-			}
-
-			sendStereoGraph(instance, stereo);
+			// Use stable graphId per widget (no timestamp)
+			// Don't stop the old graph - let processor handle seamless crossfade
+			const graphId = id;
+			await playWithVisualization(code, graphId);
+			
 			setStates((prev) => {
 				const next = new Map(prev);
-				next.set(id, { state: "playing" });
+				next.set(id, { state: "playing", graphId });
 				return next;
 			});
 		} catch (err) {
@@ -112,28 +34,29 @@ export function useCore2Audio() {
 				return next;
 			});
 		}
-	}, []);
+	}, [states]);
 
-	const stop = useCallback((id: string) => {
-		const instance = instancesRef.current.get(id);
-		if (instance) {
-			stopInstance(instance);
-			instancesRef.current.delete(id);
+	const stop = useCallback(async (id: string) => {
+		const state = states.get(id);
+		if (state?.graphId) {
+			stopGraphById(state.graphId);
 		}
+		
 		setStates((prev) => {
 			const next = new Map(prev);
 			next.set(id, { state: "idle" });
 			return next;
 		});
-	}, []);
+	}, [states]);
 
 	const stopAll = useCallback(() => {
-		for (const instance of instancesRef.current.values()) {
-			stopInstance(instance);
+		for (const [id, state] of states) {
+			if (state.graphId) {
+				stopGraphById(state.graphId);
+			}
 		}
-		instancesRef.current.clear();
 		setStates(new Map());
-	}, []);
+	}, [states]);
 
 	const getState = useCallback(
 		(id: string): InstanceState => {
@@ -141,15 +64,6 @@ export function useCore2Audio() {
 		},
 		[states],
 	);
-
-	// Cleanup on unmount
-	useEffect(() => {
-		return () => {
-			for (const instance of instancesRef.current.values()) {
-				stopInstance(instance);
-			}
-		};
-	}, []);
 
 	return { getState, play, stop, stopAll };
 }

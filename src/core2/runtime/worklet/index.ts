@@ -3,4 +3,5 @@
  */
 
 import "./seq-cursor-bridge";
+import "./seq-position-bridge";
 import "./processor";

@@ -10,6 +10,8 @@ import type { WorkletStereoGraph } from "../../worklet-types";
 import type { CollectedStates } from "./collected-states";
 import { buildRuntimeNode } from "./node/build-node";
 import type { RuntimeNode } from "./node/types";
+import { MetricsAccumulator, type NodeMetrics, type SequencerMetrics } from "./visualization-metrics";
+import type { ProcessContext, Decoration } from "../../../device/process-fn";
 
 export class RuntimeGraph {
 	private nodes: RuntimeNode[] = [];
@@ -28,6 +30,16 @@ export class RuntimeGraph {
 
 	private sampleCount = 0;
 
+	private metricsAccumulator = new MetricsAccumulator();
+	private visualizationCounter = 0;
+	private readonly VISUALIZATION_INTERVAL = 735;
+	private sequencerNodes = new Set<number>();
+	private specs: Record<string, { defaultInput: string }> = {};
+	private deviceNames: string[] = [];
+	
+	// Decoration emission callback
+	private decorationCallback?: (nodeId: string, decorations: Decoration[]) => void;
+
 	constructor(
 		graph: WorkletStereoGraph,
 		wasmInstances: Map<string, WebAssembly.Instance>,
@@ -36,9 +48,11 @@ export class RuntimeGraph {
 	) {
 		if (oldStates) this.sampleCount = oldStates.sampleCount;
 
+		this.specs = graph.specs;
 		this.buildNodeIndex(graph);
 		this.buildNodes(graph, wasmInstances, oldStates, nodeMapping);
 		this.buildOutputMixing(graph);
+		this.identifySequencers(graph);
 	}
 
 	private buildNodeIndex(graph: WorkletStereoGraph): void {
@@ -69,6 +83,7 @@ export class RuntimeGraph {
 
 			this.nodes.push(runtimeNode);
 			this.nodeOutputs.push(runtimeNode.outputs);
+			this.deviceNames.push(node.device);
 		}
 	}
 
@@ -95,6 +110,14 @@ export class RuntimeGraph {
 		this.rightScale = this.rightCount > 1 ? 1 / Math.sqrt(this.rightCount) : 1;
 	}
 
+	private identifySequencers(graph: WorkletStereoGraph): void {
+		for (let i = 0; i < graph.nodes.length; i++) {
+			if (graph.nodes[i]!.device === "seq") {
+				this.sequencerNodes.add(i);
+			}
+		}
+	}
+
 	/**
 	 * Process one sample and return stereo output [left, right].
 	 * PERFORMANCE CRITICAL - no allocations, no string lookups.
@@ -110,12 +133,15 @@ export class RuntimeGraph {
 		for (let i = 0; i < len; i++) {
 			const node = nodes[i]!;
 
+			// Create process context for this node
+			const ctx = this.createProcessContext(node.id);
+
 			if (node.processAll) {
 				node.resolveInputArrays(sr, time);
-				node.processAll(node.inputArrays, node.config, node.state, sr, time, node.outputs);
+				node.processAll(node.inputArrays, node.config, node.state, sr, time, node.outputs, ctx);
 			} else if (node.process) {
 				node.resolveInputs(sr, time);
-				node.process(node.inputs, node.config, node.state, sr, time, node.outputs);
+				node.process(node.inputs, node.config, node.state, sr, time, node.outputs, ctx);
 			}
 		}
 
@@ -136,7 +162,23 @@ export class RuntimeGraph {
 			right += nodeOutputs[rightIndices[i]!]![rightKeys[i]!] ?? 0;
 		}
 
+		this.accumulateVisualizationMetrics();
+
 		return [left * this.leftScale, right * this.rightScale];
+	}
+
+	setDecorationCallback(callback: (nodeId: string, decorations: Decoration[]) => void): void {
+		this.decorationCallback = callback;
+	}
+
+	private createProcessContext(nodeId: string): ProcessContext {
+		return {
+			emitDecorations: (decorations: Decoration[]) => {
+				if (this.decorationCallback) {
+					this.decorationCallback(nodeId, decorations);
+				}
+			},
+		};
 	}
 
 	collectStates(): CollectedStates {
@@ -151,5 +193,54 @@ export class RuntimeGraph {
 		}
 
 		return { nodeStates, lambdaStates, sampleCount: this.sampleCount };
+	}
+
+	private accumulateVisualizationMetrics(): void {
+		for (let i = 0; i < this.nodes.length; i++) {
+			if (this.sequencerNodes.has(i)) continue;
+
+			const node = this.nodes[i]!;
+			const deviceName = this.deviceNames[i]!;
+			const spec = this.specs[deviceName];
+			const defaultInput = spec?.defaultInput || "input";
+			const value = node.inputs[defaultInput] ?? 0;
+
+			this.metricsAccumulator.accumulate(node.id, value);
+		}
+	}
+
+	collectVisualizationMetrics(): {
+		audio: Map<string, NodeMetrics>;
+		sequencers: Map<string, SequencerMetrics>;
+	} | null {
+		this.visualizationCounter++;
+
+		if (this.visualizationCounter >= this.VISUALIZATION_INTERVAL) {
+			this.visualizationCounter = 0;
+
+			const audioMetrics = this.metricsAccumulator.collect();
+			this.metricsAccumulator.reset();
+
+			const seqMetrics = new Map<string, SequencerMetrics>();
+			for (const idx of this.sequencerNodes) {
+				const node = this.nodes[idx]!;
+				const beatIndex = (node.state.beatIndex as number) ?? -1;
+				const gate = node.outputs.gate ?? 0;
+				const beatPositions = (node.config.beatPositions as Array<{ start: number; end: number }>) ?? [];
+				
+				const position = beatPositions[beatIndex] || { start: -1, end: -1 };
+
+				seqMetrics.set(node.id, {
+					beatIndex,
+					isActive: beatIndex >= 0 && gate > 0,
+					charStart: position.start,
+					charEnd: position.end,
+				});
+			}
+
+			return { audio: audioMetrics, sequencers: seqMetrics };
+		}
+
+		return null;
 	}
 }

@@ -9,6 +9,7 @@ export const clockDiv = device("clockDiv", {
 	outputs: ["trig", "gate"],
 	defaultInput: "trig",
 	defaultOutput: "trig",
+	positionalArgs: ["by"],
 	process(inp, _cfg, state, _sampleRate, _time, out) {
 		const trig = inp.trig
 		const div = Math.max(1, Math.floor((inp.by as number) ?? 4));

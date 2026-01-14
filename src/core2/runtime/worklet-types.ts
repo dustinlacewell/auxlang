@@ -59,5 +59,5 @@ export interface WorkletStereoGraph {
 
 /** Messages to worklet */
 export type WorkletMessage =
-	| { type: "setStereoGraph"; stereo: WorkletStereoGraph }
-	| { type: "stop" };
+	| { type: "setStereoGraph"; stereo: WorkletStereoGraph; graphId: string }
+	| { type: "stop"; graphId?: string };
