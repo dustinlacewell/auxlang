@@ -4,7 +4,6 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { device } from "../../core2/device/device";
-import { inputs } from "../../core2/device/inputs";
 import { resetBuilder, getBuilder } from "../../core2/graph/graph-builder";
 
 describe("device chaining", () => {
@@ -16,7 +15,7 @@ describe("device chaining", () => {
 		resetBuilder();
 
 		saw = device("saw", {
-			inputs: inputs({ freq: 440 }),
+			inputs: { freq: 440 },
 			outputs: ["audio"],
 			defaultInput: "freq",
 			defaultOutput: "audio",
@@ -24,7 +23,7 @@ describe("device chaining", () => {
 		});
 
 		lpf = device("lpf", {
-			inputs: inputs({ input: 0, cutoff: 1000, resonance: 0 }),
+			inputs: { input: 0, cutoff: 1000, resonance: 0 },
 			outputs: ["audio"],
 			defaultInput: "input",
 			defaultOutput: "audio",
@@ -33,7 +32,7 @@ describe("device chaining", () => {
 		});
 
 		gain = device("gain", {
-			inputs: inputs({ input: 0, level: 1 }),
+			inputs: { input: 0, level: 1 },
 			outputs: ["audio"],
 			defaultInput: "input",
 			defaultOutput: "audio",
@@ -72,7 +71,7 @@ describe("device chaining", () => {
 	describe("explicit output chaining", () => {
 		it("chains from explicit output", () => {
 			const seq = device("seq", {
-				inputs: inputs({ clk: 0 }),
+				inputs: { clk: 0 },
 				config: {},
 				outputs: ["cv", "gate", "trig"],
 				defaultInput: "clk",

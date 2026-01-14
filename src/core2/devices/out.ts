@@ -14,17 +14,16 @@
  */
 
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 export const outDevice = device("out", {
-	inputs: inputs({ input: 0, gain: 1, sidechain: 0 }),
+	inputs: { input: 0, gain: 1, sidechain: 0 },
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
 	process(inp, _cfg, _state, _sampleRate, _time, out) {
-		const input = (inp.input as number) ?? 0;
-		const gain = (inp.gain as number) ?? 1;
-		const sidechain = (inp.sidechain as number) ?? 0;
+		const input = inp.input
+		const gain = inp.gain
+		const sidechain = inp.sidechain
 
 		// Sidechain ducking: 0 = no duck, 1 = full duck
 		const duck = 1 - Math.max(0, Math.min(1, sidechain));

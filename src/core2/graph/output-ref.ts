@@ -11,5 +11,5 @@ import type { NodeId } from "./node";
 export interface OutputRef {
 	readonly ref: NodeId;
 	readonly out: string;
-	readonly voice?: number;
+	readonly voice?: number | undefined;
 }

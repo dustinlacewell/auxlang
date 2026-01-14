@@ -10,8 +10,26 @@
 
 import type { ConfigValue } from "../signal/config-value";
 
-export type ProcessFn = (
-	inputs: Record<string, number>,
+/**
+ * Maps input defaults to their scalar runtime types.
+ * number | number[] defaults both become number at runtime.
+ */
+export type InputsToScalar<T extends Record<string, number | number[]>> = {
+	[K in keyof T]: number;
+};
+
+/**
+ * Maps input defaults to their array runtime types (for processAll).
+ */
+export type InputsToArray<T extends Record<string, number | number[]>> = {
+	[K in keyof T]: number[];
+};
+
+/**
+ * Typed process function - receives inputs matching the device's input definition.
+ */
+export type TypedProcessFn<I extends Record<string, number | number[]>> = (
+	inputs: InputsToScalar<I>,
 	config: Record<string, ConfigValue>,
 	state: Record<string, unknown>,
 	sampleRate: number,
@@ -20,14 +38,23 @@ export type ProcessFn = (
 ) => void;
 
 /**
- * Process function for polyphonic devices that handle all voices at runtime.
- * Receives arrays of values for each input, writes to pre-allocated output.
+ * Typed processAll function for polyphonic devices.
  */
-export type ProcessAllFn = (
-	inputs: Record<string, number[]>,
+export type TypedProcessAllFn<I extends Record<string, number | number[]>> = (
+	inputs: InputsToArray<I>,
 	config: Record<string, ConfigValue>,
 	state: Record<string, unknown>,
 	sampleRate: number,
 	time: number,
 	out: Record<string, number>,
 ) => void;
+
+/**
+ * Untyped process function - for runtime use where input keys aren't known statically.
+ */
+export type ProcessFn = TypedProcessFn<Record<string, number>>;
+
+/**
+ * Untyped processAll function - for runtime use.
+ */
+export type ProcessAllFn = TypedProcessAllFn<Record<string, number>>;

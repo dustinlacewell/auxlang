@@ -1,5 +1,4 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * AD envelope generator - attack then decay to zero.
@@ -7,12 +6,13 @@ import { inputs } from "../device/inputs";
  * Use for plucky, percussive sounds.
  */
 export const ad = device("ad", {
-	inputs: inputs({ gate: 0, attack: 0.01, decay: 0.1 }),
+	inputs: { gate: 0, attack: 0.01, decay: 0.1 },
 	outputs: ["cv"],
 	defaultInput: "gate",
 	defaultOutput: "cv",
+	positionalArgs: ["attack", "decay"],
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const gate = (inp.gate as number) ?? 0;
+		const gate = inp.gate
 		const attack = Math.max(0.0001, (inp.attack as number) ?? 0.01);
 		const decay = Math.max(0.0001, (inp.decay as number) ?? 0.1);
 

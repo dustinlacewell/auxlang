@@ -4,7 +4,6 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { device } from "../../core2/device/device";
-import { inputs } from "../../core2/device/inputs";
 import { resetBuilder, getBuilder } from "../../core2/graph/graph-builder";
 
 describe("device factory", () => {
@@ -15,7 +14,7 @@ describe("device factory", () => {
 	describe("basic device creation", () => {
 		it("creates a device factory function", () => {
 			const saw = device("saw", {
-				inputs: inputs({ freq: 440 }),
+				inputs: { freq: 440 },
 				outputs: ["audio"],
 				defaultInput: "freq",
 				defaultOutput: "audio",
@@ -27,7 +26,7 @@ describe("device factory", () => {
 
 		it("calling factory produces a node in the graph", () => {
 			const saw = device("saw", {
-				inputs: inputs({ freq: 440 }),
+				inputs: { freq: 440 },
 				outputs: ["audio"],
 				defaultInput: "freq",
 				defaultOutput: "audio",
@@ -44,7 +43,7 @@ describe("device factory", () => {
 
 		it("each call creates a new node with unique id", () => {
 			const saw = device("saw", {
-				inputs: inputs({ freq: 440 }),
+				inputs: { freq: 440 },
 				outputs: ["audio"],
 				defaultInput: "freq",
 				defaultOutput: "audio",
@@ -63,7 +62,7 @@ describe("device factory", () => {
 	describe("positional arguments", () => {
 		it("consumes positional args in order", () => {
 			const lpf = device("lpf", {
-				inputs: inputs({ input: 0, cutoff: 1000, resonance: 0 }),
+				inputs: { input: 0, cutoff: 1000, resonance: 0 },
 				outputs: ["audio"],
 				defaultInput: "input",
 				defaultOutput: "audio",
@@ -80,7 +79,7 @@ describe("device factory", () => {
 
 		it("accepts object params", () => {
 			const lpf = device("lpf", {
-				inputs: inputs({ input: 0, cutoff: 1000, resonance: 0 }),
+				inputs: { input: 0, cutoff: 1000, resonance: 0 },
 				outputs: ["audio"],
 				defaultInput: "input",
 				defaultOutput: "audio",
@@ -99,7 +98,7 @@ describe("device factory", () => {
 	describe("input setters", () => {
 		it("returns chainable with input setter methods", () => {
 			const saw = device("saw", {
-				inputs: inputs({ freq: 440, detune: 0 }),
+				inputs: { freq: 440, detune: 0 },
 				outputs: ["audio"],
 				defaultInput: "freq",
 				defaultOutput: "audio",
@@ -119,7 +118,7 @@ describe("device factory", () => {
 	describe("output access", () => {
 		it("provides output refs via property access", () => {
 			const saw = device("saw", {
-				inputs: inputs({ freq: 440 }),
+				inputs: { freq: 440 },
 				outputs: ["audio"],
 				defaultInput: "freq",
 				defaultOutput: "audio",

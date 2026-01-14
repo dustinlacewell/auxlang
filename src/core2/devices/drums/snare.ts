@@ -1,18 +1,17 @@
 import { device } from "../../device/device";
-import { inputs } from "../../device/inputs";
 
 /**
  * Snare drum synthesizer.
  * Expects impulse triggers (trig > 0 for one sample).
  */
 export const snare = device("snare", {
-	inputs: inputs({ trig: 0, pitch: 180, tone: 0.4, decay: 0.15, snappy: 0.7 }),
+	inputs: { trig: 0, pitch: 180, tone: 0.4, decay: 0.15, snappy: 0.7 },
 	outputs: ["audio"],
 	defaultInput: "trig",
 	defaultOutput: "audio",
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const trig = (inp.trig as number) ?? 0;
-		const pitch = (inp.pitch as number) ?? 180;
+		const trig = inp.trig
+		const pitch = inp.pitch
 		const tone = Math.max(0, Math.min(1, (inp.tone as number) ?? 0.4));
 		const decay = Math.max(0.01, (inp.decay as number) ?? 0.15);
 		const snappy = Math.max(0, Math.min(1, (inp.snappy as number) ?? 0.7));

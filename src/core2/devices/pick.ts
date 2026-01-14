@@ -1,5 +1,4 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * Pick - pass through device.
@@ -8,12 +7,12 @@ import { inputs } from "../device/inputs";
  */
 export function pick(_voiceId: number) {
 	return device("pick", {
-		inputs: inputs({ input: 0 }),
+		inputs: { input: 0 },
 		outputs: ["signal"],
 		defaultInput: "input",
 		defaultOutput: "signal",
 		process(inp, _cfg, _state, _sampleRate, _time, out) {
-			const input = (inp.input as number) ?? 0;
+			const input = inp.input
 			out.signal = input;
 		},
 	});

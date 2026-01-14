@@ -10,22 +10,22 @@ import { createNode } from "../graph/create-node";
 import { createDeviceNode } from "./create-device-node";
 import { getBuilder } from "../graph/graph-builder";
 import type { DeviceSpec } from "./device-spec";
-import type { InputDef } from "./input-def";
+import type { TypedProcessAllFn, TypedProcessFn } from "./process-fn";
 import { registerDevice } from "./registry";
 import type { WrappedNode } from "../wrap/wrap";
 
 /**
- * Input for device spec - allows shorthand without positionalArgs/config.
+ * Input for device spec - generic over inputs for typed process functions.
  */
-export interface DeviceSpecInput {
-	inputs: Record<string, InputDef>;
+export interface DeviceSpecInput<I extends Record<string, number | number[]> = Record<string, number | number[]>> {
+	inputs: I;
 	outputs: readonly string[];
-	defaultInput: string;
+	defaultInput: string & keyof I;
 	defaultOutput: string;
-	positionalArgs?: readonly string[];
+	positionalArgs?: readonly string[]; // Can include both input and config keys
 	config?: Record<string, ConfigValue>;
-	process?: DeviceSpec["process"];
-	processAll?: DeviceSpec["processAll"];
+	process?: TypedProcessFn<I>;
+	processAll?: TypedProcessAllFn<I>;
 	wasmUrl?: string;
 	polyphonic?: boolean;
 	expand?: DeviceSpec["expand"];
@@ -81,19 +81,26 @@ let anonCounter = 0;
 /**
  * Create a named device (registers for chaining).
  */
-export function device(name: string, specInput: DeviceSpecInput): DeviceFactory;
+export function device<I extends Record<string, number | number[]>>(
+	name: string,
+	specInput: DeviceSpecInput<I>,
+): DeviceFactory;
 
 /**
  * Create an anonymous device (not registered for chaining).
  */
-export function device(specInput: DeviceSpecInput): DeviceFactory;
+export function device<I extends Record<string, number | number[]>>(specInput: DeviceSpecInput<I>): DeviceFactory;
 
-export function device(nameOrSpec: string | DeviceSpecInput, maybeSpec?: DeviceSpecInput): DeviceFactory {
+export function device<I extends Record<string, number | number[]>>(
+	nameOrSpec: string | DeviceSpecInput<I>,
+	maybeSpec?: DeviceSpecInput<I>,
+): DeviceFactory {
 	const isAnonymous = typeof nameOrSpec !== "string";
 	const name = isAnonymous ? `_anon${++anonCounter}` : nameOrSpec;
 	const specInput = isAnonymous ? nameOrSpec : maybeSpec!;
 
-	const spec = normalizeSpec(name, specInput);
+	// Cast is safe - generics are erased at runtime, normalizeSpec just copies fields
+	const spec = normalizeSpec(name, specInput as unknown as DeviceSpecInput);
 	const positionalArgs = spec.positionalArgs ?? [];
 
 	let factory: DeviceFactory;

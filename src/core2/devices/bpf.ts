@@ -1,20 +1,20 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * Bandpass filter (biquad).
  * Inputs/outputs are plain numbers.
  */
 export const bpf = device("bpf", {
-	inputs: inputs({ input: 0, cutoff: 1000, resonance: 0.5 }),
+	inputs: { input: 0, cutoff: 1000, resonance: 0.5 },
 	outputs: ["audio"],
 	defaultInput: "input",
 	defaultOutput: "audio",
+	positionalArgs: ["cutoff", "resonance"],
 	wasmUrl: "/filter.wasm",
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const input = (inp.input as number) ?? 0;
-		const cutoff = (inp.cutoff as number) ?? 1000;
-		const resonance = (inp.resonance as number) ?? 0.5;
+		const input = inp.input;
+		const cutoff = inp.cutoff;
+		const resonance = inp.resonance;
 
 		const freq = Math.min(cutoff, sampleRate / 2);
 		const w = (2 * Math.PI * freq) / sampleRate;

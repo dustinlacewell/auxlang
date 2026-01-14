@@ -1,5 +1,4 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * Delay effect with feedback and tone control.
@@ -7,12 +6,12 @@ import { inputs } from "../device/inputs";
  * which smooths out comb filter artifacts on sustained notes.
  */
 export const delay = device("delay", {
-	inputs: inputs({ input: 0, time: 0.25, feedback: 0.3, mix: 0.5, tone: 0.7 }),
+	inputs: { input: 0, time: 0.25, feedback: 0.3, mix: 0.5, tone: 0.7 },
 	outputs: ["audio"],
 	defaultInput: "input",
 	defaultOutput: "audio",
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const input = (inp.input as number) ?? 0;
+		const input = inp.input
 		const time = Math.max(0, Math.min(2, (inp.time as number) ?? 0.25));
 		const feedback = Math.max(0, Math.min(0.99, (inp.feedback as number) ?? 0.3));
 		const mix = Math.max(0, Math.min(1, (inp.mix as number) ?? 0.5));

@@ -3,19 +3,18 @@
  */
 
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 export const lpf = device("lpf", {
-	inputs: inputs({ input: 0, cutoff: 1000, resonance: 0 }),
+	inputs: { input: 0, cutoff: 1000, resonance: 0 },
 	outputs: ["audio"],
 	defaultInput: "input",
 	defaultOutput: "audio",
 	positionalArgs: ["cutoff", "resonance"],
 	wasmUrl: "/filter.wasm",
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const input = (inp.input as number) ?? 0;
-		const cutoff = (inp.cutoff as number) ?? 1000;
-		const resonance = (inp.resonance as number) ?? 0;
+		const input = inp.input
+		const cutoff = inp.cutoff
+		const resonance = inp.resonance
 
 		// Biquad coefficients for lowpass
 		const freq = Math.min(cutoff, sampleRate / 2);

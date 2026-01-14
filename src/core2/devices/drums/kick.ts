@@ -1,19 +1,18 @@
 import { device } from "../../device/device";
-import { inputs } from "../../device/inputs";
 
 /**
  * 808-style kick drum synthesizer.
  * Expects impulse triggers (trig > 0 for one sample).
  */
 export const kick = device("kick", {
-	inputs: inputs({ trig: 0, pitch: 50, sweep: 4, decay: 0.3, click: 0.3 }),
+	inputs: { trig: 0, pitch: 50, sweep: 4, decay: 0.3, click: 0.3 },
 	outputs: ["audio"],
 	defaultInput: "trig",
 	defaultOutput: "audio",
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const trig = (inp.trig as number) ?? 0;
-		const basePitch = (inp.pitch as number) ?? 50;
-		const sweep = (inp.sweep as number) ?? 4;
+		const trig = inp.trig
+		const basePitch = inp.pitch
+		const sweep = inp.sweep
 		const decay = Math.max(0.01, (inp.decay as number) ?? 0.3);
 		const click = Math.max(0, Math.min(1, (inp.click as number) ?? 0.3));
 

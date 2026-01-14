@@ -1,17 +1,16 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * Clock device - emits trigger pulses at a given rate.
  * Inputs/outputs are plain numbers.
  */
 export const clock = device("clock", {
-	inputs: inputs({ bpm: 120, swing: 0 }),
+	inputs: { bpm: 120, swing: 0 },
 	outputs: ["trig", "gate"],
 	defaultInput: "bpm",
 	defaultOutput: "trig",
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const bpm = (inp.bpm as number) ?? 120;
+		const bpm = inp.bpm
 		const swing = Math.max(0, Math.min(0.5, (inp.swing as number) ?? 0));
 
 		const samplesPerBeat = (60 / bpm) * sampleRate;

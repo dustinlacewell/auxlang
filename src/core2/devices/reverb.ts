@@ -1,21 +1,20 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * Freeverb-style algorithmic reverb.
  * mix: 0 = dry, 1 = wet (crossfade, no clipping)
  */
 export const reverb = device("reverb", {
-	inputs: inputs({ input: 0, room: 0.5, damp: 0.5, mix: 0.33 }),
+	inputs: { input: 0, room: 0.5, damp: 0.5, mix: 0.33 },
 	outputs: ["audio"],
 	defaultInput: "input",
 	defaultOutput: "audio",
 	wasmUrl: "/reverb.wasm",
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const input = (inp.input as number) ?? 0;
-		const room = (inp.room as number) ?? 0.5;
-		const damp = (inp.damp as number) ?? 0.5;
-		const mix = (inp.mix as number) ?? 0.33;
+		const input = inp.input
+		const room = inp.room
+		const damp = inp.damp
+		const mix = inp.mix
 
 		// Try to use WASM reverb if available
 		// biome-ignore lint/suspicious/noExplicitAny: globalThis typing in worklet

@@ -4,7 +4,6 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { device } from "../../core2/device/device";
-import { inputs } from "../../core2/device/inputs";
 import { out } from "../../core2/graph/out";
 import { resetBuilder, getBuilder } from "../../core2/graph/graph-builder";
 
@@ -15,7 +14,7 @@ describe("out()", () => {
 		resetBuilder();
 
 		saw = device("saw", {
-			inputs: inputs({ freq: 440 }),
+			inputs: { freq: 440 },
 			outputs: ["audio"],
 			defaultInput: "freq",
 			defaultOutput: "audio",

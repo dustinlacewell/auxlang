@@ -1,6 +1,5 @@
 import { Scale } from "tonal";
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 // Parse interval string to semitones
 function intervalToSemitones(interval: string): number {
@@ -59,17 +58,17 @@ const SCALE_SEMITONES: Record<string, number[]> = {
  *         minor pentatonic, major pentatonic, blues, whole tone, chromatic
  */
 export const quantize = device("quantize", {
-	inputs: inputs({ input: 440, root: 0, octave: 3, range: 4 }),
+	inputs: { input: 440, root: 0, octave: 3, range: 4 },
 	config: { scales: SCALE_SEMITONES, scaleName: "major" },
 	outputs: ["freq"],
 	defaultInput: "input",
 	defaultOutput: "freq",
 	positionalArgs: ["scaleName", "root", "octave", "range"],
 	process(inp, cfg, state, _sampleRate, _time, out) {
-		const inputFreq = (inp.input as number) ?? 440;
-		const root = (inp.root as number) ?? 0;
-		const octave = (inp.octave as number) ?? 3;
-		const range = (inp.range as number) ?? 4;
+		const inputFreq = inp.input
+		const root = inp.root
+		const octave = inp.octave
+		const range = inp.range
 		const scaleName = (cfg.scaleName as string) ?? "major";
 		const scales = cfg.scales as Record<string, number[]>;
 

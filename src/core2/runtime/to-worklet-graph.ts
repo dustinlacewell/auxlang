@@ -27,9 +27,9 @@ export async function toWorkletStereoGraph(runtime: StereoRuntimeGraph): Promise
 		if (!specs[node.device]) {
 			// Serialize spec
 			const inputDefaults: Record<string, { default: number }> = {};
-			for (const [name, def] of Object.entries(spec.inputs)) {
+			for (const [name, defaultValue] of Object.entries(spec.inputs)) {
 				// After expansion, defaults should be scalar
-				const defaultVal = Array.isArray(def.default) ? def.default[0] ?? 0 : def.default;
+				const defaultVal = Array.isArray(defaultValue) ? defaultValue[0] ?? 0 : defaultValue;
 				inputDefaults[name] = { default: defaultVal };
 			}
 

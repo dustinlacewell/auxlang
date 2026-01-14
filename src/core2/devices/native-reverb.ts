@@ -1,5 +1,4 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * Native WASM Freeverb reverb device.
@@ -17,13 +16,13 @@ import { inputs } from "../device/inputs";
  *   nativeReverb(synth).room(0.8).damp(0.3).wet(0.4).dry(0.6)
  */
 export const nativeReverb = device("nativeReverb", {
-	inputs: inputs({ input: 0, room: 0.5, damp: 0.5, wet: 0.33, dry: 0.7 }),
+	inputs: { input: 0, room: 0.5, damp: 0.5, wet: 0.33, dry: 0.7 },
 	outputs: ["audio"],
 	defaultInput: "input",
 	defaultOutput: "audio",
 	wasmUrl: "/native.wasm",
 	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		// WASM-only - placeholder
-		out.audio = (inp.input as number) ?? 0;
+		out.audio = inp.input
 	},
 });

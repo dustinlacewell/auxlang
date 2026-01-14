@@ -1,20 +1,19 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * Highpass filter (biquad).
  * Inputs/outputs are plain numbers.
  */
 export const hpf = device("hpf", {
-	inputs: inputs({ input: 0, cutoff: 200, resonance: 0 }),
+	inputs: { input: 0, cutoff: 200, resonance: 0 },
 	outputs: ["audio"],
 	defaultInput: "input",
 	defaultOutput: "audio",
 	wasmUrl: "/filter.wasm",
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const input = (inp.input as number) ?? 0;
-		const cutoff = (inp.cutoff as number) ?? 200;
-		const resonance = (inp.resonance as number) ?? 0;
+		const input = inp.input
+		const cutoff = inp.cutoff
+		const resonance = inp.resonance
 
 		const freq = Math.min(cutoff, sampleRate / 2);
 		const w = (2 * Math.PI * freq) / sampleRate;

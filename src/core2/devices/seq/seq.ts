@@ -6,7 +6,6 @@
  */
 
 import { device } from "../../device/device";
-import { inputs } from "../../device/inputs";
 import { createNode } from "../../graph/create-node";
 import { wrap } from "../../wrap/wrap";
 import { parseExpr } from "./expr/parse";
@@ -14,7 +13,7 @@ import { countBeats } from "./expr/traverse";
 import { decomposePattern, voiceCount, type Expr } from "./expr/types";
 
 export const seq = device("seq", {
-	inputs: inputs({ clk: 0 }),
+	inputs: { clk: 0 },
 	config: { pattern: "", expr: null, totalBeats: 0 },
 	outputs: ["cv", "gate", "trig"],
 	defaultInput: "clk",

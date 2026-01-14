@@ -1,17 +1,16 @@
 import { device } from "../../device/device";
-import { inputs } from "../../device/inputs";
 
 /**
  * Hi-hat synthesizer.
  * Expects impulse triggers (trig > 0 for one sample).
  */
 export const hihat = device("hihat", {
-	inputs: inputs({ trig: 0, decay: 0.05, tone: 0.6, metal: 0.5 }),
+	inputs: { trig: 0, decay: 0.05, tone: 0.6, metal: 0.5 },
 	outputs: ["audio"],
 	defaultInput: "trig",
 	defaultOutput: "audio",
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const trig = (inp.trig as number) ?? 0;
+		const trig = inp.trig
 		const decay = Math.max(0.005, (inp.decay as number) ?? 0.05);
 		const tone = Math.max(0, Math.min(1, (inp.tone as number) ?? 0.6));
 		const metal = Math.max(0, Math.min(1, (inp.metal as number) ?? 0.5));

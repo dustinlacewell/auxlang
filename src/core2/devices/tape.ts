@@ -1,5 +1,4 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * Tape Delay - warm analog-style delay with tape machine characteristics.
@@ -25,7 +24,7 @@ import { inputs } from "../device/inputs";
  * ```
  */
 export const tape = device("tape", {
-	inputs: inputs({
+	inputs: {
 		input: 0,
 		time: 0.3,
 		feedback: 0.4,
@@ -35,13 +34,13 @@ export const tape = device("tape", {
 		saturation: 0.3,
 		tone: 0.7,
 		age: 0,
-	}),
+	},
 	outputs: ["audio"],
 	defaultInput: "input",
 	defaultOutput: "audio",
 	wasmUrl: "/tape.wasm",
 	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		// WASM-only - placeholder
-		out.audio = (inp.input as number) ?? 0;
+		out.audio = inp.input
 	},
 });

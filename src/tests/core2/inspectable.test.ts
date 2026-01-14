@@ -7,7 +7,6 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { device } from "../../core2/device/device";
-import { inputs } from "../../core2/device/inputs";
 import { resetBuilder, getBuilder } from "../../core2/graph/graph-builder";
 
 describe("inspectable graphs", () => {
@@ -18,7 +17,7 @@ describe("inspectable graphs", () => {
 		resetBuilder();
 
 		saw = device("saw", {
-			inputs: inputs({ freq: 440 }),
+			inputs: { freq: 440 },
 			outputs: ["audio"],
 			defaultInput: "freq",
 			defaultOutput: "audio",
@@ -26,7 +25,7 @@ describe("inspectable graphs", () => {
 		});
 
 		lpf = device("lpf", {
-			inputs: inputs({ input: 0, cutoff: 1000, resonance: 0 }),
+			inputs: { input: 0, cutoff: 1000, resonance: 0 },
 			outputs: ["audio"],
 			defaultInput: "input",
 			defaultOutput: "audio",
