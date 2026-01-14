@@ -17,7 +17,6 @@ export interface SourceMap {
 
 let currentSourceMap: SourceMap | null = null;
 let seqCallOrder: SourcePosition[] = [];
-let seqNodeIndex = 0;
 
 export function createSourceMap(source: string): SourceMap {
 	return {
@@ -31,7 +30,6 @@ let seqPatternPositions: Map<string, SourcePosition> = new Map();
 
 export function setCurrentSourceMap(map: SourceMap | null): void {
 	currentSourceMap = map;
-	seqNodeIndex = 0;
 	seqPatternPositions = new Map();
 	
 	if (map) {
@@ -70,32 +68,6 @@ export function getCurrentSourceMap(): SourceMap | null {
 
 export function capturePosition(map: SourceMap, nodeId: string, position: SourcePosition): void {
 	map.positions.set(nodeId, position);
-}
-
-export function captureNextSeqPosition(nodeId: string): void {
-	if (!currentSourceMap || seqNodeIndex >= seqCallOrder.length) return;
-	
-	const position = seqCallOrder[seqNodeIndex];
-	if (position) {
-		capturePosition(currentSourceMap, nodeId, position);
-	}
-	seqNodeIndex++;
-}
-
-/**
- * Capture the same seq position for multiple nodeIds (for poly voices).
- * Only advances the seqNodeIndex once.
- */
-export function captureNextSeqPositionForAll(nodeIds: string[]): void {
-	if (!currentSourceMap || seqNodeIndex >= seqCallOrder.length) return;
-	
-	const position = seqCallOrder[seqNodeIndex];
-	if (position) {
-		for (const nodeId of nodeIds) {
-			capturePosition(currentSourceMap, nodeId, position);
-		}
-	}
-	seqNodeIndex++;
 }
 
 /**
