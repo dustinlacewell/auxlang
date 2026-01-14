@@ -9,11 +9,12 @@
  *   import tests from "virtual:interactive-tests";
  */
 
-import type { Plugin } from "vite";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import type { Plugin, ViteDevServer } from "vite";
+import { readdirSync, readFileSync, statSync, mkdirSync, writeFileSync, unlinkSync, existsSync } from "node:fs";
 import { join, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { categoryToDisplayName, parseTestCase } from "./parser";
+import { categoryToDisplayName, displayNameToCategory, parseTestCase, serializeTestCase } from "./parser";
+import type { IncomingMessage, ServerResponse } from "node:http";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CASES_DIR = join(__dirname, "cases");
@@ -107,5 +108,157 @@ export function interactiveTestsPlugin(): Plugin {
 				}
 			}
 		},
+
+		configureServer(server) {
+			server.middlewares.use(async (req, res, next) => {
+				if (!req.url?.startsWith("/api/test")) return next();
+
+				const url = new URL(req.url, "http://localhost");
+
+				if (req.method === "POST" && url.pathname === "/api/test/save") {
+					await handleSave(req, res, server);
+				} else if (req.method === "DELETE" && url.pathname === "/api/test/delete") {
+					await handleDelete(req, res, server);
+				} else {
+					next();
+				}
+			});
+		},
 	};
+}
+
+function invalidateVirtualModule(server: ViteDevServer) {
+	const mod = server.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE_ID);
+	if (mod) {
+		server.moduleGraph.invalidateModule(mod);
+		server.ws.send({ type: "full-reload" });
+	}
+}
+
+async function parseBody(req: IncomingMessage): Promise<unknown> {
+	return new Promise((resolve, reject) => {
+		let data = "";
+		req.on("data", (chunk) => (data += chunk));
+		req.on("end", () => {
+			try {
+				resolve(JSON.parse(data));
+			} catch {
+				reject(new Error("Invalid JSON"));
+			}
+		});
+		req.on("error", reject);
+	});
+}
+
+function sendJson(res: ServerResponse, status: number, body: unknown) {
+	res.statusCode = status;
+	res.setHeader("Content-Type", "application/json");
+	res.end(JSON.stringify(body));
+}
+
+function isValidId(id: string): boolean {
+	return /^[a-z0-9-]+$/.test(id);
+}
+
+function isValidPath(str: string): boolean {
+	return !str.includes("..") && !str.includes("/") && !str.includes("\\");
+}
+
+interface SaveBody {
+	category: string;
+	device: string;
+	id: string;
+	name: string;
+	desc: string;
+	code: string;
+	originalPath?: string;
+}
+
+async function handleSave(req: IncomingMessage, res: ServerResponse, server: ViteDevServer): Promise<void> {
+	try {
+		const body = (await parseBody(req)) as SaveBody;
+		const { category, device, id, name, desc, code, originalPath } = body;
+
+		// Validation
+		if (!category || !device || !id || !name || !code) {
+			sendJson(res, 400, { success: false, error: "Missing required fields" });
+			return;
+		}
+
+		const categorySlug = displayNameToCategory(category);
+
+		if (!isValidPath(categorySlug) || !isValidPath(device) || !isValidId(id)) {
+			sendJson(res, 400, { success: false, error: "Invalid category, device, or id" });
+			return;
+		}
+
+		const newPath = join(CASES_DIR, categorySlug, device, `${id}.js`);
+		const content = serializeTestCase({ name, desc: desc || "", code });
+
+		// Create directory if needed
+		const dir = dirname(newPath);
+		if (!existsSync(dir)) {
+			mkdirSync(dir, { recursive: true });
+		}
+
+		// If original path differs, delete old file
+		if (originalPath) {
+			const oldPath = join(CASES_DIR, originalPath);
+			const normalizedNew = newPath.replace(/\\/g, "/");
+			const normalizedOld = oldPath.replace(/\\/g, "/");
+
+			if (normalizedOld !== normalizedNew && existsSync(oldPath)) {
+				unlinkSync(oldPath);
+			}
+		}
+
+		writeFileSync(newPath, content);
+		invalidateVirtualModule(server);
+
+		const filePath = `${categorySlug}/${device}/${id}.js`;
+		sendJson(res, 200, { success: true, filePath });
+	} catch (err) {
+		console.error("Save error:", err);
+		sendJson(res, 500, { success: false, error: String(err) });
+	}
+}
+
+interface DeleteBody {
+	category: string;
+	device: string;
+	id: string;
+}
+
+async function handleDelete(req: IncomingMessage, res: ServerResponse, server: ViteDevServer): Promise<void> {
+	try {
+		const body = (await parseBody(req)) as DeleteBody;
+		const { category, device, id } = body;
+
+		if (!category || !device || !id) {
+			sendJson(res, 400, { success: false, error: "Missing required fields" });
+			return;
+		}
+
+		const categorySlug = displayNameToCategory(category);
+
+		if (!isValidPath(categorySlug) || !isValidPath(device) || !isValidId(id)) {
+			sendJson(res, 400, { success: false, error: "Invalid category, device, or id" });
+			return;
+		}
+
+		const filePath = join(CASES_DIR, categorySlug, device, `${id}.js`);
+
+		if (!existsSync(filePath)) {
+			sendJson(res, 404, { success: false, error: "File not found" });
+			return;
+		}
+
+		unlinkSync(filePath);
+		invalidateVirtualModule(server);
+
+		sendJson(res, 200, { success: true });
+	} catch (err) {
+		console.error("Delete error:", err);
+		sendJson(res, 500, { success: false, error: String(err) });
+	}
 }

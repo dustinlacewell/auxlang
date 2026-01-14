@@ -38,3 +38,12 @@ body {
 ::-webkit-scrollbar-thumb:hover {
 	@apply bg-surface-700;
 }
+
+/* Hide scrollbars but keep scrolling */
+.scrollbar-hide {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+	display: none;
+}
