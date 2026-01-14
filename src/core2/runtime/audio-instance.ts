@@ -6,8 +6,8 @@ import type { WorkletMessage, WorkletStereoGraph } from "./worklet-types";
 import type { SourceMap, SourcePosition } from "../eval/source-map";
 import { findSeqPatterns } from "../eval/source-map";
 import { tokenize } from "../devices/seq/tokenize";
-import { parseExpr } from "../devices/seq/expr/parse";
-import { extractPositionsForBeat } from "../devices/seq/extract-beat-positions";
+import { parseExpr } from "../devices/seq/ast/parse";
+import { extractPositionsForBeat } from "../devices/seq/visitors/extract-positions";
 import type { NodeMetrics, SequencerMetrics } from "./worklet/graph/visualization-metrics";
 
 // @ts-expect-error - Vite handles ?url imports

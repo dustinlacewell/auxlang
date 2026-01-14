@@ -2,10 +2,10 @@
  * Create a new cursor positioned at beat 0.
  */
 
-import type { Expr } from "../expr/types";
+import type { Expr } from "../ast/types";
 import type { Cursor } from "./types";
-import { collectBeatEvents } from "./collect-events";
-import type { TraversalState } from "../expr/generic-traverse";
+import { collectBeatEvents } from "../visitors/collect-events";
+import type { TraversalState } from "../traverse/types";
 
 /**
  * Create a cursor initialized to beat 0, cycle 0.

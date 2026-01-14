@@ -9,11 +9,11 @@
  *   npx tsx src/tools/seq-timeline.ts "{c4, e4}" --by-voice
  */
 
-import { parseExpr } from "@/core2/devices/seq/expr/parse";
-import { decomposePattern } from "@/core2/devices/seq/expr/types";
-import { countBeats } from "@/core2/devices/seq/expr/count-beats";
-import { collectBeatEvents } from "@/core2/devices/seq/cursor/collect-events";
-import { createTraversalState } from "@/core2/devices/seq/expr/generic-traverse";
+import { parseExpr } from "@/core2/devices/seq/ast/parse";
+import { decomposePattern } from "@/core2/devices/seq/voices/decompose";
+import { countBeats } from "@/core2/devices/seq/traverse/count-beats";
+import { collectBeatEvents } from "@/core2/devices/seq/visitors/collect-events";
+import { createTraversalState } from "@/core2/devices/seq/traverse/types";
 
 function freqToNote(freq: number): string {
 	const notes = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"];

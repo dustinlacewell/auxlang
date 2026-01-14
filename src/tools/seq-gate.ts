@@ -6,10 +6,10 @@
  *   npx tsx src/tools/seq-gate.ts "c4 e4 g4" --cycles 2
  */
 
-import { parseExpr } from "@/core2/devices/seq/expr/parse";
-import { countBeats } from "@/core2/devices/seq/expr/count-beats";
-import { collectBeatEvents } from "@/core2/devices/seq/cursor/collect-events";
-import { createTraversalState } from "@/core2/devices/seq/expr/generic-traverse";
+import { parseExpr } from "@/core2/devices/seq/ast/parse";
+import { countBeats } from "@/core2/devices/seq/traverse/count-beats";
+import { collectBeatEvents } from "@/core2/devices/seq/visitors/collect-events";
+import { createTraversalState } from "@/core2/devices/seq/traverse/types";
 
 function getGateAtPhase(events: { start: number; end: number }[], phase: number): number {
 	for (const e of events) {

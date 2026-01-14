@@ -5,8 +5,9 @@
  * recomputes on beat boundaries, not every sample.
  */
 
-import type { Expr } from "../expr/types";
-import type { AltState } from "../expr/generic-traverse";
+import type { Expr } from "../ast/types";
+import type { AltState } from "../traverse/types";
+import type { BeatEvent } from "../visitors/collect-events";
 
 /**
  * A position in the pattern tree - path from root to current node.
@@ -57,20 +58,8 @@ export interface Cursor {
 	lastTriggeredSample: number;
 }
 
-/**
- * A note event within a beat, with fractional timing.
- * Flattened from arbitrarily nested groups/subdivisions.
- */
-export interface BeatEvent {
-	/** Frequency to output */
-	freq: number;
-	/** Start position within beat (0-1) */
-	start: number;
-	/** End position within beat (0-1) */
-	end: number;
-	/** Whether this event should trigger (false for tied continuations) */
-	isTrigger: boolean;
-}
+// Re-export BeatEvent for convenience
+export type { BeatEvent };
 
 /**
  * Output from the cursor for a single sample.

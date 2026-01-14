@@ -7,12 +7,12 @@
  *   npx tsx src/tools/seq-compare.ts "<c4 d4> e4" --cycles 4
  */
 
-import { parseExpr } from "@/core2/devices/seq/expr/parse";
-import { decomposePattern } from "@/core2/devices/seq/expr/types";
-import { countBeats } from "@/core2/devices/seq/expr/count-beats";
-import { collectBeatEvents } from "@/core2/devices/seq/cursor/collect-events";
-import { extractPositionsForBeat } from "@/core2/devices/seq/extract-beat-positions";
-import { createTraversalState } from "@/core2/devices/seq/expr/generic-traverse";
+import { parseExpr } from "@/core2/devices/seq/ast/parse";
+import { decomposePattern } from "@/core2/devices/seq/voices/decompose";
+import { countBeats } from "@/core2/devices/seq/traverse/count-beats";
+import { collectBeatEvents } from "@/core2/devices/seq/visitors/collect-events";
+import { extractPositionsForBeat } from "@/core2/devices/seq/visitors/extract-positions";
+import { createTraversalState } from "@/core2/devices/seq/traverse/types";
 
 function freqToNote(freq: number): string {
 	const notes = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"];

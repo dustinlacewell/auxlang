@@ -1,9 +1,13 @@
 /**
- * Count total beats an expression occupies.
+ * Count the number of beats in an expression.
  */
 
-import type { Expr } from "./types";
+import type { Expr } from "../ast/types";
 
+/**
+ * Count total beats for an expression.
+ * Used for timing calculations during traversal.
+ */
 export function countBeats(expr: Expr): number {
 	switch (expr.type) {
 		case "note":
@@ -13,22 +17,16 @@ export function countBeats(expr: Expr): number {
 		case "stack":
 		case "tie":
 			return 1;
-
 		case "seq":
 			return expr.children.reduce((sum, child) => sum + countBeats(child), 0);
-
 		case "multiply":
 			return countBeats(expr.child);
-
 		case "replicate":
 			return countBeats(expr.child) * expr.count;
-
 		case "elongate":
-			return countBeats(expr.child) * expr.count;
-
+			return expr.count;
 		case "euclidean":
-			return expr.steps;
-
+			return 1;
 		case "maybe":
 			return countBeats(expr.child);
 	}

@@ -7,7 +7,7 @@
  *   npx tsx src/tools/seq-euclidean.ts --common
  */
 
-import { euclidean } from "@/core2/devices/seq/expr/euclidean";
+import { euclidean } from "@/core2/devices/seq/traverse/euclidean";
 
 function formatPattern(pattern: boolean[]): string {
 	return pattern.map((hit) => (hit ? "x" : ".")).join(" ");
