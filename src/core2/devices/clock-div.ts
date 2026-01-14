@@ -1,17 +1,16 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * Clock divider - outputs a trigger every N input triggers.
  * Expects impulse triggers (trig > 0 for one sample).
  */
 export const clockDiv = device("clockDiv", {
-	inputs: inputs({ trig: 0, by: 4 }),
+	inputs: { trig: 0, by: 4 },
 	outputs: ["trig", "gate"],
 	defaultInput: "trig",
 	defaultOutput: "trig",
 	process(inp, _cfg, state, _sampleRate, _time, out) {
-		const trig = (inp.trig as number) ?? 0;
+		const trig = inp.trig
 		const div = Math.max(1, Math.floor((inp.by as number) ?? 4));
 
 		// Forward reset signal (negative BPM from clock)
@@ -47,12 +46,12 @@ export const clockDiv = device("clockDiv", {
  * Supports fractional multipliers for smooth tempo changes.
  */
 export const clockMult = device("clockMult", {
-	inputs: inputs({ trig: 0, by: 2 }),
+	inputs: { trig: 0, by: 2 },
 	outputs: ["trig", "gate"],
 	defaultInput: "trig",
 	defaultOutput: "trig",
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const trig = (inp.trig as number) ?? 0;
+		const trig = inp.trig
 		// Allow fractional multipliers for smooth tempo modulation
 		const mult = Math.max(0.1, (inp.by as number) ?? 2);
 

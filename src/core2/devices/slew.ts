@@ -1,17 +1,16 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * Slew limiter / lag processor for smoothing signals.
  * Inputs/outputs are plain numbers.
  */
 export const slew = device("slew", {
-	inputs: inputs({ input: 0, rise: 0.1, fall: 0.1 }),
+	inputs: { input: 0, rise: 0.1, fall: 0.1 },
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const input = (inp.input as number) ?? 0;
+		const input = inp.input
 		const rise = Math.max(0.0001, (inp.rise as number) ?? 0.1);
 		const fall = Math.max(0.0001, (inp.fall as number) ?? 0.1);
 

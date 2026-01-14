@@ -1,5 +1,4 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * AR envelope generator - attack while gate on, release when gate off.
@@ -7,12 +6,13 @@ import { inputs } from "../device/inputs";
  * Level stays at 1.0 while gate is held.
  */
 export const ar = device("ar", {
-	inputs: inputs({ gate: 0, attack: 0.01, release: 0.1 }),
+	inputs: { gate: 0, attack: 0.01, release: 0.1 },
 	outputs: ["cv"],
 	defaultInput: "gate",
 	defaultOutput: "cv",
+	positionalArgs: ["attack", "release"],
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const gate = (inp.gate as number) ?? 0;
+		const gate = inp.gate
 		const attack = Math.max(0.0001, (inp.attack as number) ?? 0.01);
 		const release = Math.max(0.0001, (inp.release as number) ?? 0.1);
 

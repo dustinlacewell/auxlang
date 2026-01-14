@@ -81,11 +81,7 @@ export function TestSuiteApp() {
 		<div className="min-h-screen p-5 max-w-6xl mx-auto">
 			<div className="flex justify-between items-start mb-4">
 				<div>
-					<h1 className="text-2xl font-bold mb-2">Auxlang Audio Test Suite</h1>
-					<p className="text-gray-400 text-sm">
-						Click "Play" on any test to hear it. Each test should produce a distinct, recognizable
-						sound. Click "Stop All" to silence everything.
-					</p>
+					<h1 className="text-2xl font-bold mb-2">Auxlang Device Tests</h1>
 				</div>
 				<div className="flex gap-2 ml-4 shrink-0">
 					<Button variant="default" onClick={() => setShowNewTestModal(true)}>

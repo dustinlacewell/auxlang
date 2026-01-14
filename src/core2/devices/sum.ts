@@ -6,10 +6,9 @@
  */
 
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 export const sum = device("sum", {
-	inputs: inputs({ input: 0 }),
+	inputs: { input: 0 },
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",

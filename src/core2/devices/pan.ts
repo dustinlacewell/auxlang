@@ -12,7 +12,6 @@
  */
 
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 import type { OutputRef } from "../graph/output-ref";
 import type { NodeInput } from "../signal/node-input";
 import type { WrappedNode } from "../wrap/wrap";
@@ -34,7 +33,7 @@ function createSummer(voiceCount: number) {
 	}
 
 	return device({
-		inputs: inputs(voiceInputs),
+		inputs: voiceInputs,
 		outputs: ["signal"],
 		defaultInput: "v0",
 		defaultOutput: "signal",
@@ -52,13 +51,13 @@ function createSummer(voiceCount: number) {
 
 /** Anonymous device for left channel panning */
 const panLeft = device({
-	inputs: inputs({ input: 0, pan: 0 }),
+	inputs: { input: 0, pan: 0 },
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
 	process(inp, _cfg, _state, _sampleRate, _time, out) {
-		const input = (inp.input as number) ?? 0;
-		const p = (inp.pan as number) ?? 0;
+		const input = inp.input
+		const p = inp.pan
 		// leftGain = (1 - pan) / 2
 		const gain = (1 - p) / 2;
 		out.signal = input * gain;
@@ -67,13 +66,13 @@ const panLeft = device({
 
 /** Anonymous device for right channel panning */
 const panRight = device({
-	inputs: inputs({ input: 0, pan: 0 }),
+	inputs: { input: 0, pan: 0 },
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
 	process(inp, _cfg, _state, _sampleRate, _time, out) {
-		const input = (inp.input as number) ?? 0;
-		const p = (inp.pan as number) ?? 0;
+		const input = inp.input
+		const p = inp.pan
 		// rightGain = (1 + pan) / 2
 		const gain = (1 + p) / 2;
 		out.signal = input * gain;
@@ -81,14 +80,14 @@ const panRight = device({
 });
 
 export const pan = device("pan", {
-	inputs: inputs({ input: 0, pan: 0 }),
+	inputs: { input: 0, pan: 0 },
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
 	polyphonic: true,
 	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		// Fallback for when expand isn't used
-		out.signal = (inp.input as number) ?? 0;
+		out.signal = inp.input
 	},
 	expand(_config, inputBindings) {
 		const input = inputBindings.input;

@@ -1,18 +1,17 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * Counter device - counts triggers and outputs the count.
  * Expects impulse triggers (trig > 0 for one sample).
  */
 export const counter = device("counter", {
-	inputs: inputs({ trig: 0, reset: 0, max: 0 }),
+	inputs: { trig: 0, reset: 0, max: 0 },
 	outputs: ["count", "wrap"],
 	defaultInput: "trig",
 	defaultOutput: "count",
 	process(inp, _cfg, state, _sampleRate, _time, out) {
-		const trig = (inp.trig as number) ?? 0;
-		const reset = (inp.reset as number) ?? 0;
+		const trig = inp.trig
+		const reset = inp.reset
 		const max = Math.floor((inp.max as number) ?? 0);
 
 		let count = (state.count as number) ?? 0;

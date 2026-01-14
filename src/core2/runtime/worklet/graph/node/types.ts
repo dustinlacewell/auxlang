@@ -31,8 +31,8 @@ export type ArrayResolver = () => number[];
 
 export interface RuntimeNode {
 	readonly id: string;
-	readonly process?: ProcessFn;
-	readonly processAll?: ProcessAllFn;
+	readonly process?: ProcessFn | undefined;
+	readonly processAll?: ProcessAllFn | undefined;
 	readonly inputs: Record<string, number>;
 	readonly inputArrays: Record<string, number[]>;
 	readonly config: Record<string, unknown>;

@@ -1,5 +1,4 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /** Standard waveform shapes */
 const shapes = {
@@ -17,17 +16,17 @@ type ShapeFn = (phase: number) => number;
  */
 function createOsc(name: string, defaultShape: ShapeFn) {
 	return device(name, {
-		inputs: inputs({ freq: 440, min: -1, max: 1, phase: 0 }),
+		inputs: { freq: 440, min: -1, max: 1, phase: 0 },
 		config: { shape: defaultShape },
 		outputs: ["cv"],
 		defaultInput: "freq",
 		defaultOutput: "cv",
 		positionalArgs: ["freq", "min", "max", "phase"],
 		process(inp, cfg, state, sampleRate, _time, out) {
-			const freq = (inp.freq as number) ?? 440;
+			const freq = inp.freq
 			const min = (inp.min as number) ?? -1;
-			const max = (inp.max as number) ?? 1;
-			const initPhase = (inp.phase as number) ?? 0;
+			const max = inp.max
+			const initPhase = inp.phase
 
 			// Phase accumulator
 			const phase = (((state.phase as number) ?? initPhase) + freq / sampleRate) % 1;

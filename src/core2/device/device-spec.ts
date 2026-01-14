@@ -5,11 +5,10 @@
 import type { ConfigValue } from "../signal/config-value";
 import type { NodeInput } from "../signal/node-input";
 import type { WrappedNode } from "../wrap/wrap";
-import type { InputDef } from "./input-def";
 import type { ProcessAllFn, ProcessFn } from "./process-fn";
 
 export interface DeviceSpec {
-	readonly inputs: Record<string, InputDef>;
+	readonly inputs: Record<string, number | number[]>;
 	readonly config: Record<string, ConfigValue>;
 	readonly outputs: readonly string[];
 	readonly defaultInput: string;

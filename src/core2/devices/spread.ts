@@ -6,7 +6,6 @@
  */
 
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 import type { OutputRef } from "../graph/output-ref";
 import type { NodeInput } from "../signal/node-input";
 import type { WrappedNode } from "../wrap/wrap";
@@ -30,13 +29,13 @@ function createMixer(voiceCount: number, isLeft: boolean) {
 	}
 
 	return device({
-		inputs: inputs(voiceInputs),
+		inputs: voiceInputs,
 		outputs: ["val"],
 		defaultInput: "v0",
 		defaultOutput: "val",
 		config: { voiceCount, isLeft },
 		process(inp, cfg, _state, _sampleRate, _time, out) {
-			const width = (inp.width as number) ?? 1;
+			const width = inp.width
 			const n = cfg.voiceCount as number;
 			const left = cfg.isLeft as boolean;
 			let sum = 0;
@@ -55,7 +54,7 @@ function createMixer(voiceCount: number, isLeft: boolean) {
 }
 
 export const spread = device("spread", {
-	inputs: inputs({ input: 0, width: 1 }),
+	inputs: { input: 0, width: 1 },
 	outputs: ["val"],
 	defaultInput: "input",
 	defaultOutput: "val",
@@ -63,7 +62,7 @@ export const spread = device("spread", {
 	polyphonic: true,
 	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		// Fallback for mono - just pass through
-		out.val = (inp.input as number) ?? 0;
+		out.val = inp.input
 	},
 	expand(config, inputBindings) {
 		const input = inputBindings.input;

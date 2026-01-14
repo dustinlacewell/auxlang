@@ -1,17 +1,17 @@
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 /**
  * ADSR envelope generator.
  * Inputs/outputs are plain numbers.
  */
 export const adsr = device("adsr", {
-	inputs: inputs({ gate: 0, attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 }),
+	inputs: { gate: 0, attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 },
 	outputs: ["cv"],
 	defaultInput: "gate",
 	defaultOutput: "cv",
+	positionalArgs: ["attack", "decay", "sustain", "release"],
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const gate = (inp.gate as number) ?? 0;
+		const gate = inp.gate
 		const attack = Math.max(0.0001, (inp.attack as number) ?? 0.01);
 		const decay = Math.max(0.0001, (inp.decay as number) ?? 0.1);
 		const sustain = Math.max(0, Math.min(1, (inp.sustain as number) ?? 0.7));

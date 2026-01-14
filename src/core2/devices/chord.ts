@@ -4,7 +4,6 @@
 
 import { ChordType, Interval } from "tonal";
 import { device } from "../device/device";
-import { inputs } from "../device/inputs";
 
 function getChordSemitones(chordName: string): number[] {
 	const chordData = ChordType.get(chordName);
@@ -36,20 +35,20 @@ const CHORD_SEMITONES: Record<string, number[]> = {
 
 /** Anonymous device for a single chord tone */
 const chordTone = device({
-	inputs: inputs({ root: 261.63 }),
+	inputs: { root: 261.63 },
 	config: { semi: 0 },
 	outputs: ["freq"],
 	defaultInput: "root",
 	defaultOutput: "freq",
 	process(inp, cfg, _state, _sampleRate, _time, out) {
-		const rootFreq = (inp.root as number) ?? 261.63;
+		const rootFreq = inp.root
 		const semi = (cfg.semi as number) ?? 0;
 		out.freq = rootFreq * Math.pow(2, semi / 12);
 	},
 });
 
 export const chord = device("chord", {
-	inputs: inputs({ root: 261.63 }),
+	inputs: { root: 261.63 },
 	config: { chordName: "maj" },
 	outputs: ["freq"],
 	defaultInput: "root",
@@ -57,7 +56,7 @@ export const chord = device("chord", {
 	positionalArgs: ["root", "chordName"],
 	process(inp, _cfg, _state, _sampleRate, _time, out) {
 		// Fallback for mono - just pass through root
-		out.freq = (inp.root as number) ?? 261.63;
+		out.freq = inp.root
 	},
 	expand(config, inputBindings) {
 		const chordName = (config.chordName as string) ?? "maj";
