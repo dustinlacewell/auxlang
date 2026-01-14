@@ -525,7 +525,8 @@ function projectStackVoiceContent(expr: Expr, targetIndex: number, counter: { co
 			return REST;
 
 		case "seq":
-			return { type: "seq", children: expr.children.map((c) => projectStackVoiceContent(c, targetIndex, counter)) };
+			// Sequences inside stacks become alternations
+			return { type: "alt", children: expr.children.map((c) => projectStackVoiceContent(c, targetIndex, counter)) };
 
 		case "group":
 			return { type: "group", children: expr.children.map((c) => projectStackVoiceContent(c, targetIndex, counter)) };
