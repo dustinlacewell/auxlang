@@ -88,7 +88,7 @@ export function traverseExpr<TContext>(
 			break;
 
 		case "seq":
-			// Inside a stack, sequences behave like alternations
+			// Inside a stack, sequences behave like alternations (select one child per cycle)
 			if (inStack && expr.children.length > 1) {
 				const selected = cycle % expr.children.length;
 				traverseExpr(
