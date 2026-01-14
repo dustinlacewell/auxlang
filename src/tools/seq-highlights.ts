@@ -8,10 +8,10 @@
  *   npx tsx src/tools/seq-highlights.ts "<c4 d4> e4" --positions
  */
 
-import { parseExpr } from "@/core2/devices/seq/expr/parse";
-import { countBeats } from "@/core2/devices/seq/expr/count-beats";
-import { extractPositionsForBeat } from "@/core2/devices/seq/extract-beat-positions";
-import { createTraversalState } from "@/core2/devices/seq/expr/generic-traverse";
+import { parseExpr } from "@/core2/devices/seq/ast/parse";
+import { countBeats } from "@/core2/devices/seq/traverse/count-beats";
+import { extractPositionsForBeat } from "@/core2/devices/seq/visitors/extract-positions";
+import { createTraversalState } from "@/core2/devices/seq/traverse/types";
 
 // CLI
 const args = process.argv.slice(2);

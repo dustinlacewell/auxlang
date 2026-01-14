@@ -147,8 +147,8 @@ function parseAtom(state: ParserState): Expr {
 	// Note
 	const noteToken = match(state, "NOTE");
 	if (noteToken) {
-		return { 
-			type: "note", 
+		return {
+			type: "note",
 			pitch: noteToken.value.toLowerCase(),
 			srcStart: noteToken.position,
 			srcEnd: noteToken.position + noteToken.value.length,
@@ -158,7 +158,7 @@ function parseAtom(state: ParserState): Expr {
 	// Rest
 	const restToken = match(state, "REST");
 	if (restToken) {
-		return { 
+		return {
 			type: "rest",
 			srcStart: restToken.position,
 			srcEnd: restToken.position + restToken.value.length,
@@ -170,8 +170,8 @@ function parseAtom(state: ParserState): Expr {
 	if (lbracket) {
 		const inner = parseSeqExpr(state);
 		const rbracket = expect(state, "RBRACKET");
-		return { 
-			type: "group", 
+		return {
+			type: "group",
 			children: inner.children,
 			srcStart: lbracket.position,
 			srcEnd: rbracket.position + 1,
@@ -183,8 +183,8 @@ function parseAtom(state: ParserState): Expr {
 	if (langle) {
 		const inner = parseSeqExpr(state);
 		const rangle = expect(state, "RANGLE");
-		return { 
-			type: "alt", 
+		return {
+			type: "alt",
 			children: inner.children,
 			srcStart: langle.position,
 			srcEnd: rangle.position + 1,

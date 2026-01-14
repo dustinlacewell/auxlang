@@ -4,9 +4,9 @@
  * Simulates the seq device process function to trace decoration emission.
  */
 
-import { parseExpr } from "@/core2/devices/seq/expr/parse";
-import { countBeats } from "@/core2/devices/seq/expr/count-beats";
-import { extractPositionsForBeat } from "@/core2/devices/seq/extract-beat-positions";
+import { parseExpr } from "@/core2/devices/seq/ast/parse";
+import { countBeats } from "@/core2/devices/seq/traverse/count-beats";
+import { extractPositionsForBeat } from "@/core2/devices/seq/visitors/extract-positions";
 import { createCursor } from "@/core2/devices/seq/cursor/create";
 import { resetCursor, stepCursor } from "@/core2/devices/seq/cursor/step";
 import { sampleCursor } from "@/core2/devices/seq/cursor/sample";

@@ -1,15 +1,30 @@
 /**
- * Collect all note events within a beat, flattened from nested structure.
+ * Visitor that collects all note events within a beat.
  *
  * Called once per beat boundary to build the event schedule.
  * Returns events sorted by start time for sample-perfect lookup.
  */
 
-import type { Expr } from "../expr/types";
-import { countBeats } from "../expr/count-beats";
-import { pitchToFreq } from "../expr/pitch-to-freq";
-import type { BeatEvent } from "./types";
-import { traverseExpr, type ExprVisitor, type TraversalState } from "../expr/generic-traverse";
+import type { Expr } from "../ast/types";
+import { countBeats } from "../traverse/count-beats";
+import { pitchToFreq } from "../pitch/pitch-to-freq";
+import { traverseExpr } from "../traverse/traverse";
+import type { ExprVisitor, TraversalState } from "../traverse/types";
+
+/**
+ * A note event within a beat, with fractional timing.
+ * Flattened from arbitrarily nested groups/subdivisions.
+ */
+export interface BeatEvent {
+	/** Frequency to output */
+	freq: number;
+	/** Start position within beat (0-1) */
+	start: number;
+	/** End position within beat (0-1) */
+	end: number;
+	/** Whether this event should trigger (false for tied continuations) */
+	isTrigger: boolean;
+}
 
 /**
  * Context for event collection visitor.

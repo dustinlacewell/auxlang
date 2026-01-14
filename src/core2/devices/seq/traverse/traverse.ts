@@ -7,53 +7,10 @@
  * - Analysis and debugging
  */
 
-import type { Expr } from "./types";
+import type { Expr } from "../ast/types";
 import { countBeats } from "./count-beats";
 import { euclidean } from "./euclidean";
-
-/**
- * Visitor interface for traversing expressions.
- * Implement this to do different things during traversal.
- */
-export interface ExprVisitor<TContext> {
-	visitNote(
-		expr: Expr & { type: "note" },
-		beatStart: number,
-		duration: number,
-		inTie: boolean,
-		context: TContext,
-	): void;
-
-	visitRest(
-		expr: Expr & { type: "rest" },
-		beatStart: number,
-		duration: number,
-		context: TContext,
-	): void;
-
-	enterExpr?(expr: Expr, beatStart: number, duration: number, context: TContext): void;
-}
-
-/**
- * State for tracking alt positions across visits.
- * Each alt tracks its current index and a visit key to detect new visits.
- */
-export interface AltState {
-	index: number;
-	lastVisitKey: string;
-}
-
-/**
- * Traversal state that persists across cycles.
- */
-export interface TraversalState {
-	probDecisions: Record<string, boolean>;
-	altPositions: Record<string, AltState>;
-}
-
-export function createTraversalState(): TraversalState {
-	return { probDecisions: {}, altPositions: {} };
-}
+import type { ExprVisitor, TraversalState } from "./types";
 
 /**
  * Traverse an expression tree, calling visitor methods for each atom.

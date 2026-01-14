@@ -9,7 +9,7 @@ import { createCursor } from "../../devices/seq/cursor/create";
 import { stepCursor, resetCursor } from "../../devices/seq/cursor/step";
 import { sampleCursor } from "../../devices/seq/cursor/sample";
 import { getTraversalState } from "../../devices/seq/cursor/get-traversal-state";
-import { countBeats } from "../../devices/seq/expr/count-beats";
+import { countBeats } from "../../devices/seq/traverse/count-beats";
 
 // biome-ignore lint/suspicious/noExplicitAny: worklet global injection
 (globalThis as any).seqCursor = {

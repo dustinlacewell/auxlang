@@ -7,8 +7,8 @@
  *   npx tsx src/tools/seq-ast.ts "[c4 e4]*2" --compact
  */
 
-import { parseExpr } from "@/core2/devices/seq/expr/parse";
-import type { Expr } from "@/core2/devices/seq/expr/types";
+import { parseExpr } from "@/core2/devices/seq/ast/parse";
+import type { Expr } from "@/core2/devices/seq/ast/types";
 
 function formatTree(expr: Expr, indent = 0): string {
 	const pad = "  ".repeat(indent);

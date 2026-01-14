@@ -2,8 +2,11 @@
  * Test projection strategies for voice decomposition.
  */
 
-import { parseExpr } from "../../core2/devices/seq/expr/parse";
-import { voiceCount, decomposePattern, projectVoice, type ProjectionStrategy } from "../../core2/devices/seq/expr/types";
+import { parseExpr } from "../../core2/devices/seq/ast/parse";
+import { voiceCount } from "../../core2/devices/seq/voices/count";
+import { decomposePattern } from "../../core2/devices/seq/voices/decompose";
+import { projectVoice } from "../../core2/devices/seq/voices/project";
+import type { ProjectionStrategy } from "../../core2/devices/seq/voices/types";
 
 function exprToString(expr: any): string {
 	switch (expr.type) {

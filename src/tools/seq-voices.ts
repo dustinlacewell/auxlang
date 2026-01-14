@@ -7,14 +7,12 @@
  *   npx tsx src/tools/seq-voices.ts "{c4 d4, e4 f4}" --ast
  */
 
-import { parseExpr } from "@/core2/devices/seq/expr/parse";
-import {
-	decomposePattern,
-	voiceCount,
-	type Expr,
-	type ProjectionStrategy,
-} from "@/core2/devices/seq/expr/types";
-import { countBeats } from "@/core2/devices/seq/expr/count-beats";
+import { parseExpr } from "@/core2/devices/seq/ast/parse";
+import type { Expr } from "@/core2/devices/seq/ast/types";
+import { decomposePattern } from "@/core2/devices/seq/voices/decompose";
+import { voiceCount } from "@/core2/devices/seq/voices/count";
+import type { ProjectionStrategy } from "@/core2/devices/seq/voices/types";
+import { countBeats } from "@/core2/devices/seq/traverse/count-beats";
 
 function formatCompact(expr: Expr): string {
 	switch (expr.type) {

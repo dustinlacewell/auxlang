@@ -1,17 +1,18 @@
 /**
- * Extract character positions for each beat in a seq pattern.
- * 
+ * Visitor that extracts source character positions for pattern highlighting.
+ *
  * Uses the same traversal logic as event collection to properly handle
  * nested rational subdivision, modifiers, and all timing complexities.
- * 
+ *
  * Uses AST source positions directly (srcStart/srcEnd) instead of token
  * index correlation, which correctly handles alternation and other
  * constructs that skip parts of the pattern.
  */
 
-import type { Expr } from "./expr/types";
-import { countBeats } from "./expr/count-beats";
-import { traverseExpr, type ExprVisitor, type TraversalState } from "./expr/generic-traverse";
+import type { Expr } from "../ast/types";
+import { countBeats } from "../traverse/count-beats";
+import { traverseExpr } from "../traverse/traverse";
+import type { ExprVisitor, TraversalState } from "../traverse/types";
 
 export type BeatPositionType = "note" | "modifier" | "container";
 
@@ -106,7 +107,7 @@ class PositionExtractor implements ExprVisitor<PositionExtractionContext> {
 		// Determine type: modifiers vs containers
 		const modifierTypes = ["multiply", "replicate", "elongate", "euclidean"];
 		const containerTypes = ["alt", "group", "stack"];
-		
+
 		let posType: BeatPositionType;
 		if (modifierTypes.includes(expr.type)) {
 			posType = "modifier";
@@ -160,18 +161,4 @@ export function extractPositionsForBeat(
 	traverseExpr(expr, 0, totalBeats, cycle, traversalState, false, "root", visitor, context);
 
 	return positions;
-}
-
-/**
- * Extract beat positions from a pattern string.
- * Returns an array where index = beat number, value = character positions.
- * 
- * NOTE: This is a simplified version that assumes cycle 0.
- * For accurate visualization during playback, use extractPositionsForBeat with the actual cycle.
- */
-export function extractBeatPositions(pattern: string): BeatPosition[] {
-	// This function is kept for backwards compatibility but is no longer accurate
-	// for complex patterns. It just returns empty positions.
-	// Use extractPositionsForBeat instead.
-	return [];
 }

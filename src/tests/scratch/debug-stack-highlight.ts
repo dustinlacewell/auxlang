@@ -2,9 +2,9 @@
  * Debug: Stack pattern highlighting issue
  */
 
-import { parseExpr } from "@/core2/devices/seq/expr/parse";
-import { countBeats } from "@/core2/devices/seq/expr/count-beats";
-import { extractPositionsForBeat } from "@/core2/devices/seq/extract-beat-positions";
+import { parseExpr } from "@/core2/devices/seq/ast/parse";
+import { countBeats } from "@/core2/devices/seq/traverse/count-beats";
+import { extractPositionsForBeat } from "@/core2/devices/seq/visitors/extract-positions";
 import { findSeqPatterns } from "@/core2/eval/source-map";
 
 // Test the source map pattern finding

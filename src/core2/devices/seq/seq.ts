@@ -8,9 +8,11 @@
 import { device } from "../../device/device";
 import { createNode } from "../../graph/create-node";
 import { wrap } from "../../wrap/wrap";
-import { parseExpr } from "./expr/parse";
-import { countBeats } from "./expr/count-beats";
-import { decomposePattern, voiceCount, type Expr } from "./expr/types";
+import { parseExpr } from "./ast/parse";
+import { countBeats } from "./traverse/count-beats";
+import type { Expr } from "./ast/types";
+import { voiceCount } from "./voices/count";
+import { decomposePattern } from "./voices/decompose";
 import { captureSeqPositionByPattern, captureSeqPositionByPatternForAll } from "../../eval/source-map";
 
 export const seq = device("seq", {

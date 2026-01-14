@@ -3,12 +3,12 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { parseExpr } from "@/core2/devices/seq/expr/parse";
-import { decomposePattern } from "@/core2/devices/seq/expr/types";
-import { countBeats } from "@/core2/devices/seq/expr/count-beats";
-import { collectBeatEvents } from "@/core2/devices/seq/cursor/collect-events";
-import { extractPositionsForBeat } from "@/core2/devices/seq/extract-beat-positions";
-import { createTraversalState } from "@/core2/devices/seq/expr/generic-traverse";
+import { parseExpr } from "@/core2/devices/seq/ast/parse";
+import { decomposePattern } from "@/core2/devices/seq/voices/decompose";
+import { countBeats } from "@/core2/devices/seq/traverse/count-beats";
+import { collectBeatEvents } from "@/core2/devices/seq/visitors/collect-events";
+import { extractPositionsForBeat } from "@/core2/devices/seq/visitors/extract-positions";
+import { createTraversalState } from "@/core2/devices/seq/traverse/types";
 
 describe("seq stack behavior", () => {
 	describe("sequences inside stacks become alternations", () => {

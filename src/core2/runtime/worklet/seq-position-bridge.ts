@@ -3,8 +3,7 @@
  * Makes extractPositionsForBeat available in the worklet global scope.
  */
 
-import { extractPositionsForBeat } from "../../devices/seq/extract-beat-positions";
-import type { Expr } from "../../devices/seq/expr/types";
+import { extractPositionsForBeat } from "../../devices/seq/visitors/extract-positions";
 
 // Expose to worklet global scope
 (globalThis as any).extractPositionsForBeat = extractPositionsForBeat;

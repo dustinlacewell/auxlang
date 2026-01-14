@@ -4,10 +4,10 @@
  * Called once per beat change, not per sample.
  */
 
-import type { Expr } from "../expr/types";
+import type { Expr } from "../ast/types";
 import type { Cursor } from "./types";
-import { collectBeatEvents } from "./collect-events";
-import type { TraversalState } from "../expr/generic-traverse";
+import { collectBeatEvents } from "../visitors/collect-events";
+import type { TraversalState } from "../traverse/types";
 
 /**
  * Step cursor to a new beat position.
