@@ -14,7 +14,7 @@ export function TestCategory({ name, color, hidden, children }: TestCategoryProp
 			>
 				{name}
 			</h2>
-			<div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3">{children}</div>
+			<div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 items-stretch">{children}</div>
 		</div>
 	);
 }

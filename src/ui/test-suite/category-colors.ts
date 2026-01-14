@@ -9,21 +9,21 @@ function hsl(h: number, s: number, l: number): string {
 	return `hsl(${h}, ${s}%, ${l}%)`;
 }
 
-/** Generate N evenly-spaced pastel colors across the rainbow */
-function generatePastelColors(n: number): string[] {
+/** Generate N evenly-spaced colors across the rainbow */
+function generateCategoryColors(n: number): string[] {
 	const colors: string[] = [];
 	for (let i = 0; i < n; i++) {
 		// Spread hues evenly across 0-360
 		const hue = (i / n) * 360;
-		// Pastel: moderate saturation, high lightness
-		colors.push(hsl(hue, 60, 65));
+		// Moderate saturation, darker lightness for better white text contrast
+		colors.push(hsl(hue, 55, 45));
 	}
 	return colors;
 }
 
 // Pre-compute category colors
 const categories = getCategories();
-const colors = generatePastelColors(categories.length);
+const colors = generateCategoryColors(categories.length);
 
 /** Map of category name to its assigned color */
 export const categoryColors: Map<string, string> = new Map(

@@ -15,7 +15,7 @@ const statusBorderStyles: Record<PlaybackState, string> = {
 export function Card({ status = "idle", children, className = "" }: CardProps) {
 	return (
 		<div
-			className={`bg-surface-800 border rounded-md p-3 ${statusBorderStyles[status]} ${className}`}
+			className={`bg-surface-800 border rounded-md p-3 h-full ${statusBorderStyles[status]} ${className}`}
 		>
 			{children}
 		</div>

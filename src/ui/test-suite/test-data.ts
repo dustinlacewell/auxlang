@@ -5,6 +5,7 @@ export {
 	tests,
 	getTestsByCategory,
 	getCategories,
+	getDevices,
 	getDevicesByCategory,
 	getTestsByCategoryAndDevice,
 	type TestDefinition,

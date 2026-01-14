@@ -41,6 +41,15 @@ export function getCategories(): string[] {
 	return Array.from(categories).sort();
 }
 
+/** Get all unique devices */
+export function getDevices(): string[] {
+	const devices = new Set<string>();
+	for (const test of tests) {
+		devices.add(test.device);
+	}
+	return Array.from(devices).sort();
+}
+
 /** Get all unique devices grouped by category */
 export function getDevicesByCategory(): Map<string, string[]> {
 	const devicesByCategory = new Map<string, Set<string>>();

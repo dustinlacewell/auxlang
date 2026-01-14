@@ -1,8 +1,9 @@
 import { useCore2Audio } from "@/ui/audio/use-core2-audio";
 import { Button } from "@/ui/design/button";
+import { Plus, Square } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { getCategoryColor, getDeviceColor } from "./category-colors";
-import { NewTestModal } from "./new-test-modal";
+import { TestEditorModal } from "./test-editor-modal";
 import { TestCard } from "./test-card";
 import { TestCategory } from "./test-category";
 import { getCategories, getDevicesByCategory, getTestsByCategoryAndDevice } from "./test-data";
@@ -84,16 +85,22 @@ export function TestSuiteApp() {
 					<h1 className="text-2xl font-bold mb-2">Auxlang Device Tests</h1>
 				</div>
 				<div className="flex gap-2 ml-4 shrink-0">
-					<Button variant="default" onClick={() => setShowNewTestModal(true)}>
-						+ New Test
+					<Button variant="chrome" onClick={() => setShowNewTestModal(true)}>
+						<span className="flex items-center gap-1.5">
+							<Plus size={14} />
+							New Test
+						</span>
 					</Button>
-					<Button variant="stop" onClick={stopAll}>
-						⏹ Stop All
+					<Button variant="chrome" onClick={stopAll} className="text-red-400 hover:text-red-300">
+						<span className="flex items-center gap-1.5">
+							<Square size={14} />
+							Stop All
+						</span>
 					</Button>
 				</div>
 			</div>
 
-			{showNewTestModal && <NewTestModal onClose={() => setShowNewTestModal(false)} />}
+			{showNewTestModal && <TestEditorModal onClose={() => setShowNewTestModal(false)} />}
 
 			{/* Category tag cloud */}
 			<div className="mb-4">
