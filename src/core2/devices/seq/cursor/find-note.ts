@@ -6,7 +6,7 @@
  */
 
 import type { Expr } from "../expr/types";
-import { countBeats } from "../expr/traverse";
+import { countBeats } from "../expr/count-beats";
 import { euclidean } from "../expr/euclidean";
 import { pitchToFreq } from "../expr/pitch-to-freq";
 

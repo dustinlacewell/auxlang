@@ -9,7 +9,7 @@ import { device } from "../../device/device";
 import { createNode } from "../../graph/create-node";
 import { wrap } from "../../wrap/wrap";
 import { parseExpr } from "./expr/parse";
-import { countBeats } from "./expr/traverse";
+import { countBeats } from "./expr/count-beats";
 import { decomposePattern, voiceCount, type Expr } from "./expr/types";
 import { captureSeqPositionByPattern, captureSeqPositionByPatternForAll } from "../../eval/source-map";
 
@@ -100,9 +100,9 @@ export const seq = device("seq", {
 				// Calculate fractional beat position: beatIndex + fraction within beat
 				const beatFraction = samplesSinceTrig / samplesPerBeat;
 				const beatPosition = beatIndex + beatFraction;
-				// Pass cursor's probDecisions so visualization matches audio
-				// biome-ignore lint/suspicious/noExplicitAny: cursor type from worklet global
-				const positions = extractPositions(expr, pattern, beatPosition, cycleCount, (cursor as any).probDecisions);
+				// Pass cursor's traversal state so visualization matches audio
+				const traversalState = api.getTraversalState(cursor);
+				const positions = extractPositions(expr, pattern, beatPosition, cycleCount, traversalState);
 				ctx.emitDecorations(positions);
 			}
 		}

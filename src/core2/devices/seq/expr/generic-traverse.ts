@@ -1,6 +1,6 @@
 /**
  * Generic AST traversal with visitor pattern.
- * 
+ *
  * Factors out the subdivision logic so it can be reused for:
  * - Event collection (audio playback)
  * - Source position extraction (visualization)
@@ -8,7 +8,7 @@
  */
 
 import type { Expr } from "./types";
-import { countBeats } from "./traverse";
+import { countBeats } from "./count-beats";
 import { euclidean } from "./euclidean";
 
 /**
@@ -16,14 +16,6 @@ import { euclidean } from "./euclidean";
  * Implement this to do different things during traversal.
  */
 export interface ExprVisitor<TContext> {
-	/**
-	 * Called when visiting a note atom.
-	 * @param expr - The note expression (includes srcStart/srcEnd)
-	 * @param beatStart - Absolute beat position where note starts
-	 * @param duration - Duration in beats
-	 * @param inTie - Whether this note is part of a tie (not the first note)
-	 * @param context - User-provided context
-	 */
 	visitNote(
 		expr: Expr & { type: "note" },
 		beatStart: number,
@@ -32,44 +24,46 @@ export interface ExprVisitor<TContext> {
 		context: TContext,
 	): void;
 
-	/**
-	 * Called when visiting a rest atom.
-	 * @param expr - The rest expression (includes srcStart/srcEnd)
-	 * @param beatStart - Absolute beat position where rest starts
-	 * @param duration - Duration in beats
-	 * @param context - User-provided context
-	 */
-	visitRest(expr: Expr & { type: "rest" }, beatStart: number, duration: number, context: TContext): void;
+	visitRest(
+		expr: Expr & { type: "rest" },
+		beatStart: number,
+		duration: number,
+		context: TContext,
+	): void;
 
-	/**
-	 * Called when entering any expression (before recursing into children).
-	 * Optional - used for hierarchical highlighting of modifiers.
-	 * @param expr - The expression being entered
-	 * @param beatStart - Absolute beat position where this expr starts
-	 * @param duration - Duration allocated to this expr
-	 * @param context - User-provided context
-	 */
 	enterExpr?(expr: Expr, beatStart: number, duration: number, context: TContext): void;
 }
 
 /**
+ * State for tracking alt positions across visits.
+ * Each alt tracks its current index and a visit key to detect new visits.
+ */
+export interface AltState {
+	index: number;
+	lastVisitKey: string;
+}
+
+/**
+ * Traversal state that persists across cycles.
+ */
+export interface TraversalState {
+	probDecisions: Record<string, boolean>;
+	altPositions: Record<string, AltState>;
+}
+
+export function createTraversalState(): TraversalState {
+	return { probDecisions: {}, altPositions: {} };
+}
+
+/**
  * Traverse an expression tree, calling visitor methods for each atom.
- * 
- * @param expr - Expression to traverse
- * @param beatStart - Absolute beat position where this expr starts
- * @param duration - Duration allocated to this expr (in beats)
- * @param cycle - Current pattern cycle (for alternation)
- * @param probDecisions - Cached probability decisions (key -> boolean)
- * @param inTie - Whether we're inside a tie (affects trigger behavior)
- * @param visitor - Visitor to call for each atom
- * @param context - User-provided context passed to visitor
  */
 export function traverseExpr<TContext>(
 	expr: Expr,
 	beatStart: number,
 	duration: number,
 	cycle: number,
-	probDecisions: Record<string, boolean>,
+	state: TraversalState,
 	inTie: boolean,
 	pathKey: string,
 	visitor: ExprVisitor<TContext>,
@@ -96,7 +90,7 @@ export function traverseExpr<TContext>(
 					beatStart,
 					duration,
 					cycle,
-					probDecisions,
+					state,
 					inTie,
 					`${pathKey}.seq${selected}`,
 					visitor,
@@ -104,48 +98,45 @@ export function traverseExpr<TContext>(
 					false,
 				);
 			} else {
-				traverseSeq(
-					expr.children,
-					beatStart,
-					duration,
-					cycle,
-					probDecisions,
-					inTie,
-					pathKey,
-					visitor,
-					context,
-				);
+				traverseSeq(expr.children, beatStart, duration, cycle, state, inTie, pathKey, visitor, context);
 			}
 			break;
 
 		case "group":
 			visitor.enterExpr?.(expr, beatStart, duration, context);
-			traverseGroup(
-				expr.children,
-				beatStart,
-				duration,
-				cycle,
-				probDecisions,
-				inTie,
-				pathKey,
-				visitor,
-				context,
-			);
+			traverseGroup(expr.children, beatStart, duration, cycle, state, inTie, pathKey, visitor, context);
 			break;
 
 		case "alt": {
 			visitor.enterExpr?.(expr, beatStart, duration, context);
 			if (expr.children.length === 0) break;
-			const selected = cycle % expr.children.length;
-			const child = expr.children[selected]!;
+
+			// Track visits per alt - only advance when actually visited
+			const visitKey = `${cycle}:${beatStart.toFixed(6)}:${duration.toFixed(6)}`;
+			const altKey = pathKey;
+			const entry = state.altPositions[altKey];
+
+			let selectedIndex: number;
+			if (!entry) {
+				selectedIndex = 0;
+				state.altPositions[altKey] = { index: selectedIndex, lastVisitKey: visitKey };
+			} else {
+				if (entry.lastVisitKey !== visitKey) {
+					entry.index = (entry.index + 1) % expr.children.length;
+					entry.lastVisitKey = visitKey;
+				}
+				selectedIndex = entry.index;
+			}
+
+			const child = expr.children[selectedIndex]!;
 			traverseExpr(
 				child,
 				beatStart,
 				duration,
 				cycle,
-				probDecisions,
+				state,
 				inTie,
-				`${pathKey}.alt${selected}`,
+				`${pathKey}.alt${selectedIndex}`,
 				visitor,
 				context,
 			);
@@ -153,9 +144,6 @@ export function traverseExpr<TContext>(
 		}
 
 		case "stack":
-			// Stacks play all children in parallel - traverse all for visualization
-			// Each child gets the full duration (they overlap in time)
-			// Pass inStack=true so nested sequences behave like alternations
 			visitor.enterExpr?.(expr, beatStart, duration, context);
 			for (let i = 0; i < expr.children.length; i++) {
 				const child = expr.children[i]!;
@@ -164,7 +152,7 @@ export function traverseExpr<TContext>(
 					beatStart,
 					duration,
 					cycle,
-					probDecisions,
+					state,
 					inTie,
 					`${pathKey}.stack${i}`,
 					visitor,
@@ -175,64 +163,22 @@ export function traverseExpr<TContext>(
 			break;
 
 		case "tie":
-			traverseTie(
-				expr.children,
-				beatStart,
-				duration,
-				cycle,
-				probDecisions,
-				inTie,
-				pathKey,
-				visitor,
-				context,
-			);
+			traverseTie(expr.children, beatStart, duration, cycle, state, inTie, pathKey, visitor, context);
 			break;
 
 		case "multiply":
 			visitor.enterExpr?.(expr, beatStart, duration, context);
-			traverseMultiply(
-				expr.child,
-				expr.count,
-				beatStart,
-				duration,
-				cycle,
-				probDecisions,
-				inTie,
-				pathKey,
-				visitor,
-				context,
-			);
+			traverseMultiply(expr.child, expr.count, beatStart, duration, cycle, state, inTie, pathKey, visitor, context);
 			break;
 
 		case "replicate":
 			visitor.enterExpr?.(expr, beatStart, duration, context);
-			traverseReplicate(
-				expr.child,
-				expr.count,
-				beatStart,
-				duration,
-				cycle,
-				probDecisions,
-				inTie,
-				pathKey,
-				visitor,
-				context,
-			);
+			traverseReplicate(expr.child, expr.count, beatStart, duration, cycle, state, inTie, pathKey, visitor, context);
 			break;
 
 		case "elongate":
 			visitor.enterExpr?.(expr, beatStart, duration, context);
-			traverseExpr(
-				expr.child,
-				beatStart,
-				duration,
-				cycle,
-				probDecisions,
-				inTie,
-				`${pathKey}.elong`,
-				visitor,
-				context,
-			);
+			traverseExpr(expr.child, beatStart, duration, cycle, state, inTie, `${pathKey}.elong`, visitor, context);
 			break;
 
 		case "euclidean":
@@ -244,7 +190,7 @@ export function traverseExpr<TContext>(
 				beatStart,
 				duration,
 				cycle,
-				probDecisions,
+				state,
 				inTie,
 				pathKey,
 				visitor,
@@ -254,23 +200,13 @@ export function traverseExpr<TContext>(
 
 		case "maybe": {
 			const probKey = `${pathKey}.maybe:${cycle}`;
-			if (!(probKey in probDecisions)) {
-				probDecisions[probKey] = Math.random() < expr.prob;
+			if (!(probKey in state.probDecisions)) {
+				state.probDecisions[probKey] = Math.random() < expr.prob;
 			}
-			if (!probDecisions[probKey]) {
+			if (!state.probDecisions[probKey]) {
 				break;
 			}
-			traverseExpr(
-				expr.child,
-				beatStart,
-				duration,
-				cycle,
-				probDecisions,
-				inTie,
-				`${pathKey}.maybe`,
-				visitor,
-				context,
-			);
+			traverseExpr(expr.child, beatStart, duration, cycle, state, inTie, `${pathKey}.maybe`, visitor, context);
 			break;
 		}
 	}
@@ -281,7 +217,7 @@ function traverseSeq<TContext>(
 	beatStart: number,
 	duration: number,
 	cycle: number,
-	probDecisions: Record<string, boolean>,
+	state: TraversalState,
 	inTie: boolean,
 	pathKey: string,
 	visitor: ExprVisitor<TContext>,
@@ -298,18 +234,7 @@ function traverseSeq<TContext>(
 		const childBeats = countBeats(child);
 		const childDuration = childBeats * beatScale;
 
-		traverseExpr(
-			child,
-			currentBeat,
-			childDuration,
-			cycle,
-			probDecisions,
-			inTie,
-			`${pathKey}.seq${i}`,
-			visitor,
-			context,
-		);
-
+		traverseExpr(child, currentBeat, childDuration, cycle, state, inTie, `${pathKey}.seq${i}`, visitor, context);
 		currentBeat += childDuration;
 	}
 }
@@ -319,7 +244,7 @@ function traverseGroup<TContext>(
 	beatStart: number,
 	duration: number,
 	cycle: number,
-	probDecisions: Record<string, boolean>,
+	state: TraversalState,
 	inTie: boolean,
 	pathKey: string,
 	visitor: ExprVisitor<TContext>,
@@ -338,18 +263,7 @@ function traverseGroup<TContext>(
 		const childWeight = countBeats(child);
 		const childDuration = childWeight * beatScale;
 
-		traverseExpr(
-			child,
-			currentBeat,
-			childDuration,
-			cycle,
-			probDecisions,
-			inTie,
-			`${pathKey}.grp${i}`,
-			visitor,
-			context,
-		);
-
+		traverseExpr(child, currentBeat, childDuration, cycle, state, inTie, `${pathKey}.grp${i}`, visitor, context);
 		currentBeat += childDuration;
 	}
 }
@@ -359,7 +273,7 @@ function traverseTie<TContext>(
 	beatStart: number,
 	duration: number,
 	cycle: number,
-	probDecisions: Record<string, boolean>,
+	state: TraversalState,
 	inTie: boolean,
 	pathKey: string,
 	visitor: ExprVisitor<TContext>,
@@ -370,23 +284,11 @@ function traverseTie<TContext>(
 	const childDuration = duration / children.length;
 	let currentBeat = beatStart;
 
-	// For ties: first child triggers (unless already in a tie), subsequent children don't
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i]!;
-		const childInTie = inTie || i > 0; // First child inherits parent's inTie, rest are tied
+		const childInTie = inTie || i > 0;
 
-		traverseExpr(
-			child,
-			currentBeat,
-			childDuration,
-			cycle,
-			probDecisions,
-			childInTie,
-			`${pathKey}.tie${i}`,
-			visitor,
-			context,
-		);
-
+		traverseExpr(child, currentBeat, childDuration, cycle, state, childInTie, `${pathKey}.tie${i}`, visitor, context);
 		currentBeat += childDuration;
 	}
 }
@@ -397,7 +299,7 @@ function traverseMultiply<TContext>(
 	beatStart: number,
 	duration: number,
 	cycle: number,
-	probDecisions: Record<string, boolean>,
+	state: TraversalState,
 	inTie: boolean,
 	pathKey: string,
 	visitor: ExprVisitor<TContext>,
@@ -408,17 +310,7 @@ function traverseMultiply<TContext>(
 	const repDuration = duration / count;
 
 	for (let i = 0; i < count; i++) {
-		traverseExpr(
-			child,
-			beatStart + i * repDuration,
-			repDuration,
-			cycle,
-			probDecisions,
-			inTie,
-			`${pathKey}.mult${i}`,
-			visitor,
-			context,
-		);
+		traverseExpr(child, beatStart + i * repDuration, repDuration, cycle, state, inTie, `${pathKey}.mult${i}`, visitor, context);
 	}
 }
 
@@ -428,7 +320,7 @@ function traverseReplicate<TContext>(
 	beatStart: number,
 	duration: number,
 	cycle: number,
-	probDecisions: Record<string, boolean>,
+	state: TraversalState,
 	inTie: boolean,
 	pathKey: string,
 	visitor: ExprVisitor<TContext>,
@@ -439,17 +331,7 @@ function traverseReplicate<TContext>(
 	const repDuration = duration / count;
 
 	for (let i = 0; i < count; i++) {
-		traverseExpr(
-			child,
-			beatStart + i * repDuration,
-			repDuration,
-			cycle,
-			probDecisions,
-			inTie,
-			`${pathKey}.rep${i}`,
-			visitor,
-			context,
-		);
+		traverseExpr(child, beatStart + i * repDuration, repDuration, cycle, state, inTie, `${pathKey}.rep${i}`, visitor, context);
 	}
 }
 
@@ -460,7 +342,7 @@ function traverseEuclidean<TContext>(
 	beatStart: number,
 	duration: number,
 	cycle: number,
-	probDecisions: Record<string, boolean>,
+	state: TraversalState,
 	inTie: boolean,
 	pathKey: string,
 	visitor: ExprVisitor<TContext>,
@@ -471,17 +353,7 @@ function traverseEuclidean<TContext>(
 
 	for (let i = 0; i < steps; i++) {
 		if (pattern[i]) {
-			traverseExpr(
-				child,
-				beatStart + i * stepDuration,
-				stepDuration,
-				cycle,
-				probDecisions,
-				inTie,
-				`${pathKey}.euc${i}`,
-				visitor,
-				context,
-			);
+			traverseExpr(child, beatStart + i * stepDuration, stepDuration, cycle, state, inTie, `${pathKey}.euc${i}`, visitor, context);
 		}
 	}
 }

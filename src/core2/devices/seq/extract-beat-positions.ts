@@ -10,8 +10,8 @@
  */
 
 import type { Expr } from "./expr/types";
-import { countBeats } from "./expr/traverse";
-import { traverseExpr, type ExprVisitor } from "./expr/generic-traverse";
+import { countBeats } from "./expr/count-beats";
+import { traverseExpr, type ExprVisitor, type TraversalState } from "./expr/generic-traverse";
 
 export type BeatPositionType = "note" | "modifier" | "container";
 
@@ -131,11 +131,12 @@ class PositionExtractor implements ExprVisitor<PositionExtractionContext> {
 
 /**
  * Extract all source positions that contribute to a specific beat.
- * 
+ *
  * @param expr - Parsed expression tree
  * @param _pattern - Original pattern string (unused, kept for API compatibility)
  * @param beatIndex - Which beat to extract positions for
  * @param cycle - Current cycle (for alternation)
+ * @param state - Optional traversal state (for alt positions, prob decisions)
  * @returns Array of source positions that play during this beat
  */
 export function extractPositionsForBeat(
@@ -143,7 +144,7 @@ export function extractPositionsForBeat(
 	_pattern: string,
 	beatIndex: number,
 	cycle: number,
-	probDecisions?: Record<string, boolean>,
+	state?: TraversalState,
 ): BeatPosition[] {
 	const totalBeats = countBeats(expr);
 	const positions: BeatPosition[] = [];
@@ -155,8 +156,8 @@ export function extractPositionsForBeat(
 	};
 
 	const visitor = new PositionExtractor();
-	const decisions = probDecisions ?? {};
-	traverseExpr(expr, 0, totalBeats, cycle, decisions, false, "root", visitor, context);
+	const traversalState: TraversalState = state ?? { probDecisions: {}, altPositions: {} };
+	traverseExpr(expr, 0, totalBeats, cycle, traversalState, false, "root", visitor, context);
 
 	return positions;
 }

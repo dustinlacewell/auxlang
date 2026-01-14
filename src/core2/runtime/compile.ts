@@ -69,8 +69,18 @@ function resolveSource(binding: unknown, allowArrays = false): ResolvedSource {
 		return { type: "connection", nodeId: binding.ref, output: binding.out };
 	}
 
+	if (isNodeLike(binding)) {
+		const spec = getDeviceSpec(binding.device);
+		const output = spec?.defaultOutput ?? "out";
+		return { type: "connection", nodeId: binding.id, output };
+	}
+
 	if (typeof binding === "function") {
-		return { type: "lambda", fn: binding as SignalLambda };
+		const fn = binding as SignalLambda;
+		if (fn.toString() === "[object Function]") {
+			console.error("compile: lambda binding stringified to [object Function]", fn);
+		}
+		return { type: "lambda", fn };
 	}
 
 	if (Array.isArray(binding)) {
@@ -154,4 +164,12 @@ function isOutputRef(value: unknown): value is OutputRef {
 
 function isOutputRefArray(value: unknown): value is OutputRef[] {
 	return Array.isArray(value) && value.length > 0 && isOutputRef(value[0]);
+}
+
+function isNodeLike(value: unknown): value is { id: string; device: string } {
+	if (value === null || value === undefined) return false;
+	const t = typeof value;
+	if (t !== "object" && t !== "function") return false;
+	const v = value as Record<string, unknown>;
+	return typeof v.id === "string" && typeof v.device === "string";
 }

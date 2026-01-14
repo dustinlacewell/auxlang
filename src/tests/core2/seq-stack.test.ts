@@ -5,9 +5,10 @@
 import { describe, it, expect } from "vitest";
 import { parseExpr } from "@/core2/devices/seq/expr/parse";
 import { decomposePattern } from "@/core2/devices/seq/expr/types";
-import { countBeats } from "@/core2/devices/seq/expr/traverse";
+import { countBeats } from "@/core2/devices/seq/expr/count-beats";
 import { collectBeatEvents } from "@/core2/devices/seq/cursor/collect-events";
 import { extractPositionsForBeat } from "@/core2/devices/seq/extract-beat-positions";
+import { createTraversalState } from "@/core2/devices/seq/expr/generic-traverse";
 
 describe("seq stack behavior", () => {
 	describe("sequences inside stacks become alternations", () => {
@@ -27,14 +28,16 @@ describe("seq stack behavior", () => {
 			const monos = decomposePattern(expr, "isolate");
 
 			// Voice 1: c4 on cycle 0, c3 on cycle 1
-			const v1c0 = collectBeatEvents(monos[1]!, 0, {}, 0);
-			const v1c1 = collectBeatEvents(monos[1]!, 0, {}, 1);
+			const state1 = createTraversalState();
+			const v1c0 = collectBeatEvents(monos[1]!, 0, state1, 0);
+			const v1c1 = collectBeatEvents(monos[1]!, 0, state1, 1);
 			expect(v1c0.map(e => Math.round(e.freq))).toEqual([262]); // c4
 			expect(v1c1.map(e => Math.round(e.freq))).toEqual([131]); // c3
 
 			// Voice 2: e4 on cycle 0, f4 on cycle 1
-			const v2c0 = collectBeatEvents(monos[2]!, 0, {}, 0);
-			const v2c1 = collectBeatEvents(monos[2]!, 0, {}, 1);
+			const state2 = createTraversalState();
+			const v2c0 = collectBeatEvents(monos[2]!, 0, state2, 0);
+			const v2c1 = collectBeatEvents(monos[2]!, 0, state2, 1);
 			expect(v2c0.map(e => Math.round(e.freq))).toEqual([330]); // e4
 			expect(v2c1.map(e => Math.round(e.freq))).toEqual([349]); // f4
 		});
@@ -47,7 +50,9 @@ describe("seq stack behavior", () => {
 			expect(monos[2]!.type).toBe("alt");
 
 			// On cycle 1, the group [e3 f3] plays both notes within the beat
-			const v2c1 = collectBeatEvents(monos[2]!, 0, {}, 1);
+			const state = createTraversalState();
+			collectBeatEvents(monos[2]!, 0, state, 0); // cycle 0 first
+			const v2c1 = collectBeatEvents(monos[2]!, 0, state, 1);
 			// Group contains two notes that play in sequence within the beat
 			expect(v2c1.length).toBe(2);
 		});
@@ -114,11 +119,15 @@ describe("pattern highlighting", () => {
 			const expr = parseExpr(pattern);
 
 			// With prob=true, note shows
-			const posTrue = extractPositionsForBeat(expr, pattern, 1, 0, { "root.seq1.maybe:0": true });
+			const stateTrue = createTraversalState();
+			stateTrue.probDecisions["root.seq1.maybe:0"] = true;
+			const posTrue = extractPositionsForBeat(expr, pattern, 1, 0, stateTrue);
 			expect(posTrue.map(p => pattern.slice(p.start, p.end))).toContain("e4");
 
 			// With prob=false, note hidden
-			const posFalse = extractPositionsForBeat(expr, pattern, 1, 0, { "root.seq1.maybe:0": false });
+			const stateFalse = createTraversalState();
+			stateFalse.probDecisions["root.seq1.maybe:0"] = false;
+			const posFalse = extractPositionsForBeat(expr, pattern, 1, 0, stateFalse);
 			expect(posFalse.map(p => pattern.slice(p.start, p.end))).not.toContain("e4");
 		});
 	});

@@ -6,12 +6,10 @@
  */
 
 import type { Expr } from "../expr/types";
-import { countBeats } from "../expr/traverse";
+import { countBeats } from "../expr/count-beats";
 import { pitchToFreq } from "../expr/pitch-to-freq";
 import type { BeatEvent } from "./types";
-import { traverseExpr, type ExprVisitor } from "../expr/generic-traverse";
-
-type ProbDecisions = Record<string, boolean>;
+import { traverseExpr, type ExprVisitor, type TraversalState } from "../expr/generic-traverse";
 
 /**
  * Context for event collection visitor.
@@ -63,14 +61,14 @@ class EventCollector implements ExprVisitor<EventCollectionContext> {
  *
  * @param expr - The expression to search
  * @param beatIndex - Which beat we're collecting for (0-indexed)
- * @param probDecisions - Cached probability decisions
+ * @param state - Traversal state (prob decisions, alt positions)
  * @param cycle - Current cycle (for alternation)
  * @returns Array of events sorted by start time
  */
 export function collectBeatEvents(
 	expr: Expr,
 	beatIndex: number,
-	probDecisions: ProbDecisions,
+	state: TraversalState,
 	cycle: number,
 ): BeatEvent[] {
 	const totalBeats = countBeats(expr);
@@ -78,7 +76,7 @@ export function collectBeatEvents(
 	const context: EventCollectionContext = { beatIndex, events };
 
 	const visitor = new EventCollector();
-	traverseExpr(expr, 0, totalBeats, cycle, probDecisions, false, "root", visitor, context);
+	traverseExpr(expr, 0, totalBeats, cycle, state, false, "root", visitor, context);
 
 	// Sort by start time for efficient lookup
 	events.sort((a, b) => a.start - b.start);

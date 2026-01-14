@@ -30,13 +30,14 @@ export { mult, sub, clip, abs, inv, div, mod, gte, lt, eq, and, or, not } from "
 export { scale } from "./devices/scale";
 export { add } from "./devices/add";
 
-// Utilities
+// Utils
 export { gain } from "./devices/gain";
 export { mix } from "./devices/mix";
 export { slew } from "./devices/slew";
 export { sah } from "./devices/sah";
 export { pick } from "./devices/pick";
 export { quantize } from "./devices/quantize";
+export { $ } from "./note";
 
 // Timing
 export { clock } from "./devices/clock";

@@ -9,17 +9,18 @@ export const sah = device("sah", {
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
-	process(inp, _cfg, state, _sampleRate, _time, out) {
-		const input = inp.input
-		const trig = inp.trig
+	positionalArgs: ["input", "trig"],
+	process(inp, cfg, state, _sampleRate, _time, out) {
+		const input = inp.input;
+		const trig = inp.trig;
 
 		let held = (state.held as number) ?? input;
 
 		if (trig > 0.5) {
 			held = input;
+			state.held = held;
 		}
 
-		state.held = held;
 		out.signal = held;
 	},
 });

@@ -5,13 +5,14 @@
 import type { Expr } from "../expr/types";
 import type { Cursor } from "./types";
 import { collectBeatEvents } from "./collect-events";
+import type { TraversalState } from "../expr/generic-traverse";
 
 /**
  * Create a cursor initialized to beat 0, cycle 0.
  */
 export function createCursor(expr: Expr): Cursor {
-	const probDecisions: Record<string, boolean> = {};
-	const events = collectBeatEvents(expr, 0, probDecisions, 0);
+	const state: TraversalState = { probDecisions: {}, altPositions: {} };
+	const events = collectBeatEvents(expr, 0, state, 0);
 
 	const cursor: Cursor = {
 		path: [],
@@ -21,7 +22,8 @@ export function createCursor(expr: Expr): Cursor {
 		gateOn: events.length > 0,
 		noteDuration: 0,
 		noteStartBeat: -1,
-		probDecisions,
+		probDecisions: state.probDecisions,
+		altPositions: state.altPositions,
 		lastCV: 0,
 		events,
 		eventIndex: 0,
