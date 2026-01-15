@@ -79,7 +79,9 @@ function loadAllTests(): PatternTestDefinition[] {
 		if (parts.length !== 2) continue;
 
 		const [category, filename] = parts;
-		const id = filename!.replace(/\.js$/, "");
+		const baseId = filename!.replace(/\.js$/, "");
+		// ID must be unique across all tests - include category
+		const id = `${category}/${baseId}`;
 
 		const content = readFileSync(file, "utf-8");
 		const parsed = parseTestCase(content);
@@ -147,7 +149,8 @@ function invalidateVirtualModule(server: ViteDevServer) {
 	const mod = server.moduleGraph.getModuleById(RESOLVED_VIRTUAL_MODULE_ID);
 	if (mod) {
 		server.moduleGraph.invalidateModule(mod);
-		server.ws.send({ type: "full-reload" });
+		// Don't trigger full reload - just invalidate the module
+		// The next import of the virtual module will get fresh data
 	}
 }
 
@@ -204,13 +207,15 @@ async function handleSave(
 		}
 
 		const categorySlug = displayNameToCategory(category);
+		// Extract base ID (strip category prefix if present, e.g., "basics/showcase" -> "showcase")
+		const baseId = id.includes("/") ? id.split("/").pop()! : id;
 
-		if (!isValidPath(categorySlug) || !isValidId(id)) {
+		if (!isValidPath(categorySlug) || !isValidId(baseId)) {
 			sendJson(res, 400, { success: false, error: "Invalid category or id" });
 			return;
 		}
 
-		const newPath = join(CASES_DIR, categorySlug, `${id}.js`);
+		const newPath = join(CASES_DIR, categorySlug, `${baseId}.js`);
 		const content = serializeTestCase({ name, desc: desc || "", code });
 
 		// Create directory if needed
@@ -233,7 +238,7 @@ async function handleSave(
 		writeFileSync(newPath, content);
 		invalidateVirtualModule(server);
 
-		const filePath = `${categorySlug}/${id}.js`;
+		const filePath = `${categorySlug}/${baseId}.js`;
 		sendJson(res, 200, { success: true, filePath });
 	} catch (err) {
 		console.error("Save error:", err);
@@ -261,13 +266,15 @@ async function handleDelete(
 		}
 
 		const categorySlug = displayNameToCategory(category);
+		// Extract base ID (strip category prefix if present)
+		const baseId = id.includes("/") ? id.split("/").pop()! : id;
 
-		if (!isValidPath(categorySlug) || !isValidId(id)) {
+		if (!isValidPath(categorySlug) || !isValidId(baseId)) {
 			sendJson(res, 400, { success: false, error: "Invalid category or id" });
 			return;
 		}
 
-		const filePath = join(CASES_DIR, categorySlug, `${id}.js`);
+		const filePath = join(CASES_DIR, categorySlug, `${baseId}.js`);
 
 		if (!existsSync(filePath)) {
 			sendJson(res, 404, { success: false, error: "File not found" });
