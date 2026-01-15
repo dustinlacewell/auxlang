@@ -24,6 +24,10 @@ export interface BeatEvent {
 	end: number;
 	/** Whether this event should trigger (false for tied continuations) */
 	isTrigger: boolean;
+	/** Source position start (for visualization) */
+	srcStart?: number;
+	/** Source position end (for visualization) */
+	srcEnd?: number;
 }
 
 /**
@@ -58,12 +62,15 @@ class EventCollector implements ExprVisitor<EventCollectionContext> {
 		const start = Math.max(0, beatStart - context.beatIndex);
 		const end = Math.min(1, beatEnd - context.beatIndex);
 
-		context.events.push({
+		const event: BeatEvent = {
 			freq: pitchToFreq(expr.pitch),
 			start,
 			end,
 			isTrigger: !inTie,
-		});
+		};
+		if (expr.srcStart !== undefined) event.srcStart = expr.srcStart;
+		if (expr.srcEnd !== undefined) event.srcEnd = expr.srcEnd;
+		context.events.push(event);
 	}
 
 	visitRest(_expr: Expr & { type: "rest" }, _beatStart: number, _duration: number, _context: EventCollectionContext): void {

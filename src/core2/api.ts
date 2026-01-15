@@ -32,6 +32,7 @@ export { add } from "./devices/add";
 
 // Utils
 export { gain } from "./devices/gain";
+export { vca } from "./devices/vca";
 export { mix } from "./devices/mix";
 export { slew } from "./devices/slew";
 export { sah } from "./devices/sah";

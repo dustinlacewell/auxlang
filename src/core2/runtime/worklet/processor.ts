@@ -69,9 +69,9 @@ class Core2Processor extends AudioWorkletProcessor {
 			});
 		}
 
-		// Set up decoration callback for this graph
-		result.graph.setDecorationCallback((nodeId, decorations) => {
-			this.emitDecorations(graphId, nodeId, decorations);
+		// Set up active elements callback for this graph
+		result.graph.setActiveElementsCallback((activeIds) => {
+			this.emitActiveElements(graphId, activeIds);
 		});
 
 		this.graphs.set(graphId, result.graph);
@@ -171,12 +171,11 @@ class Core2Processor extends AudioWorkletProcessor {
 		});
 	}
 
-	private emitDecorations(graphId: string, nodeId: string, decorations: Array<{ start: number; end: number }>): void {
+	private emitActiveElements(graphId: string, activeIds: string[]): void {
 		this.port.postMessage({
-			type: "decorations",
+			type: "activeElements",
 			graphId,
-			nodeId,
-			decorations,
+			activeIds,
 		});
 	}
 }

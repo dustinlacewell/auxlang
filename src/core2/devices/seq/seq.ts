@@ -11,9 +11,10 @@ import { wrap } from "../../wrap/wrap";
 import { parseExpr } from "./ast/parse";
 import { countBeats } from "./traverse/count-beats";
 import type { Expr } from "./ast/types";
+import type { Cursor } from "./cursor/types";
 import { voiceCount } from "./voices/count";
 import { decomposePattern } from "./voices/decompose";
-import { captureSeqPositionByPattern, captureSeqPositionByPatternForAll } from "../../eval/source-map";
+import { captureSeqPositionByPattern, captureSeqPositionByPatternForAll, getPatternStartPosition } from "../../eval/source-map";
 
 export const seq = device("seq", {
 	inputs: { clk: 0 },
@@ -44,7 +45,7 @@ export const seq = device("seq", {
 		if (!state.cursor) {
 			state.cursor = api.createCursor(expr);
 		}
-		const cursor = state.cursor;
+		const cursor = state.cursor as Cursor;
 
 		// Parse clock signal
 		const clk = typeof inp.clk === "number" ? inp.clk : 0;
@@ -89,23 +90,13 @@ export const seq = device("seq", {
 		// Get output from cursor using sample index (O(1) - no tree traversal)
 		const output = api.sampleCursor(cursor, samplesSinceTrig, samplesPerBeat);
 
-		// Emit decorations with fractional beat position for sub-beat precision
-		// Throttle to ~60fps (every ~735 samples at 44100Hz), but always emit on reset/trig
-		const decorationInterval = Math.floor(sampleRate / 60);
-		const shouldEmitDecoration = justReset || isTrig || samplesSinceTrig % decorationInterval === 0;
-		
-		const pattern = cfg.pattern as string;
-		if (pattern && beatIndex >= 0 && samplesPerBeat > 0 && shouldEmitDecoration) {
-			// biome-ignore lint/suspicious/noExplicitAny: worklet global
-			const extractPositions = (globalThis as any).extractPositionsForBeat;
-			if (extractPositions) {
-				// Calculate fractional beat position: beatIndex + fraction within beat
-				const beatFraction = samplesSinceTrig / samplesPerBeat;
-				const beatPosition = beatIndex + beatFraction;
-				// Pass cursor's traversal state so visualization matches audio
-				const traversalState = api.getTraversalState(cursor);
-				const positions = extractPositions(expr, pattern, beatPosition, cycleCount, traversalState);
-				ctx.emitDecorations(positions);
+		// Emit currently active element (if any)
+		const patternStart = (cfg.patternStart as number) ?? 0;
+		if (cursor.activeEventIndex >= 0) {
+			const event = cursor.events[cursor.activeEventIndex];
+			if (event?.srcStart !== undefined && event?.srcEnd !== undefined) {
+				const absoluteId = `${patternStart + event.srcStart}:${patternStart + event.srcEnd}`;
+				ctx.emitActiveElements([absoluteId]);
 			}
 		}
 
@@ -123,9 +114,11 @@ export const seq = device("seq", {
 	expand(config, inputBindings) {
 		const pattern = (config.pattern as string) ?? "";
 		const clk = inputBindings.clk;
+		// Get pattern's document position for absolute element IDs
+		const patternStart = getPatternStartPosition(pattern) ?? 0;
 
 		if (!pattern) {
-			const node = createNode("seq", { clk: clk ?? 0 }, { ...config, expr: null, totalBeats: 0 });
+			const node = createNode("seq", { clk: clk ?? 0 }, { ...config, expr: null, totalBeats: 0, patternStart });
 			captureSeqPositionByPattern(node.id, pattern);
 			return wrap(node);
 		}
@@ -135,7 +128,7 @@ export const seq = device("seq", {
 
 		if (voices === 1) {
 			const totalBeats = countBeats(expr);
-			const node = createNode("seq", { clk: clk ?? 0 }, { ...config, expr, totalBeats });
+			const node = createNode("seq", { clk: clk ?? 0 }, { ...config, expr, totalBeats, patternStart });
 			captureSeqPositionByPattern(node.id, pattern);
 			return wrap(node);
 		}
@@ -145,7 +138,7 @@ export const seq = device("seq", {
 		const monoExprs = decomposePattern(expr, "isolate");
 		const nodes = monoExprs.map((monoExpr) => {
 			const totalBeats = countBeats(monoExpr);
-			return createNode("seq", { clk: clk ?? 0 }, { ...config, expr: monoExpr, totalBeats });
+			return createNode("seq", { clk: clk ?? 0 }, { ...config, expr: monoExpr, totalBeats, patternStart });
 		});
 		// Capture same position for all voice nodes using pattern lookup
 		captureSeqPositionByPatternForAll(nodes.map(n => n.id), pattern);

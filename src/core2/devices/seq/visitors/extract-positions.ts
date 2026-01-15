@@ -162,3 +162,22 @@ export function extractPositionsForBeat(
 
 	return positions;
 }
+
+/**
+ * Extract only the IDs of active elements for a specific beat.
+ * IDs are position-based: "srcStart:srcEnd" to match registration IDs.
+ *
+ * This is the lightweight version used at runtime - only sends IDs,
+ * not positions (which are tracked by CodeMirror).
+ */
+export function extractActiveIdsForBeat(
+	expr: Expr,
+	_pattern: string,
+	beatIndex: number,
+	cycle: number,
+	state?: TraversalState,
+): string[] {
+	const positions = extractPositionsForBeat(expr, _pattern, beatIndex, cycle, state);
+	// Convert to position-based IDs that match extractAllElements
+	return positions.map(p => `${p.start}:${p.end}`);
+}

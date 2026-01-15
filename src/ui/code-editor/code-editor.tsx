@@ -4,13 +4,20 @@ import { useEffect, useRef } from "react";
 import { auxlangTheme } from "./auxlang-theme";
 import { createExtensions } from "./extensions";
 import {
-	visualizationUpdateEffect,
+	registerElementsEffect,
+	clearRegisteredEffect,
+	activateElementsEffect,
+	updateDevicesEffect,
 	visualizationStateExtension,
-	type ActiveNote,
 	type ActiveDevice,
+	type RegisteredElement,
 } from "./visualization-state";
-import { getAudioInstance, onVisualizationUpdate, type NoteDecoration } from "../../core2/runtime/audio-instance";
-import type { SourcePosition } from "../../core2/eval/source-map";
+import {
+	getAudioInstance,
+	onRegistration,
+	onActivation,
+	onDeviceUpdate,
+} from "../../core2/runtime/audio-instance";
 
 interface CodeEditorProps {
 	value: string;
@@ -70,37 +77,75 @@ export function CodeEditor({ value, onChange, onRun, className = "", graphId }: 
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
+	// Two-phase visualization subscription
 	useEffect(() => {
 		if (!graphId || !viewRef.current) return;
 
-		let unsubscribe: (() => void) | undefined;
+		const unsubscribers: (() => void)[] = [];
 
 		getAudioInstance().then((audioInstance) => {
-			unsubscribe = onVisualizationUpdate(audioInstance, graphId, (intensities, notes) => {
+			const view = viewRef.current;
+			if (!view) return;
+
+			// Phase 1: Register all elements at eval time
+			const unsubReg = onRegistration(audioInstance, graphId, (elements) => {
 				const view = viewRef.current;
 				if (!view) return;
 
-				// Convert NoteDecoration[] to ActiveNote[] (absolute positions with kind)
-				const activeNotes: ActiveNote[] = notes?.map(n => ({ 
-					from: n.start, 
-					to: n.end, 
-					kind: n.kind ?? "note" 
-				})) ?? [];
+				// Convert to RegisteredElement format expected by visualization state
+				const registered: RegisteredElement[] = elements.map(e => ({
+					id: e.id,
+					from: e.from,
+					to: e.to,
+					kind: e.kind,
+				}));
 
-				// Convert SourcePosition -> intensity map to ActiveDevice[]
-				const activeDevices: ActiveDevice[] = [];
-				for (const [pos, intensity] of intensities) {
-					activeDevices.push({ from: pos.start, to: pos.end, intensity });
+				view.dispatch({
+					effects: registerElementsEffect.of(registered),
+				});
+			});
+			unsubscribers.push(unsubReg);
+
+			// Phase 2a: Activate elements per frame
+			const unsubAct = onActivation(audioInstance, graphId, (activeIds) => {
+				const view = viewRef.current;
+				if (!view) return;
+
+				view.dispatch({
+					effects: activateElementsEffect.of(activeIds),
+				});
+			});
+			unsubscribers.push(unsubAct);
+
+			// Phase 2b: Update device intensities per frame
+			const unsubDev = onDeviceUpdate(audioInstance, graphId, (positions) => {
+				const view = viewRef.current;
+				if (!view) return;
+
+				const devices: ActiveDevice[] = [];
+				for (const [pos, intensity] of positions) {
+					devices.push({ from: pos.start, to: pos.end, intensity });
 				}
 
 				view.dispatch({
-					effects: visualizationUpdateEffect.of({ activeNotes, activeDevices }),
+					effects: updateDevicesEffect.of(devices),
 				});
 			});
+			unsubscribers.push(unsubDev);
 		}).catch(console.error);
 
 		return () => {
-			unsubscribe?.();
+			// Clear decorations when unmounting or graphId changes
+			const view = viewRef.current;
+			if (view) {
+				view.dispatch({
+					effects: clearRegisteredEffect.of(undefined),
+				});
+			}
+
+			for (const unsub of unsubscribers) {
+				unsub();
+			}
 		};
 	}, [graphId]);
 

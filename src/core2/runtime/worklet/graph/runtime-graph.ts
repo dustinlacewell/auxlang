@@ -11,7 +11,7 @@ import type { CollectedStates } from "./collected-states";
 import { buildRuntimeNode } from "./node/build-node";
 import type { RuntimeNode } from "./node/types";
 import { MetricsAccumulator, type NodeMetrics, type SequencerMetrics } from "./visualization-metrics";
-import type { ProcessContext, Decoration } from "../../../device/process-fn";
+import type { ProcessContext } from "../../../device/process-fn";
 
 export class RuntimeGraph {
 	private nodes: RuntimeNode[] = [];
@@ -37,8 +37,12 @@ export class RuntimeGraph {
 	private specs: Record<string, { defaultInput: string }> = {};
 	private deviceNames: string[] = [];
 	
-	// Decoration emission callback
-	private decorationCallback?: (nodeId: string, decorations: Decoration[]) => void;
+	// Active elements callback - emits current active set from sequencers
+	private activeElementsCallback?: (activeIds: string[]) => void;
+
+	// Accumulate active elements within a sample (multiple seq nodes may emit)
+	private pendingActive: Set<string> = new Set();
+	private lastActiveSet: string = ""; // For change detection
 
 	constructor(
 		graph: WorkletStereoGraph,
@@ -126,15 +130,16 @@ export class RuntimeGraph {
 		const time = this.sampleCount / sr;
 		this.sampleCount++;
 
+		// Clear pending active set from previous sample
+		this.pendingActive.clear();
+
 		// Process all nodes
 		const nodes = this.nodes;
 		const len = nodes.length;
+		const ctx = this.createProcessContext();
 
 		for (let i = 0; i < len; i++) {
 			const node = nodes[i]!;
-
-			// Create process context for this node
-			const ctx = this.createProcessContext(node.id);
 
 			if (node.processAll) {
 				node.resolveInputArrays(sr, time);
@@ -142,6 +147,16 @@ export class RuntimeGraph {
 			} else if (node.process) {
 				node.resolveInputs(sr, time);
 				node.process(node.inputs, node.config, node.state, sr, time, node.outputs, ctx);
+			}
+		}
+
+		// Emit active elements if changed (batched from all seq nodes)
+		if (this.activeElementsCallback) {
+			const activeArray = Array.from(this.pendingActive).sort();
+			const activeKey = activeArray.join(",");
+			if (activeKey !== this.lastActiveSet) {
+				this.lastActiveSet = activeKey;
+				this.activeElementsCallback(activeArray);
 			}
 		}
 
@@ -167,15 +182,16 @@ export class RuntimeGraph {
 		return [left * this.leftScale, right * this.rightScale];
 	}
 
-	setDecorationCallback(callback: (nodeId: string, decorations: Decoration[]) => void): void {
-		this.decorationCallback = callback;
+	setActiveElementsCallback(callback: (activeIds: string[]) => void): void {
+		this.activeElementsCallback = callback;
 	}
 
-	private createProcessContext(nodeId: string): ProcessContext {
+	private createProcessContext(): ProcessContext {
 		return {
-			emitDecorations: (decorations: Decoration[]) => {
-				if (this.decorationCallback) {
-					this.decorationCallback(nodeId, decorations);
+			emitActiveElements: (activeIds: string[]) => {
+				// Accumulate into pending set - will be batched and emitted after all nodes process
+				for (const id of activeIds) {
+					this.pendingActive.add(id);
 				}
 			},
 		};

@@ -122,10 +122,30 @@ function parseElement(state: ParserState): Expr {
 		while (match(state, "GLIDE")) {
 			children.push(parseTerm(state));
 		}
+		// Get source positions from first and last children
+		const firstChild = children[0]!;
+		const lastChild = children[children.length - 1]!;
+		const srcStart = getSrcStart(firstChild);
+		const srcEnd = getSrcEnd(lastChild);
+
+		// Build tie with optional positions
+		if (srcStart !== undefined && srcEnd !== undefined) {
+			return { type: "tie", children, srcStart, srcEnd } satisfies TieExpr;
+		}
 		return { type: "tie", children } satisfies TieExpr;
 	}
 
 	return first;
+}
+
+/** Get srcStart from an expression (handles all types) */
+function getSrcStart(expr: Expr): number | undefined {
+	return (expr as { srcStart?: number }).srcStart;
+}
+
+/** Get srcEnd from an expression (handles all types) */
+function getSrcEnd(expr: Expr): number | undefined {
+	return (expr as { srcEnd?: number }).srcEnd;
 }
 
 /** Parse a term - atom followed by zero or more modifiers */
@@ -192,7 +212,8 @@ function parseAtom(state: ParserState): Expr {
 	}
 
 	// Stack {...}
-	if (match(state, "LBRACE")) {
+	const lbrace = match(state, "LBRACE");
+	if (lbrace) {
 		const branches: Expr[] = [];
 
 		// First branch
@@ -205,8 +226,13 @@ function parseAtom(state: ParserState): Expr {
 			branches.push(wrapSeq(branch));
 		}
 
-		expect(state, "RBRACE");
-		return { type: "stack", children: branches } satisfies StackExpr;
+		const rbrace = expect(state, "RBRACE");
+		return {
+			type: "stack",
+			children: branches,
+			srcStart: lbrace.position,
+			srcEnd: rbrace.position + 1,
+		} satisfies StackExpr;
 	}
 
 	// Error: unexpected token
@@ -306,13 +332,25 @@ function parseModifier(state: ParserState, child: Expr): Expr | null {
 	const maybeToken = match(state, "MAYBE");
 	if (maybeToken) {
 		const prob = Number.parseFloat(maybeToken.value);
+		// srcEnd is position + "?" + optional probability digits
+		const srcEnd = maybeToken.position + maybeToken.value.length + 1; // +1 for the "?"
 
 		// Chain probability - multiply with existing if child is already maybe
 		if (child.type === "maybe") {
+			if (child.srcStart !== undefined) {
+				return {
+					type: "maybe",
+					child: child.child,
+					prob: child.prob * prob,
+					srcStart: child.srcStart,
+					srcEnd,
+				} satisfies MaybeExpr;
+			}
 			return {
 				type: "maybe",
 				child: child.child,
 				prob: child.prob * prob,
+				srcEnd,
 			} satisfies MaybeExpr;
 		}
 
@@ -320,6 +358,8 @@ function parseModifier(state: ParserState, child: Expr): Expr | null {
 			type: "maybe",
 			child,
 			prob,
+			srcStart: maybeToken.position,
+			srcEnd,
 		} satisfies MaybeExpr;
 	}
 

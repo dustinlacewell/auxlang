@@ -27,7 +27,9 @@ export interface TestCaseFile extends ParsedTestCase {
  * Parse a test case file content.
  */
 export function parseTestCase(content: string): ParsedTestCase {
-	const lines = content.split("\n");
+	// Normalize line endings (CRLF -> LF)
+	const normalized = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+	const lines = normalized.split("\n");
 	let name = "";
 	let desc = "";
 	let codeStartLine = 0;

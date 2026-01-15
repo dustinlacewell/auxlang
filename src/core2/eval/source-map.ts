@@ -87,13 +87,22 @@ export function captureSeqPositionByPattern(nodeId: string, pattern: string): vo
  */
 export function captureSeqPositionByPatternForAll(nodeIds: string[], pattern: string): void {
 	if (!currentSourceMap) return;
-	
+
 	const position = seqPatternPositions.get(pattern);
 	if (position) {
 		for (const nodeId of nodeIds) {
 			capturePosition(currentSourceMap, nodeId, position);
 		}
 	}
+}
+
+/**
+ * Get the document start position for a pattern string.
+ * Returns undefined if not found.
+ */
+export function getPatternStartPosition(pattern: string): number | undefined {
+	const position = seqPatternPositions.get(pattern);
+	return position?.start;
 }
 
 export function captureCurrentPosition(nodeId: string, start: number, end: number): void {
