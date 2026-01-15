@@ -47,8 +47,16 @@ export function sampleCursor(cursor: Cursor, sampleIndex: number, samplesPerBeat
 	cursor.cv = event.freq;
 	cursor.lastCV = event.freq;
 
-	// Gate: on while sampleIndex is within event's range (with 1 sample gap for retrigger)
-	const gate = sampleIndex >= eventStartSample && sampleIndex < eventEndSample - 1 ? 1 : 0;
+	// Gate: on while sampleIndex is within event's range
+	// For tied events: stay high through the gap to the next tied note
+	let gate = 0;
+	if (sampleIndex >= eventStartSample && sampleIndex < eventEndSample) {
+		// Check if next event is tied (no retrigger) - if so, don't add gap
+		const nextEvent = events[cursor.eventIndex + 1];
+		const nextIsTied = nextEvent && !nextEvent.isTrigger;
+		const gapEnd = nextIsTied ? eventEndSample : eventEndSample - 1;
+		gate = sampleIndex < gapEnd ? 1 : 0;
+	}
 
 	// Trigger: fires on exact sample when event starts, if this event should trigger
 	let trig = 0;

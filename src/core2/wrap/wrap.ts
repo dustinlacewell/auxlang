@@ -16,6 +16,34 @@ import type { NodeInput } from "../signal/node-input";
 import { setWrapFn, wrapOutputRef, wrapOutputRefArray } from "./chainable-output-ref";
 import { parseArgs } from "./parse-args";
 
+/** Symbol to mark input setter functions */
+export const INPUT_SETTER = Symbol("inputSetter");
+
+/** Symbol to mark chain method functions */
+export const CHAIN_METHOD = Symbol("chainMethod");
+
+/** Info attached to input setter functions */
+export interface InputSetterInfo {
+	device: string;
+	input: string;
+}
+
+/** Info attached to chain method functions */
+export interface ChainMethodInfo {
+	sourceDevice: string;
+	targetDevice: string;
+}
+
+/** Check if a value is an input setter function */
+export function isInputSetter(value: unknown): value is Function & { [INPUT_SETTER]: InputSetterInfo } {
+	return typeof value === "function" && INPUT_SETTER in value;
+}
+
+/** Check if a value is an uncalled chain method */
+export function isChainMethod(value: unknown): value is Function & { [CHAIN_METHOD]: ChainMethodInfo } {
+	return typeof value === "function" && CHAIN_METHOD in value;
+}
+
 export type Wrapped<T extends Node | Node[]> = T extends Node[] ? WrappedArray : WrappedNode;
 
 export interface WrappedNode extends Node {
@@ -84,7 +112,7 @@ function wrapNode(node: Node): WrappedNode {
 
 			// Input setter: node.freq(440) → new wrapped node
 			if (prop in spec.inputs) {
-				return (value: NodeInput) => {
+				const setter = (value: NodeInput) => {
 					const newNode = createDeviceNode(
 						target.device,
 						spec,
@@ -93,6 +121,12 @@ function wrapNode(node: Node): WrappedNode {
 					);
 					return wrap(newNode);
 				};
+				// Mark as input setter so we can detect misuse as a signal
+				(setter as unknown as Record<symbol, InputSetterInfo>)[INPUT_SETTER] = {
+					device: target.device,
+					input: prop,
+				};
+				return setter;
 			}
 
 			// Device chaining: node.lpf() → new lpf node
@@ -101,7 +135,10 @@ function wrapNode(node: Node): WrappedNode {
 				return createChainMethod(target, spec, prop);
 			}
 
-			return undefined;
+			throw new Error(
+				`'${prop}' is not an input, output, or device on '${target.device}'. ` +
+				`Available: inputs=[${Object.keys(spec.inputs).join(", ")}], outputs=[${spec.outputs.join(", ")}]`
+			);
 		},
 
 		apply(target, _thisArg, args) {
@@ -121,7 +158,7 @@ function wrapNode(node: Node): WrappedNode {
 }
 
 function createChainMethod(sourceNode: Node, sourceSpec: DeviceSpec, targetDevice: string) {
-	return (...args: unknown[]) => {
+	const method = (...args: unknown[]) => {
 		const targetSpec = getDeviceSpec(targetDevice);
 		if (!targetSpec) {
 			throw new Error(`Unknown device: ${targetDevice}`);
@@ -142,6 +179,12 @@ function createChainMethod(sourceNode: Node, sourceSpec: DeviceSpec, targetDevic
 		const result = createDeviceNode(targetDevice, targetSpec, inputs, parsedConfig as Record<string, ConfigValue>);
 		return wrap(result);
 	};
+	// Mark as chain method so we can detect misuse as a signal
+	(method as unknown as Record<symbol, ChainMethodInfo>)[CHAIN_METHOD] = {
+		sourceDevice: sourceNode.device,
+		targetDevice,
+	};
+	return method;
 }
 
 function wrapArray(nodes: Node[]): WrappedArray {
@@ -197,13 +240,19 @@ function wrapArray(nodes: Node[]): WrappedArray {
 
 			// Input setter: maps across all nodes
 			if (prop in spec.inputs) {
-				return (value: NodeInput) => {
+				const setter = (value: NodeInput) => {
 					const newNodes = nodes.map((n, i) => {
 						const v = Array.isArray(value) ? value[i % value.length]! : value;
 						return createNode(n.device, { ...n.inputs, [prop]: v }, n.config);
 					});
 					return wrap(newNodes);
 				};
+				// Mark as input setter so we can detect misuse as a signal
+				(setter as unknown as Record<symbol, InputSetterInfo>)[INPUT_SETTER] = {
+					device: firstNode.device,
+					input: prop,
+				};
+				return setter;
 			}
 
 			// Device chaining: maps factory across all nodes
@@ -245,7 +294,10 @@ function wrapArray(nodes: Node[]): WrappedArray {
 				};
 			}
 
-			return undefined;
+			throw new Error(
+				`'${prop}' is not an input, output, or device on '${firstNode.device}'. ` +
+				`Available: inputs=[${Object.keys(spec.inputs).join(", ")}], outputs=[${spec.outputs.join(", ")}]`
+			);
 		},
 
 		apply(_target, _thisArg, args) {

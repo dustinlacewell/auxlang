@@ -15,8 +15,10 @@ export function countBeats(expr: Expr): number {
 		case "group":
 		case "alt":
 		case "stack":
-		case "tie":
 			return 1;
+		case "tie":
+			// Tie spans its children sequentially (c4_e4_g4 = 3 beats)
+			return expr.children.reduce((sum, child) => sum + countBeats(child), 0);
 		case "seq":
 			return expr.children.reduce((sum, child) => sum + countBeats(child), 0);
 		case "multiply":

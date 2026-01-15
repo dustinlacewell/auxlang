@@ -5,6 +5,7 @@
 import { getDeviceSpec } from "../device/registry";
 import type { Node } from "../graph/node";
 import type { OutputRef } from "../graph/output-ref";
+import { isInputSetter, INPUT_SETTER, type InputSetterInfo, isChainMethod, CHAIN_METHOD, type ChainMethodInfo } from "../wrap/wrap";
 import type { NodeInput } from "./node-input";
 
 /**
@@ -64,6 +65,24 @@ function isNodeArray(value: unknown): value is Node[] {
  * - number, number[], SignalLambda → pass through
  */
 export function normalizeSignal(value: unknown): NodeInput {
+	// Check for misuse of input setter methods as signals
+	if (isInputSetter(value)) {
+		const info = (value as unknown as Record<symbol, InputSetterInfo>)[INPUT_SETTER]!;
+		throw new Error(
+			`Cannot use '${info.device}.${info.input}' as a signal - it's a setter method, not an output. ` +
+			`Did you mean to use an output like '.gate' or '.cv'?`
+		);
+	}
+
+	// Check for uncalled chain methods used as signals
+	if (isChainMethod(value)) {
+		const info = (value as unknown as Record<symbol, ChainMethodInfo>)[CHAIN_METHOD]!;
+		throw new Error(
+			`Cannot use '${info.sourceDevice}.${info.targetDevice}' as a signal - did you forget to call it? ` +
+			`Use '${info.sourceDevice}.${info.targetDevice}()' to create the device.`
+		);
+	}
+
 	if (isNode(value)) {
 		// Convert node to its default output ref
 		const spec = getDeviceSpec(value.device);

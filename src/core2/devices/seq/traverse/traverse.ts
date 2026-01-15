@@ -238,11 +238,18 @@ function traverseTie<TContext>(
 ): void {
 	if (children.length === 0) return;
 
-	const childDuration = duration / children.length;
+	// Tie children are sequential like a seq, but with gate held open
+	const totalChildBeats = children.reduce((sum, child) => sum + countBeats(child), 0);
+	if (totalChildBeats === 0) return;
+
+	const beatScale = duration / totalChildBeats;
 	let currentBeat = beatStart;
 
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i]!;
+		const childBeats = countBeats(child);
+		const childDuration = childBeats * beatScale;
+		// First child triggers gate, subsequent children are tied (no re-trigger)
 		const childInTie = inTie || i > 0;
 
 		traverseExpr(child, currentBeat, childDuration, cycle, state, childInTie, `${pathKey}.tie${i}`, visitor, context);
