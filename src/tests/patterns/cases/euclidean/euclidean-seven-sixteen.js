@@ -1,7 +1,7 @@
 // Euclidean 7 of 16
-// Complex polyrhythm
+// Complex polyrhythm over 16 steps
 clock(140)
-  .seq("(7,16)")
+  .seq("c4(7,16)")
   .sin()
   .gain(0.5)
   .out()

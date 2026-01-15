@@ -26,26 +26,17 @@ export type InputsToArray<T extends Record<string, number | number[]>> = {
 };
 
 /**
- * Decoration to be applied in the editor.
- * Uses noteId for stable targeting that persists through code edits.
- */
-export interface Decoration {
-	noteId: string;
-	start: number;
-	end: number;
-}
-
-/**
  * Context provided to process functions for non-audio operations.
  */
 export interface ProcessContext {
 	/**
-	 * Emit decorations for this node's source code.
-	 * Only call when state changes (e.g., beat boundaries), not every sample.
-	 * 
-	 * @param decorations - Array of character ranges to highlight
+	 * Emit currently active elements for visualization.
+	 * Call whenever the set of active elements changes.
+	 * Multiple calls per sample are batched into a single set.
+	 *
+	 * @param activeIds - Element IDs currently active (position-based: "from:to")
 	 */
-	emitDecorations(decorations: Decoration[]): void;
+	emitActiveElements(activeIds: string[]): void;
 }
 
 /**

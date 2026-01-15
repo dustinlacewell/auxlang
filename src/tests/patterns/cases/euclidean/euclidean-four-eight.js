@@ -1,7 +1,7 @@
 // Euclidean 4 of 8
-// 4 evenly spaced hits
+// 4 evenly spaced hits (straight quarter notes)
 clock(120)
-  .seq("(4,8)")
+  .seq("c4(4,8)")
   .sin()
   .gain(0.5)
   .out()

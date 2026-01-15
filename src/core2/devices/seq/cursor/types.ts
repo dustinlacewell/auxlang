@@ -56,6 +56,8 @@ export interface Cursor {
 	eventIndex: number;
 	/** Sample index of last triggered event (for sample-perfect trigger detection) */
 	lastTriggeredSample: number;
+	/** Index of currently active event (-1 if in a gap), used for visualization */
+	activeEventIndex: number;
 }
 
 // Re-export BeatEvent for convenience

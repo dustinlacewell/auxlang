@@ -8,6 +8,17 @@ import type { ProjectionStrategy } from "./types";
 import { countStackLeaves, voiceCountDuplicate } from "./count";
 
 /**
+ * Copy srcStart/srcEnd from source expression if present.
+ */
+function withSrcPos<T extends object>(target: T, source: Expr): T {
+	const src = source as { srcStart?: number; srcEnd?: number };
+	if (src.srcStart !== undefined && src.srcEnd !== undefined) {
+		return { ...target, srcStart: src.srcStart, srcEnd: src.srcEnd };
+	}
+	return target;
+}
+
+/**
  * Project a single voice from a polyphonic pattern.
  *
  * @param expr - The expression to project
@@ -41,31 +52,31 @@ function projectVoiceDuplicate(expr: Expr, voiceIndex: number): Expr {
 		}
 
 		case "seq":
-			return { type: "seq", children: expr.children.map((c) => projectVoiceDuplicate(c, voiceIndex)) };
+			return withSrcPos({ type: "seq", children: expr.children.map((c) => projectVoiceDuplicate(c, voiceIndex)) }, expr);
 
 		case "group":
-			return { type: "group", children: expr.children.map((c) => projectVoiceDuplicate(c, voiceIndex)) };
+			return withSrcPos({ type: "group", children: expr.children.map((c) => projectVoiceDuplicate(c, voiceIndex)) }, expr);
 
 		case "alt":
-			return { type: "alt", children: expr.children.map((c) => projectVoiceDuplicate(c, voiceIndex)) };
+			return withSrcPos({ type: "alt", children: expr.children.map((c) => projectVoiceDuplicate(c, voiceIndex)) }, expr);
 
 		case "tie":
-			return { type: "tie", children: expr.children.map((c) => projectVoiceDuplicate(c, voiceIndex)) };
+			return withSrcPos({ type: "tie", children: expr.children.map((c) => projectVoiceDuplicate(c, voiceIndex)) }, expr);
 
 		case "multiply":
-			return { type: "multiply", child: projectVoiceDuplicate(expr.child, voiceIndex), count: expr.count };
+			return withSrcPos({ type: "multiply", child: projectVoiceDuplicate(expr.child, voiceIndex), count: expr.count }, expr);
 
 		case "replicate":
-			return { type: "replicate", child: projectVoiceDuplicate(expr.child, voiceIndex), count: expr.count };
+			return withSrcPos({ type: "replicate", child: projectVoiceDuplicate(expr.child, voiceIndex), count: expr.count }, expr);
 
 		case "elongate":
-			return { type: "elongate", child: projectVoiceDuplicate(expr.child, voiceIndex), count: expr.count };
+			return withSrcPos({ type: "elongate", child: projectVoiceDuplicate(expr.child, voiceIndex), count: expr.count }, expr);
 
 		case "euclidean":
-			return { type: "euclidean", child: projectVoiceDuplicate(expr.child, voiceIndex), hits: expr.hits, steps: expr.steps };
+			return withSrcPos({ type: "euclidean", child: projectVoiceDuplicate(expr.child, voiceIndex), hits: expr.hits, steps: expr.steps }, expr);
 
 		case "maybe":
-			return { type: "maybe", child: projectVoiceDuplicate(expr.child, voiceIndex), prob: expr.prob };
+			return withSrcPos({ type: "maybe", child: projectVoiceDuplicate(expr.child, voiceIndex), prob: expr.prob }, expr);
 
 		case "note":
 		case "rest":
@@ -99,31 +110,31 @@ function projectBaseVoice(expr: Expr): Expr {
 			return REST;
 
 		case "seq":
-			return { type: "seq", children: expr.children.map(projectBaseVoice) };
+			return withSrcPos({ type: "seq", children: expr.children.map(projectBaseVoice) }, expr);
 
 		case "group":
-			return { type: "group", children: expr.children.map(projectBaseVoice) };
+			return withSrcPos({ type: "group", children: expr.children.map(projectBaseVoice) }, expr);
 
 		case "alt":
-			return { type: "alt", children: expr.children.map(projectBaseVoice) };
+			return withSrcPos({ type: "alt", children: expr.children.map(projectBaseVoice) }, expr);
 
 		case "tie":
-			return { type: "tie", children: expr.children.map(projectBaseVoice) };
+			return withSrcPos({ type: "tie", children: expr.children.map(projectBaseVoice) }, expr);
 
 		case "multiply":
-			return { type: "multiply", child: projectBaseVoice(expr.child), count: expr.count };
+			return withSrcPos({ type: "multiply", child: projectBaseVoice(expr.child), count: expr.count }, expr);
 
 		case "replicate":
-			return { type: "replicate", child: projectBaseVoice(expr.child), count: expr.count };
+			return withSrcPos({ type: "replicate", child: projectBaseVoice(expr.child), count: expr.count }, expr);
 
 		case "elongate":
-			return { type: "elongate", child: projectBaseVoice(expr.child), count: expr.count };
+			return withSrcPos({ type: "elongate", child: projectBaseVoice(expr.child), count: expr.count }, expr);
 
 		case "euclidean":
-			return { type: "euclidean", child: projectBaseVoice(expr.child), hits: expr.hits, steps: expr.steps };
+			return withSrcPos({ type: "euclidean", child: projectBaseVoice(expr.child), hits: expr.hits, steps: expr.steps }, expr);
 
 		case "maybe":
-			return { type: "maybe", child: projectBaseVoice(expr.child), prob: expr.prob };
+			return withSrcPos({ type: "maybe", child: projectBaseVoice(expr.child), prob: expr.prob }, expr);
 
 		case "note":
 		case "rest":
@@ -167,31 +178,31 @@ function projectStackVoice(expr: Expr, targetIndex: number, counter: { counter: 
 		}
 
 		case "seq":
-			return { type: "seq", children: expr.children.map((c) => projectStackVoice(c, targetIndex, counter)) };
+			return withSrcPos({ type: "seq", children: expr.children.map((c) => projectStackVoice(c, targetIndex, counter)) }, expr);
 
 		case "group":
-			return { type: "group", children: expr.children.map((c) => projectStackVoice(c, targetIndex, counter)) };
+			return withSrcPos({ type: "group", children: expr.children.map((c) => projectStackVoice(c, targetIndex, counter)) }, expr);
 
 		case "alt":
-			return { type: "alt", children: expr.children.map((c) => projectStackVoice(c, targetIndex, counter)) };
+			return withSrcPos({ type: "alt", children: expr.children.map((c) => projectStackVoice(c, targetIndex, counter)) }, expr);
 
 		case "tie":
-			return { type: "tie", children: expr.children.map((c) => projectStackVoice(c, targetIndex, counter)) };
+			return withSrcPos({ type: "tie", children: expr.children.map((c) => projectStackVoice(c, targetIndex, counter)) }, expr);
 
 		case "multiply":
-			return { type: "multiply", child: projectStackVoice(expr.child, targetIndex, counter), count: expr.count };
+			return withSrcPos({ type: "multiply", child: projectStackVoice(expr.child, targetIndex, counter), count: expr.count }, expr);
 
 		case "replicate":
-			return { type: "replicate", child: projectStackVoice(expr.child, targetIndex, counter), count: expr.count };
+			return withSrcPos({ type: "replicate", child: projectStackVoice(expr.child, targetIndex, counter), count: expr.count }, expr);
 
 		case "elongate":
-			return { type: "elongate", child: projectStackVoice(expr.child, targetIndex, counter), count: expr.count };
+			return withSrcPos({ type: "elongate", child: projectStackVoice(expr.child, targetIndex, counter), count: expr.count }, expr);
 
 		case "euclidean":
-			return { type: "euclidean", child: projectStackVoice(expr.child, targetIndex, counter), hits: expr.hits, steps: expr.steps };
+			return withSrcPos({ type: "euclidean", child: projectStackVoice(expr.child, targetIndex, counter), hits: expr.hits, steps: expr.steps }, expr);
 
 		case "maybe":
-			return { type: "maybe", child: projectStackVoice(expr.child, targetIndex, counter), prob: expr.prob };
+			return withSrcPos({ type: "maybe", child: projectStackVoice(expr.child, targetIndex, counter), prob: expr.prob }, expr);
 
 		case "note":
 		case "rest":
@@ -229,31 +240,31 @@ function projectStackVoiceNested(expr: Expr, targetIndex: number, counter: { cou
 		}
 
 		case "seq":
-			return { type: "seq", children: expr.children.map((c) => projectStackVoiceNested(c, targetIndex, counter)) };
+			return withSrcPos({ type: "seq", children: expr.children.map((c) => projectStackVoiceNested(c, targetIndex, counter)) }, expr);
 
 		case "group":
-			return { type: "group", children: expr.children.map((c) => projectStackVoiceNested(c, targetIndex, counter)) };
+			return withSrcPos({ type: "group", children: expr.children.map((c) => projectStackVoiceNested(c, targetIndex, counter)) }, expr);
 
 		case "alt":
-			return { type: "alt", children: expr.children.map((c) => projectStackVoiceNested(c, targetIndex, counter)) };
+			return withSrcPos({ type: "alt", children: expr.children.map((c) => projectStackVoiceNested(c, targetIndex, counter)) }, expr);
 
 		case "tie":
-			return { type: "tie", children: expr.children.map((c) => projectStackVoiceNested(c, targetIndex, counter)) };
+			return withSrcPos({ type: "tie", children: expr.children.map((c) => projectStackVoiceNested(c, targetIndex, counter)) }, expr);
 
 		case "multiply":
-			return { type: "multiply", child: projectStackVoiceNested(expr.child, targetIndex, counter), count: expr.count };
+			return withSrcPos({ type: "multiply", child: projectStackVoiceNested(expr.child, targetIndex, counter), count: expr.count }, expr);
 
 		case "replicate":
-			return { type: "replicate", child: projectStackVoiceNested(expr.child, targetIndex, counter), count: expr.count };
+			return withSrcPos({ type: "replicate", child: projectStackVoiceNested(expr.child, targetIndex, counter), count: expr.count }, expr);
 
 		case "elongate":
-			return { type: "elongate", child: projectStackVoiceNested(expr.child, targetIndex, counter), count: expr.count };
+			return withSrcPos({ type: "elongate", child: projectStackVoiceNested(expr.child, targetIndex, counter), count: expr.count }, expr);
 
 		case "euclidean":
-			return { type: "euclidean", child: projectStackVoiceNested(expr.child, targetIndex, counter), hits: expr.hits, steps: expr.steps };
+			return withSrcPos({ type: "euclidean", child: projectStackVoiceNested(expr.child, targetIndex, counter), hits: expr.hits, steps: expr.steps }, expr);
 
 		case "maybe":
-			return { type: "maybe", child: projectStackVoiceNested(expr.child, targetIndex, counter), prob: expr.prob };
+			return withSrcPos({ type: "maybe", child: projectStackVoiceNested(expr.child, targetIndex, counter), prob: expr.prob }, expr);
 
 		case "note":
 		case "rest":
@@ -288,31 +299,31 @@ function projectStackVoiceContent(expr: Expr, targetIndex: number, counter: { co
 
 		case "seq":
 			// Sequences inside stacks become alternations
-			return { type: "alt", children: expr.children.map((c) => projectStackVoiceContent(c, targetIndex, counter)) };
+			return withSrcPos({ type: "alt", children: expr.children.map((c) => projectStackVoiceContent(c, targetIndex, counter)) }, expr);
 
 		case "group":
-			return { type: "group", children: expr.children.map((c) => projectStackVoiceContent(c, targetIndex, counter)) };
+			return withSrcPos({ type: "group", children: expr.children.map((c) => projectStackVoiceContent(c, targetIndex, counter)) }, expr);
 
 		case "alt":
-			return { type: "alt", children: expr.children.map((c) => projectStackVoiceContent(c, targetIndex, counter)) };
+			return withSrcPos({ type: "alt", children: expr.children.map((c) => projectStackVoiceContent(c, targetIndex, counter)) }, expr);
 
 		case "tie":
-			return { type: "tie", children: expr.children.map((c) => projectStackVoiceContent(c, targetIndex, counter)) };
+			return withSrcPos({ type: "tie", children: expr.children.map((c) => projectStackVoiceContent(c, targetIndex, counter)) }, expr);
 
 		case "multiply":
-			return { type: "multiply", child: projectStackVoiceContent(expr.child, targetIndex, counter), count: expr.count };
+			return withSrcPos({ type: "multiply", child: projectStackVoiceContent(expr.child, targetIndex, counter), count: expr.count }, expr);
 
 		case "replicate":
-			return { type: "replicate", child: projectStackVoiceContent(expr.child, targetIndex, counter), count: expr.count };
+			return withSrcPos({ type: "replicate", child: projectStackVoiceContent(expr.child, targetIndex, counter), count: expr.count }, expr);
 
 		case "elongate":
-			return { type: "elongate", child: projectStackVoiceContent(expr.child, targetIndex, counter), count: expr.count };
+			return withSrcPos({ type: "elongate", child: projectStackVoiceContent(expr.child, targetIndex, counter), count: expr.count }, expr);
 
 		case "euclidean":
-			return { type: "euclidean", child: projectStackVoiceContent(expr.child, targetIndex, counter), hits: expr.hits, steps: expr.steps };
+			return withSrcPos({ type: "euclidean", child: projectStackVoiceContent(expr.child, targetIndex, counter), hits: expr.hits, steps: expr.steps }, expr);
 
 		case "maybe":
-			return { type: "maybe", child: projectStackVoiceContent(expr.child, targetIndex, counter), prob: expr.prob };
+			return withSrcPos({ type: "maybe", child: projectStackVoiceContent(expr.child, targetIndex, counter), prob: expr.prob }, expr);
 
 		case "note":
 		case "rest":

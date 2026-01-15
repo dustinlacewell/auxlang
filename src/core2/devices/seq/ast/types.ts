@@ -57,6 +57,8 @@ export interface AltExpr {
 export interface StackExpr {
 	readonly type: "stack";
 	readonly children: Expr[];
+	readonly srcStart?: number;
+	readonly srcEnd?: number;
 }
 
 /**
@@ -70,6 +72,8 @@ export interface StackExpr {
 export interface TieExpr {
 	readonly type: "tie";
 	readonly children: Expr[];
+	readonly srcStart?: number;
+	readonly srcEnd?: number;
 }
 
 /** Multiply *n - repeat child n times within same duration (subdivides) */
@@ -114,6 +118,8 @@ export interface MaybeExpr {
 	readonly type: "maybe";
 	readonly child: Expr;
 	readonly prob: number;
+	readonly srcStart?: number;
+	readonly srcEnd?: number;
 }
 
 /** Union of all expression types */

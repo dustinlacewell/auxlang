@@ -1,12 +1,15 @@
 /**
- * Worklet bridge for sequencer position extraction.
- * Makes extractPositionsForBeat available in the worklet global scope.
+ * Worklet bridge for sequencer position/ID extraction.
+ * Makes extraction functions available in the worklet global scope.
  */
 
-import { extractPositionsForBeat } from "../../devices/seq/visitors/extract-positions";
+import { extractPositionsForBeat, extractActiveIdsForBeat } from "../../devices/seq/visitors/extract-positions";
 
 // Expose to worklet global scope
+// biome-ignore lint/suspicious/noExplicitAny: worklet global
 (globalThis as any).extractPositionsForBeat = extractPositionsForBeat;
+// biome-ignore lint/suspicious/noExplicitAny: worklet global
+(globalThis as any).extractActiveIdsForBeat = extractActiveIdsForBeat;
 
 // Also export for type safety
-export { extractPositionsForBeat };
+export { extractPositionsForBeat, extractActiveIdsForBeat };
