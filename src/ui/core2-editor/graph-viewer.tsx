@@ -4,8 +4,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getDeviceColor } from "@/ui/test-suite/category-colors";
-import { getDevices } from "@/ui/test-suite/test-data";
+import { generateCategoryColorMap, getColor } from "@/ui/test-suite/shared/category-colors";
+import { getCategories, getDevicesByCategory } from "@/ui/test-suite/device-tests/device-test-data";
 
 export interface Transform {
 	x: number;
@@ -138,13 +138,28 @@ const baseThemeCSS = `
 	}
 `;
 
+// Build device → color lookup from device test data
+function buildDeviceColorMap(): Map<string, string> {
+	const categories = getCategories();
+	const categoryColors = generateCategoryColorMap(categories);
+	const devicesByCategory = getDevicesByCategory();
+	const deviceColors = new Map<string, string>();
+
+	for (const [category, devices] of devicesByCategory) {
+		const color = getColor(categoryColors, category);
+		for (const device of devices) {
+			deviceColors.set(device, color);
+		}
+	}
+	return deviceColors;
+}
+
 // Generate CSS rules for each device based on category colors
 function generateDeviceCSS(): string {
-	const devices = getDevices();
+	const deviceColors = buildDeviceColorMap();
 	const rules: string[] = [];
 
-	for (const device of devices) {
-		const color = getDeviceColor(device);
+	for (const [device, color] of deviceColors) {
 		const { fill, stroke } = hslToFillAndStroke(color);
 		rules.push(`
 	.aux-graph .node.device-${device} polygon,
