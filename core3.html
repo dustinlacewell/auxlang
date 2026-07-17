@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Auxlang core3 playground</title>
+	<style>
+		html, body { margin: 0; height: 100%; }
+		body {
+			font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+			font-size: 14px;
+			background: #1a1a1a;
+			color: #ddd;
+			display: flex;
+			flex-direction: column;
+			height: 100vh;
+		}
+		#toolbar { padding: 8px; display: flex; gap: 8px; align-items: center; }
+		button {
+			font: inherit;
+			padding: 4px 14px;
+			background: #333;
+			color: #ddd;
+			border: 1px solid #555;
+			cursor: pointer;
+		}
+		button:hover { background: #444; }
+		.hint { color: #888; }
+		#code {
+			flex: 1;
+			margin: 0 8px;
+			padding: 8px;
+			font: inherit;
+			background: #111;
+			color: #cfe;
+			border: 1px solid #555;
+			resize: none;
+			tab-size: 2;
+		}
+		#error {
+			margin: 8px;
+			padding: 8px;
+			background: #3a1414;
+			color: #ff9c9c;
+			border: 1px solid #7a2222;
+			white-space: pre-wrap;
+			visibility: hidden;
+		}
+	</style>
+</head>
+<body>
+	<div id="toolbar">
+		<button id="run">Run</button>
+		<button id="stop">Stop</button>
+		<span class="hint">Ctrl+Enter to run · re-run while playing crossfades</span>
+	</div>
+	<textarea id="code" spellcheck="false"></textarea>
+	<div id="error"></div>
+	<script type="module" src="/src/ui/core3-playground/main.ts"></script>
+</body>
+</html>
