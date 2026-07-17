@@ -16,12 +16,13 @@ import { z1 } from "@/core3/modules/z1";
 import { SR, driver } from "./helpers";
 
 describe("z1", () => {
-	it("emits the previous sample's input (one-sample delay)", () => {
+	it("tick is a passthrough — the one-sample delay lives on the compiled z-edge", () => {
+		// compile/z1-edges.ts converts every connection into z1 to a z-edge
+		// (read one sample late); the engine-level delay is proven in
+		// tests/core3/bridge/feedback.test.ts.
 		const d = driver(z1);
-		expect(d.step({ in: 5 }).out).toBe(0); // first: prev=0
-		expect(d.step({ in: 9 }).out).toBe(5);
-		expect(d.step({ in: 2 }).out).toBe(9);
-		expect(d.step({ in: 0 }).out).toBe(2);
+		expect(d.step({ in: 5 }).out).toBe(5);
+		expect(d.step({ in: 9 }).out).toBe(9);
 	});
 });
 

@@ -28,8 +28,10 @@ export function buildLaneStates(
 		const prevLanes = prev?.nodes[keys[i] as string];
 		return node.lanes.map((_, lane) => {
 			const carried = prevLanes?.[lane];
-			if (carried !== undefined) return deepClone(carried);
-			return spec.state ? spec.state(sampleRate) : {};
+			const state = carried !== undefined ? deepClone(carried) : spec.state ? spec.state(sampleRate) : {};
+			// Engine-injected lane identity (see ModuleSpec.state in types.ts).
+			state.__lane = lane;
+			return state;
 		});
 	});
 	return { keys, states };

@@ -4,6 +4,8 @@
  *
  *   collect      reachable nodes from the roots (object-identity graph walk)
  *   expand       pattern inputs → patsig nodes (clocked by the ambient clock)
+ *   clocks       unconnected phase-unit `clk` inputs → the ambient clock
+ *   z1           connections into z1 nodes become z-edges (the unit delay)
  *   widths       max-input-width fixpoint (reduce collapses to 1)
  *   toposort     z-edges cut; a z-less cycle is a loud error
  *   index        topo position → node index
@@ -18,12 +20,14 @@ import { getModule } from "../module/define";
 import { isLambdaInput, isNodeRef, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
 import type { EvalResult } from "../patch/context";
-import type { PNode, PortSrc, Program } from "../types";
+import type { PNode, PortAnn, PortSrc, Program } from "../types";
+import { resolveAmbientClocks } from "./ambient-clock";
 import { collect } from "./collect";
 import { expandPatterns } from "./expand-patterns";
 import { structuralIds } from "./structural-id";
 import { toposort } from "./toposort";
 import { resolveWidths } from "./widths";
+import { cutZ1Edges } from "./z1-edges";
 
 /** Everything emit needs, resolved once at compile entry. */
 interface Resolved {
@@ -34,8 +38,10 @@ interface Resolved {
 
 export function compile(evalResult: EvalResult): Program {
 	const reachable = collect(evalResult.roots);
-	expandPatterns(reachable, evalResult.clock);
-	const nodes = collect(evalResult.roots); // re-walk: patsig nodes are new
+	expandPatterns(reachable, evalResult.clock, evalResult.seed);
+	resolveAmbientClocks(reachable, evalResult.clock);
+	const nodes = collect(evalResult.roots); // re-walk: patsig + ambient clock nodes are new
+	cutZ1Edges(nodes);
 
 	const order = toposort(nodes);
 	const resolved: Resolved = {
@@ -84,20 +90,21 @@ function emitNode(node: GNode, r: Resolved): PNode {
 /** One lane's PortSrc for every declared input port; unconnected uses the annotation default. */
 function resolveLane(
 	node: GNode,
-	ins: Record<string, { def: number | null }>,
+	ins: Record<string, PortAnn>,
 	lane: number,
 	r: Resolved,
 ): Record<string, PortSrc> {
 	const record: Record<string, PortSrc> = {};
 	for (const [port, ann] of Object.entries(ins)) {
-		record[port] = portSrc(node, port, ann.def, lane, r);
+		const src = portSrc(node, port, ann, lane, r);
+		if (src !== undefined) record[port] = src;
 	}
 	return record;
 }
 
-function portSrc(node: GNode, port: string, def: number | null, lane: number, r: Resolved): PortSrc {
+function portSrc(node: GNode, port: string, ann: PortAnn, lane: number, r: Resolved): PortSrc | undefined {
 	const value = node.inputs[port];
-	if (value === undefined) return defaultSrc(node, port, def);
+	if (value === undefined) return defaultSrc(node, port, ann);
 	return srcOf(value, node, port, lane, r);
 }
 
@@ -131,12 +138,17 @@ function connSrc(
 	return { k, node: target, port: srcPort, lane: srcLane };
 }
 
-/** A required (`def: null`) unconnected input is a loud error; otherwise the default constant. */
-function defaultSrc(node: GNode, port: string, def: number | null): PortSrc {
-	if (def === null) {
+/**
+ * A required (`def: null`) unconnected input is a loud error. An OPTIONAL
+ * null-default (`opt`) is legal: the port is omitted from the lane record and
+ * the engine binds the absent sentinel. Otherwise: the default constant.
+ */
+function defaultSrc(node: GNode, port: string, ann: PortAnn): PortSrc | undefined {
+	if (ann.def === null) {
+		if (ann.opt) return undefined;
 		throw new Error(`${node.module}.${port} is required but unconnected. Connect a signal to '${port}'.`);
 	}
-	return { k: "c", v: def };
+	return { k: "c", v: ann.def };
 }
 
 /** Config minus compile hints (`__`-prefixed keys never ship in the Program). */

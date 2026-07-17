@@ -11,6 +11,7 @@ export const clock = defineModule({
 	outs: { phase: phasePort(), gate: gatePort(), trig: trigPort() },
 	defaultIn: "bpm",
 	defaultOut: "phase",
+	positional: ["bpm"],
 	state: () => ({ phase: 0, lastBeat: -1 }),
 	tick: (s, i, o, _cfg, sr) => {
 		const phase = (s.phase as number) + i.bpm / 60 / sr;

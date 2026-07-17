@@ -1,6 +1,6 @@
 import { defineModule } from "../module/define";
 import type { ModuleSpec } from "../types";
-import { hz, semis, sig, unit } from "../types";
+import { hz, optional, semis, sig, unit } from "../types";
 
 /**
  * Oscillator family (osc/sin/saw/tri/sqr).
@@ -51,7 +51,7 @@ function createOsc(name: string, shape: Shape): ModuleSpec {
 		name,
 		ins: {
 			pitch: semis(69),
-			freq: hz(null),
+			freq: optional(hz(null)),
 			min: sig(-1),
 			max: sig(1),
 			phase: unit(0),
