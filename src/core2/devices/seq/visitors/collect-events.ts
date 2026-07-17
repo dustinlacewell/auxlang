@@ -1,107 +1,32 @@
 /**
- * Visitor that collects all note events within a beat.
+ * Collect events at a specific beat position.
  *
- * Called once per beat boundary to build the event schedule.
- * Returns events sorted by start time for sample-perfect lookup.
+ * Provides a beat-based query interface on top of the event builder.
  */
 
 import type { Expr } from "../ast/types";
-import { countBeats } from "../traverse/count-beats";
-import { pitchToFreq } from "../pitch/pitch-to-freq";
-import { traverseExpr } from "../traverse/traverse";
-import type { ExprVisitor, TraversalState } from "../traverse/types";
+import type { TraversalState } from "../traverse/types";
+import { buildEvents } from "../events/build-events";
+import type { SeqEvent } from "../events/types";
 
 /**
- * A note event within a beat, with fractional timing.
- * Flattened from arbitrarily nested groups/subdivisions.
- */
-export interface BeatEvent {
-	/** Frequency to output */
-	freq: number;
-	/** Start position within beat (0-1) */
-	start: number;
-	/** End position within beat (0-1) */
-	end: number;
-	/** Whether this event should trigger (false for tied continuations) */
-	isTrigger: boolean;
-	/** Source position start (for visualization) */
-	srcStart?: number;
-	/** Source position end (for visualization) */
-	srcEnd?: number;
-}
-
-/**
- * Context for event collection visitor.
- */
-interface EventCollectionContext {
-	beatIndex: number;
-	events: BeatEvent[];
-}
-
-/**
- * Visitor that collects events overlapping with a target beat.
- */
-class EventCollector implements ExprVisitor<EventCollectionContext> {
-	visitNote(
-		expr: Expr & { type: "note" },
-		beatStart: number,
-		duration: number,
-		inTie: boolean,
-		context: EventCollectionContext,
-	): void {
-		const beatEnd = beatStart + duration;
-		const beatRangeStart = context.beatIndex;
-		const beatRangeEnd = context.beatIndex + 1;
-
-		// Check if this note overlaps with the target beat
-		if (beatEnd <= beatRangeStart || beatStart >= beatRangeEnd) {
-			return;
-		}
-
-		// Normalize to 0-1 within the beat
-		const start = Math.max(0, beatStart - context.beatIndex);
-		const end = Math.min(1, beatEnd - context.beatIndex);
-
-		const event: BeatEvent = {
-			freq: pitchToFreq(expr.pitch),
-			start,
-			end,
-			isTrigger: !inTie,
-		};
-		if (expr.srcStart !== undefined) event.srcStart = expr.srcStart;
-		if (expr.srcEnd !== undefined) event.srcEnd = expr.srcEnd;
-		context.events.push(event);
-	}
-
-	visitRest(_expr: Expr & { type: "rest" }, _beatStart: number, _duration: number, _context: EventCollectionContext): void {
-		// Rests produce no events
-	}
-}
-
-/**
- * Collect all events within a beat range.
+ * Collect events that occur at a specific beat position.
  *
- * @param expr - The expression to search
- * @param beatIndex - Which beat we're collecting for (0-indexed)
+ * @param expr - The pattern AST
+ * @param beat - Beat position to query (can be fractional for sub-beats)
  * @param state - Traversal state (prob decisions, alt positions)
- * @param cycle - Current cycle (for alternation)
- * @returns Array of events sorted by start time
+ * @param cycle - Current cycle (for alternation/probability)
+ * @returns Events that are active at the given beat
  */
 export function collectBeatEvents(
 	expr: Expr,
-	beatIndex: number,
+	beat: number,
 	state: TraversalState,
 	cycle: number,
-): BeatEvent[] {
-	const totalBeats = countBeats(expr);
-	const events: BeatEvent[] = [];
-	const context: EventCollectionContext = { beatIndex, events };
+): SeqEvent[] {
+	const allEvents = buildEvents(expr, state, cycle);
 
-	const visitor = new EventCollector();
-	traverseExpr(expr, 0, totalBeats, cycle, state, false, "root", visitor, context);
-
-	// Sort by start time for efficient lookup
-	events.sort((a, b) => a.start - b.start);
-
-	return events;
+	// Filter to events that contain this beat position
+	// An event contains the beat if: beat >= start && beat < end
+	return allEvents.filter((e) => beat >= e.start && beat < e.end);
 }

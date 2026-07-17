@@ -11,9 +11,9 @@ import { countBeats } from "@/core2/devices/seq/traverse/count-beats";
 import { collectBeatEvents } from "@/core2/devices/seq/visitors/collect-events";
 import { createTraversalState } from "@/core2/devices/seq/traverse/types";
 
-function getGateAtPhase(events: { start: number; end: number }[], phase: number): number {
+function hasNoteAtPhase(events: { start: number; end: number; isRest?: boolean }[], phase: number): number {
 	for (const e of events) {
-		if (phase >= e.start && phase < e.end) {
+		if (phase >= e.start && phase < e.end && !e.isRest) {
 			return 1;
 		}
 	}
@@ -43,9 +43,10 @@ try {
 		for (let beat = 0; beat < totalBeats; beat++) {
 			const events = collectBeatEvents(expr, beat, state, cycle);
 
-			const gateStart = getGateAtPhase(events, 0);
-			const gateMid = getGateAtPhase(events, 0.5);
-			const gateEnd = getGateAtPhase(events, 0.99);
+			// Use absolute phase positions (beat + offset)
+			const gateStart = hasNoteAtPhase(events, beat);
+			const gateMid = hasNoteAtPhase(events, beat + 0.5);
+			const gateEnd = hasNoteAtPhase(events, beat + 0.99);
 
 			console.log(`  Beat ${beat}: gate=[${gateStart}, ${gateMid}, ${gateEnd}] (start, mid, end)`);
 		}

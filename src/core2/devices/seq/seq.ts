@@ -1,8 +1,8 @@
 /**
- * Sequencer device using cursor-based pattern stepping.
+ * Sequencer device using phase-based event lookup.
  *
- * The cursor maintains position in the pattern and only recomputes
- * on beat changes, not every sample.
+ * Takes a continuous phase input (from clock) and outputs cv/gate/trig
+ * based on the current position within the pattern.
  */
 
 import { device } from "../../device/device";
@@ -11,7 +11,7 @@ import { wrap } from "../../wrap/wrap";
 import { parseExpr } from "./ast/parse";
 import { countBeats } from "./traverse/count-beats";
 import type { Expr } from "./ast/types";
-import type { Cursor } from "./cursor/types";
+import type { SeqEvent } from "./events/types";
 import { voiceCount } from "./voices/count";
 import { decomposePattern } from "./voices/decompose";
 import { captureSeqPositionByPattern, captureSeqPositionByPatternForAll, getPatternStartPosition } from "../../eval/source-map";
@@ -24,7 +24,7 @@ export const seq = device("seq", {
 	defaultOutput: "cv",
 	positionalArgs: ["pattern", "clk"],
 
-	process(inp, cfg, state, sampleRate, _time, out, ctx) {
+	process(inp, cfg, state, _sampleRate, _time, out, ctx) {
 		const expr = cfg.expr as Expr | null;
 		const totalBeats = cfg.totalBeats as number;
 
@@ -36,79 +36,65 @@ export const seq = device("seq", {
 		}
 
 		// biome-ignore lint/suspicious/noExplicitAny: worklet global
-		const api = (globalThis as any).seqCursor;
+		const api = (globalThis as any).seqPhase;
 
-		// Initialize cursor if needed (on restore, cursor is already cloned from old state)
-		let beatIndex = (state.beatIndex as number) ?? -1;
-		let cycleCount = (state.cycleCount as number) ?? 0;
+		// Get phase input (continuous ramp from clock)
+		const phase = typeof inp.clk === "number" ? inp.clk : 0;
 
-		if (!state.cursor) {
-			state.cursor = api.createCursor(expr);
-		}
-		const cursor = state.cursor as Cursor;
+		// Calculate cycle from phase
+		const cycle = Math.floor(phase / totalBeats);
+		const lastCycle = (state.lastCycle as number) ?? -1;
 
-		// Parse clock signal
-		const clk = typeof inp.clk === "number" ? inp.clk : 0;
-		const isReset = clk < -0.5;
-		const isTrig = clk > 0.5;
-
-		// Track timing state
-		let samplesPerBeat = (state.samplesPerBeat as number) ?? 0;
-		let samplesSinceTrig = (state.samplesSinceTrig as number) ?? 0;
-
-		// Handle clock events
-		let justReset = false;
-		if (isReset) {
-			const bpm = -clk;
-			samplesPerBeat = (60 / bpm) * sampleRate;
-			samplesSinceTrig = 0;
-			beatIndex = 0;
-			cycleCount = 0;
-			justReset = true;
-			api.resetCursor(cursor, expr);
-		} else if (isTrig) {
-			samplesSinceTrig = 0;
-			beatIndex++;
-			if (beatIndex >= totalBeats) {
-				beatIndex = 0;
-				cycleCount++;
-			}
-			api.stepCursor(cursor, expr, beatIndex, cycleCount);
-		} else {
-			samplesSinceTrig++;
+		// Rebuild events when cycle changes (for alternation/probability)
+		let events = state.events as SeqEvent[] | undefined;
+		if (!events || cycle !== lastCycle) {
+			events = api.buildEvents(expr, cycle);
+			state.events = events;
+			state.lastCycle = cycle;
 		}
 
-		// Before first beat, output silence
-		if (beatIndex < 0) {
-			state.beatIndex = beatIndex;
-			out.cv = 0;
-			out.gate = 0;
-			out.trig = 0;
-			return;
+		// Lookup current event by phase position
+		const position = phase % totalBeats;
+		const eventIndex = api.lookupEventIndex(events, position);
+		const event = eventIndex >= 0 && events ? events[eventIndex] : null;
+
+		// Track last event for trigger detection
+		const lastEventIndex = (state.lastEventIndex as number) ?? -1;
+		const lastCV = (state.lastCV as number) ?? 0;
+
+		// Output CV
+		const cv = event && !event.isRest ? event.freq : lastCV;
+
+		// Output gate (on unless rest, with gap for non-tied notes)
+		let gate = 0;
+		if (event && !event.isRest) {
+			// Small gap before end for envelope retrigger (unless tied to next)
+			const gapSize = 0.02; // 2% of note duration
+			const noteLength = event.end - event.start;
+			const gapStart = event.end - noteLength * gapSize;
+			gate = event.isTiedToNext || position < gapStart ? 1 : 0;
 		}
 
-		// Get output from cursor using sample index (O(1) - no tree traversal)
-		const output = api.sampleCursor(cursor, samplesSinceTrig, samplesPerBeat);
+		// Output trigger (fires when entering a new non-tied note)
+		let trig = 0;
+		if (event && !event.isRest && eventIndex !== lastEventIndex && !event.isTiedFromPrevious) {
+			trig = 1;
+		}
 
-		// Emit currently active element (if any)
+		// Emit active element for visualization
 		const patternStart = (cfg.patternStart as number) ?? 0;
-		if (cursor.activeEventIndex >= 0) {
-			const event = cursor.events[cursor.activeEventIndex];
-			if (event?.srcStart !== undefined && event?.srcEnd !== undefined) {
-				const absoluteId = `${patternStart + event.srcStart}:${patternStart + event.srcEnd}`;
-				ctx.emitActiveElements([absoluteId]);
-			}
+		if (event && event.srcStart !== undefined && event.srcEnd !== undefined) {
+			const absoluteId = `${patternStart + event.srcStart}:${patternStart + event.srcEnd}`;
+			ctx.emitActiveElements([absoluteId]);
 		}
 
 		// Update state
-		state.beatIndex = beatIndex;
-		state.cycleCount = cycleCount;
-		state.samplesPerBeat = samplesPerBeat;
-		state.samplesSinceTrig = samplesSinceTrig;
+		state.lastEventIndex = eventIndex;
+		state.lastCV = cv;
 
-		out.cv = output.cv;
-		out.gate = output.gate;
-		out.trig = output.trig;
+		out.cv = cv;
+		out.gate = gate;
+		out.trig = trig;
 	},
 
 	expand(config, inputBindings) {
