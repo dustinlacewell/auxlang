@@ -73,7 +73,7 @@ export function wrap(node: GNode, port?: string, lane?: number): Handle {
 			}
 			return setInput(node, port, lane, spec, spec.defaultIn, args[0]);
 		},
-	}) as Handle;
+	}) as unknown as Handle;
 }
 
 function laneHandle(node: GNode, port: string | undefined, i: number, spec: ModuleSpec): Handle {

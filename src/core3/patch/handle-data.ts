@@ -26,9 +26,9 @@ export interface Handle {
 }
 
 export function isHandle(v: unknown): v is Handle {
-	return typeof v === "function" && (v as Record<symbol, unknown>)[HANDLE] !== undefined;
+	return typeof v === "function" && (v as unknown as Record<symbol, unknown>)[HANDLE] !== undefined;
 }
 
 export function handleData(h: Handle): HandleData {
-	return (h as Record<symbol, unknown>)[HANDLE] as HandleData;
+	return (h as unknown as Record<symbol, unknown>)[HANDLE] as HandleData;
 }
