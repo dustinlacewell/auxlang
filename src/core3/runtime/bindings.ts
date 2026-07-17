@@ -43,14 +43,15 @@ export function compileLaneBindings(
 	names.forEach((name, j) => {
 		const src = srcs[name];
 		if (src === undefined) {
-			const def = (spec.ins[name] as PortAnn).def;
-			if (def === null) {
+			const ann = spec.ins[name] as PortAnn;
+			if (ann.def === null && !ann.opt) {
 				throw new Error(
 					`node #${nodeIndex} ('${node.module}') lane ${lane}: input '${name}' is required but unconnected`,
 				);
 			}
+			// Optional (`opt`) unconnected binds NaN — the "absent" sentinel.
 			kinds[j] = BIND_CONST;
-			consts[j] = def;
+			consts[j] = ann.def ?? Number.NaN;
 			return;
 		}
 		switch (src.k) {

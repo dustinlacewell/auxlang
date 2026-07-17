@@ -20,8 +20,14 @@ export type Unit =
 
 export interface PortAnn {
 	readonly unit: Unit;
-	/** Default when unconnected. null = required (loud error if unconnected). */
+	/** Default when unconnected. null = required (loud error if unconnected) unless `opt`. */
 	readonly def: number | null;
+	/**
+	 * With `def: null`: unconnected is LEGAL. The engine binds NaN as the
+	 * "absent" sentinel (direct-driver tests pass null); modules guard with
+	 * `Number.isFinite` (see osc `freq`).
+	 */
+	readonly opt?: true;
 }
 
 export const sig = (def: number | null = 0): PortAnn => ({ unit: "sig", def });
@@ -33,6 +39,8 @@ export const secs = (def: number | null): PortAnn => ({ unit: "secs", def });
 export const gatePort = (def: number | null = 0): PortAnn => ({ unit: "gate", def });
 export const trigPort = (def: number | null = 0): PortAnn => ({ unit: "trig", def });
 export const phasePort = (def: number | null = 0): PortAnn => ({ unit: "phase", def });
+/** Mark a `def: null` input optional: unconnected is legal, tick sees an absent sentinel. */
+export const optional = (ann: PortAnn): PortAnn => ({ ...ann, opt: true });
 
 // ---------------------------------------------------------------------------
 // Module contract — pure Mealy machines
@@ -72,7 +80,12 @@ export interface ModuleSpec {
 	readonly defaultOut: string;
 	/** "map" (default): tick per lane. "reduce": one tick sees all lanes, width collapses to 1. */
 	readonly policy?: "map" | "reduce";
-	/** Fresh state per lane. MUST return plain serializable data (numbers, typed arrays, nested plain objects). */
+	/**
+	 * Fresh state per lane. MUST return plain serializable data (numbers, typed
+	 * arrays, nested plain objects). After construction (or migration) the engine
+	 * injects `state.__lane = laneIndex`, so per-lane modules (seq) know which
+	 * packed lane they render without any extra contract surface.
+	 */
 	readonly state?: (sampleRate: number) => Record<string, unknown>;
 	readonly tick: TickFn | ReduceTickFn;
 }
@@ -126,6 +139,9 @@ export interface Engine {
 	readonly sampleCount: number;
 }
 
-export interface EngineCtor {
-	(program: Program, sampleRate: number, registry: Registry, prev?: EngineState): Engine;
-}
+export type EngineCtor = (
+	program: Program,
+	sampleRate: number,
+	registry: Registry,
+	prev?: EngineState,
+) => Engine;

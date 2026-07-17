@@ -56,13 +56,14 @@ export function compileReduceGathers(
 	const partials: Partial[] = names.map((name) => {
 		const src = srcs[name];
 		if (src === undefined) {
-			const def = (spec.ins[name] as PortAnn).def;
-			if (def === null) {
+			const ann = spec.ins[name] as PortAnn;
+			if (ann.def === null && !ann.opt) {
 				throw new Error(
 					`node #${nodeIndex} ('${node.module}'): input '${name}' is required but unconnected`,
 				);
 			}
-			return { name, kind: GATHER_CONST, constValue: def, base: 0, srcLanes: 1, lambda: null };
+			// Optional (`opt`) unconnected gathers NaN — the "absent" sentinel.
+			return { name, kind: GATHER_CONST, constValue: ann.def ?? Number.NaN, base: 0, srcLanes: 1, lambda: null };
 		}
 		switch (src.k) {
 			case "c":

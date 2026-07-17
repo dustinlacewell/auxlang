@@ -5,6 +5,9 @@
  */
 
 import "./clock";
+import "./seq";
+import "./patsig";
+import "./patstep";
 import "./osc";
 import "./svf";
 import "./env";

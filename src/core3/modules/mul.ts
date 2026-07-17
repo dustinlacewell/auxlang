@@ -2,7 +2,7 @@ import { defineModule } from "../module/define";
 import type { ModuleSpec } from "../types";
 import { sig } from "../types";
 
-/** Multiply two signals. `vca` is the audio-amplitude-named alias. */
+/** Multiply two signals. `vca` and `gain` are the amplitude-named aliases. */
 function createMul(name: string): ModuleSpec {
 	return defineModule({
 		name,
@@ -19,3 +19,4 @@ function createMul(name: string): ModuleSpec {
 
 export const mul = createMul("mul");
 export const vca = createMul("vca");
+export const gain = createMul("gain");
