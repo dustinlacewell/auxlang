@@ -69,6 +69,16 @@ describe("loud errors with position", () => {
 		expect(() => parse("c4(3.5,8)")).toThrow(/integer/);
 	});
 
+	it("euclid with invalid pulse/step counts throws WITH position", () => {
+		expect(() => parse("c4(3,0)")).toThrow(/position 2/);
+		expect(() => parse("c4(9,8)")).toThrow(/position 2/);
+		expect(() => parse("c4(9,8)")).toThrow(/euclid/);
+	});
+
+	it("empty pattern throws with position", () => {
+		expect(() => parse("")).toThrow(/position 0/);
+	});
+
 	it("euclid missing steps", () => {
 		expect(() => parse("c4(3)")).toThrow(/','|steps/);
 	});

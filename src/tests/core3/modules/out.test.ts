@@ -87,4 +87,20 @@ describe("out", () => {
 		for (let k = 0; k < 20000; k++) last = d.step({ in: lanes(0.5), gain: 1 }).l;
 		expect(Math.abs(last)).toBeLessThan(0.01);
 	});
+
+	it("non-finite bus samples flush to silence and the blocker recovers", () => {
+		const d = reduceDriver(out, 1);
+		d.step({ in: lanes(0.5), gain: 1 }); // charge the DC state
+		for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+			const o = d.step({ in: lanes(bad), gain: 1 });
+			expect(o.l).toBe(0);
+			expect(o.r).toBe(0);
+		}
+		// after the flush, finite input produces finite output immediately
+		// (an unguarded blocker would compute Inf - Inf = NaN forever)
+		const o = d.step({ in: lanes(0.5), gain: 1 });
+		expect(Number.isFinite(o.l)).toBe(true);
+		expect(Number.isFinite(o.r)).toBe(true);
+		expect(Math.abs(o.l as number)).toBeGreaterThan(0);
+	});
 });
