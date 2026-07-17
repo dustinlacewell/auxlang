@@ -21,6 +21,7 @@ import {
 	type R,
 	r,
 	radd,
+	rcmp,
 	rcycle,
 	rdiv,
 	rfloor,
@@ -249,11 +250,15 @@ function queryRev(child: Pat, span: Span, ctx: QueryCtx): Ev[] {
 	const cycle = rfloor(span.begin);
 	const reflect: TimeMap = (t) => rsub(r(2 * cycle + 1), t);
 	const childSpan = { begin: reflect(span.end), end: reflect(span.begin) };
-	return query(child, childSpan, ctx).map((ev) => ({
-		...ev,
-		whole: ev.whole ? { begin: reflect(ev.whole.end), end: reflect(ev.whole.begin) } : null,
-		part: { begin: reflect(ev.part.end), end: reflect(ev.part.begin) },
-	}));
+	// Reflection reverses time, so it also reverses emission order; restore
+	// part-onset order so consumers see events front-to-back.
+	return query(child, childSpan, ctx)
+		.map((ev) => ({
+			...ev,
+			whole: ev.whole ? { begin: reflect(ev.whole.end), end: reflect(ev.whole.begin) } : null,
+			part: { begin: reflect(ev.part.end), end: reflect(ev.part.begin) },
+		}))
+		.sort((a, b) => rcmp(a.part.begin, b.part.begin));
 }
 
 function queryIter(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {

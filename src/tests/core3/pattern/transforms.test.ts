@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { fastcat, pure, slowcat } from "@/core3/pattern/combinators";
 import { P } from "@/core3/pattern/pat-class";
 import { r, req } from "@/core3/pattern/rational";
-import { evSet, onsetKeys, queryCycles } from "./helpers";
+import { evSet, onsetKeys, onsets, queryCycles } from "./helpers";
 
 const abc = () => P.fastcat(1, 2, 3);
 
@@ -42,10 +42,18 @@ describe("early / late", () => {
 		expect(onsetKeys(evs)).toEqual(["1/4", "3/4"]);
 	});
 
-	it("early(1/4) then late(1/4) is the identity", () => {
+	it("early(1/4) then late(1/4) restores the original onsets", () => {
+		// Under Tidal rotation semantics each shift splits at a cycle boundary, so
+		// the round-trip may fragment an event's `part` into abutting pieces that
+		// share one `whole`. Onset identity (whole + value) round-trips exactly.
 		const pat = abc();
 		const roundTrip = pat.early(r(1, 4)).late(r(1, 4));
-		expect(evSet(queryCycles(roundTrip.ast, 0, 2))).toEqual(evSet(queryCycles(pat.ast, 0, 2)));
+		const rk = (x: { n: number; d: number }) => `${x.n}/${x.d}`;
+		const wholes = (evs: ReturnType<typeof queryCycles>) =>
+			onsets(evs)
+				.map((ev) => `${rk(ev.whole!.begin)}..${rk(ev.whole!.end)}|${ev.value}`)
+				.sort();
+		expect(wholes(queryCycles(roundTrip.ast, 0, 2))).toEqual(wholes(queryCycles(pat.ast, 0, 2)));
 	});
 });
 
@@ -95,13 +103,16 @@ describe("add / mul", () => {
 
 describe("off", () => {
 	it("overlays a transformed copy shifted later", () => {
+		// The shifted copy rotates as an infinite stream, so cycle 0 also shows the
+		// wrapped-in tail of the previous cycle as a non-onset fragment; assert on
+		// onsets to see the copy's true attacks.
 		const evs = queryCycles(
 			P.fastcat(60, 62).off(r(1, 8), (q) => q.add(12)).ast,
 			0,
 			1,
 		);
-		const originals = evs.filter((ev) => ev.value < 70);
-		const copies = evs.filter((ev) => ev.value >= 70);
+		const originals = onsets(evs.filter((ev) => ev.value < 70));
+		const copies = onsets(evs.filter((ev) => ev.value >= 70));
 		expect(originals.map((ev) => ev.value)).toEqual([60, 62]);
 		expect(copies.map((ev) => ev.value)).toEqual([72, 74]);
 		expect(onsetKeys(originals)).toEqual(["0/1", "1/2"]);
