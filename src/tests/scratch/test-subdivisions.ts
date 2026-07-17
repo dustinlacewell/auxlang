@@ -6,6 +6,7 @@ import { parseExpr } from "@/core2/devices/seq/ast/parse";
 import { collectBeatEvents } from "@/core2/devices/seq/visitors/collect-events";
 import { decomposePattern } from "@/core2/devices/seq/voices/decompose";
 import { countBeats } from "@/core2/devices/seq/traverse/count-beats";
+import { createTraversalState } from "@/core2/devices/seq/traverse/types";
 
 const pattern = "{c3@4,[c4 e4 g4 e4]}";
 const expr = parseExpr(pattern);
@@ -24,8 +25,9 @@ for (let v = 0; v < monoExprs.length; v++) {
 	console.log(`Total beats: ${totalBeats}`);
 	console.log("");
 
+	const state = createTraversalState();
 	for (let beat = 0; beat < totalBeats; beat++) {
-		const events = collectBeatEvents(monoExpr, beat, {}, 0);
+		const events = collectBeatEvents(monoExpr, beat, state, 0);
 		console.log(`Beat ${beat}: ${events.length} events`);
 		for (const e of events) {
 			console.log(`  ${e.start.toFixed(3)}-${e.end.toFixed(3)}: ${e.freq.toFixed(1)} Hz`);

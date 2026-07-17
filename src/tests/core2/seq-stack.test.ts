@@ -6,7 +6,8 @@ import { describe, it, expect } from "vitest";
 import { parseExpr } from "@/core2/devices/seq/ast/parse";
 import { decomposePattern } from "@/core2/devices/seq/voices/decompose";
 import { countBeats } from "@/core2/devices/seq/traverse/count-beats";
-import { collectBeatEvents } from "@/core2/devices/seq/visitors/collect-events";
+import { buildEvents } from "@/core2/devices/seq/events/build-events";
+import { lookupEvent } from "@/core2/devices/seq/events/lookup-event";
 import { extractPositionsForBeat } from "@/core2/devices/seq/visitors/extract-positions";
 import { createTraversalState } from "@/core2/devices/seq/traverse/types";
 
@@ -29,17 +30,17 @@ describe("seq stack behavior", () => {
 
 			// Voice 1: c4 on cycle 0, c3 on cycle 1
 			const state1 = createTraversalState();
-			const v1c0 = collectBeatEvents(monos[1]!, 0, state1, 0);
-			const v1c1 = collectBeatEvents(monos[1]!, 0, state1, 1);
-			expect(v1c0.map(e => Math.round(e.freq))).toEqual([262]); // c4
-			expect(v1c1.map(e => Math.round(e.freq))).toEqual([131]); // c3
+			const v1c0 = buildEvents(monos[1]!, state1, 0);
+			const v1c1 = buildEvents(monos[1]!, state1, 1);
+			expect(v1c0.map((e: { freq: number }) => Math.round(e.freq))).toEqual([262]); // c4
+			expect(v1c1.map((e: { freq: number }) => Math.round(e.freq))).toEqual([131]); // c3
 
 			// Voice 2: e4 on cycle 0, f4 on cycle 1
 			const state2 = createTraversalState();
-			const v2c0 = collectBeatEvents(monos[2]!, 0, state2, 0);
-			const v2c1 = collectBeatEvents(monos[2]!, 0, state2, 1);
-			expect(v2c0.map(e => Math.round(e.freq))).toEqual([330]); // e4
-			expect(v2c1.map(e => Math.round(e.freq))).toEqual([349]); // f4
+			const v2c0 = buildEvents(monos[2]!, state2, 0);
+			const v2c1 = buildEvents(monos[2]!, state2, 1);
+			expect(v2c0.map((e: { freq: number }) => Math.round(e.freq))).toEqual([330]); // e4
+			expect(v2c1.map((e: { freq: number }) => Math.round(e.freq))).toEqual([349]); // f4
 		});
 
 		it("handles nested groups within stack sequences", () => {
@@ -51,8 +52,8 @@ describe("seq stack behavior", () => {
 
 			// On cycle 1, the group [e3 f3] plays both notes within the beat
 			const state = createTraversalState();
-			collectBeatEvents(monos[2]!, 0, state, 0); // cycle 0 first
-			const v2c1 = collectBeatEvents(monos[2]!, 0, state, 1);
+			buildEvents(monos[2]!, state, 0); // cycle 0 first
+			const v2c1 = buildEvents(monos[2]!, state, 1);
 			// Group contains two notes that play in sequence within the beat
 			expect(v2c1.length).toBe(2);
 		});

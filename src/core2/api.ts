@@ -36,6 +36,7 @@ export { vca } from "./devices/vca";
 export { mix } from "./devices/mix";
 export { slew } from "./devices/slew";
 export { sah } from "./devices/sah";
+export { alt } from "./devices/alt";
 export { pick } from "./devices/pick";
 export { quantize } from "./devices/quantize";
 export { $ } from "./note";
@@ -43,6 +44,7 @@ export { $ } from "./note";
 // Timing
 export { clock } from "./devices/clock";
 export { clockDiv, clockMult } from "./devices/clock-div";
+export { swing } from "./devices/swing";
 export { counter } from "./devices/counter";
 export { seq } from "./devices/seq/seq";
 

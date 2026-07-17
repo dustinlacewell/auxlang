@@ -9,20 +9,36 @@ export const slew = device("slew", {
 	outputs: ["signal"],
 	defaultInput: "input",
 	defaultOutput: "signal",
+	positionalArgs: ["rise", "fall"],
 	process(inp, _cfg, state, sampleRate, _time, out) {
-		const input = inp.input
-		const rise = Math.max(0.0001, (inp.rise as number) ?? 0.1);
-		const fall = Math.max(0.0001, (inp.fall as number) ?? 0.1);
+		const input = inp.input as number;
+		const rise = (inp.rise as number) ?? 0.1;
+		const fall = (inp.fall as number) ?? 0.1;
+
+		// No slew - pass through directly
+		if (rise <= 0 && fall <= 0) {
+			state.current = input;
+			out.signal = input;
+			return;
+		}
 
 		const current = (state.current as number) ?? input;
 
 		let newValue: number;
 		if (input > current) {
-			const riseRate = 1 / (rise * sampleRate);
-			newValue = Math.min(input, current + riseRate);
+			if (rise <= 0) {
+				newValue = input;
+			} else {
+				const riseRate = 1 / (rise * sampleRate);
+				newValue = Math.min(input, current + riseRate);
+			}
 		} else {
-			const fallRate = 1 / (fall * sampleRate);
-			newValue = Math.max(input, current - fallRate);
+			if (fall <= 0) {
+				newValue = input;
+			} else {
+				const fallRate = 1 / (fall * sampleRate);
+				newValue = Math.max(input, current - fallRate);
+			}
 		}
 
 		state.current = newValue;

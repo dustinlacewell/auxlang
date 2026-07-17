@@ -27,7 +27,8 @@ for (let beat = 0; beat < 3; beat++) {
 		freq: e.freq.toFixed(0),
 		start: e.start.toFixed(2),
 		end: e.end.toFixed(2),
-		isTrigger: e.isTrigger
+		tiedFrom: e.isTiedFromPrevious,
+		tiedTo: e.isTiedToNext
 	})));
 }
 
@@ -41,7 +42,8 @@ for (let beat = 0; beat < 3; beat++) {
 		freq: e.freq.toFixed(0),
 		start: e.start.toFixed(2),
 		end: e.end.toFixed(2),
-		isTrigger: e.isTrigger
+		tiedFrom: e.isTiedFromPrevious,
+		tiedTo: e.isTiedToNext
 	})));
 }
 
