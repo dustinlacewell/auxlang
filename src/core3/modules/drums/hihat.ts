@@ -9,6 +9,9 @@ import { sig, trigPort, unit } from "../../types";
 const RATIOS = [1.0, 1.4471, 1.617, 1.9265, 2.5028, 2.6637];
 const BASE = 400;
 
+/** Naive square from phase — hoisted so tick allocates no closure. */
+const sq = (p: number): number => (p < 0.5 ? 1 : -1);
+
 export const hihat = defineModule({
 	name: "hihat",
 	ins: {
@@ -49,7 +52,6 @@ export const hihat = defineModule({
 		const p5 = ((s.p5 as number) + (s.f5 as number) / sr) % 1;
 		s.p0 = p0; s.p1 = p1; s.p2 = p2; s.p3 = p3; s.p4 = p4; s.p5 = p5;
 
-		const sq = (p: number) => (p < 0.5 ? 1 : -1);
 		const metallic = (sq(p0) + sq(p1) + sq(p2) + sq(p3) + sq(p4) + sq(p5)) / 6;
 
 		let x = s.rng as number;

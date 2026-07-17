@@ -252,6 +252,11 @@ class Parser {
 			rot = this.parseIntArg("euclid rotation", open.pos);
 		}
 		this.expect("rparen", open.pos, ")");
+		if (steps <= 0 || k < 0 || k > steps) {
+			throw new Error(
+				`mini-notation: euclid needs 0 <= pulses <= steps and steps > 0, got (${k},${steps}) (at position ${open.pos})`,
+			);
+		}
 		return euclid(k, steps, rot, child);
 	}
 
@@ -380,7 +385,7 @@ function isPat(x: unknown): x is Pat {
 /** Parse a template (segments + interpolations) to a Pat. */
 export function parseNotation(strings: readonly string[], values: readonly unknown[]): Pat {
 	const toks = tokenize(strings, values);
-	if (toks.length === 0) throw new Error("mini-notation: empty pattern");
+	if (toks.length === 0) throw new Error("mini-notation: empty pattern (at position 0)");
 	return new Parser(toks).parseTop();
 }
 

@@ -6,13 +6,21 @@
  * hand-chained `.z1()`.
  */
 
-import { isNodeRef } from "../graph/input-kinds";
+import { isLambdaInput, isNodeRef } from "../graph/input-kinds";
 import type { GNode } from "../graph/node";
 
 export function cutZ1Edges(nodes: readonly GNode[]): void {
 	for (const node of nodes) {
 		if (node.module !== "z1") continue;
 		const value = node.inputs.in;
+		if (isLambdaInput(value)) {
+			// A lambda is evaluated at the CURRENT sample; binding it here would
+			// make z1 a silent passthrough (zero delay). Loud-failure law: refuse.
+			throw new Error(
+				"z1: a per-sample lambda cannot be delayed — z1 delays node connections only. " +
+					"Route the lambda through a node first (e.g. add(0)).",
+			);
+		}
 		if (isNodeRef(value)) node.inputs.in = { z: { node: value.node, port: value.port } };
 	}
 }

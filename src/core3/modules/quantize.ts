@@ -36,14 +36,19 @@ function snap(pitch: number, root: number, scale: number[]): number {
 	const within = rel - octave * 12; // 0..12
 	let best = scale[0] ?? 0;
 	let bestDist = Infinity;
-	// consider this octave's degrees plus the wrap into the next (e.g. 11 → 12)
+	// consider this octave's degrees plus the wrap into the next (e.g. 11 → 12);
+	// unrolled (no array literal): tick paths must not allocate.
 	for (const deg of scale) {
-		for (const d of [deg, deg + 12]) {
-			const dist = Math.abs(within - d);
-			if (dist < bestDist) {
-				bestDist = dist;
-				best = d;
-			}
+		const dist = Math.abs(within - deg);
+		if (dist < bestDist) {
+			bestDist = dist;
+			best = deg;
+		}
+		const wrapped = deg + 12;
+		const wrapDist = Math.abs(within - wrapped);
+		if (wrapDist < bestDist) {
+			bestDist = wrapDist;
+			best = wrapped;
 		}
 	}
 	return root + octave * 12 + best;

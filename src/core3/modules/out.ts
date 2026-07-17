@@ -37,6 +37,19 @@ export const out = defineModule({
 		sumL *= gain * norm;
 		sumR *= gain * norm;
 
+		// A non-finite bus sample (user NaN lambda, diverging feedback) must not
+		// poison the master path: Inf/NaN entering the DC blocker turns into NaN
+		// forever (Inf - Inf). Flush to silence and reset the blocker instead.
+		if (!Number.isFinite(sumL) || !Number.isFinite(sumR)) {
+			s.dcxL = 0;
+			s.dcyL = 0;
+			s.dcxR = 0;
+			s.dcyR = 0;
+			o.l = 0;
+			o.r = 0;
+			return;
+		}
+
 		// One-pole DC block per channel: y = x - x1 + DC*y1
 		const yL = sumL - (s.dcxL as number) + DC * (s.dcyL as number);
 		s.dcxL = sumL;
