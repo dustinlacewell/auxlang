@@ -15,6 +15,7 @@ export default defineConfig({
 				"test-suite": resolve(__dirname, "test-suite.html"),
 				"pattern-tests": resolve(__dirname, "pattern-tests.html"),
 				"core2-editor": resolve(__dirname, "core2-editor.html"),
+				core3: resolve(__dirname, "core3.html"),
 			},
 		},
 	},
