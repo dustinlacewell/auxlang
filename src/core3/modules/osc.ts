@@ -10,9 +10,12 @@ import { hz, semis, sig, unit } from "../types";
  * Output maps the [-1,1] waveform into [min,max].
  *
  * Band-limiting: saw and sqr use a 2-sample polyBLEP correction at each phase
- * discontinuity. tri is a leaky-integrated polyBLEP square (integrator scaled
- * by 4*freq/sr so amplitude stays ~unit; the leak removes DC drift). sin is
- * naive (no discontinuity to band-limit).
+ * discontinuity. tri is generated DIRECTLY from phase (exact unit amplitude,
+ * zero DC, no warmup transient); a triangle's harmonics roll off 12 dB/oct so
+ * naive generation aliases negligibly. (An integrated-square triangle was tried
+ * and rejected: folding polyBLEP into the integrand injects amplitude overshoot,
+ * and the DC-blocker needed to centre a raw integrator overshoots on startup.)
+ * sin is naive (no discontinuity to band-limit).
  */
 
 type Shape = "sin" | "saw" | "tri" | "sqr";
@@ -30,19 +33,17 @@ function polyBLEP(t: number, dt: number): number {
 	return 0;
 }
 
-function sample(shape: Shape, phase: number, dt: number, s: Record<string, unknown>): number {
+function sample(shape: Shape, phase: number, dt: number): number {
 	if (shape === "sin") return Math.sin(phase * Math.PI * 2);
 	if (shape === "saw") return 2 * phase - 1 - polyBLEP(phase, dt);
-	// square (shared by sqr and tri's integrand)
-	let sq = phase < 0.5 ? 1 : -1;
-	sq += polyBLEP(phase, dt);
-	sq -= polyBLEP((phase + 0.5) % 1, dt);
-	if (shape === "sqr") return sq;
-	// tri: leaky integrator of the band-limited square
-	let tri = (s.tri as number) + 4 * dt * sq;
-	tri *= 0.999;
-	s.tri = tri;
-	return tri;
+	if (shape === "sqr") {
+		let sq = phase < 0.5 ? 1 : -1;
+		sq += polyBLEP(phase, dt);
+		sq -= polyBLEP((phase + 0.5) % 1, dt);
+		return sq;
+	}
+	// tri: direct from phase — rises 0→0.5 as -1→+1, falls 0.5→1 as +1→-1.
+	return phase < 0.5 ? 4 * phase - 1 : 3 - 4 * phase;
 }
 
 function createOsc(name: string, shape: Shape): ModuleSpec {
@@ -60,7 +61,7 @@ function createOsc(name: string, shape: Shape): ModuleSpec {
 		defaultOut: "out",
 		positional: ["freq", "min", "max"],
 		config: { shape },
-		state: () => ({ phase: 0, started: 0, tri: 0 }),
+		state: () => ({ phase: 0, started: 0 }),
 		tick: (s, i, o, cfg, sr) => {
 			if ((s.started as number) === 0) {
 				s.phase = ((i.phase % 1) + 1) % 1;
@@ -72,7 +73,7 @@ function createOsc(name: string, shape: Shape): ModuleSpec {
 					: 440 * 2 ** ((i.pitch - 69) / 12);
 			const dt = Math.min(0.5, Math.abs(freq) / sr);
 			const phase = (s.phase as number);
-			const raw = sample(cfg.shape as Shape, phase, dt, s);
+			const raw = sample(cfg.shape as Shape, phase, dt);
 			let next = phase + freq / sr;
 			next -= Math.floor(next);
 			s.phase = next;

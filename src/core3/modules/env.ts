@@ -4,12 +4,18 @@ import { gatePort, sig, unit } from "../types";
 /**
  * Envelope family (ad/ar/adsr) — gate-driven linear segment machines.
  *
- * The release-hang fix: EVERY falling segment computes its per-sample step from
- * the CURRENT level toward its target over the segment time, not from a fixed
- * endpoint (e.g. `sustain`). So release from a level of 0 (sustain=0, or gate
- * dropped mid-attack) reaches 0 in bounded time and never stalls.
+ * Each segment advances by a FIXED per-sample step so it completes in bounded
+ * time. The step spans the segment's full nominal distance over its time:
+ *   attack  : (1 - attackStart) / (attack·sr)   — attackStart captured on trigger
+ *   decay   : (1 - sustain)     / (decay·sr)
+ *   release : relStart          / (release·sr)   — relStart captured on gate drop
  *
- * Stages are encoded as integers (state must be plain serializable data):
+ * Capturing the start level (not recomputing the step from the LIVE level each
+ * sample) is what makes segments reach their target instead of approaching it
+ * asymptotically (Zeno). Release from a current level of 0 (sustain=0, or gate
+ * dropped mid-attack) therefore reaches 0 in bounded time and never stalls.
+ *
+ * Stages (state is plain serializable data):
  *   0 idle · 1 attack · 2 decay · 3 sustain/hold · 4 release
  */
 
@@ -19,8 +25,9 @@ const DECAY = 2;
 const SUSTAIN = 3;
 const RELEASE = 4;
 
-const secsToStep = (target: number, level: number, secs: number, sr: number) =>
-	Math.abs(target - level) / Math.max(1, Math.max(1e-4, secs) * sr);
+/** Per-sample step to traverse `dist` over `secs` seconds (clamped positive). */
+const step = (dist: number, secs: number, sr: number) =>
+	Math.abs(dist) / Math.max(1, Math.max(1e-4, secs) * sr);
 
 /** AD: rising-edge triggered attack→decay→0, ignores gate duration. */
 export const ad = defineModule({
@@ -37,13 +44,13 @@ export const ad = defineModule({
 		let level = s.level as number;
 		let stage = s.stage as number;
 		if (stage === ATTACK) {
-			level += secsToStep(1, level, i.attack, sr);
+			level += step(1, i.attack, sr);
 			if (level >= 1) {
 				level = 1;
 				stage = DECAY;
 			}
 		} else if (stage === DECAY) {
-			level -= secsToStep(0, 1, i.decay, sr);
+			level -= step(1, i.decay, sr);
 			if (level <= 0) {
 				level = 0;
 				stage = IDLE;
@@ -66,16 +73,19 @@ export const ar = defineModule({
 	defaultIn: "gate",
 	defaultOut: "out",
 	positional: ["attack", "release"],
-	state: () => ({ level: 0, stage: IDLE, wasGate: 0 }),
+	state: () => ({ level: 0, stage: IDLE, wasGate: 0, relStart: 0 }),
 	tick: (s, i, o, _cfg, sr) => {
 		const gateOn = i.gate > 0.5;
 		const wasOn = (s.wasGate as number) > 0.5;
 		if (gateOn && !wasOn) s.stage = ATTACK;
-		if (!gateOn && wasOn) s.stage = RELEASE;
+		if (!gateOn && wasOn) {
+			s.stage = RELEASE;
+			s.relStart = s.level; // capture level so release reaches 0 in `release` secs
+		}
 		let level = s.level as number;
 		let stage = s.stage as number;
 		if (stage === ATTACK) {
-			level += secsToStep(1, level, i.attack, sr);
+			level += step(1, i.attack, sr);
 			if (level >= 1) {
 				level = 1;
 				stage = SUSTAIN;
@@ -83,7 +93,7 @@ export const ar = defineModule({
 		} else if (stage === SUSTAIN) {
 			level = 1;
 		} else if (stage === RELEASE) {
-			level -= secsToStep(0, level, i.release, sr);
+			level -= step(s.relStart as number, i.release, sr);
 			if (level <= 0) {
 				level = 0;
 				stage = IDLE;
@@ -98,7 +108,7 @@ export const ar = defineModule({
 	},
 });
 
-/** ADSR: full gate-driven envelope; decay and release step from current level. */
+/** ADSR: full gate-driven envelope; decay and release step over fixed spans. */
 export const adsr = defineModule({
 	name: "adsr",
 	ins: {
@@ -112,23 +122,26 @@ export const adsr = defineModule({
 	defaultIn: "gate",
 	defaultOut: "out",
 	positional: ["attack", "decay", "sustain", "release"],
-	state: () => ({ level: 0, stage: IDLE, wasGate: 0 }),
+	state: () => ({ level: 0, stage: IDLE, wasGate: 0, relStart: 0 }),
 	tick: (s, i, o, _cfg, sr) => {
 		const sustain = Math.max(0, Math.min(1, i.sustain));
 		const gateOn = i.gate > 0.5;
 		const wasOn = (s.wasGate as number) > 0.5;
 		if (gateOn && !wasOn) s.stage = ATTACK;
-		if (!gateOn && wasOn) s.stage = RELEASE;
+		if (!gateOn && wasOn) {
+			s.stage = RELEASE;
+			s.relStart = s.level;
+		}
 		let level = s.level as number;
 		let stage = s.stage as number;
 		if (stage === ATTACK) {
-			level += secsToStep(1, level, i.attack, sr);
+			level += step(1, i.attack, sr);
 			if (level >= 1) {
 				level = 1;
 				stage = DECAY;
 			}
 		} else if (stage === DECAY) {
-			level -= secsToStep(sustain, 1, i.decay, sr);
+			level -= step(1 - sustain, i.decay, sr);
 			if (level <= sustain) {
 				level = sustain;
 				stage = SUSTAIN;
@@ -136,7 +149,7 @@ export const adsr = defineModule({
 		} else if (stage === SUSTAIN) {
 			level = sustain;
 		} else if (stage === RELEASE) {
-			level -= secsToStep(0, level, i.release, sr);
+			level -= step(s.relStart as number, i.release, sr);
 			if (level <= 0) {
 				level = 0;
 				stage = IDLE;
