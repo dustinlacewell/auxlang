@@ -61,4 +61,33 @@ describe("degrade", () => {
 				.join(",");
 		expect(cyclesOf(1)).not.toEqual(cyclesOf(2));
 	});
+
+	it("drops individual events, not the whole cycle: partial drops exist", () => {
+		// A 4-note degraded sequence over 64 cycles. If degrade were all-or-
+		// nothing per cycle, every cycle would have exactly 0 or 4 survivors.
+		// Per-event rolling means some cycles keep 1, 2, or 3.
+		const four = degrade(0.5, fastcat([pure(1), pure(2), pure(3), pure(4)]));
+		const perCycle = new Map<number, number>();
+		for (const ev of queryCycles(four, 0, 64, 11)) {
+			const c = rcycle(ev.whole!.begin);
+			perCycle.set(c, (perCycle.get(c) ?? 0) + 1);
+		}
+		const counts = [...perCycle.values()];
+		const partial = counts.filter((n) => n > 0 && n < 4);
+		expect(partial.length).toBeGreaterThan(0);
+	});
+
+	it("keeps events at roughly 1 - prob across many events in a sequence", () => {
+		// 4 events/cycle * 64 cycles = 256 events; keep-rate within +/-10% of 0.5.
+		const four = degrade(0.5, fastcat([pure(1), pure(2), pure(3), pure(4)]));
+		const kept = queryCycles(four, 0, 64, 11).length;
+		const total = 4 * 64;
+		expect(kept / total).toBeGreaterThan(0.4);
+		expect(kept / total).toBeLessThan(0.6);
+	});
+
+	it("per-event degrade is deterministic across identical queries", () => {
+		const four = degrade(0.5, fastcat([pure(1), pure(2), pure(3), pure(4)]));
+		expect(evSet(queryCycles(four, 0, 64, 11))).toEqual(evSet(queryCycles(four, 0, 64, 11)));
+	});
 });
