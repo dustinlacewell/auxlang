@@ -3,7 +3,7 @@
  * identity is graph identity, so reusing a handle does not duplicate the node.
  */
 
-import { mod, out, runProgram } from "@/core3/api";
+import { factory, out, runProgram } from "@/core3/api";
 import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
@@ -12,7 +12,7 @@ beforeAll(registerToyModules);
 describe("fan-out via shared variable", () => {
 	it("compiles a shared source to one node with two consumers", () => {
 		const program = runProgram(() => {
-			const tosc = mod("tosc");
+			const tosc = factory("tosc");
 			const src = tosc(220); // one oscillator...
 			out(src.tlpf(800)); // ...into two filters
 			out(src.tlpf(2000));

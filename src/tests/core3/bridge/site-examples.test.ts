@@ -4,23 +4,11 @@
  * through the real eval path and render 2 s non-silent, bounded, and finite.
  */
 
-import "@/core3/modules/all";
-
-import * as api from "@/core3/api";
-import { compile, runEval } from "@/core3/api";
-import type { Program } from "@/core3/api";
 import { render } from "@/core3/runtime/render";
+import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { EXAMPLES } from "@/ui/core3-editor/examples";
 import { describe, expect, it } from "vitest";
 import { allFinite, maxAbs, rms } from "./helpers";
-
-const API_NAMES = Object.keys(api);
-const API_VALUES = API_NAMES.map((n) => (api as Record<string, unknown>)[n]);
-
-function evalPatch(source: string): Program {
-	const patch = new Function(...API_NAMES, source) as (...a: unknown[]) => void;
-	return compile(runEval(() => patch(...API_VALUES)));
-}
 
 describe("site examples", () => {
 	for (const ex of EXAMPLES) {

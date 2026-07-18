@@ -3,7 +3,7 @@
  * zero. `treq.in` is required; rooting a treq with no input must throw.
  */
 
-import { mod, out, runProgram } from "@/core3/api";
+import { factory, out, runProgram } from "@/core3/api";
 import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
@@ -13,7 +13,7 @@ describe("required (def:null) unconnected input", () => {
 	it("errors at compile, naming the module and port", () => {
 		expect(() =>
 			runProgram(() => {
-				const treq = mod("treq");
+				const treq = factory("treq");
 				out(treq()); // `in` is required and unconnected
 			}),
 		).toThrow(/treq\.in is required/);
@@ -22,8 +22,8 @@ describe("required (def:null) unconnected input", () => {
 	it("compiles once the required input is connected", () => {
 		expect(() =>
 			runProgram(() => {
-				const treq = mod("treq");
-				const tosc = mod("tosc");
+				const treq = factory("treq");
+				const tosc = factory("tosc");
 				out(tosc(220).treq());
 			}),
 		).not.toThrow();

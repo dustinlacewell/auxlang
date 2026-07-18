@@ -4,7 +4,7 @@
  * unit delay compiles. A cycle with no z-edge is a loud error.
  */
 
-import { compile, loop, mod, runEval, runProgram } from "@/core3/api";
+import { compile, loop, factory, runEval, runProgram } from "@/core3/api";
 import type { GNode } from "@/core3/graph/node";
 import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
@@ -14,7 +14,7 @@ beforeAll(registerToyModules);
 describe("loop() z-edge", () => {
 	it("compiles: the back-edge becomes a z-source and is topo-cut", () => {
 		const program = runProgram(() => {
-			const tlpf = mod("tlpf");
+			const tlpf = factory("tlpf");
 			// feedback through a filter, closed by loop's z1
 			loop((s) => s.tlpf(800)).out();
 		});

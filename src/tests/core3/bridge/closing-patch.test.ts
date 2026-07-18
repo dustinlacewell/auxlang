@@ -7,10 +7,12 @@
  * Renders 4 s: non-silent throughout, bounded, finite, deterministic.
  */
 
-import { type Handle, clock, loop, p, patstep, runProgram, seq, sin } from "@/core3/api";
+import { type Handle, clock, factory, loop, p, patstep, runProgram, seq } from "@/core3/api";
 import { render } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { SR, allFinite, maxAbs, rms } from "./helpers";
+
+const sin = factory("sin");
 
 function build() {
 	return runProgram(() => {

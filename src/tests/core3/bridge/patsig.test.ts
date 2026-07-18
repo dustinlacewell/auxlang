@@ -4,11 +4,12 @@
  * changing exactly at pattern boundaries; before the first event ever it is 0.
  */
 
-import { clock, p, runProgram, sin } from "@/core3/api";
+import { clock, factory, p, runProgram } from "@/core3/api";
 import { renderTap } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { nodeIndex } from "./helpers";
 
+const sin = factory("sin");
 const CYCLE = 48000; // one beat at 60 bpm, 48 kHz
 
 describe("patsig", () => {

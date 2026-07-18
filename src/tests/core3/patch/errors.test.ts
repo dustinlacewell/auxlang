@@ -3,7 +3,7 @@
  * name what was available. Silent no-ops are bugs.
  */
 
-import { mod, out, runEval } from "@/core3/api";
+import { factory, out, runEval } from "@/core3/api";
 import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
@@ -13,8 +13,8 @@ describe("chain default-input collision", () => {
 	it("errors when a chained module also sets its default input", () => {
 		expect(() =>
 			runEval(() => {
-				const tosc = mod("tosc");
-				const tlpf = mod("tlpf");
+				const tosc = factory("tosc");
+				const tlpf = factory("tlpf");
 				// tlpf's default input is `in`; chaining already bound it.
 				tosc(220).tlpf({ in: 5 });
 			}),
@@ -24,7 +24,7 @@ describe("chain default-input collision", () => {
 	it("allows setting a NON-default input while chaining", () => {
 		expect(() =>
 			runEval(() => {
-				const tosc = mod("tosc");
+				const tosc = factory("tosc");
 				out(tosc(220).tlpf({ cutoff: 500 }));
 			}),
 		).not.toThrow();
@@ -36,7 +36,7 @@ describe("unknown object key", () => {
 		let message = "";
 		try {
 			runEval(() => {
-				const tlpf = mod("tlpf");
+				const tlpf = factory("tlpf");
 				tlpf({ cuttof: 800 }); // typo
 			});
 		} catch (e) {
@@ -53,7 +53,7 @@ describe("unknown property", () => {
 		let message = "";
 		try {
 			runEval(() => {
-				const tosc = mod("tosc");
+				const tosc = factory("tosc");
 				// `resonance` is not a port, output, or module.
 				void tosc(220).resonance;
 			});
@@ -71,7 +71,7 @@ describe("excess positional arguments", () => {
 	it("errors naming the positional slots", () => {
 		expect(() =>
 			runEval(() => {
-				const tosc = mod("tosc");
+				const tosc = factory("tosc");
 				// tosc positional is [freq, min, max] — four args is one too many.
 				tosc(220, -1, 1, 99);
 			}),

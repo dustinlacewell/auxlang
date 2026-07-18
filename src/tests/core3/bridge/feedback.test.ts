@@ -4,7 +4,7 @@
  * response is a clean geometric decay — non-silent, bounded, no NaN/Inf.
  */
 
-import { clock, loop, mod, runProgram } from "@/core3/api";
+import { clock, loop, factory, runProgram } from "@/core3/api";
 import { render, renderTap } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { allFinite, nodeIndex } from "./helpers";
@@ -40,7 +40,7 @@ describe("bridge feedback", () => {
 	it("z1 fed a per-sample lambda is a loud compile error (it cannot be delayed)", () => {
 		expect(() =>
 			runProgram(() => {
-				mod("z1")()((_s: unknown, sr: number, t: number) => Math.round(t * sr)).out();
+				factory("z1")()((_s: unknown, sr: number, t: number) => Math.round(t * sr)).out();
 			}),
 		).toThrow(/z1: a per-sample lambda cannot be delayed/);
 	});

@@ -4,15 +4,15 @@
  * pins an explicit identity that survives structural change.
  */
 
-import { mod, runProgram } from "@/core3/api";
+import { factory, runProgram } from "@/core3/api";
 import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);
 
 const patch = () => {
-	const tosc = mod("tosc");
-	const tlpf = mod("tlpf");
+	const tosc = factory("tosc");
+	const tlpf = factory("tlpf");
 	tosc(220).tlpf(800).out();
 };
 
@@ -27,8 +27,8 @@ describe("structural id stability", () => {
 	});
 
 	it("differing config produces a different id", () => {
-		const a = runProgram(() => mod("tosc")(220).out());
-		const b = runProgram(() => mod("tosc")(330).out());
+		const a = runProgram(() => factory("tosc")(220).out());
+		const b = runProgram(() => factory("tosc")(330).out());
 		const idA = a.nodes.find((n) => n.module === "tosc")!.id;
 		const idB = b.nodes.find((n) => n.module === "tosc")!.id;
 		expect(idB).not.toEqual(idA);
@@ -38,7 +38,7 @@ describe("structural id stability", () => {
 describe(".id() pin passthrough", () => {
 	it("carries the pin onto the emitted PNode", () => {
 		const program = runProgram(() => {
-			const tosc = mod("tosc");
+			const tosc = factory("tosc");
 			tosc(220).id("bass").out();
 		});
 		const osc = program.nodes.find((n) => n.module === "tosc");
@@ -46,7 +46,7 @@ describe(".id() pin passthrough", () => {
 	});
 
 	it("unpinned nodes carry no pin", () => {
-		const program = runProgram(() => mod("tosc")(220).out());
+		const program = runProgram(() => factory("tosc")(220).out());
 		const osc = program.nodes.find((n) => n.module === "tosc");
 		expect(osc!.pin).toBeUndefined();
 	});
