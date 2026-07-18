@@ -7,9 +7,9 @@
  * Computed as a monotone fixpoint so widths propagate through z-edge cycles.
  */
 
-import { getModule } from "../module/define";
 import { isLambdaInput, isNodeRef, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
+import { getModule } from "../module/define";
 
 export function resolveWidths(nodes: readonly GNode[]): Map<GNode, number> {
 	const widths = new Map<GNode, number>();

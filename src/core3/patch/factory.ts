@@ -6,8 +6,8 @@
 
 import type { ModuleSpec } from "../types";
 import { buildNode } from "./build-node";
-import type { Handle } from "./handle-data";
 import { wrap } from "./handle";
+import type { Handle } from "./handle-data";
 
 export function moduleFactory(spec: ModuleSpec): (...args: unknown[]) => Handle {
 	return (...args: unknown[]) => wrap(buildNode(spec, args));

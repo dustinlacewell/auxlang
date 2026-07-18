@@ -1,5 +1,5 @@
-import { defineModule } from "../module/define";
 import { sig } from "../types";
+import { defineMap } from "./define-typed";
 
 /**
  * One-sample delay (z⁻¹). The delay lives on the node's INPUT EDGE: compile
@@ -8,7 +8,7 @@ import { sig } from "../types";
  * same way. The tick itself is a passthrough, so a cycle through z1 is delayed
  * exactly once, whether written as `loop(...)` or a hand-chained `.z1()`.
  */
-export const z1 = defineModule({
+export const z1 = defineMap({
 	name: "z1",
 	ins: { in: sig(0) },
 	outs: { out: sig() },

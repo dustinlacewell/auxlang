@@ -1,10 +1,10 @@
-import { defineModule } from "../module/define";
 import type { ModuleSpec } from "../types";
 import { sig } from "../types";
+import { defineMap } from "./define-typed";
 
 /** Multiply two signals. `vca` and `gain` are the amplitude-named aliases. */
 function createMul(name: string): ModuleSpec {
-	return defineModule({
+	return defineMap({
 		name,
 		ins: { in: sig(0), by: sig(1) },
 		outs: { out: sig() },

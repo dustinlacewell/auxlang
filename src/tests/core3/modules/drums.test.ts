@@ -18,8 +18,8 @@ const DRUMS: [string, ModuleSpec][] = [
 function hit(spec: ModuleSpec, samples: number): number[] {
 	const d = driver(spec);
 	const out: number[] = [];
-	out.push(d.step({ trig: 1 }).out);
-	for (let k = 1; k < samples; k++) out.push(d.step({ trig: 0 }).out);
+	out.push(d.step({ trig: 1 }).out!);
+	for (let k = 1; k < samples; k++) out.push(d.step({ trig: 0 }).out!);
 	return out;
 }
 

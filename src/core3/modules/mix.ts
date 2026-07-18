@@ -1,18 +1,17 @@
-import { defineModule } from "../module/define";
 import { sig } from "../types";
+import { defineReduce } from "./define-typed";
 
 /**
  * Sum all lanes of `in` to a single lane, scaled by 1/√width. Normalization is
  * purely a function of static width — NO per-sample active/zero-crossing counting
  * (that made the scale factor jump whenever a lane momentarily hit zero).
  */
-export const mix = defineModule({
+export const mix = defineReduce({
 	name: "mix",
 	ins: { in: sig(0) },
 	outs: { out: sig() },
 	defaultIn: "in",
 	defaultOut: "out",
-	policy: "reduce",
 	tick: (_s, ins, o, _cfg, _sr, width) => {
 		const lanes = ins.in;
 		let sum = 0;

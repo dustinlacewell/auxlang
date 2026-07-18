@@ -4,8 +4,8 @@
  * absent. The program is exactly: the copy + the out node.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
 import { mod, runProgram } from "@/core3/api";
+import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);

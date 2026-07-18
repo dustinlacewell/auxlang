@@ -1,8 +1,8 @@
-import { defineModule } from "../module/define";
 import { sig, trigPort } from "../types";
+import { defineMap } from "./define-typed";
 
 /** Sample & hold — latches `in` when `trig` crosses 0.5, holds otherwise. */
-export const sah = defineModule({
+export const sah = defineMap({
 	name: "sah",
 	ins: { in: sig(0), trig: trigPort() },
 	outs: { out: sig() },

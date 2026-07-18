@@ -1,11 +1,11 @@
-import { defineModule } from "../module/define";
 import { gatePort, phasePort, sig, trigPort } from "../types";
+import { defineMap } from "./define-typed";
 
 /**
  * Clock: integrates a beat phase ramp at `bpm`, plus a 50%-duty gate and a
  * single-sample trig at each beat boundary. Tempo is an input (modulatable).
  */
-export const clock = defineModule({
+export const clock = defineMap({
 	name: "clock",
 	ins: { bpm: sig(120) },
 	outs: { phase: phasePort(), gate: gatePort(), trig: trigPort() },

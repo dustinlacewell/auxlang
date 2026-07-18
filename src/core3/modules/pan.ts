@@ -1,5 +1,5 @@
-import { defineModule } from "../module/define";
 import { sig } from "../types";
+import { defineMap } from "./define-typed";
 
 /**
  * Constant-power panner. `pos` in [-1,1] (−1 hard-left, 0 center, +1 hard-right)
@@ -7,7 +7,7 @@ import { sig } from "../types";
  * "map" (per-lane): each lane produces its own {l, r} pair; stereo summing is the
  * `out` module's job.
  */
-export const pan = defineModule({
+export const pan = defineMap({
 	name: "pan",
 	ins: { in: sig(0), pos: sig(0) },
 	outs: { l: sig(), r: sig() },

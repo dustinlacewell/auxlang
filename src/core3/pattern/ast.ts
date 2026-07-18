@@ -29,7 +29,13 @@ export type Pat =
 	| { readonly op: "late"; readonly amount: R; readonly child: Pat }
 	| { readonly op: "iter"; readonly n: number; readonly child: Pat } // shift by i/n on cycle i
 	| { readonly op: "ply"; readonly n: number; readonly child: Pat } // repeat each event n times in place
-	| { readonly op: "euclid"; readonly k: number; readonly steps: number; readonly rot: number; readonly child: Pat }
+	| {
+			readonly op: "euclid";
+			readonly k: number;
+			readonly steps: number;
+			readonly rot: number;
+			readonly child: Pat;
+	  }
 	| { readonly op: "degrade"; readonly prob: number; readonly child: Pat } // drop events with probability prob (seeded)
 	| { readonly op: "add"; readonly amount: number; readonly child: Pat } // payload arithmetic
 	| { readonly op: "mul"; readonly amount: number; readonly child: Pat }

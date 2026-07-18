@@ -54,7 +54,9 @@ export function slotOf(layout: OutputLayout, node: number, port: string, lane: n
 	}
 	const laneCount = layout.laneCounts[node] as number;
 	if (lane < 0 || lane >= laneCount) {
-		throw new Error(`slotOf: node #${node} port '${port}' lane ${lane} out of range (width ${laneCount})`);
+		throw new Error(
+			`slotOf: node #${node} port '${port}' lane ${lane} out of range (width ${laneCount})`,
+		);
 	}
 	return base + lane;
 }

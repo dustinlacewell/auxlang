@@ -1,12 +1,12 @@
-import { defineModule } from "../module/define";
 import { sig } from "../types";
+import { defineMap } from "./define-typed";
 
 /**
  * White noise via a seeded xorshift32 PRNG (no Math.random — determinism law).
  * The seed is `config.__seed`, injected by compile from the Program seed +
  * structural id; defaults to 1. Output is uniform in [min, max].
  */
-export const noise = defineModule({
+export const noise = defineMap({
 	name: "noise",
 	ins: { min: sig(-1), max: sig(1) },
 	outs: { out: sig() },

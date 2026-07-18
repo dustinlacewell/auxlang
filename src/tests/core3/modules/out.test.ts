@@ -11,8 +11,8 @@ describe("out", () => {
 		// feed an AC-ish signal so the DC blocker doesn't null it entirely;
 		// use first-sample response where dc y1=0.
 		const o = d.step({ in: lanes(1), gain: 1 });
-		expect(o.l).toBeCloseTo(o.r, 6);
-		expect(o.l).toBeGreaterThan(0);
+		expect(o.l!).toBeCloseTo(o.r!, 6);
+		expect(o.l!).toBeGreaterThan(0);
 	});
 
 	it("lane spread is constant-power: l²+r² roughly constant across positions", () => {
@@ -25,7 +25,7 @@ describe("out", () => {
 			const laneVals = Float32Array.from(Array(width).fill(1));
 			const o = d.step({ in: laneVals, gain: 1 });
 			// undo the 1/√width mixdown to inspect per-unit lane power sum
-			powers.push(o.l * o.l + o.r * o.r);
+			powers.push(o.l! * o.l! + o.r! * o.r!);
 		}
 		// Not asking for exact equality (sum of correlated lanes differs), but each
 		// stays a sane bounded value — constant-power law means no blow-up.
@@ -48,8 +48,8 @@ describe("out", () => {
 			const o = d.step({ in: vals, gain: 1 });
 			// first sample: DC blocker y = x (y1=0, x1=0). Undo 1/√width norm and amp.
 			const norm = 1 / Math.sqrt(width);
-			const l = o.l / norm / amp;
-			const r = o.r / norm / amp;
+			const l = o.l! / norm / amp;
+			const r = o.r! / norm / amp;
 			energies.push(l * l + r * r);
 		}
 		const first = energies[0]!;
@@ -63,7 +63,7 @@ describe("out", () => {
 			// alternating large signal so DC blocker passes it
 			const v = k % 2 === 0 ? 50 : -50;
 			const o = d.step({ in: lanes(v), gain: 5 });
-			maxL = Math.max(maxL, Math.abs(o.l));
+			maxL = Math.max(maxL, Math.abs(o.l!));
 		}
 		expect(maxL).toBeLessThanOrEqual(1); // tanh saturates to 1.0 in float64
 		expect(maxL).toBeGreaterThan(0.9); // actually driven into clip
@@ -75,7 +75,7 @@ describe("out", () => {
 		for (let k = 0; k < 500; k++) {
 			const v = k % 2 === 0 ? 1 : -1; // ~unit AC, gain pushes into tanh knee
 			const o = d.step({ in: lanes(v), gain: 1.5 });
-			maxL = Math.max(maxL, Math.abs(o.l));
+			maxL = Math.max(maxL, Math.abs(o.l!));
 		}
 		expect(maxL).toBeLessThan(1);
 		expect(maxL).toBeGreaterThan(0.5);
@@ -84,7 +84,7 @@ describe("out", () => {
 	it("DC is removed over time (constant input decays to ~0)", () => {
 		const d = reduceDriver(out, 1);
 		let last = 0;
-		for (let k = 0; k < 20000; k++) last = d.step({ in: lanes(0.5), gain: 1 }).l;
+		for (let k = 0; k < 20000; k++) last = d.step({ in: lanes(0.5), gain: 1 }).l!;
 		expect(Math.abs(last)).toBeLessThan(0.01);
 	});
 

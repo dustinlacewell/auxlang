@@ -1,11 +1,11 @@
-import { defineModule } from "../../module/define";
 import { hz, sig, trigPort, unit } from "../../types";
+import { defineMap } from "../define-typed";
 
 /**
  * Snare: two detuned sine bodies plus band-passed noise for the wires. Noise is
  * a seeded xorshift32 (no Math.random — determinism law). Retriggered on `trig`.
  */
-export const snare = defineModule({
+export const snare = defineMap({
 	name: "snare",
 	ins: {
 		trig: trigPort(),
@@ -20,8 +20,15 @@ export const snare = defineModule({
 	positional: ["pitch", "tone", "decay", "snappy"],
 	config: { __seed: 1 },
 	state: () => ({
-		phase1: 0, phase2: 0, bodyAmp: 0, noiseAmp: 0, lpState: 0, hpState: 0,
-		rng: 0, wasTrig: 0, started: 0,
+		phase1: 0,
+		phase2: 0,
+		bodyAmp: 0,
+		noiseAmp: 0,
+		lpState: 0,
+		hpState: 0,
+		rng: 0,
+		wasTrig: 0,
+		started: 0,
 	}),
 	tick: (s, i, o, cfg, sr) => {
 		if ((s.started as number) === 0) {
@@ -39,8 +46,8 @@ export const snare = defineModule({
 		const decay = Math.max(0.01, i.decay);
 		const snappy = Math.max(0, Math.min(1, i.snappy));
 
-		let phase1 = ((s.phase1 as number) + i.pitch / sr) % 1;
-		let phase2 = ((s.phase2 as number) + (i.pitch * 1.5) / sr) % 1;
+		const phase1 = ((s.phase1 as number) + i.pitch / sr) % 1;
+		const phase2 = ((s.phase2 as number) + (i.pitch * 1.5) / sr) % 1;
 		s.phase1 = phase1;
 		s.phase2 = phase2;
 		const body = Math.sin(phase1 * Math.PI * 2) * 0.7 + Math.sin(phase2 * Math.PI * 2) * 0.3;

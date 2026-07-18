@@ -1,11 +1,11 @@
-import { defineModule } from "../module/define";
 import type { ModuleSpec } from "../types";
 import { sig } from "../types";
+import { defineMap } from "./define-typed";
 
 /** Comparators — each emits a 0/1 gate. gt/lt compare `in` against `than`, eq with tolerance. */
 
 function createCmp(name: string, fn: (a: number, b: number) => number): ModuleSpec {
-	return defineModule({
+	return defineMap({
 		name,
 		ins: { in: sig(0), than: sig(0) },
 		outs: { out: sig() },

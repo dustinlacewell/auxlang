@@ -5,9 +5,9 @@
  * string `op`). Anything else fails loudly.
  */
 
-import { getModule } from "../module/define";
 import { isGNode } from "../graph/input-kinds";
 import type { InputValue, NodeRef } from "../graph/node";
+import { getModule } from "../module/define";
 import { type HandleData, handleData, isHandle } from "./handle-data";
 
 export function lift(value: unknown, where: string): InputValue {
@@ -39,7 +39,11 @@ export function refFromHandle(data: HandleData): NodeRef {
 function isPatternLike(v: unknown): boolean {
 	if (typeof v !== "object" || v === null) return false;
 	const ast = (v as Record<string, unknown>).ast;
-	return typeof ast === "object" && ast !== null && typeof (ast as Record<string, unknown>).op === "string";
+	return (
+		typeof ast === "object" &&
+		ast !== null &&
+		typeof (ast as Record<string, unknown>).op === "string"
+	);
 }
 
 function describe(v: unknown): string {

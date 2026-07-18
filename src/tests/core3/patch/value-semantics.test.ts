@@ -3,8 +3,8 @@
  * original handle's node is untouched. Two chains off one base diverge cleanly.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
 import { mod, out, runProgram } from "@/core3/api";
+import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);
@@ -21,7 +21,9 @@ describe("setter value semantics", () => {
 		const filters = program.nodes.filter((n) => n.module === "tlpf");
 		expect(filters).toHaveLength(2);
 
-		const cutoffs = filters.map((f) => (f.lanes[0]!.cutoff as { v: number }).v).sort((a, b) => a - b);
+		const cutoffs = filters
+			.map((f) => (f.lanes[0]!.cutoff as { v: number }).v)
+			.sort((a, b) => a - b);
 		expect(cutoffs).toEqual([500, 1000]);
 	});
 });

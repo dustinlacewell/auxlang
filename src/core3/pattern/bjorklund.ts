@@ -19,7 +19,8 @@ export function bjorklund(k: number, steps: number): boolean[] {
 			const tail = remainder[i];
 			if (head && tail) paired.push(head.concat(tail));
 		}
-		const leftover = groups.length > remainder.length ? groups.slice(pairs) : remainder.slice(pairs);
+		const leftover =
+			groups.length > remainder.length ? groups.slice(pairs) : remainder.slice(pairs);
 		groups = paired;
 		remainder = leftover;
 	}

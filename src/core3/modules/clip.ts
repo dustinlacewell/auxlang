@@ -1,8 +1,8 @@
-import { defineModule } from "../module/define";
 import { sig } from "../types";
+import { defineMap } from "./define-typed";
 
 /** Clamp signal to [min, max]. */
-export const clip = defineModule({
+export const clip = defineMap({
 	name: "clip",
 	ins: { in: sig(0), min: sig(-1), max: sig(1) },
 	outs: { out: sig() },

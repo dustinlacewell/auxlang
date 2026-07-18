@@ -148,7 +148,7 @@ describe("sah", () => {
 describe("pan", () => {
 	it("center → equal l/r", () => {
 		const o = driver(pan).step({ in: 1, pos: 0 });
-		expect(o.l).toBeCloseTo(o.r, 9);
+		expect(o.l).toBeCloseTo(o.r!, 9);
 	});
 	it("hard left → all in l", () => {
 		const o = driver(pan).step({ in: 1, pos: -1 });
@@ -164,7 +164,7 @@ describe("pan", () => {
 		let ref = -1;
 		for (let pos = -1; pos <= 1; pos += 0.1) {
 			const o = driver(pan).step({ in: 1, pos });
-			const p = o.l * o.l + o.r * o.r;
+			const p = o.l! * o.l! + o.r! * o.r!;
 			if (ref < 0) ref = p;
 			expect(p).toBeCloseTo(ref, 5);
 		}

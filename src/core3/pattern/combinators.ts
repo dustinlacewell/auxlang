@@ -5,7 +5,7 @@
  */
 
 import type { Pat, WChild } from "./ast";
-import { R1, type R, r } from "./rational";
+import { type R, R1, r } from "./rational";
 
 const asR = (x: number | R): R => (typeof x === "number" ? r(x) : x);
 

@@ -6,7 +6,7 @@ import { SR, driver, rms } from "./helpers";
 /** Feed a constant (DC) and read the settled output. */
 function dcResponse(spec: typeof lpf, cutoff: number): number {
 	const d = driver(spec);
-	return d.run(4000, { in: 1, cutoff }).out;
+	return d.run(4000, { in: 1, cutoff }).out!;
 }
 
 /** RMS gain at a given input frequency by driving a sine directly. */
@@ -17,11 +17,13 @@ function sineGain(spec: typeof lpf, freqHz: number, cutoff: number, res = 0.2): 
 	const out: number[] = [];
 	for (let k = 0; k < n; k++) {
 		const x = Math.sin(w * k);
-		out.push(d.step({ in: x, cutoff, res }).out);
+		out.push(d.step({ in: x, cutoff, res }).out!);
 	}
 	// discard the first half (settling)
 	const settled = out.slice(n / 2);
-	return rms(settled) / rms(Array.from({ length: settled.length }, (_, k) => Math.sin(w * (n / 2 + k))));
+	return (
+		rms(settled) / rms(Array.from({ length: settled.length }, (_, k) => Math.sin(w * (n / 2 + k))))
+	);
 }
 
 describe("svf", () => {

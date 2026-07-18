@@ -15,16 +15,28 @@ import type {
 	EngineState,
 	ModuleSpec,
 	Program,
-	Registry,
 	ReduceTickFn,
+	Registry,
 	TickFn,
 } from "../types";
-import { BIND_CONST, BIND_CUR, BIND_LAMBDA, compileLaneBindings, type LaneBindings } from "./bindings";
+import {
+	BIND_CONST,
+	BIND_CUR,
+	BIND_LAMBDA,
+	type LaneBindings,
+	compileLaneBindings,
+} from "./bindings";
 import { deepClone } from "./deep-clone";
-import { compileReduceGathers, GATHER_CONST, GATHER_CUR, GATHER_LAMBDA, type ReduceGathers } from "./gathers";
+import {
+	GATHER_CONST,
+	GATHER_CUR,
+	GATHER_LAMBDA,
+	type ReduceGathers,
+	compileReduceGathers,
+} from "./gathers";
 import { buildLaneStates } from "./initial-states";
 import type { LambdaSlot } from "./lambda";
-import { buildOutputLayout, slotOf, type OutputLayout } from "./output-slots";
+import { type OutputLayout, buildOutputLayout, slotOf } from "./output-slots";
 
 interface NodeRun {
 	readonly tick: TickFn | ReduceTickFn;
@@ -69,7 +81,9 @@ export class Core3Engine implements Engine {
 			const spec = specs[i] as ModuleSpec;
 			const reduce = spec.policy === "reduce";
 			if (reduce && node.lanes.length !== 1) {
-				throw new Error(`node #${i} ('${node.module}') is reduce policy but has ${node.lanes.length} lanes`);
+				throw new Error(
+					`node #${i} ('${node.module}') is reduce policy but has ${node.lanes.length} lanes`,
+				);
 			}
 			if (!reduce && node.lanes.length !== node.width) {
 				throw new Error(
@@ -142,7 +156,13 @@ export class Core3Engine implements Engine {
 		this.count++;
 	}
 
-	private tickMap(r: NodeRun, cur: Float64Array, prv: Float64Array, sr: number, time: number): void {
+	private tickMap(
+		r: NodeRun,
+		cur: Float64Array,
+		prv: Float64Array,
+		sr: number,
+		time: number,
+	): void {
 		const bindings = r.bindings as readonly LaneBindings[];
 		const ins = r.ins;
 		const outs = r.outs;
@@ -172,7 +192,13 @@ export class Core3Engine implements Engine {
 		}
 	}
 
-	private tickReduce(r: NodeRun, cur: Float64Array, prv: Float64Array, sr: number, time: number): void {
+	private tickReduce(
+		r: NodeRun,
+		cur: Float64Array,
+		prv: Float64Array,
+		sr: number,
+		time: number,
+	): void {
 		const g = r.gathers as ReduceGathers;
 		const ins = r.ins as Record<string, Float32Array | number>;
 		const ports = g.ports;
@@ -191,7 +217,14 @@ export class Core3Engine implements Engine {
 				ins[p.name] = view;
 			}
 		}
-		(r.tick as ReduceTickFn)(r.states[0] as Record<string, unknown>, ins, r.outs, r.config, sr, g.width);
+		(r.tick as ReduceTickFn)(
+			r.states[0] as Record<string, unknown>,
+			ins,
+			r.outs,
+			r.config,
+			sr,
+			g.width,
+		);
 		const outPorts = r.outPorts;
 		const outBases = r.outBases;
 		for (let j = 0; j < outPorts.length; j++) {

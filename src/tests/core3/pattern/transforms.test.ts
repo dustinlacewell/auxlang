@@ -32,7 +32,9 @@ describe("rev", () => {
 
 	it("rev of rev is the identity over 4 cycles", () => {
 		const pat = P.fastcat(1, P.cat(2, 3), 4);
-		expect(evSet(queryCycles(pat.rev().rev().ast, 0, 4))).toEqual(evSet(queryCycles(pat.ast, 0, 4)));
+		expect(evSet(queryCycles(pat.rev().rev().ast, 0, 4))).toEqual(
+			evSet(queryCycles(pat.ast, 0, 4)),
+		);
 	});
 });
 
@@ -106,11 +108,7 @@ describe("off", () => {
 		// The shifted copy rotates as an infinite stream, so cycle 0 also shows the
 		// wrapped-in tail of the previous cycle as a non-onset fragment; assert on
 		// onsets to see the copy's true attacks.
-		const evs = queryCycles(
-			P.fastcat(60, 62).off(r(1, 8), (q) => q.add(12)).ast,
-			0,
-			1,
-		);
+		const evs = queryCycles(P.fastcat(60, 62).off(r(1, 8), (q) => q.add(12)).ast, 0, 1);
 		const originals = onsets(evs.filter((ev) => ev.value < 70));
 		const copies = onsets(evs.filter((ev) => ev.value >= 70));
 		expect(originals.map((ev) => ev.value)).toEqual([60, 62]);

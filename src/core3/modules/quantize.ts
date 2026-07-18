@@ -1,5 +1,5 @@
-import { defineModule } from "../module/define";
 import { semis, sig } from "../types";
+import { defineMap } from "./define-typed";
 
 /**
  * Pitch quantizer — operates directly in SEMITONES (no Hz round-trip).
@@ -35,7 +35,7 @@ function snap(pitch: number, root: number, scale: number[]): number {
 	const octave = Math.floor(rel / 12);
 	const within = rel - octave * 12; // 0..12
 	let best = scale[0] ?? 0;
-	let bestDist = Infinity;
+	let bestDist = Number.POSITIVE_INFINITY;
 	// consider this octave's degrees plus the wrap into the next (e.g. 11 → 12);
 	// unrolled (no array literal): tick paths must not allocate.
 	for (const deg of scale) {
@@ -54,7 +54,7 @@ function snap(pitch: number, root: number, scale: number[]): number {
 	return root + octave * 12 + best;
 }
 
-export const quantize = defineModule({
+export const quantize = defineMap({
 	name: "quantize",
 	ins: {
 		pitch: semis(60),
@@ -62,7 +62,7 @@ export const quantize = defineModule({
 		octave: sig(4),
 		range: sig(3),
 	},
-	outs: { out: semis() },
+	outs: { out: semis(0) },
 	defaultIn: "pitch",
 	defaultOut: "out",
 	positional: ["root", "octave", "range"],
@@ -76,7 +76,7 @@ export const quantize = defineModule({
 		// fold snapped pitch into [base, base+span)
 		let folded = snapped;
 		if (span > 0) {
-			folded = base + (((snapped - base) % span) + span) % span;
+			folded = base + ((((snapped - base) % span) + span) % span);
 		}
 		o.out = folded;
 	},
