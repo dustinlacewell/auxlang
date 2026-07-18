@@ -4,7 +4,7 @@
  * absent. The program is exactly: the copy + the out node.
  */
 
-import { mod, runProgram } from "@/core3/api";
+import { factory, runProgram } from "@/core3/api";
 import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
@@ -13,7 +13,7 @@ beforeAll(registerToyModules);
 describe("dead-chain honesty", () => {
 	it("roots only the copy, not the discarded original", () => {
 		const program = runProgram(() => {
-			const tosc = mod("tosc");
+			const tosc = factory("tosc");
 			const a = tosc(440);
 			a.freq(880).out();
 		});

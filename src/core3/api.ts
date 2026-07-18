@@ -4,16 +4,25 @@
  * construct pure values, and `out()` marks roots. `compile` turns the collected
  * eval into a serializable `Program`.
  *
- * Module factories come from the shared registry by name (`mod("saw")`), so
+ * Module factories come from the shared registry by name (`factory("saw")`), so
  * this file never imports the module library — the modules register themselves
- * elsewhere (worklet bundle, tests define their own).
+ * elsewhere (worklet bundle, tests define their own). `buildUserScope` is the
+ * one place that reads the registry, so the page's eval scope and the headless
+ * verifiers share a SINGLE, registry-driven source of names — no hand list to
+ * drift.
  */
 
 import { compile } from "./compile/compile";
-import { getModule } from "./module/define";
+import { getModule, getRegistry } from "./module/define";
+import { clock } from "./patch/clock";
 import { runEval } from "./patch/context";
 import { moduleFactory } from "./patch/factory";
 import type { Handle } from "./patch/handle-data";
+import { loop } from "./patch/loop";
+import { out } from "./patch/out";
+import { patstep } from "./patch/patstep";
+import { seq } from "./patch/seq";
+import { p } from "./pattern/notation/template";
 import type { Program } from "./types";
 
 export { runEval } from "./patch/context";
@@ -28,62 +37,49 @@ export type { EvalResult } from "./patch/context";
 export type { Handle } from "./patch/handle-data";
 export type { Program } from "./types";
 
-/** The factory for a registered module: `mod("saw")(440)`. Loud if unknown. */
-export function mod(name: string): (...args: unknown[]) => Handle {
+/** The factory for a registered module: `factory("saw")(440)`. Loud if unknown. */
+export function factory(name: string): (...args: unknown[]) => Handle {
 	return moduleFactory(getModule(name));
 }
 
 /**
- * Named factories for the module library. Resolution is LAZY (at call time),
- * preserving this file's law: it never imports the module library — the
- * registry is populated by importing `modules/all` (worklet bundle, tests).
+ * Reserved user-scope bindings that are NOT plain module factories. Two kinds:
+ * special patch-builders that override a same-named module with richer
+ * semantics (ambient-clock binding, root registration, pattern parsing), and
+ * pure helpers with no module of the same name. `buildUserScope` layers these
+ * over the generated factories; a future module colliding with a pure helper is
+ * a loud error (see below).
  */
-const factory =
-	(name: string) =>
-	(...args: unknown[]): Handle =>
-		moduleFactory(getModule(name))(...args);
+const RESERVED = { clock, seq, out, patstep, loop, p } as const;
 
-// sources
-export const osc = factory("osc");
-export const sin = factory("sin");
-export const saw = factory("saw");
-export const tri = factory("tri");
-export const sqr = factory("sqr");
-export const noise = factory("noise");
-// filters
-export const lpf = factory("lpf");
-export const hpf = factory("hpf");
-export const bpf = factory("bpf");
-export const notch = factory("notch");
-// envelopes
-export const ad = factory("ad");
-export const ar = factory("ar");
-export const adsr = factory("adsr");
-// math & utility
-export const mul = factory("mul");
-export const vca = factory("vca");
-export const gain = factory("gain");
-export const add = factory("add");
-export const sub = factory("sub");
-export const div = factory("div");
-export const gt = factory("gt");
-export const lt = factory("lt");
-export const eq = factory("eq");
-export const clip = factory("clip");
-export const abs = factory("abs");
-export const scale = factory("scale");
-export const slew = factory("slew");
-export const sah = factory("sah");
-export const quantize = factory("quantize");
-// space & mixing
-export const pan = factory("pan");
-export const mix = factory("mix");
-export const delay = factory("delay");
-// drums
-export const kick = factory("kick");
-export const snare = factory("snare");
-export const hihat = factory("hihat");
-export const clap = factory("clap");
+/** Reserved names that intentionally override a same-named registered module. */
+const MODULE_OVERRIDES = new Set(["clock", "seq", "out", "patstep"]);
+
+/**
+ * The complete user scope, generated from the registry: every registered module
+ * as a named factory, then the reserved bindings layered on top. Callers must
+ * have populated the registry first (import `@/core3/modules/all`).
+ *
+ * Resolution is eager here (the registry is required to be populated), but each
+ * factory closes over `getModule(name)` lazily, matching the rest of the layer.
+ */
+export function buildUserScope(): Record<string, unknown> {
+	const scope: Record<string, unknown> = {};
+	for (const name of getRegistry().keys()) {
+		if (MODULE_OVERRIDES.has(name)) continue; // provided by RESERVED below
+		scope[name] = factory(name);
+	}
+	for (const [name, value] of Object.entries(RESERVED)) {
+		if (!MODULE_OVERRIDES.has(name) && name in scope) {
+			throw new Error(
+				`user scope: reserved helper '${name}' collides with a registered module of the ` +
+					`same name. Rename the module or promote it to a MODULE_OVERRIDES builder.`,
+			);
+		}
+		scope[name] = value;
+	}
+	return scope;
+}
 
 /** Convenience: evaluate a patch function and compile it in one step. */
 export function runProgram(fn: () => void, opts: { seed?: number } = {}): Program {

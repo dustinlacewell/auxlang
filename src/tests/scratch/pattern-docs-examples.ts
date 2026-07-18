@@ -7,21 +7,10 @@
  *   npx tsx src/tests/scratch/pattern-docs-examples.ts
  */
 
-import "@/core3/modules/all";
-
-import * as api from "@/core3/api";
-import { compile, runEval } from "@/core3/api";
 import type { Program } from "@/core3/api";
 import { render } from "@/core3/runtime/render";
+import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { EXAMPLES } from "@/ui/pattern-docs/examples";
-
-const API_NAMES = Object.keys(api);
-const API_VALUES = API_NAMES.map((n) => (api as Record<string, unknown>)[n]);
-
-function evalPatch(source: string): Program {
-	const patch = new Function(...API_NAMES, source) as (...a: unknown[]) => void;
-	return compile(runEval(() => patch(...API_VALUES)));
-}
 
 function rms(buf: Float32Array): number {
 	let s = 0;

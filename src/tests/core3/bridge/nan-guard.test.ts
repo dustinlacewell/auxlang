@@ -5,10 +5,13 @@
  * samples to silence and resets its DC blocker (Inf - Inf = NaN otherwise).
  */
 
-import { loop, mod, runProgram, saw, sin } from "@/core3/api";
+import { factory, loop, runProgram } from "@/core3/api";
 import { render } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { allFinite } from "./helpers";
+
+const sin = factory("sin");
+const saw = factory("saw");
 
 describe("NaN/Inf never reach the rendered output", () => {
 	it("a lambda returning NaN into osc.pitch stays out of l/r", () => {
@@ -39,7 +42,7 @@ describe("NaN/Inf never reach the rendered output", () => {
 	it("an unstable feedback loop (gain 1.1) renders finite for a full second", () => {
 		const program = runProgram(() => {
 			const fb = loop((fed) =>
-				mod("add")(mod("mul")(1.1)(fed))((_s: unknown, _sr: number, t: number) =>
+				factory("add")(factory("mul")(1.1)(fed))((_s: unknown, _sr: number, t: number) =>
 					t === 0 ? 1 : 0,
 				),
 			);
