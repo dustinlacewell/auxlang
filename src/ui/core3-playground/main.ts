@@ -9,14 +9,16 @@ import { play, stop } from "@/core3/runtime/audio";
 import { DEMO_PATCH } from "./demo";
 import { evalPatch } from "./eval-patch";
 
-const code = document.querySelector<HTMLTextAreaElement>("#code");
-const runBtn = document.querySelector<HTMLButtonElement>("#run");
-const stopBtn = document.querySelector<HTMLButtonElement>("#stop");
-const errStrip = document.querySelector<HTMLDivElement>("#error");
-
-if (!code || !runBtn || !stopBtn || !errStrip) {
-	throw new Error("core3-playground: page markup is missing an expected element");
+function el<T extends HTMLElement>(sel: string): T {
+	const found = document.querySelector<T>(sel);
+	if (!found) throw new Error(`core3-playground: page markup is missing ${sel}`);
+	return found;
 }
+
+const code = el<HTMLTextAreaElement>("#code");
+const runBtn = el<HTMLButtonElement>("#run");
+const stopBtn = el<HTMLButtonElement>("#stop");
+const errStrip = el<HTMLDivElement>("#error");
 
 code.value = DEMO_PATCH;
 
