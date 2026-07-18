@@ -62,4 +62,32 @@ console.log(
 		`RMS range ${minRms.toFixed(4)}..${maxRms.toFixed(4)}`,
 );
 
+// Pan cards route l/r into the master's stereo jacks — verify real separation,
+// not just non-silence. The modulated card must trade L↔R; the default card
+// (center) must be balanced.
+console.log("");
+console.log("pan L/R separation:");
+for (const ex of EXAMPLES.filter((e) => e.title.startsWith("pan"))) {
+	const { l, r } = render(evalPatch(ex.code), 3);
+	const win = Math.round(0.05 * 48000);
+	let maxLoverR = 0;
+	let maxRoverL = 0;
+	for (let s = 0; s + win <= l.length; s += win) {
+		const rl = rms(l.subarray(s, s + win));
+		const rr = rms(r.subarray(s, s + win));
+		if (rr > 1e-4) maxLoverR = Math.max(maxLoverR, rl / rr);
+		if (rl > 1e-4) maxRoverL = Math.max(maxRoverL, rr / rl);
+	}
+	const moves = maxLoverR > 3 && maxRoverL > 3;
+	const centered = Math.abs(rms(l) - rms(r)) < rms(l) * 0.05;
+	const wantsMotion = ex.title.includes("modulated");
+	const ok = wantsMotion ? moves : centered;
+	if (!ok) failures++;
+	console.log(
+		`  ${ok ? "GREEN" : "RED  "} ${ex.title} — ` +
+			`maxL/R ${maxLoverR.toFixed(1)}, maxR/L ${maxRoverL.toFixed(1)}, ` +
+			`${wantsMotion ? "expect motion" : "expect centered"}`,
+	);
+}
+
 if (failures > 0) process.exit(1);
