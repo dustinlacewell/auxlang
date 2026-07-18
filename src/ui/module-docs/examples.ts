@@ -428,20 +428,20 @@ tri(330)
 	{
 		section: "Effects",
 		title: "pan — default",
-		description: "A tone with pan at center (pos 0) — equal in both ears. The panner's job is placement, not sound colour.",
+		description: "A tone with pan at center (pos 0) — equal in both ears. Both jacks are patched to the master's l/r so the placement survives.",
 		code: `sin(330)
-  .pan()
   .gain(0.3)
-  .out()`,
+  .pan()
+  .apply(p => out({ l: p.l, r: p.r }))`,
 	},
 	{
 		section: "Effects",
 		title: "pan — pos modulated (showcase)",
-		description: "A slow LFO drives pan pos -1→1 — the tone drifts smoothly from the left ear to the right and back.",
+		description: "A slow LFO drives pan pos -1→1 — the tone drifts hard from the left ear to the right and back; L and R trade fully.",
 		code: `sin(330)
-  .pan(sin(0.3, -1, 1))
   .gain(0.3)
-  .out()`,
+  .pan(sin(0.3, -1, 1))
+  .apply(p => out({ l: p.l, r: p.r }))`,
 	},
 
 	// ======================================================================

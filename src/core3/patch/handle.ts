@@ -15,7 +15,7 @@ import type { ModuleSpec } from "../types";
 import { buildNode } from "./build-node";
 import { HANDLE, type Handle, type HandleData } from "./handle-data";
 import { lift, refFromHandle } from "./lift";
-import { addRoot } from "./out";
+import { rootFromHandle } from "./out";
 
 /** Names the handle claims for itself; module ports may not use them. */
 export const RESERVED_HANDLE_NAMES = new Set(["out", "apply", "lane", "id", "width"]);
@@ -50,7 +50,7 @@ export function wrap(node: GNode, port?: string, lane?: number): Handle {
 			if (typeof prop === "symbol") return undefined;
 			if (INTROSPECTION.has(prop)) return undefined;
 
-			if (prop === "out") return () => addRoot(refFromHandle(data));
+			if (prop === "out") return () => rootFromHandle(data);
 			if (prop === "apply") return <T>(fn: (h: Handle) => T): T => fn(wrap(node, port, lane));
 			if (prop === "lane") return (i: number) => laneHandle(node, port, i, spec);
 			if (prop === "id") return (name: string) => pinned(node, port, lane, name);
