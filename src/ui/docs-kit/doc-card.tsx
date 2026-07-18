@@ -9,8 +9,8 @@ import { Card } from "@/ui/design/card";
 import { ErrorDisplay } from "@/ui/design/error-display";
 import { StatusIndicator } from "@/ui/design/status-indicator";
 import { Play, Square } from "lucide-react";
-import type { DocExample } from "./examples";
 import { CodeBlock } from "./code-block";
+import type { DocExample } from "./doc-example";
 
 interface DocCardProps {
 	example: DocExample;

@@ -8,11 +8,11 @@
 import { Button } from "@/ui/design/button";
 import { Square } from "lucide-react";
 import { useMemo } from "react";
-import { DocCard } from "./doc-card";
-import { DocSection } from "./doc-section";
+import { DocCard } from "@/ui/docs-kit/doc-card";
+import { DocSection } from "@/ui/docs-kit/doc-section";
+import { useSharedAudio } from "@/ui/docs-kit/use-shared-audio";
 import { EXAMPLES, SECTIONS } from "./examples";
 import { ModuleReference } from "./module-reference";
-import { useSharedAudio } from "./use-shared-audio";
 
 const cardId = (section: string, title: string): string => `${section}::${title}`;
 
