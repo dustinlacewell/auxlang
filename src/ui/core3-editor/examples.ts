@@ -44,8 +44,9 @@ const patternAsSignal = `// a pattern is just a signal: patch it into any knob
 clock(120)
 
 const s = seq("c2 c2 c2 c2")
+const cutoff = slew({ in: p\`300 1200 [2400 600] <400 1800>\`, rise: 5e-6, fall: 5e-6 })
 s.pitch.saw()
-  .lpf({ cutoff: p\`300 1200 [2400 600] <400 1800>\`, res: 0.4 })
+  .lpf({ cutoff, res: 0.4 })
   .mul(s.gate.adsr(0.005, 0.15, 0.3, 0.1))
   .mul(0.3)
   .out()
@@ -70,9 +71,10 @@ const polyChords = `// polyphony: a {stack} widens the sequencer to one lane per
 clock(90)
 
 const pad = seq("{c3,e3,g3} <{a2,c3,e3} {f2,a2,c3}>")
+const amp = pad.gate.adsr(0.05, 0.1, 1, 0.3).slew(0.015, 0.015)
 pad.pitch.tri()
   .lpf({ cutoff: p\`600 <900 1400>\`, res: 0.2 })
-  .mul(pad.gate.adsr(0.4, 0.3, 0.7, 0.8))
+  .mul(amp)
   .mul(0.3)
   .out()
 `;
