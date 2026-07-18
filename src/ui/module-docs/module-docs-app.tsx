@@ -8,6 +8,7 @@
 
 import { DocCard } from "@/ui/docs-kit/doc-card";
 import { DocSection } from "@/ui/docs-kit/doc-section";
+import { SectionNav } from "@/ui/docs-kit/section-nav";
 import { useSharedAudio } from "@/ui/docs-kit/use-shared-audio";
 import { Button } from "@/ui/design/button";
 import { Square } from "lucide-react";
@@ -46,6 +47,8 @@ export function ModuleDocsApp() {
 					</span>
 				</Button>
 			</div>
+
+			<SectionNav sections={SECTIONS} />
 
 			{SECTIONS.map((section) => (
 				<DocSection key={section} name={section}>
