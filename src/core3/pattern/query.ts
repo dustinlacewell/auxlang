@@ -8,7 +8,7 @@
  *
  * `ctx.path` is a stable integer identity for the current AST position: it
  * mixes (op, childIndex) on every descent. `degrade` rolls hash01(seed, path,
- * cycle-of-whole) once per event position — scrub-safe, thread-identical.
+ * whole.begin) once per event — scrub-safe, thread-identical.
  */
 
 import type { Pat, PatOp, WChild } from "./ast";
@@ -22,7 +22,6 @@ import {
 	r,
 	radd,
 	rcmp,
-	rcycle,
 	rdiv,
 	rfloor,
 	rlt,
@@ -308,10 +307,12 @@ function queryEuclid(
 }
 
 function queryDegrade(prob: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	// One roll per (event's whole cycle, this node's path); KEEP when hash >= prob.
+	// One roll per event, keyed by its absolute onset (whole.begin as n/d);
+	// that onset already encodes the cycle, so events within a cycle roll
+	// independently. KEEP when hash >= prob. Scrub-safe, thread-identical.
 	return query(child, span, descend(ctx, "degrade", 0)).filter((ev) => {
 		const at = ev.whole ? ev.whole.begin : ev.part.begin;
-		return hash01(ctx.seed, ctx.path, rcycle(at)) >= prob;
+		return hash01(ctx.seed, ctx.path, at.n, at.d) >= prob;
 	});
 }
 
