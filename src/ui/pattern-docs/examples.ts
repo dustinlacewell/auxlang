@@ -10,13 +10,7 @@
  * listener should EXPECT to hear.
  */
 
-export interface DocExample {
-	/** Section heading this card lives under. */
-	readonly section: string;
-	readonly title: string;
-	readonly description: string;
-	readonly code: string;
-}
+import type { DocExample } from "@/ui/docs-kit/doc-example";
 
 /** Ordered list of section headings — drives page layout order. */
 export const SECTIONS: readonly string[] = [

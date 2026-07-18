@@ -1,26 +1,26 @@
 /**
- * Pattern-docs page: a section per notation/combinator/bridge concept, each a
- * grid of runnable example cards over ONE shared audio host, then the
- * auto-generated module reference. Mirrors the test-suite pattern page's
- * chrome (max-w container, header with Stop All, underlined sections).
+ * Module-docs page: a section per module CATEGORY (sources, filters, envelopes,
+ * effects, utils, math, timing, drums), each a grid of runnable example cards
+ * over ONE shared audio host. Same chrome as the pattern-docs page (max-w
+ * container, header with Stop All, underlined sections) — the module is the
+ * star: every card demonstrates one facet of one module.
  */
 
-import { Button } from "@/ui/design/button";
-import { Square } from "lucide-react";
-import { useMemo } from "react";
 import { DocCard } from "@/ui/docs-kit/doc-card";
 import { DocSection } from "@/ui/docs-kit/doc-section";
 import { useSharedAudio } from "@/ui/docs-kit/use-shared-audio";
+import { Button } from "@/ui/design/button";
+import { Square } from "lucide-react";
+import { useMemo } from "react";
 import { EXAMPLES, SECTIONS } from "./examples";
-import { ModuleReference } from "./module-reference";
 
 const cardId = (section: string, title: string): string => `${section}::${title}`;
 
-export function PatternDocsApp() {
+export function ModuleDocsApp() {
 	const { playingId, errors, run, halt } = useSharedAudio();
 
 	const bySection = useMemo(() => {
-		const map = new Map<string, typeof EXAMPLES[number][]>();
+		const map = new Map<string, (typeof EXAMPLES)[number][]>();
 		for (const section of SECTIONS) map.set(section, []);
 		for (const ex of EXAMPLES) map.get(ex.section)?.push(ex);
 		return map;
@@ -30,12 +30,16 @@ export function PatternDocsApp() {
 		<div className="min-h-screen p-5 max-w-6xl mx-auto">
 			<div className="flex justify-between items-start mb-4">
 				<div>
-					<h1 className="text-2xl font-bold mb-1">Auxlang Pattern Docs</h1>
+					<h1 className="text-2xl font-bold mb-1">Auxlang Module Docs</h1>
 					<p className="text-sm text-gray-400">
-						Every card is a live patch — the pattern is the star, the voice a plain gated synth.
+						Every card is a live patch — one module, one facet. Hit Run to hear it.
 					</p>
 				</div>
-				<Button variant="chrome" onClick={halt} className="text-red-400 hover:text-red-300 shrink-0">
+				<Button
+					variant="chrome"
+					onClick={halt}
+					className="text-red-400 hover:text-red-300 shrink-0"
+				>
 					<span className="flex items-center gap-1.5">
 						<Square size={14} />
 						Stop All
@@ -60,8 +64,6 @@ export function PatternDocsApp() {
 					})}
 				</DocSection>
 			))}
-
-			<ModuleReference />
 		</div>
 	);
 }
