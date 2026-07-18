@@ -1,5 +1,5 @@
-import { defineModule } from "../../module/define";
 import { sig, trigPort, unit } from "../../types";
+import { defineMap } from "../define-typed";
 
 /**
  * Hi-hat: six inharmonically-detuned square waves (metallic) mixed with seeded
@@ -12,7 +12,7 @@ const BASE = 400;
 /** Naive square from phase — hoisted so tick allocates no closure. */
 const sq = (p: number): number => (p < 0.5 ? 1 : -1);
 
-export const hihat = defineModule({
+export const hihat = defineMap({
 	name: "hihat",
 	ins: {
 		trig: trigPort(),
@@ -26,10 +26,23 @@ export const hihat = defineModule({
 	positional: ["decay", "tone", "metal"],
 	config: { __seed: 1 },
 	state: () => ({
-		p0: 0, p1: 0, p2: 0, p3: 0, p4: 0, p5: 0,
-		f0: BASE * RATIOS[0]!, f1: BASE * RATIOS[1]!, f2: BASE * RATIOS[2]!,
-		f3: BASE * RATIOS[3]!, f4: BASE * RATIOS[4]!, f5: BASE * RATIOS[5]!,
-		amp: 0, hpState: 0, rng: 0, wasTrig: 0, started: 0,
+		p0: 0,
+		p1: 0,
+		p2: 0,
+		p3: 0,
+		p4: 0,
+		p5: 0,
+		f0: BASE * RATIOS[0]!,
+		f1: BASE * RATIOS[1]!,
+		f2: BASE * RATIOS[2]!,
+		f3: BASE * RATIOS[3]!,
+		f4: BASE * RATIOS[4]!,
+		f5: BASE * RATIOS[5]!,
+		amp: 0,
+		hpState: 0,
+		rng: 0,
+		wasTrig: 0,
+		started: 0,
 	}),
 	tick: (s, i, o, cfg, sr) => {
 		if ((s.started as number) === 0) {
@@ -50,7 +63,12 @@ export const hihat = defineModule({
 		const p3 = ((s.p3 as number) + (s.f3 as number) / sr) % 1;
 		const p4 = ((s.p4 as number) + (s.f4 as number) / sr) % 1;
 		const p5 = ((s.p5 as number) + (s.f5 as number) / sr) % 1;
-		s.p0 = p0; s.p1 = p1; s.p2 = p2; s.p3 = p3; s.p4 = p4; s.p5 = p5;
+		s.p0 = p0;
+		s.p1 = p1;
+		s.p2 = p2;
+		s.p3 = p3;
+		s.p4 = p4;
+		s.p5 = p5;
 
 		const metallic = (sq(p0) + sq(p1) + sq(p2) + sq(p3) + sq(p4) + sq(p5)) / 6;
 

@@ -7,7 +7,10 @@ import { r } from "@/core3/pattern/rational";
 
 const pure = (value: number): Pat => ({ op: "pure", value });
 const w = (pat: Pat, n = 1, d = 1) => ({ pat, weight: r(n, d) });
-const fastcat = (...children: { pat: Pat; weight: ReturnType<typeof r> }[]): Pat => ({ op: "fastcat", children });
+const fastcat = (...children: { pat: Pat; weight: ReturnType<typeof r> }[]): Pat => ({
+	op: "fastcat",
+	children,
+});
 const silence = (): Pat => ({ op: "silence" });
 
 const c4 = 60;

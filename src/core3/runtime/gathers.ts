@@ -9,8 +9,8 @@
  */
 
 import type { ModuleSpec, PNode, PortAnn, PortSrc } from "../types";
-import { hydrateLambda, type LambdaSlot } from "./lambda";
-import { slotOf, type OutputLayout } from "./output-slots";
+import { type LambdaSlot, hydrateLambda } from "./lambda";
+import { type OutputLayout, slotOf } from "./output-slots";
 
 export const GATHER_CONST = 0;
 export const GATHER_CUR = 1;
@@ -63,7 +63,14 @@ export function compileReduceGathers(
 				);
 			}
 			// Optional (`opt`) unconnected gathers NaN — the "absent" sentinel.
-			return { name, kind: GATHER_CONST, constValue: ann.def ?? Number.NaN, base: 0, srcLanes: 1, lambda: null };
+			return {
+				name,
+				kind: GATHER_CONST,
+				constValue: ann.def ?? Number.NaN,
+				base: 0,
+				srcLanes: 1,
+				lambda: null,
+			};
 		}
 		switch (src.k) {
 			case "c":
@@ -79,11 +86,23 @@ export function compileReduceGathers(
 					lambda: null,
 				};
 			case "l":
-				return { name, kind: GATHER_LAMBDA, constValue: 0, base: 0, srcLanes: 1, lambda: hydrateLambda(src.src) };
+				return {
+					name,
+					kind: GATHER_LAMBDA,
+					constValue: 0,
+					base: 0,
+					srcLanes: 1,
+					lambda: hydrateLambda(src.src),
+				};
 		}
 	});
 
-	const width = Math.max(1, ...partials.filter((p) => p.kind === GATHER_CUR || p.kind === GATHER_PREV).map((p) => p.srcLanes));
+	const width = Math.max(
+		1,
+		...partials
+			.filter((p) => p.kind === GATHER_CUR || p.kind === GATHER_PREV)
+			.map((p) => p.srcLanes),
+	);
 	const ports = partials.map((p) => ({
 		...p,
 		view: p.kind === GATHER_CUR || p.kind === GATHER_PREV ? new Float32Array(width) : null,

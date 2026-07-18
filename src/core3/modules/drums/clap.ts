@@ -1,5 +1,5 @@
-import { defineModule } from "../../module/define";
 import { sig, trigPort, unit } from "../../types";
+import { defineMap } from "../define-typed";
 
 /**
  * Hand clap: seeded noise through a band-pass, shaped by the classic four quick
@@ -11,7 +11,7 @@ const HIT_DURATION = 0.012;
 const HIT_DECAY = 30;
 const TAIL_START = 0.025;
 
-export const clap = defineModule({
+export const clap = defineMap({
 	name: "clap",
 	ins: { trig: trigPort(), decay: sig(0.2), tone: unit(0.5) },
 	outs: { out: sig() },
@@ -20,7 +20,13 @@ export const clap = defineModule({
 	positional: ["decay", "tone"],
 	config: { __seed: 1 },
 	state: () => ({
-		sampleCount: 0, active: 0, lpState: 0, hpState: 0, rng: 0, wasTrig: 0, started: 0,
+		sampleCount: 0,
+		active: 0,
+		lpState: 0,
+		hpState: 0,
+		rng: 0,
+		wasTrig: 0,
+		started: 0,
 	}),
 	tick: (s, i, o, cfg, sr) => {
 		if ((s.started as number) === 0) {

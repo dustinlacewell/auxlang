@@ -8,8 +8,8 @@ describe("clock", () => {
 		const bpm = 120;
 		const d = driver(clock);
 		const inc = bpm / 60 / SR;
-		const p1 = d.step({ bpm }).phase;
-		const p2 = d.step({ bpm }).phase;
+		const p1 = d.step({ bpm }).phase!;
+		const p2 = d.step({ bpm }).phase!;
 		expect(p1).toBeCloseTo(inc, 9);
 		expect(p2 - p1).toBeCloseTo(inc, 9);
 	});

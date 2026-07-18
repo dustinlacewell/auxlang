@@ -12,7 +12,11 @@ import { evalCtx } from "./context";
 import { isHandle } from "./handle-data";
 import { lift } from "./lift";
 
-export function buildNode(spec: ModuleSpec, args: readonly unknown[], chainSrc?: InputValue): GNode {
+export function buildNode(
+	spec: ModuleSpec,
+	args: readonly unknown[],
+	chainSrc?: InputValue,
+): GNode {
 	evalCtx(`${spec.name}(...)`);
 	const inputs: Record<string, InputValue> = {};
 	const config: Record<string, unknown> = {};

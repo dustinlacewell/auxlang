@@ -6,9 +6,9 @@
  * (module:port) to keep the recursion well-founded across cycles.
  */
 
-import { getModule } from "../module/define";
 import { isLambdaInput, isNodeRef, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
+import { getModule } from "../module/define";
 
 /** `order` must be topologically sorted (z-edges cut). */
 export function structuralIds(order: readonly GNode[]): Map<GNode, string> {
@@ -26,7 +26,11 @@ function idOf(node: GNode, ids: Map<GNode, string>): string {
 	return `n${fnv1a(`${node.module}|${config}|${ports.join(",")}`)}`;
 }
 
-function sourceDesc(value: InputValue | undefined, def: number | null, ids: Map<GNode, string>): string {
+function sourceDesc(
+	value: InputValue | undefined,
+	def: number | null,
+	ids: Map<GNode, string>,
+): string {
 	if (value === undefined) return `c:${def}`;
 	if (typeof value === "number") return `c:${value}`;
 	if (isLambdaInput(value)) return `l:${fnv1a(value.lambda.toString())}`;
@@ -37,7 +41,8 @@ function sourceDesc(value: InputValue | undefined, def: number | null, ids: Map<
 
 /** Deterministic JSON: sorted keys, function values dropped. */
 export function stableStringify(value: unknown): string {
-	if (value === null || typeof value === "number" || typeof value === "boolean") return String(value);
+	if (value === null || typeof value === "number" || typeof value === "boolean")
+		return String(value);
 	if (typeof value === "string") return JSON.stringify(value);
 	if (typeof value === "function" || value === undefined) return "";
 	if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;

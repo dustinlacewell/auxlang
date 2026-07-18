@@ -5,9 +5,7 @@
 
 interface TypedArrayLike {
 	readonly length: number;
-	readonly constructor: new (
-		src: TypedArrayLike,
-	) => TypedArrayLike;
+	readonly constructor: new (src: TypedArrayLike) => TypedArrayLike;
 }
 
 export function deepClone<T>(value: T): T {

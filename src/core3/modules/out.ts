@@ -1,5 +1,5 @@
-import { defineModule } from "../module/define";
 import { sig, unit } from "../types";
+import { defineReduce } from "./define-typed";
 
 /**
  * Master output. Reduces all lanes to a stereo pair: each lane i of n is placed
@@ -11,13 +11,12 @@ import { sig, unit } from "../types";
  */
 const DC = 0.999;
 
-export const out = defineModule({
+export const out = defineReduce({
 	name: "out",
 	ins: { in: sig(0), gain: unit(0.8) },
 	outs: { l: sig(), r: sig() },
 	defaultIn: "in",
 	defaultOut: "l",
-	policy: "reduce",
 	state: () => ({ dcxL: 0, dcyL: 0, dcxR: 0, dcyR: 0 }),
 	tick: (s, ins, o, _cfg, _sr, width) => {
 		const lanes = ins.in;

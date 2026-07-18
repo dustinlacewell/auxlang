@@ -1,8 +1,8 @@
-import { defineModule } from "../module/define";
 import { sig } from "../types";
+import { defineMap } from "./define-typed";
 
 /** Map `in` from [from, to] onto [min, max] linearly (default: bipolar → unipolar). */
-export const scale = defineModule({
+export const scale = defineMap({
 	name: "scale",
 	ins: { in: sig(0), from: sig(-1), to: sig(1), min: sig(0), max: sig(1) },
 	outs: { out: sig() },

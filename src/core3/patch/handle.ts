@@ -9,8 +9,8 @@
  * and promise checks never explode.
  */
 
-import { getModule, getRegistry, hasModule } from "../module/define";
 import type { GNode } from "../graph/node";
+import { getModule, getRegistry, hasModule } from "../module/define";
 import type { ModuleSpec } from "../types";
 import { buildNode } from "./build-node";
 import { HANDLE, type Handle, type HandleData } from "./handle-data";
@@ -83,7 +83,12 @@ function laneHandle(node: GNode, port: string | undefined, i: number, spec: Modu
 	return wrap(node, port, i);
 }
 
-function pinned(node: GNode, port: string | undefined, lane: number | undefined, name: string): Handle {
+function pinned(
+	node: GNode,
+	port: string | undefined,
+	lane: number | undefined,
+	name: string,
+): Handle {
 	if (typeof name !== "string" || name.length === 0) {
 		throw new Error(`${node.module}.id(...): pin must be a non-empty string`);
 	}

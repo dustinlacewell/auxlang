@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { defineModule, getRegistry } from "@/core3/module/define";
 import { renderTap } from "@/core3/runtime/render";
 import { sig } from "@/core3/types";
-import { pnode, prog, z, type IO, type St } from "./helpers";
+import { type IO, type St, pnode, prog, z } from "./helpers";
 
 defineModule({
 	name: "zt.inc",

@@ -10,8 +10,8 @@
  */
 
 import type { ModuleSpec, PNode, PortAnn, PortSrc } from "../types";
-import { hydrateLambda, type LambdaSlot } from "./lambda";
-import { slotOf, type OutputLayout } from "./output-slots";
+import { type LambdaSlot, hydrateLambda } from "./lambda";
+import { type OutputLayout, slotOf } from "./output-slots";
 
 export const BIND_CONST = 0;
 export const BIND_CUR = 1;

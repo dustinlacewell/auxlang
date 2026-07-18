@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { defineModule, getRegistry } from "@/core3/module/define";
 import { createEngine } from "@/core3/runtime/engine";
 import { sig } from "@/core3/types";
-import { lam, pnode, prog, type IO, type St } from "./helpers";
+import { type IO, type St, lam, pnode, prog } from "./helpers";
 
 defineModule({
 	name: "lt.pass",
@@ -36,7 +36,10 @@ describe("engine: lambdas", () => {
 	});
 
 	it("lambda state persists across samples within an engine", () => {
-		const program = prog([pnode("lt.pass", [{ v: lam("(s) => { s.n = (s.n ?? 0) + 1; return s.n; }") }])], [0]);
+		const program = prog(
+			[pnode("lt.pass", [{ v: lam("(s) => { s.n = (s.n ?? 0) + 1; return s.n; }") }])],
+			[0],
+		);
 		const engine = createEngine(program, SR, getRegistry());
 		const frame = new Float32Array(2);
 		engine.tick(frame);

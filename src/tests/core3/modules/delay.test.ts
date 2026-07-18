@@ -10,9 +10,9 @@ describe("delay", () => {
 		const d = driver(delay);
 		const out: number[] = [];
 		// one-sample impulse, then silence
-		out.push(d.step({ in: 1, time, feedback: 0, mix: 1 }).out);
+		out.push(d.step({ in: 1, time, feedback: 0, mix: 1 }).out!);
 		for (let k = 1; k < expected + 50; k++) {
-			out.push(d.step({ in: 0, time, feedback: 0, mix: 1 }).out);
+			out.push(d.step({ in: 0, time, feedback: 0, mix: 1 }).out!);
 		}
 		// find the largest tap after sample 0
 		let peakIdx = 1;
@@ -27,8 +27,8 @@ describe("delay", () => {
 		const time = 0.0105; // 10.5 samples
 		const d = driver(delay, {}, sr);
 		const out: number[] = [];
-		out.push(d.step({ in: 1, time, feedback: 0, mix: 1 }).out);
-		for (let k = 1; k < 20; k++) out.push(d.step({ in: 0, time, feedback: 0, mix: 1 }).out);
+		out.push(d.step({ in: 1, time, feedback: 0, mix: 1 }).out!);
+		for (let k = 1; k < 20; k++) out.push(d.step({ in: 0, time, feedback: 0, mix: 1 }).out!);
 		// taps at index 10 and 11 should both be ~0.5 (linear interp)
 		expect(out[10]! + out[11]!).toBeCloseTo(1, 5);
 		expect(out[10]!).toBeCloseTo(0.5, 1);
@@ -41,9 +41,9 @@ describe("delay", () => {
 		const feedback = 0.5;
 		const d = driver(delay);
 		const out: number[] = [];
-		out.push(d.step({ in: 1, time, feedback, mix: 1 }).out);
+		out.push(d.step({ in: 1, time, feedback, mix: 1 }).out!);
 		for (let k = 1; k < step * 4 + 10; k++) {
-			out.push(d.step({ in: 0, time, feedback, mix: 1 }).out);
+			out.push(d.step({ in: 0, time, feedback, mix: 1 }).out!);
 		}
 		const echo1 = out[step]!;
 		const echo2 = out[step * 2]!;

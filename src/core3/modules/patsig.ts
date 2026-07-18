@@ -1,9 +1,9 @@
-import { defineModule } from "../module/define";
 import type { Pat } from "../pattern/ast";
 import type { Ev } from "../pattern/event";
 import { query } from "../pattern/query";
 import { r, rcmp } from "../pattern/rational";
 import { phasePort, sig } from "../types";
+import { defineMap } from "./define-typed";
 import { advanceTrack, fillTrack, trackStateFields } from "./pattern-track";
 
 /**
@@ -13,7 +13,7 @@ import { advanceTrack, fillTrack, trackStateFields } from "./pattern-track";
  * most recently started event; gaps hold the last value, and before the first
  * event EVER the output is 0.
  */
-export const patsig = defineModule({
+export const patsig = defineMap({
 	name: "patsig",
 	ins: { phase: phasePort(0) },
 	outs: { out: sig() },

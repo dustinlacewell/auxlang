@@ -3,8 +3,8 @@
  * identity is graph identity, so reusing a handle does not duplicate the node.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
 import { mod, out, runProgram } from "@/core3/api";
+import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);

@@ -1,5 +1,5 @@
-import { defineModule } from "../module/define";
 import { secs, sig, unit } from "../types";
+import { defineMap } from "./define-typed";
 
 /**
  * Feedback delay with a fractional (linearly interpolated) read head. The delay
@@ -8,7 +8,7 @@ import { secs, sig, unit } from "../types";
  */
 const MAX_SECS = 4;
 
-export const delay = defineModule({
+export const delay = defineMap({
 	name: "delay",
 	ins: {
 		in: sig(0),

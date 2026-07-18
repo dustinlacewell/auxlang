@@ -33,7 +33,7 @@ describe("quantize", () => {
 	it("pentatonic scale snaps to its 5 degrees", () => {
 		const degs = [0, 3, 5, 7, 10]; // minor pentatonic
 		for (let p = 0; p < 12; p++) {
-			const r = q(p, { scaleName: "minor pentatonic" });
+			const r = q(p, { scaleName: "minor pentatonic" })!;
 			expect(degs).toContain(((r % 12) + 12) % 12);
 		}
 	});

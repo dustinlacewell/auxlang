@@ -5,7 +5,7 @@
  * see state-keys.ts) and clones so the old engine's state is never shared.
  */
 
-import type { EngineState, PNode, ModuleSpec } from "../types";
+import type { EngineState, ModuleSpec, PNode } from "../types";
 import { deepClone } from "./deep-clone";
 import { migrationKeys } from "./state-keys";
 
@@ -28,7 +28,8 @@ export function buildLaneStates(
 		const prevLanes = prev?.nodes[keys[i] as string];
 		return node.lanes.map((_, lane) => {
 			const carried = prevLanes?.[lane];
-			const state = carried !== undefined ? deepClone(carried) : spec.state ? spec.state(sampleRate) : {};
+			const state =
+				carried !== undefined ? deepClone(carried) : spec.state ? spec.state(sampleRate) : {};
 			// Engine-injected lane identity (see ModuleSpec.state in types.ts).
 			state.__lane = lane;
 			return state;

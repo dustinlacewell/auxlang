@@ -6,11 +6,11 @@
  * `.out()` after loop tap the loop body output with the back-edge in place.
  */
 
-import { getModule } from "../module/define";
 import type { GNode } from "../graph/node";
+import { getModule } from "../module/define";
 import { evalCtx } from "./context";
-import { type Handle, handleData, isHandle } from "./handle-data";
 import { wrap } from "./handle";
+import { type Handle, handleData, isHandle } from "./handle-data";
 
 export function loop(f: (fed: Handle) => unknown): Handle {
 	evalCtx("loop()");

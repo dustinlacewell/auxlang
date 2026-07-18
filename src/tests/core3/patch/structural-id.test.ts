@@ -4,8 +4,8 @@
  * pins an explicit identity that survives structural change.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
 import { mod, runProgram } from "@/core3/api";
+import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);

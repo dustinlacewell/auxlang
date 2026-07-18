@@ -1,12 +1,12 @@
-import { defineModule } from "../module/define";
 import { secs, sig } from "../types";
+import { defineMap } from "./define-typed";
 
 /**
  * Slew limiter / lag. `rise`/`fall` are the seconds to traverse one full unit;
  * the per-sample step is 1/(time*sr), so it is unit-linear (correct portamento
  * on semitone pitch: gliding an octave takes the same time regardless of range).
  */
-export const slew = defineModule({
+export const slew = defineMap({
 	name: "slew",
 	ins: { in: sig(0), rise: secs(0.1), fall: secs(0.1) },
 	outs: { out: sig() },

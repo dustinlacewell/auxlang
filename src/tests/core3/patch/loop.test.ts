@@ -4,9 +4,9 @@
  * unit delay compiles. A cycle with no z-edge is a loud error.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
 import { compile, loop, mod, runEval, runProgram } from "@/core3/api";
 import type { GNode } from "@/core3/graph/node";
+import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);
@@ -35,7 +35,9 @@ describe("loop() z-edge", () => {
 	it("returns a handle usable for chaining and .out()", () => {
 		expect(() =>
 			runEval(() => {
-				loop((s) => s.tlpf(800)).tlpf(400).out();
+				loop((s) => s.tlpf(800))
+					.tlpf(400)
+					.out();
 			}),
 		).not.toThrow();
 	});

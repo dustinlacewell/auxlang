@@ -22,7 +22,17 @@ const specs: [string, ModuleSpec][] = [...registry.entries()];
 describe("registry is populated", () => {
 	it("has every expected module registered", () => {
 		expect(specs.length).toBeGreaterThan(20);
-		for (const name of ["osc", "lpf", "adsr", "delay", "quantize", "noise", "out", "clock", "kick"]) {
+		for (const name of [
+			"osc",
+			"lpf",
+			"adsr",
+			"delay",
+			"quantize",
+			"noise",
+			"out",
+			"clock",
+			"kick",
+		]) {
 			expect(registry.has(name)).toBe(true);
 		}
 	});

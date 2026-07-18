@@ -3,8 +3,8 @@
  * zero. `treq.in` is required; rooting a treq with no input must throw.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
 import { mod, out, runProgram } from "@/core3/api";
+import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);

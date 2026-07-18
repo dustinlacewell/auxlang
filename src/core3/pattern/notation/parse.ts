@@ -20,10 +20,21 @@
  */
 
 import type { Pat } from "../ast";
-import { degrade, euclid, fast, fastcat, pure, silence, slowcat, stack, tieNext, tiePrev } from "../combinators";
+import {
+	degrade,
+	euclid,
+	fast,
+	fastcat,
+	pure,
+	silence,
+	slowcat,
+	stack,
+	tieNext,
+	tiePrev,
+} from "../combinators";
+import { isP } from "../pat-class";
 import type { R } from "../rational";
 import { r } from "../rational";
-import { isP } from "../pat-class";
 import { atomValue, isNumber } from "./note";
 import { type Token, tokenize } from "./tokenize";
 
@@ -90,7 +101,8 @@ class Parser {
 		if (t.kind === "extend") {
 			this.next();
 			const prev = steps[steps.length - 1];
-			if (!prev) throw new Error(`mini-notation: '_' with no preceding step (at position ${t.pos})`);
+			if (!prev)
+				throw new Error(`mini-notation: '_' with no preceding step (at position ${t.pos})`);
 			steps[steps.length - 1] = { pat: prev.pat, weight: radd1(prev.weight) };
 			return;
 		}
@@ -274,11 +286,14 @@ class Parser {
 			this.next();
 			const d = this.peek();
 			if (!d || d.kind !== "atom" || !isNumber(d.text)) {
-				throw new Error(`mini-notation: expected denominator after '/' (at position ${this.posOf(d)})`);
+				throw new Error(
+					`mini-notation: expected denominator after '/' (at position ${this.posOf(d)})`,
+				);
 			}
 			this.next();
 			const den = Number(d.text);
-			if (den === 0 || num <= 0) throw new Error(`mini-notation: malformed rational factor (at position ${t.pos})`);
+			if (den === 0 || num <= 0)
+				throw new Error(`mini-notation: malformed rational factor (at position ${t.pos})`);
 			return r(num, den);
 		}
 		if (num <= 0) throw new Error(`mini-notation: factor must be positive (at position ${t.pos})`);
@@ -292,7 +307,8 @@ class Parser {
 		}
 		this.next();
 		const n = Number(t.text);
-		if (!Number.isInteger(n) || n < 1) throw new Error(`mini-notation: '!' count must be a positive integer (at position ${t.pos})`);
+		if (!Number.isInteger(n) || n < 1)
+			throw new Error(`mini-notation: '!' count must be a positive integer (at position ${t.pos})`);
 		return n;
 	}
 
@@ -303,7 +319,8 @@ class Parser {
 		}
 		this.next();
 		const n = Number(t.text);
-		if (!Number.isInteger(n)) throw new Error(`mini-notation: ${what} must be an integer (at position ${t.pos})`);
+		if (!Number.isInteger(n))
+			throw new Error(`mini-notation: ${what} must be an integer (at position ${t.pos})`);
 		return n;
 	}
 
@@ -316,12 +333,16 @@ class Parser {
 		const t = this.peek();
 		if (t?.kind === "atom" && t.pos === qPos + 1) {
 			if (!isNumber(t.text)) {
-				throw new Error(`mini-notation: malformed probability '${t.text}' after '?' (at position ${t.pos})`);
+				throw new Error(
+					`mini-notation: malformed probability '${t.text}' after '?' (at position ${t.pos})`,
+				);
 			}
 			this.next();
 			const keep = Number(t.text);
 			if (!(keep >= 0 && keep <= 1)) {
-				throw new Error(`mini-notation: probability must be in [0,1], got ${t.text} (at position ${t.pos})`);
+				throw new Error(
+					`mini-notation: probability must be in [0,1], got ${t.text} (at position ${t.pos})`,
+				);
 			}
 			return 1 - keep;
 		}
@@ -339,7 +360,8 @@ class Parser {
 
 	private expectComma(pos: number): void {
 		const t = this.peek();
-		if (!t || t.kind !== "comma") throw new Error(`mini-notation: expected ',' (at position ${this.posOf(t) || pos})`);
+		if (!t || t.kind !== "comma")
+			throw new Error(`mini-notation: expected ',' (at position ${this.posOf(t) || pos})`);
 		this.next();
 	}
 }
@@ -369,12 +391,15 @@ function spliceToPat(value: unknown, pos: number): Pat {
 		return parseNotation([value], []);
 	}
 	if (Array.isArray(value)) {
-		if (value.length === 0) throw new Error(`mini-notation: empty array interpolation (at position ${pos})`);
+		if (value.length === 0)
+			throw new Error(`mini-notation: empty array interpolation (at position ${pos})`);
 		return fastcat(value.map((v) => ({ pat: spliceToPat(v, pos), weight: r(1) })));
 	}
 	if (isP(value)) return value.ast;
 	if (isPat(value)) return value;
-	throw new Error(`mini-notation: cannot splice value of type ${typeof value} (at position ${pos})`);
+	throw new Error(
+		`mini-notation: cannot splice value of type ${typeof value} (at position ${pos})`,
+	);
 }
 
 /** Structural guard for raw Pat data. */

@@ -4,8 +4,8 @@
  * so JSON.stringify, promise checks, and debuggers never explode.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
 import { mod, runEval } from "@/core3/api";
+import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);

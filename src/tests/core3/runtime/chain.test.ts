@@ -4,7 +4,7 @@ import { defineModule } from "@/core3/module/define";
 import { getRegistry } from "@/core3/module/define";
 import { renderTap } from "@/core3/runtime/render";
 import { sig } from "@/core3/types";
-import { c, n, pnode, prog, type IO, type St } from "./helpers";
+import { type IO, type St, c, n, pnode, prog } from "./helpers";
 
 defineModule({
 	name: "ch.add1",

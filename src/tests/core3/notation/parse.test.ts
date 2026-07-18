@@ -8,12 +8,21 @@ import { r } from "@/core3/pattern/rational";
 const pure = (value: number): Pat => ({ op: "pure", value });
 const silence = (): Pat => ({ op: "silence" });
 const w = (pat: Pat, n = 1, d = 1) => ({ pat, weight: r(n, d) });
-const fastcat = (...children: { pat: Pat; weight: ReturnType<typeof r> }[]): Pat => ({ op: "fastcat", children });
+const fastcat = (...children: { pat: Pat; weight: ReturnType<typeof r> }[]): Pat => ({
+	op: "fastcat",
+	children,
+});
 const slowcat = (...children: Pat[]): Pat => ({ op: "slowcat", children });
 const stack = (...children: Pat[]): Pat => ({ op: "stack", children });
 const fast = (factor: ReturnType<typeof r>, child: Pat): Pat => ({ op: "fast", factor, child });
 const degrade = (prob: number, child: Pat): Pat => ({ op: "degrade", prob, child });
-const euclid = (k: number, steps: number, rot: number, child: Pat): Pat => ({ op: "euclid", k, steps, rot, child });
+const euclid = (k: number, steps: number, rot: number, child: Pat): Pat => ({
+	op: "euclid",
+	k,
+	steps,
+	rot,
+	child,
+});
 const tieNext = (child: Pat): Pat => ({ op: "tieNext", child });
 const tiePrev = (child: Pat): Pat => ({ op: "tiePrev", child });
 
@@ -84,7 +93,9 @@ describe("desugaring table (platonic.md §3.2)", () => {
 	});
 
 	it("a_b_c chain flags middles both ways", () => {
-		expect(parse("c4_e4_g4")).toEqual(fastcat(w(tieNext(pure(c4))), w(tiePrev(tieNext(pure(e4)))), w(tiePrev(pure(g4)))));
+		expect(parse("c4_e4_g4")).toEqual(
+			fastcat(w(tieNext(pure(c4))), w(tiePrev(tieNext(pure(e4)))), w(tiePrev(pure(g4)))),
+		);
 	});
 
 	it("a? -> degrade(0.5)", () => {

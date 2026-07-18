@@ -3,8 +3,8 @@
  * name what was available. Silent no-ops are bugs.
  */
 
-import { beforeAll, describe, expect, it } from "vitest";
 import { mod, out, runEval } from "@/core3/api";
+import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);

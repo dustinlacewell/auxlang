@@ -1,7 +1,7 @@
-import { defineModule } from "../module/define";
 import type { Pat } from "../pattern/ast";
 import { stepValues } from "../pattern/step-values";
 import { sig, trigPort } from "../types";
+import { defineMap } from "./define-typed";
 
 /**
  * patstep — analog step-sequencer semantics: the pattern advanced by TRIGGER,
@@ -9,7 +9,7 @@ import { sig, trigPort } from "../types";
  * each rising edge on `trig` advances one value, wrapping; durations are
  * ignored. Output is 0 until the first trigger.
  */
-export const patstep = defineModule({
+export const patstep = defineMap({
 	name: "patstep",
 	ins: { trig: trigPort(0) },
 	outs: { out: sig() },

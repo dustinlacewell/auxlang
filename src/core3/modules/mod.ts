@@ -1,8 +1,8 @@
-import { defineModule } from "../module/define";
 import { sig } from "../types";
+import { defineMap } from "./define-typed";
 
 /** Modulo — remainder of `in` by `by` (0 → 0). */
-export const mod = defineModule({
+export const mod = defineMap({
 	name: "mod",
 	ins: { in: sig(0), by: sig(1) },
 	outs: { out: sig() },

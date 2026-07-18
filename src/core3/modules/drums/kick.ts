@@ -1,12 +1,12 @@
-import { defineModule } from "../../module/define";
 import { hz, sig, trigPort, unit } from "../../types";
+import { defineMap } from "../define-typed";
 
 /**
  * 808-style kick: a sine body whose pitch is swept down by a fast envelope, plus
  * a short click transient. Retriggered on `trig` rising past 0.5. All state is
  * allocated in state(); no tick-time allocation.
  */
-export const kick = defineModule({
+export const kick = defineMap({
 	name: "kick",
 	ins: {
 		trig: trigPort(),
@@ -37,11 +37,11 @@ export const kick = defineModule({
 		s.pitchEnv = pitchEnv;
 
 		const freq = i.pitch * (1 + pitchEnv * (i.sweep - 1));
-		let phase = ((s.phase as number) + freq / sr) % 1;
+		const phase = ((s.phase as number) + freq / sr) % 1;
 		s.phase = phase;
 		const body = Math.sin(phase * Math.PI * 2);
 
-		let clickPhase = (s.clickPhase as number) + (i.pitch * 4) / sr;
+		const clickPhase = (s.clickPhase as number) + (i.pitch * 4) / sr;
 		s.clickPhase = clickPhase;
 		const clickEnv = Math.max(0, 1 - clickPhase * 50);
 		const clickSound = Math.sin(clickPhase * Math.PI * 2) * clickEnv * click;

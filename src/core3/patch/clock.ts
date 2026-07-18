@@ -8,8 +8,8 @@
 import { getModule } from "../module/define";
 import { buildNode } from "./build-node";
 import { evalCtx } from "./context";
-import type { Handle } from "./handle-data";
 import { wrap } from "./handle";
+import type { Handle } from "./handle-data";
 
 export function clock(...args: unknown[]): Handle {
 	const ctx = evalCtx("clock()");

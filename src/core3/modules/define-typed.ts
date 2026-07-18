@@ -45,16 +45,14 @@ interface ReduceSpec<I extends Record<string, PortAnn>, O extends Record<string,
 	) => void;
 }
 
-export function defineMap<
-	I extends Record<string, PortAnn>,
-	O extends Record<string, PortAnn>,
->(spec: MapSpec<I, O>): ModuleSpec {
+export function defineMap<I extends Record<string, PortAnn>, O extends Record<string, PortAnn>>(
+	spec: MapSpec<I, O>,
+): ModuleSpec {
 	return defineModule(spec as unknown as ModuleSpec);
 }
 
-export function defineReduce<
-	I extends Record<string, PortAnn>,
-	O extends Record<string, PortAnn>,
->(spec: ReduceSpec<I, O>): ModuleSpec {
+export function defineReduce<I extends Record<string, PortAnn>, O extends Record<string, PortAnn>>(
+	spec: ReduceSpec<I, O>,
+): ModuleSpec {
 	return defineModule({ ...spec, policy: "reduce" } as unknown as ModuleSpec);
 }

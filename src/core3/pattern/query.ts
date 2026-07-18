@@ -12,13 +12,13 @@
  */
 
 import type { Pat, PatOp, WChild } from "./ast";
-import type { Ev, Span } from "./event";
 import { bjorklund } from "./bjorklund";
+import type { Ev, Span } from "./event";
 import { avalanche, hash01 } from "./random";
 import {
+	type R,
 	R0,
 	R1,
-	type R,
 	r,
 	radd,
 	rcmp,

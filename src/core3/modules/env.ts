@@ -1,5 +1,5 @@
-import { defineModule } from "../module/define";
 import { gatePort, sig, unit } from "../types";
+import { defineMap } from "./define-typed";
 
 /**
  * Envelope family (ad/ar/adsr) — gate-driven linear segment machines.
@@ -30,7 +30,7 @@ const step = (dist: number, secs: number, sr: number) =>
 	Math.abs(dist) / Math.max(1, Math.max(1e-4, secs) * sr);
 
 /** AD: rising-edge triggered attack→decay→0, ignores gate duration. */
-export const ad = defineModule({
+export const ad = defineMap({
 	name: "ad",
 	ins: { gate: gatePort(), attack: sig(0.01), decay: sig(0.1) },
 	outs: { out: sig() },
@@ -66,7 +66,7 @@ export const ad = defineModule({
 });
 
 /** AR: attack while gate high, release from current level when it drops. */
-export const ar = defineModule({
+export const ar = defineMap({
 	name: "ar",
 	ins: { gate: gatePort(), attack: sig(0.01), release: sig(0.1) },
 	outs: { out: sig() },
@@ -109,7 +109,7 @@ export const ar = defineModule({
 });
 
 /** ADSR: full gate-driven envelope; decay and release step over fixed spans. */
-export const adsr = defineModule({
+export const adsr = defineMap({
 	name: "adsr",
 	ins: {
 		gate: gatePort(),

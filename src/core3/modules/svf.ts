@@ -1,6 +1,6 @@
-import { defineModule } from "../module/define";
 import type { ModuleSpec } from "../types";
 import { hz, sig, unit } from "../types";
+import { defineMap } from "./define-typed";
 
 /**
  * State-variable filter (lpf/hpf/bpf/notch) — ONE Zavalishin/TPT core, four mode
@@ -15,7 +15,7 @@ import { hz, sig, unit } from "../types";
 type Mode = "lp" | "hp" | "bp" | "notch";
 
 function createSvf(name: string, mode: Mode): ModuleSpec {
-	return defineModule({
+	return defineMap({
 		name,
 		ins: { in: sig(0), cutoff: hz(1000), res: unit(0.2) },
 		outs: { out: sig() },

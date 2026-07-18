@@ -46,7 +46,7 @@ describe("ar", () => {
 		const attack = 0.1; // long attack
 		const release = 0.05;
 		// tick partway into attack
-		const partial = d.run(Math.round(0.02 * SR), { gate: 1, attack, release }).out;
+		const partial = d.run(Math.round(0.02 * SR), { gate: 1, attack, release }).out!;
 		expect(partial).toBeGreaterThan(0.05);
 		expect(partial).toBeLessThan(1);
 		// drop gate — must release from `partial`, reach 0 in bounded time, not stall
@@ -90,7 +90,7 @@ describe("adsr", () => {
 	it("gate dropped during attack releases from current level (adsr)", () => {
 		const d = driver(adsr);
 		const p = { gate: 1, attack: 0.1, decay: 0.02, sustain: 0.5, release: 0.05 };
-		const partial = d.run(Math.round(0.02 * SR), p).out;
+		const partial = d.run(Math.round(0.02 * SR), p).out!;
 		expect(partial).toBeGreaterThan(0.05);
 		expect(partial).toBeLessThan(1);
 		const rel = d.trace(Math.round(0.1 * SR), "out", { ...p, gate: 0 });

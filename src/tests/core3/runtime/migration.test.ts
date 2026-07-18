@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { defineModule, getRegistry } from "@/core3/module/define";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { sig } from "@/core3/types";
-import { c, pnode, prog, type IO, type St } from "./helpers";
+import { type IO, type St, c, pnode, prog } from "./helpers";
 
 defineModule({
 	name: "mg.count",

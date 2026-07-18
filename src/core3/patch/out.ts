@@ -3,8 +3,8 @@
  * fed by the given source and registers it as a root of the current eval.
  */
 
-import { getModule } from "../module/define";
 import type { GNode, InputValue } from "../graph/node";
+import { getModule } from "../module/define";
 import { evalCtx } from "./context";
 import { lift } from "./lift";
 

@@ -16,9 +16,9 @@
  * registry, so tests register their own toy modules.
  */
 
-import { getModule } from "../module/define";
 import { isLambdaInput, isNodeRef, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
+import { getModule } from "../module/define";
 import type { EvalResult } from "../patch/context";
 import type { PNode, PortAnn, PortSrc, Program } from "../types";
 import { resolveAmbientClocks } from "./ambient-clock";
@@ -102,7 +102,13 @@ function resolveLane(
 	return record;
 }
 
-function portSrc(node: GNode, port: string, ann: PortAnn, lane: number, r: Resolved): PortSrc | undefined {
+function portSrc(
+	node: GNode,
+	port: string,
+	ann: PortAnn,
+	lane: number,
+	r: Resolved,
+): PortSrc | undefined {
 	const value = node.inputs[port];
 	if (value === undefined) return defaultSrc(node, port, ann);
 	return srcOf(value, node, port, lane, r);
@@ -111,9 +117,13 @@ function portSrc(node: GNode, port: string, ann: PortAnn, lane: number, r: Resol
 function srcOf(value: InputValue, node: GNode, port: string, lane: number, r: Resolved): PortSrc {
 	if (typeof value === "number") return { k: "c", v: value };
 	if (isLambdaInput(value)) return { k: "l", src: value.lambda.toString() };
-	if (isNodeRef(value)) return connSrc("n", value.node, value.port, value.lane, lane, r, node, port);
-	if (isZRef(value)) return connSrc("z", value.z.node, value.z.port, undefined, lane, r, node, port);
-	throw new Error(`${node.module}.${port}: unexpanded pattern input reached compile (internal error)`);
+	if (isNodeRef(value))
+		return connSrc("n", value.node, value.port, value.lane, lane, r, node, port);
+	if (isZRef(value))
+		return connSrc("z", value.z.node, value.z.port, undefined, lane, r, node, port);
+	throw new Error(
+		`${node.module}.${port}: unexpanded pattern input reached compile (internal error)`,
+	);
 }
 
 /** A connection, with lane broadcast: an explicit lane pins it, otherwise `lane % srcWidth`. */
@@ -146,7 +156,9 @@ function connSrc(
 function defaultSrc(node: GNode, port: string, ann: PortAnn): PortSrc | undefined {
 	if (ann.def === null) {
 		if (ann.opt) return undefined;
-		throw new Error(`${node.module}.${port} is required but unconnected. Connect a signal to '${port}'.`);
+		throw new Error(
+			`${node.module}.${port} is required but unconnected. Connect a signal to '${port}'.`,
+		);
 	}
 	return { k: "c", v: ann.def };
 }

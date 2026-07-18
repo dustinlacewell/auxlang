@@ -1,6 +1,6 @@
-import { defineModule } from "../module/define";
 import type { ModuleSpec } from "../types";
 import { hz, optional, semis, sig, unit } from "../types";
+import { defineMap } from "./define-typed";
 
 /**
  * Oscillator family (osc/sin/saw/tri/sqr).
@@ -47,7 +47,7 @@ function sample(shape: Shape, phase: number, dt: number): number {
 }
 
 function createOsc(name: string, shape: Shape): ModuleSpec {
-	return defineModule({
+	return defineMap({
 		name,
 		ins: {
 			pitch: semis(69),
@@ -68,11 +68,9 @@ function createOsc(name: string, shape: Shape): ModuleSpec {
 				s.started = 1;
 			}
 			const freq =
-				i.freq !== null && Number.isFinite(i.freq)
-					? i.freq
-					: 440 * 2 ** ((i.pitch - 69) / 12);
+				i.freq !== null && Number.isFinite(i.freq) ? i.freq : 440 * 2 ** ((i.pitch - 69) / 12);
 			const dt = Math.min(0.5, Math.abs(freq) / sr);
-			const phase = (s.phase as number);
+			const phase = s.phase as number;
 			const raw = sample(cfg.shape as Shape, phase, dt);
 			let next = phase + freq / sr;
 			next -= Math.floor(next);
