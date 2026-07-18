@@ -1,191 +1,94 @@
-# Auxlang Quick Reference
+# Auxlang Quick Reference (core3)
 
-## Core Concepts
+A patch is a JS expression building pure values; nothing sounds until `out()`
+(the only effect). `clock(120)` sets the ambient tempo. Chains read left→right.
 
-**Signals** - What flows between devices:
-- `number` - constant value (`440`, `0.5`)
-- `OutputRef` - reference to device output (`s.cv`, `lfo.out`)
-- `Descriptor` - shorthand for its default output
-- `SignalLambda` - inline per-sample function `(state, sr) => number`
-
-**Descriptors** - Lazy device specs forming a DAG:
-- Created by calling device functions
-- Immutable - methods return NEW descriptors
-- Only executed when connected to `out()`
-
-**Devices** - Have inputs, outputs, and default input/output for chaining.
-
-## Pattern Syntax (Mini-Notation)
-
-The string passed to `seq()`:
-
-```
-c4          note (pitch + octave)
-~           rest
-c4*4        multiply: repeat 4x within same duration
-c4!4        replicate: repeat 4x (adds beats)
-c4@4        elongate: hold across 4 beats
-[c4 d4]     group: subdivide equally within one beat
-<c4 d4>     alternate: cycle through each loop
-c4_e4       tie: legato, gate held across
-f#4 bb3     accidentals: sharps (#) and flats (b)
-c4?         maybe: 50% probability
-c4?.75      maybe: 75% probability
-(3,8)       euclidean: 3 hits in 8 steps
-{c4,e4,g4}  stack: parallel voices (polyphony)
+```js
+clock(120)
+const s = seq("c3 e3 g3 <b2 a2>")
+s.tri()
+  .lpf({ cutoff: 900, res: 0.3 })
+  .mul(s.gate.adsr(0.005, 0.12, 0.5, 0.2))
+  .gain(0.3)
+  .out()
 ```
 
-Modifiers chain: `c4*2?.5` = multiply by 2, then 50% chance
+## Modules (real signatures)
 
-## JavaScript API
+- **Osc** `osc/sin/saw/tri/sqr` — ins `pitch`(semis, def 69, DEFAULT), `freq`(hz,
+  optional, WINS when set), `min/max`(range -1/1), `phase`. Positional `[freq,min,max]`
+  → `sin(0.3,100,800)` is an LFO. `sin(0)` = freq 0 = SILENCE; use `sin()` or `sin({pitch:60})`.
+- **Filters** `lpf/hpf/bpf/notch` — `{cutoff, res}`, positional `[cutoff, res]`.
+- **Env** `ad(a,d)` · `ar(a,r)` · `adsr(a,d,s,r)` — gate-driven. NO `env` module.
+- **Amp/math** `mul` (aliases `gain`, `vca`) · `add(to)` · `sub(from)` · `div(by)` ·
+  `mod(by)` (MODULO) · `abs` · `clip(min,max)` · `scale(min,max,from,to)` · `slew(rise,fall)` ·
+  `sah(trig)` · `quantize({scaleName, root, octave, range})`.
+- **Compare** `gt(than)` · `lt` · `eq` — emit 0/1 gates.
+- **FX** `delay({time,feedback,mix})` (secs) · `pan(pos)` → outputs `l`/`r`.
+- **Drums** `kick/snare/hihat/clap` — default input `trig`.
+- **Bridge** `clock(bpm)` · `seq(pattern)` · `patstep(pattern, trig)` · `patsig` (auto).
+- **Reduce/out** `mix` · `out`.
 
-**Device Instantiation:**
-```javascript
-saw(440)                              // positional: default input
-lpf({ input: audio, cutoff: 800 })    // object: named inputs
-lpf(audio).cutoff(800).resonance(0.5) // method chaining
-saw(440).lpf({ cutoff: 800 })         // fluent style
-mix({ a: voice1, b: voice2 })         // multi-input devices
+## seq taps
+
+`seq(pat)` node. `.pitch`(default out, semis, S&H) · `.gate`(1 while sounding, ~1ms
+pre-release gap) · `.trig`(single-sample onset). Chaining `seq(...).tri()` chains from pitch.
+Drums: `seq(p\`60(3,8)\`).trig.kick()`.
+
+## Pattern syntax (string in `seq("...")` or `p\`...\`` for combinators)
+
 ```
-
-**Variable Semantics:**
-```javascript
-let f = lpf(audio)           // f = lpf with defaults
-let f2 = f.cutoff(800)       // f2 = new lpf, f unchanged
+c3 e3   sequence     ~      rest        [a b]  subdivide step
+<a b>   alt/cycle     {a,b}  stack(poly) a*2    repeat in step
+a!2     replicate     a@2    hold/weight a _ b  tie/legato
+a?  a?.75  maybe      a(3,8)  a(3,8,2)  euclid(+rot)
 ```
+Notes MIDI: `c4`=60, `c3`=48, `#`/`b`. Bare numbers are MIDI semitones.
 
-**Output Access:**
-```javascript
-let s = seq("c4 e4")
-s.cv      // OutputRef to pitch
-s.gate    // OutputRef to gate
-s.trig    // OutputRef to trigger
-```
+### Combinators (methods on `p\`...\``)
 
-**Chaining Devices:**
-```javascript
-s.saw()           // chains from default output (cv)
-s.cv.saw()        // explicit output
-s.gate.adsr()     // different output
+| method | effect | | method | effect |
+|---|---|---|---|---|
+| `.fast(n)`/`.slow(n)` | scale time | | `.iter(n)` | rotate start/cycle |
+| `.rev()` | reverse in cycle | | `.ply(n)` | repeat each event |
+| `.early(a)`/`.late(a)` | rotate | | `.euclid(k,st,rot)` | euclid mask |
+| `.every(n, q=>...)` | transform every nth | | `.degrade(p)` | seeded drop |
+| `.add(semis)`/`.mul(f)` | payload arith | | `.off(amt, q=>...)` | overlay shifted copy |
 
-// Fluent
-s.saw().lpf({ cutoff: 800 }).gain({ level: s.gate.adsr() }).out()
-```
+Statics: `P.stack`, `P.cat`, `P.fastcat`. Splice: `p\`\${hook} \${hook.rev().add(12)}\``.
+`?`/`degrade` are seeded (hash of seed+path+cycle) — deterministic, scrub-safe.
 
-## Inline Signal Lambdas
+## Modulation
 
-Any input accepts a lambda `(state, sampleRate, time) => number` that runs per-sample:
+Any input takes number | output | lambda `(s,sr,t)=>n` | pattern. LFO = slow osc into
+a knob: `sin(0.3, 300, 2000)`. **Pattern-as-signal**: `p\`...\`` into any knob lifts
+automatically. It STEPS (clicks into a cutoff) — declick with
+`slew({ in: p\`400 800 1600\`, rise: 5e-6, fall: 5e-6 })`. Drive pitch directly:
+`tri(p\`48 55 60 63\`)`.
 
-```javascript
-// Inline LFO using time parameter
-saw(220).lpf({
-  cutoff: (s, sr, t) => Math.sin(t * 2 * Math.PI * 2) * 800 + 1000
-}).out()
+## Feedback
 
-// Pitch ramp (resets every 2 seconds)
-saw((s, sr, t) => {
-  const cycleT = t % 2
-  return 200 + (cycleT / 2) * 600
-}).out()
-```
+`loop(fb => ...)` — `fb` is the output one sample late (a `z1` unit delay). Echoes,
+filter pinging, Karplus-Strong.
 
-- `state` - persistent object per input (survives across samples and re-eval)
-- `sampleRate` - typically 44100 or 48000
-- `time` - seconds since eval started (preserved across re-eval)
+## Stereo (two-cable, no auto-spread)
 
-## Apply for Inline Binding
+Mono `.out()` auto-centers. For placement: `x.pan(pos).apply(v => out({ l: v.l, r: v.r }))`.
+A bare `.out()` off a stereo source (pan) is a LOUD ERROR (drops a channel).
 
-`.apply(fn)` binds intermediate values without breaking chains:
+## patstep (trigger domain)
 
-```javascript
-clock(120).apply(c =>
-  seq("c4 e4 g4", { clk: c }).apply(s =>
-    s.saw().gain({ level: s.gate.adsr() }).out()
-  )
-)
-```
+`patstep(pattern, trigSignal)` advances onset values per rising trigger, IGNORING
+durations. Any trigger: `s.trig`, `sin(6).gt(0.7)`.
 
-## Polyphony
+## Key gotchas
 
-**Pattern-level** (comma syntax):
-```javascript
-seq("{c4,e4,g4}")              // 3-voice chord
-seq("{c4,e4} {d4,f4}")         // alternating chords
-```
-
-**JS-level** (poly function):
-```javascript
-poly([saw(220), saw(330), saw(440)])
-```
-
-**Accessing voices:**
-```javascript
-let chord = seq("{c4,e4,g4}").saw()
-chord.voices        // array of 3 saw descriptors
-chord.voices[0]     // first voice
-```
-
-**Propagation:**
-- Chaining on poly forwards to each voice
-- Params can be poly (per-voice) or mono (broadcast)
-- Mixing at `out()` with 1/sqrt(n) scaling
-
-## Devices
-
-**Sources**: `osc`, `saw`, `sin`, `tri`, `sqr`, `noise`, `lfo`
-**Drums**: `kick`, `snare`, `hihat`, `clap`
-**Filters**: `lpf`, `hpf`, `bpf`, `notch` (cutoff, resonance)
-**Envelopes**:
-- `adsr` (gate, attack, decay, sustain, release) - full ADSR
-- `env` (gate, attack, release) - simpler AR envelope
-**Effects**: `delay`, `tape`, `reverb`
-**Utilities**: `gain`, `mix`, `slew`, `sah`, `pick`, `quantize`
-**Math**: `mult`, `add`, `sub`, `div`, `scale`, `clip`, `abs`, `inv`, `mod`
-**Logic**: `gte`, `lt`, `eq`, `and`, `or`, `not`
-**Timing**: `clock`, `seq`, `clockDiv`, `clockMult`, `counter`
-
-## Common Patterns
-
-```javascript
-// Sequenced synth with envelope
-let s = seq("c3 e3 g3").clk(clock(120))
-s.saw().lpf({ cutoff: 1000 }).gain({ level: s.gate.adsr() }).out()
-
-// Chord pad
-seq("{c4,e4,g4}").saw().lpf({ cutoff: 800 }).out()
-
-// Drums
-let c = clock(120)
-kick(seq("c1 ~ c1 ~").clk(c).gate).out()
-hihat(seq("c1*4").clk(c).gate).out()
-
-// LFO modulation
-let mod = lfo(0.5).scale({ from: -1, to: 1, min: 200, max: 2000 })
-seq("c2").clk(clock(60)).saw().lpf({ cutoff: mod }).out()
-
-// Echo using delay's built-in feedback
-saw(110).delay({ time: 0.2, feedback: 0.7, mix: 0.5 }).out()
-```
-
-## Key Gotchas
-
-1. **seq needs clock**: `seq("c4")` won't run until `.clk(clock(bpm))`
-
-2. **Variables are snapshots**: Methods return new descriptors
-   ```javascript
-   // Wrong - arp doesn't have the clock
-   let arp = seq("c4 e4")
-   arp.clk(clock(120)).saw().gain({ level: arp.gate.adsr() })
-
-   // Right - capture after clocking
-   let arp = seq("c4 e4").clk(clock(120))
-   arp.saw().gain({ level: arp.gate.adsr() }).out()
-   ```
-
-3. **out() is terminal**: Call once at end of chain
-
-4. **gain for amplitude**: `.gain({ level: envelope })` - level is modulation input
-
-5. **env vs adsr**: `env` has attack/release only, `adsr` has all four stages
-
-6. **scale inputs**: `{ from, to, min, max }` - maps [from,to] range to [min,max]
+1. `sin(0)` = freq 0 = silence. Default A4 is `sin()`.
+2. Stereo needs explicit `out({ l, r })`; bare `.out()` off pan throws.
+3. `seq` uses the ambient `clock(...)`; no clock ⇒ unclocked.
+4. `mod` is modulo; `factory(name)` is the module-lookup helper, not musical.
+5. Value semantics: setters COPY; a chain that never hits `out()` is pruned.
+6. Chaining + setting the default input errors: `seq.pitch.saw({freq:880})` (freq
+   is bound by the chain) — use a non-default port.
+7. Loud failure everywhere: unknown ports/modules, unconnected required inputs,
+   notation parse errors — all throw at eval, naming what was available.

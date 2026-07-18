@@ -1,5 +1,8 @@
 # WASM Devices
 
+> This describes core2's WASM mechanism. WASM on the core3 module contract is
+> backlog (`llm/core3-backlog.md`); the wrapper shape below is core2-specific.
+
 For heavy DSP (filters, reverbs, delays), use AssemblyScript compiled to WASM.
 
 ## Structure

@@ -1,514 +1,353 @@
-# Auxlang User Guide
+# Auxlang User Guide (core3)
 
-A systematic guide to the Auxlang audio programming language.
+A systematic guide to writing patches in core3.
 
 ---
 
 ## 1. Fundamentals
 
-### What is Auxlang?
+A patch is a JavaScript expression. Evaluating it builds pure values that describe a signal graph; nothing sounds. The only effect is `out()`: a value reaches audio precisely when it flows into `out()`. Everything else is construction.
 
-Auxlang is a JavaScript-embedded language for creating audio. You write JavaScript that describes audio graphs, and the runtime plays them in real-time.
+A chain reads left-to-right: source → processors → out.
 
-### Hello World
-
-```javascript
-saw(440).out()
+```js
+tri(220)
+  .lpf({ cutoff: 1200, res: 0.2 })
+  .gain(0.3)
+  .out()
 ```
 
-This creates a sawtooth oscillator at 440 Hz and sends it to the speakers.
-
-### The Basic Flow
-
-1. Create devices (oscillators, filters, effects)
-2. Connect them together with chaining
-3. Call `.out()` to hear the result
+A triangle oscillator at 220 Hz feeds a low-pass filter, then an amplitude scale, then output. Read top to bottom, it is the whole strategy: what the sound is, what shapes it, that it plays.
 
 ---
 
-## 2. Devices
+## 2. Modules
 
-Devices are the building blocks. Each device processes audio or control signals.
+Modules are pure state machines with named inputs and outputs. Each has a default input (the target when a chain flows into it) and a default output (what a chain reads from it next). You make one by calling a factory. Three ways to fill its ports:
 
-### Creating Devices
+- Positional args fill declared ports in their declared order.
+- An object arg names ports explicitly.
+- Method setters copy-with-change: `x.lpf({ cutoff: 400 })` returns a new value.
 
-```javascript
-// Just the device with defaults
-saw()
+The module families:
 
-// Positional argument
-saw(440)
+### Sources
 
-// Named parameters
-saw({ freq: 440 })
+- `osc` / `sin` / `saw` / `tri` / `sqr` — oscillators. Pitch is in MIDI semitones and defaults to 69 (A4). Frequency is in Hz, optional, and wins when set. There is an output range (`min`/`max`). Positional signature is `[freq, min, max]`, so `sin(0.3, 100, 800)` is a slow LFO sweeping 100–800.
+- `noise` — noise source.
 
-// Method chaining
-saw().freq(440)
-```
+### Filters
 
-All of these create the same thing: a sawtooth oscillator at 440 Hz.
+- `lpf` / `hpf` / `bpf` / `notch` — `{ cutoff, res }`, positional `[cutoff, res]`.
 
-### Device Categories
+### Envelopes (gate-driven)
 
-**Sources** - Generate sound
-- `saw`, `sin`, `tri`, `sqr` - Oscillators (input: freq)
-- `noise` - White noise
-- `lfo` - Low frequency oscillator (input: rate)
+- `ad(attack, decay)`
+- `ar(attack, release)`
+- `adsr(attack, decay, sustain, release)`
 
-**Filters** - Shape the sound
-- `lpf`, `hpf`, `bpf`, `notch` - Filters (inputs: input, cutoff, resonance)
+### Amplitude and math
 
-**Envelopes** - Shape volume over time
-- `adsr` - Full envelope (inputs: gate, attack, decay, sustain, release)
-- `env` - Simple AR envelope (inputs: gate, attack, release)
+- `mul` (aliases `gain`, `vca`), `add`, `sub`, `div`, `mod` (modulo — arithmetic remainder, not "modulation"), `abs`, `clip`, `scale`, `slew`, `sah`, `quantize`.
 
-**Effects**
-- `delay` - Echo (inputs: input, time, feedback, mix)
-- `reverb` - Room simulation (inputs: input, mix, decay)
-- `tape` - Tape delay with modulation
+### Comparators
 
-**Drums**
-- `kick`, `snare`, `hihat`, `clap` - Drum sounds (input: gate)
+- `gt`, `lt`, `eq` — emit `0`/`1` gates.
 
-**Utilities**
-- `gain` - Volume control (inputs: input, level)
-- `mix` - Mix signals together
-- `scale` - Map value ranges
+### Effects
 
-**Math**
-- `add`, `sub`, `mult`, `div`, `clip`, `abs`, `inv`, `mod`
+- `delay({ time, feedback, mix })` — `time` in seconds.
+- `pan({ pos })` — constant-power pan, outputs `l` and `r`.
 
-**Timing**
-- `clock` - Master clock (input: bpm)
-- `seq` - Pattern sequencer
-- `clockDiv`, `clockMult` - Clock manipulation
+### Timing and bridge
+
+- `clock`, `seq`, `patstep`, `patsig`. `patsig` is created automatically by pattern-lifting; you rarely name it.
+
+### Drums (trigger-driven, default input `trig`)
+
+- `kick`, `snare`, `hihat`, `clap`.
+
+### Reducer and output
+
+- `mix`, `out`.
 
 ---
 
-## 3. Signals
+## 3. Chaining
 
-Signals are values that flow between devices.
+`.method()` continues the chain from the previous value's default output. `s.tri()` chains a triangle from `s`'s default output.
 
-### Numbers
+**Signal-uniformity rule (gotcha).** Setting the default input while chaining is an error, because the chain already bound it. `seq.pitch.saw({ freq: 880 })` errors — `.saw()` chained off `seq.pitch` already wired the oscillator's default input, and `freq` is that same default port. To set another value on a chained module, use a non-default port, or a positional that is not the default port.
 
-Constant values:
-```javascript
-saw(440)              // frequency in Hz
-gain({ level: 0.5 })  // amplitude 0-1
+```js
+clock(120)
+const s = seq("c3 e3 g3 e3")
+s.pitch.saw()
+  .lpf({ cutoff: 1400, res: 0.3 })
+  .mul(s.gate.adsr(0.005, 0.08, 0.4, 0.1))
+  .gain(0.3)
+  .out()
 ```
 
-### Device Outputs
-
-Reference another device's output:
-```javascript
-let s = seq("c4 e4")
-saw(s.cv)       // pitch output
-adsr(s.gate)    // gate output
-```
-
-### Devices as Signals
-
-A device can be used directly - it uses its main output:
-```javascript
-let s = seq("c4 e4")
-saw(s)          // same as saw(s.cv)
-```
-
-### Lambdas
-
-Custom functions that run every sample:
-```javascript
-saw((state, sampleRate, time) => {
-  return 200 + Math.sin(time * 2) * 100
-})
-```
-
-- `state` - Store values between samples
-- `sampleRate` - Usually 44100 or 48000
-- `time` - Seconds since playback started
+Here `s.pitch.saw()` chains an oscillator off the pitch tap without re-setting its default input, so pitch flows in cleanly. The envelope is taken from `s.gate` as a separate tap and multiplied in.
 
 ---
 
-## 4. Chaining
+## 4. Value semantics and honesty
 
-Chaining connects devices together. It's the core of Auxlang's syntax.
+Setters return new values; the original is unchanged. A discarded value is not merely unused — it is unregistered. A chain that never reaches `out()` is pruned at compile time. It is garbage, not a silent zombie.
 
-### Basic Chaining
-
-```javascript
-saw(440).lpf()
+```js
+const base = tri(220)
+const bright = base.lpf({ cutoff: 3000 }) // new value; base unchanged
+base.lpf({ cutoff: 400 }) // discarded — never reaches out(), so it is pruned
+bright.gain(0.3).out()
 ```
 
-The oscillator's output connects to the filter's input.
-
-### Chaining with Parameters
-
-```javascript
-saw(440).lpf({ cutoff: 800 })
-saw(440).lpf().cutoff(800)  // equivalent
-```
-
-### Positional Arguments
-
-When chaining, positional arguments fill inputs in order:
-```javascript
-clock(120).seq("c4 e4")
-// clock -> seq's clock input
-// "c4 e4" -> seq's pattern
-```
-
-### Explicit Output Selection
-
-Pick which output to chain from:
-```javascript
-let s = seq("c4 e4")
-s.cv.saw()      // pitch -> oscillator
-s.gate.adsr()   // gate -> envelope
-```
-
-### Full Example
-
-```javascript
-clock(120).seq("c4 e4 g4").saw().lpf({ cutoff: 800 }).out()
-```
-
-1. `clock(120)` - 120 BPM clock
-2. `.seq("c4 e4 g4")` - Sequencer receives clock, plays pattern
-3. `.saw()` - Oscillator receives pitch
-4. `.lpf({ cutoff: 800 })` - Filter receives audio
-5. `.out()` - Send to speakers
+Only `bright.gain(0.3).out()` produces sound. `base` is untouched and the dead `base.lpf({ cutoff: 400 })` value evaporates.
 
 ---
 
-## 5. Immutability
+## 5. The ambient clock
 
-**Methods return new devices.** The original is unchanged.
+`clock(120)` at the top of a patch sets the ambient tempo in BPM. Every `seq` and every beat-domain consumer uses it with no explicit wiring. The first `clock()` wins as the ambient clock; you can pass an explicit clock to a particular `seq` to override it locally.
 
-### Wrong
-
-```javascript
-let osc = saw(440)
-osc.freq(880)      // Creates new device, discards it
-osc.out()          // Still 440 Hz!
+```js
+clock(110)
+seq("c3 e3 g3")
+  .tri()
+  .mul(seq("c3 e3 g3").gate.adsr(0.005, 0.1, 0.5, 0.15))
+  .gain(0.3)
+  .out()
 ```
 
-### Right
-
-```javascript
-let osc = saw(440)
-let osc2 = osc.freq(880)  // Capture the new device
-osc2.out()                // 880 Hz
-```
-
-### Why This Matters
-
-When referencing a device multiple times:
-
-```javascript
-// WRONG - s doesn't have the clock yet
-let s = seq("c4 e4")
-s.clk(clock(120)).saw().gain({ level: s.gate.adsr() }).out()
-
-// RIGHT - capture after adding clock
-let s = seq("c4 e4").clk(clock(120))
-s.saw().gain({ level: s.gate.adsr() }).out()
-```
+Neither `seq` names a clock; both run at 110 BPM from the ambient clock.
 
 ---
 
-## 6. Modulation
+## 6. Patterns: notation and combinators
 
-Modulation connects control signals to parameters.
+A pattern is either a mini-notation string passed to `seq("...")`, or a `` p`...` `` tagged template when you want combinators.
 
-### Basic Modulation
+### Mini-notation grammar (with desugaring)
 
-```javascript
-let wobble = lfo(2)  // 2 Hz LFO
-saw(440).lpf({ cutoff: wobble }).out()
+| Notation | Meaning |
+|---|---|
+| `c3 e3` | sequence (fastcat) |
+| `~` | rest |
+| `[a b]` | subdivide one step |
+| `<a b>` | alternate per cycle |
+| `{a,b}` | stack (polyphony; widens) |
+| `a*2` | repeat within a step |
+| `a!2` | replicate (adds steps) |
+| `a@2` | hold / weight |
+| `a _ b` | tie / legato |
+| `a?` / `a?.75` | maybe (degrade) |
+| `a(3,8)` / `a(3,8,2)` | euclid (with rotation) |
+
+Notes are MIDI: `c4` = 60, `c3` = 48, accidentals `#` and `b`. Bare numbers are MIDI semitones.
+
+### Combinators
+
+Methods on a `P` value (from `` p`...` ``):
+
+`.fast(n)`, `.slow(n)`, `.rev()`, `.early(a)`, `.late(a)`, `.every(n, q => ...)`, `.iter(n)`, `.ply(n)`, `.euclid(k, steps, rot)`, `.degrade(p)`, `.add(semis)`, `.mul(f)`, `.off(amt, q => ...)`.
+
+Statics: `P.stack`, `P.cat`, `P.fastcat`.
+
+### Splicing
+
+A `` p`...` `` template interpolates P values, numbers, and arrays: `` p`${hook} ${hook.rev()}` ``.
+
+```js
+clock(110)
+const hook = p`c3 [e3 g3] a3 ~`
+seq(hook.rev().every(2, (q) => q.add(7)))
+  .tri()
+  .mul(seq(hook.rev().every(2, (q) => q.add(7))).gate.adsr(0.005, 0.1, 0.4, 0.15))
+  .gain(0.3)
+  .out()
 ```
 
-### Scaling
+The runnable block above repeats the transformed pattern so it is self-contained. In practice, name the transformed line once and reuse it:
 
-LFO outputs -1 to +1. Use `scale` to map to useful ranges:
-```javascript
-let mod = lfo(0.5).scale({ from: -1, to: 1, min: 200, max: 2000 })
-saw(440).lpf({ cutoff: mod }).out()
+```
+const line = seq(hook.rev().every(2, (q) => q.add(7)))
+line.tri().mul(line.gate.adsr(...))...
 ```
 
-### Envelope Modulation
+That is the recommended shape.
 
-Control amplitude with an envelope:
-```javascript
-let s = seq("c4 e4").clk(clock(120))
-let env = s.gate.adsr()
-s.saw().gain({ level: env }).out()
-```
+### Determinism
 
-### Lambda Modulation
-
-For custom modulation:
-```javascript
-saw(440).lpf({
-  cutoff: (state, sr, time) => 500 + Math.sin(time * 4) * 300
-}).out()
-```
+`?` and `.degrade()` are seeded — the decision is a hash of seed, node-path, and cycle number. They produce the same result every run and are stable under scrubbing.
 
 ---
 
-## 7. The Sequencer
+## 7. seq, gate, and trig
 
-The sequencer plays patterns. It outputs pitch, gate, and trigger signals.
+`seq(pattern)` is a node. It exposes three taps:
 
-### Basic Usage
+- `.pitch` — the default output. MIDI semitones, sample-and-held, holds the last value through rests.
+- `.gate` — `1` while an event sounds, minus a fixed pre-release gap of about 1 ms (unless the event is tied).
+- `.trig` — a single-sample pulse at each non-tied onset.
 
-```javascript
-seq("c4 e4 g4").clk(clock(120)).saw().out()
+Chaining `seq(...)` directly chains from pitch: `seq(...).tri()` reads `.pitch`.
+
+Drums are driven by `.trig`:
+
+```js
+clock(120)
+seq(p`60(3,8)`).trig.kick().gain(0.9).out()
+seq("~ 60 ~ 60").trig.snare().gain(0.7).out()
+seq("60*8").trig.hihat({ decay: 0.04 }).gain(0.4).out()
 ```
 
-### Outputs
-
-- `cv` - Pitch as frequency (main output)
-- `gate` - High while note plays
-- `trig` - Short pulse at note start
-
-### Clock Connection
-
-The sequencer needs a clock:
-```javascript
-let c = clock(120)
-seq("c4 e4").clk(c)       // Method
-clock(120).seq("c4 e4")   // Or chain
-```
-
-### Pattern Syntax
-
-**Notes and Rests:**
-```
-c4        Note (pitch + octave)
-c#4       Sharp
-bb3       Flat
-~         Rest
-```
-
-**Time:**
-```
-c4*4      Repeat 4x within same time
-c4!4      Repeat 4x (extends duration)
-c4@4      Hold across 4 beats
-```
-
-**Grouping:**
-```
-[c4 e4]   Subdivide within one beat
-<c4 d4>   Alternate each loop
-c4_e4     Tie (legato)
-```
-
-**Probability:**
-```
-c4?       50% chance
-c4?.75    75% chance
-```
-
-**Euclidean:**
-```
-(3,8)     3 hits across 8 steps
-```
-
-**Chords:**
-```
-{c4,e4,g4}  Play simultaneously
-```
+Each drum module takes a trigger at its default input and fires on the pulse.
 
 ---
 
-## 8. Polyphony
+## 8. Polyphonic width
 
-Polyphony is playing multiple notes at once.
+A `{a,b,c}` stack widens the seq into one packed lane per voice. Chaining forwards per-lane — each lane becomes its own synth voice — and `out` mixes the lanes with `1/√n` scaling to keep level sane. Width is static: it is fixed at compile time.
 
-### In Patterns
-
-```javascript
-seq("{c4,e4,g4}").saw().out()  // 3-note chord
+```js
+clock(90)
+const pad = seq("{c3,e3,g3}")
+pad.tri()
+  .lpf({ cutoff: 1400, res: 0.2 })
+  .mul(pad.gate.adsr(0.02, 0.2, 0.7, 0.4))
+  .gain(0.25)
+  .out()
 ```
 
-### The Chord Device
-
-Build chords from a root note:
-```javascript
-chord(261.63, "maj").saw().out()   // C major
-chord(220, "min7").sin().out()     // A minor 7th
-```
-
-Types: `maj`, `min`, `dim`, `aug`, `sus2`, `sus4`, `maj7`, `min7`, `dom7`, etc.
-
-### Chaining on Chords
-
-Operations apply to all voices:
-```javascript
-seq("{c4,e4,g4}").saw().lpf({ cutoff: 800 }).out()
-// 3 oscillators, each filtered
-```
-
-### Accessing Voices
-
-```javascript
-let chord = seq("{c4,e4,g4}").saw()
-chord.voices[0]   // First voice
-chord.voices[1]   // Second voice
-```
+Three-note stack → width 3. The oscillator, filter, and envelope run independently per lane; `out` sums them.
 
 ---
 
-## 9. Variables and Apply
+## 9. Modulation
 
-### When to Use Variables
+Any input accepts a number, another module's output, a lambda, or a pattern. An LFO is nothing special — it is a slow oscillator patched into a knob.
 
-When you need to reference the same device twice:
-```javascript
-let s = seq("c4 e4").clk(clock(120))
-s.saw().gain({ level: s.gate.adsr() }).out()
-//                    ^ referencing s again
+```js
+saw(110)
+  .lpf({ cutoff: sin(0.3, 300, 2000), res: 0.3 })
+  .gain(0.3)
+  .out()
 ```
 
-### The Apply Pattern
+`sin(0.3, 300, 2000)` sweeps the cutoff between 300 and 2000 Hz at 0.3 Hz.
 
-Bind variables mid-chain:
-```javascript
-clock(120).apply(c =>
-  seq("c4 e4 g4").clk(c).apply(s =>
-    s.saw().gain({ level: s.gate.adsr() }).out()
-  )
-)
+### Pattern-as-signal
+
+A `` p`...` `` handed to any knob lifts automatically. It is queried at the ambient clock's phase and sample-and-held, so a pattern can drive pitch directly with no `seq`:
+
+```js
+clock(100)
+tri(p`48 55 60 63`)
+  .lpf({ cutoff: 1200, res: 0.2 })
+  .mul(sin(0.5, 0.2, 0.5))
+  .gain(0.3)
+  .out()
 ```
 
----
+### Slew-declick idiom
 
-## 10. Output
+A lifted pattern steps discontinuously. Driving a filter cutoff with raw steps clicks. Wrap the pattern in `slew({ in: ..., rise, fall })` with tiny rise/fall to glide the steps:
 
-### The out() Function
-
-`.out()` sends audio to the speakers:
-```javascript
-saw(440).lpf({ cutoff: 800 }).out()
-```
-
-### Multiple Outputs
-
-Layer sounds with multiple `.out()` calls:
-```javascript
-// Bass
-seq("c2 c2 g2 g2").clk(clock(120)).saw().lpf({ cutoff: 400 }).out()
-
-// Lead
-seq("c4 e4 g4 b4").clk(clock(120)).sin().out()
-```
-
-### Terminal
-
-`.out()` ends the chain. Don't chain after it.
-
----
-
-## 11. Common Patterns
-
-### Basic Synth
-
-```javascript
-let s = seq("c3 e3 g3").clk(clock(120))
+```js
+clock(100)
+const s = seq("c2 c2 c2 c2")
+const cutoff = slew({ in: p`400 800 [1600 300] <200 3200>`, rise: 5e-6, fall: 5e-6 })
 s.saw()
-  .lpf({ cutoff: 1000 })
-  .gain({ level: s.gate.adsr() })
+  .lpf({ cutoff, res: 0.5 })
+  .mul(s.gate.adsr(0.005, 0.1, 0.6, 0.15))
+  .gain(0.25)
   .out()
 ```
 
-### Drums
+### Quantize to a scale
 
-```javascript
-let c = clock(120)
-kick(seq("c1 ~ c1 ~").clk(c).gate).out()
-hihat(seq("[c1 c1] [c1 c1]").clk(c).gate).out()
-snare(seq("~ c1 ~ c1").clk(c).gate).out()
-```
+Snap an LFO-driven pitch onto a scale with `.quantize({ scaleName, root })`:
 
-### Modulated Pad
-
-```javascript
-let mod = lfo(0.3).scale({ from: -1, to: 1, min: 400, max: 1200 })
-seq("{c3,e3,g3,b3}").clk(clock(60))
-  .saw()
-  .lpf({ cutoff: mod, resonance: 0.3 })
-  .gain({ level: 0.15 })
-  .reverb({ mix: 0.4 })
+```js
+sin()
+  .pitch(sin(0.2, 36, 72).quantize({ scaleName: "minor pentatonic", root: 0 }))
+  .lpf({ cutoff: 1600, res: 0.2 })
+  .gain(0.3)
   .out()
 ```
 
-### Arpeggio
-
-```javascript
-clock(240).seq("c4 e4 g4 b4 g4 e4")
-  .saw()
-  .lpf({ cutoff: 2000 })
-  .delay({ time: 0.15, feedback: 0.5, mix: 0.3 })
-  .out()
-```
-
-### Chord Progression
-
-```javascript
-let c = clock(60)
-seq("c3 f3 g3 c3").clk(c).cv
-  .chord("maj")
-  .saw()
-  .lpf({ cutoff: 800 })
-  .gain({ level: 0.15 })
-  .reverb({ mix: 0.3 })
-  .out()
-```
+The slow LFO ramps pitch from 36 to 72 semitones; `quantize` snaps each value to the nearest minor-pentatonic degree.
 
 ---
 
-## 12. Troubleshooting
+## 10. loop() feedback
 
-### No Sound
+A cycle in the graph is only legal if it passes through one unit delay. Write it as `loop(fb => ...)`, where `fb` is the fed-back signal exactly one sample late. This covers filter pinging, echoes, Karplus-Strong, and any recursive structure.
 
-1. Did you call `.out()`?
-2. Is the sequencer clocked? `.clk(clock(bpm))`
-3. Is gain too low?
-
-### Wrong Notes
-
-Check variable timing:
-```javascript
-// WRONG
-let s = seq("c4")
-s.clk(clock(120)).saw().gain({ level: s.gate.adsr() })
-
-// RIGHT
-let s = seq("c4").clk(clock(120))
-s.saw().gain({ level: s.gate.adsr() })
+```js
+saw(110)
+  .mul(sin(2).gt(0).mul(0.5))
+  .apply((dry) => loop((fb) => dry.add(fb.delay({ time: 0.18, mix: 1 }).mul(0.6))))
+  .gain(0.3)
+  .out()
 ```
 
-### Clicking
+The dry signal plus a delayed, attenuated copy of the loop's own output forms the echo. `fb` is the previous sample of the loop result.
 
-Use envelopes:
-```javascript
-// Clicks
-saw(440).out()
+---
 
-// Smooth
-let s = seq("c4").clk(clock(120))
-s.saw().gain({ level: s.gate.adsr() }).out()
+## 11. Stereo (two-cable patching)
+
+There is no automatic stereo spread. A mono `x.out()` auto-centers. For placement, `pan` produces `l` and `r` outputs; patch both into the master's `l`/`r` jacks:
+
+```js
+clock(120)
+const s = seq("c3 e3 g3 e3")
+s.tri()
+  .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.15))
+  .pan(sin(0.5, -1, 1))
+  .apply((v) => out({ l: v.l, r: v.r }))
 ```
 
-### Filter Not Moving
+The LFO sweeps the pan position; `apply` unpacks the stereo value and wires both channels into `out`.
 
-Scale your modulation:
-```javascript
-// Wrong - LFO is -1 to 1
-saw(440).lpf({ cutoff: lfo(2) }).out()
+A bare `.out()` off a stereo source (such as `pan`) is a loud error — it would drop a channel. Route both explicitly.
 
-// Right - scale to Hz
-let mod = lfo(2).scale({ from: -1, to: 1, min: 200, max: 2000 })
-saw(440).lpf({ cutoff: mod }).out()
+---
+
+## 12. patstep (trigger domain)
+
+`patstep(pattern, trigSignal)` advances through the pattern's onset values on each rising trigger edge, ignoring durations. This is analog step-sequencer behavior: one step per trigger, nothing to do with the pattern's own timing. Any trigger works — a seq's `.trig`, or a comparator on an LFO.
+
+```js
+clock(110)
+const s = seq("c2(4,8)")
+s.tri()
+  .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
+  .mul(patstep(p`0.3 0.1 0.25 0.15`, s.trig))
+  .gain(0.9)
+  .out()
 ```
+
+Each note trigger steps the accent pattern forward, cycling `0.3, 0.1, 0.25, 0.15` regardless of note lengths.
+
+---
+
+## 13. Troubleshooting and the loud-error philosophy
+
+The language never silently no-ops. At eval time it throws — naming what was actually available — for:
+
+- unknown parameter names,
+- unconnected required inputs,
+- arity surprises,
+- notation parse errors,
+- a bare stereo `.out()`.
+
+### Common footguns
+
+- **`sin(0)` sets FREQ to 0** — that is silence. For a default A4 use `sin()`; to set pitch instead of frequency use `sin({ pitch: 60 })`.
+- **Forgetting `clock(...)`** leaves seqs unclocked.
+- **`mod` is modulo** (arithmetic remainder), not "modulation". And `factory()` is the module-lookup helper, not a musical term.
+- **A pattern into a filter cutoff clicks** without a `slew` — see the slew-declick idiom.
