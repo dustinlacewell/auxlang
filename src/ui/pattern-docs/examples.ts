@@ -334,10 +334,10 @@ s.saw()
 	{
 		section: "Splicing",
 		title: "splice a hook",
-		description: "\\${} splices a P value into notation: build a hook once, then lay it down forward, reversed-and-up, a rest, then doubled.",
+		description: "\\${} splices a P value into notation: name a three-note hook once, lay it down, then splice it again an octave up — same three notes, then the same three notes higher.",
 		code: `clock(110)
-const hook = p\`c3 e3 g3\`
-const s = seq(p\`\${hook} \${hook.rev().add(12)} ~ \${hook.fast(2)}\`)
+const hook = p\`c4 e4 g4\`
+const s = seq(p\`\${hook} \${hook.add(12)}\`)
 s.tri()
   .mul(s.gate.adsr(0.004, 0.07, 0.3, 0.08))
   .gain(0.25)
@@ -348,11 +348,12 @@ s.tri()
 	{
 		section: "Bridge: pattern as signal",
 		title: "pattern-modulated cutoff",
-		description: "A p\`...\` handed to a knob lifts to a signal, sample-and-held at the clock — here it steps the filter cutoff every subdivision.",
+		description: "A p\`...\` handed to a knob lifts to a signal — a slew glides the steps so the filter sweeps between cutoffs instead of clicking on each jump.",
 		code: `clock(100)
 const s = seq("c2 c2 c2 c2")
+const cutoff = slew({ in: p\`400 800 [1600 300] <200 3200>\`, rise: 5e-6, fall: 5e-6 })
 s.saw()
-  .lpf({ cutoff: p\`400 800 [1600 300] <200 3200>\`, res: 0.5 })
+  .lpf({ cutoff, res: 0.5 })
   .mul(s.gate.adsr(0.005, 0.1, 0.6, 0.15))
   .gain(0.25)
   .out()`,
