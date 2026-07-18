@@ -378,7 +378,7 @@ s.tri()
 sin(440)
   .mul(c.gate.ad(0.005, 0.1))
   .delay()
-  .gain(0.35)
+  .gain(1)
   .out()`,
 	},
 	{
@@ -389,7 +389,7 @@ sin(440)
 sin(440)
   .mul(c.gate.ad(0.005, 0.08))
   .delay({ time: 0.15, feedback: 0.6, mix: 0.4 })
-  .gain(0.3)
+  .gain(1)
   .out()`,
 	},
 	{
@@ -400,7 +400,7 @@ sin(440)
 tri(330)
   .mul(c.gate.ad(0.005, 0.1))
   .delay(sin(0.2, 0.05, 0.4), 0.5, 0.4)
-  .gain(0.3)
+  .gain(1)
   .out()`,
 	},
 	{
@@ -411,7 +411,7 @@ tri(330)
 tri(330)
   .mul(c.gate.ad(0.005, 0.1))
   .delay(0.2, sin(0.2, 0.1, 0.85), 0.4)
-  .gain(0.3)
+  .gain(1)
   .out()`,
 	},
 	{
@@ -422,7 +422,7 @@ tri(330)
 tri(330)
   .mul(c.gate.ad(0.005, 0.1))
   .delay(0.18, 0.5, sin(0.2, 0, 0.8))
-  .gain(0.3)
+  .gain(1)
   .out()`,
 	},
 	{
@@ -477,7 +477,7 @@ tri(330)
 		title: "slew — default",
 		description: "A stepped LFO (sample-and-held) fed through slew — the jumps are rounded into glides. Portamento on pitch.",
 		code: `const c = clock(240)
-sin(0)
+sin()
   .pitch(sin(0.4, 40, 70).sah(c.trig).slew(0.08, 0.08))
   .gain(0.3)
   .out()`,
@@ -488,7 +488,7 @@ sin(0)
 		description: "The same stepped pitch, but an LFO stretches the glide time 0.01→0.3 s — slides from instant jumps to lazy swoops.",
 		code: `const c = clock(240)
 const g = sin(0.2, 0.01, 0.3)
-sin(0)
+sin()
   .pitch(sin(0.4, 40, 70).sah(c.trig).slew(g, g))
   .gain(0.3)
   .out()`,
@@ -498,7 +498,7 @@ sin(0)
 		title: "sah — default",
 		description: "White noise sampled and held on each clock trig — a staircase of random pitches, a classic random-note generator.",
 		code: `const c = clock(300)
-sin(0)
+sin()
   .pitch(noise().scale({ min: 40, max: 76 }).sah(c.trig))
   .gain(0.3)
   .out()`,
@@ -509,10 +509,10 @@ sin(0)
 		description: "Sampled noise quantized to a pentatonic scale on every trig — a tuneful random melody instead of atonal jumps.",
 		code: `const c = clock(360)
 const notes = noise().scale({ min: 48, max: 84 }).sah(c.trig)
-sin(0)
+sin()
   .pitch(notes.quantize({ scaleName: "minor pentatonic", root: 0, octave: 4, range: 3 }))
   .mul(c.gate.ad(0.005, 0.12))
-  .gain(0.3)
+  .gain(0.4)
   .out()`,
 	},
 	{
@@ -537,10 +537,10 @@ sin(0)
 		title: "quantize — default",
 		description: "A smooth LFO pitch snapped to the major scale — the continuous glide becomes a staircase of in-key notes.",
 		code: `const c = clock(240)
-sin(0)
+sin()
   .pitch(sin(0.3, 48, 72).quantize({ scaleName: "major", root: 0, octave: 4, range: 2 }))
   .mul(c.gate.ad(0.005, 0.12))
-  .gain(0.3)
+  .gain(0.5)
   .out()`,
 	},
 	{
@@ -548,10 +548,10 @@ sin(0)
 		title: "quantize — scale modulated (showcase)",
 		description: "An LFO-swept pitch snapped to a blues scale, root walking with another LFO — a wandering but always in-key line.",
 		code: `const c = clock(300)
-sin(0)
+sin()
   .pitch(sin(0.2, 40, 76).quantize({ scaleName: "pentatonic blues", root: sin(0.07, 0, 11), octave: 4, range: 3 }))
   .mul(c.gate.ad(0.004, 0.1))
-  .gain(0.3)
+  .gain(0.5)
   .out()`,
 	},
 	{
@@ -595,7 +595,7 @@ s.add(s.z1())
 		section: "Math",
 		title: "add — vibrato (showcase)",
 		description: "A base pitch of 69 with a fast vibrato LFO added in semitones — add offsets any signal, here a wobble on a steady tone.",
-		code: `sin(0)
+		code: `sin()
   .pitch(sin(6, -0.5, 0.5).add(69))
   .gain(0.3)
   .out()`,
@@ -612,7 +612,7 @@ s.add(s.z1())
 		section: "Math",
 		title: "sub — pitch drop (showcase)",
 		description: "sub computes from − in. Here from is 72 and in is an LFO 0→12, so the pitch is dragged down by up to an octave and released.",
-		code: `sin(0)
+		code: `sin()
   .pitch(sub(sin(0.2, 0, 12)).from(72))
   .gain(0.3)
   .out()`,
@@ -677,7 +677,7 @@ sin(150)
 		section: "Math",
 		title: "mod — fold pitch into an octave (showcase)",
 		description: "A slow LFO ramps pitch across four octaves, taken mod 12 and lifted to octave 4 — the line keeps rising but folds back each octave.",
-		code: `sin(0)
+		code: `sin()
   .pitch(sin(0.2, 48, 96).mod(12).add(48))
   .gain(0.3)
   .out()`,
@@ -788,7 +788,7 @@ c.trig.kick()
 		description: "A snare on each beat — a short tonal body plus a burst of filtered noise for the wires. Crisp and snappy.",
 		code: `const c = clock(120)
 c.trig.snare()
-  .gain(0.5)
+  .gain(2)
   .out()`,
 	},
 	{
@@ -797,7 +797,7 @@ c.trig.snare()
 		description: "Every port: lower tone (more noise than body), longer decay, full snappy — a fatter, hissier snare.",
 		code: `const c = clock(120)
 snare({ trig: c.trig, pitch: 180, tone: 0.25, decay: 0.25, snappy: 1 })
-  .gain(0.5)
+  .gain(1.5)
   .out()`,
 	},
 	{
@@ -807,7 +807,7 @@ snare({ trig: c.trig, pitch: 180, tone: 0.25, decay: 0.25, snappy: 1 })
 		code: `const c = clock(120)
 c.trig.snare()
   .snappy(sin(0.2, 0, 1))
-  .gain(0.5)
+  .gain(2)
   .out()`,
 	},
 	{
@@ -816,7 +816,7 @@ c.trig.snare()
 		description: "A steady stream of hi-hats — metallic square partials plus noise, high-passed to a bright tick. Short and shimmery.",
 		code: `clock(240)
 seq("c1*4").trig.hihat()
-  .gain(0.7)
+  .gain(4.5)
   .out()`,
 	},
 	{
@@ -826,7 +826,7 @@ seq("c1*4").trig.hihat()
 		code: `clock(240)
 const t = seq("c1*8").trig
 hihat({ trig: t, decay: 0.12, tone: 0.9, metal: 1 })
-  .gain(1)
+  .gain(7)
   .out()`,
 	},
 	{
@@ -836,7 +836,7 @@ hihat({ trig: t, decay: 0.12, tone: 0.9, metal: 1 })
 		code: `clock(240)
 seq("c1*4").trig.hihat()
   .decay(sin(0.2, 0.02, 0.2))
-  .gain(0.7)
+  .gain(3.5)
   .out()`,
 	},
 	{
@@ -845,7 +845,7 @@ seq("c1*4").trig.hihat()
 		description: "A hand clap on each beat — four quick noise bursts and a decay tail through a bandpass. That reverby snap.",
 		code: `const c = clock(120)
 c.trig.clap()
-  .gain(0.5)
+  .gain(1.3)
   .out()`,
 	},
 	{
@@ -854,7 +854,7 @@ c.trig.clap()
 		description: "Every port: longer 0.35 s decay and brighter tone — a wetter, more open clap with a longer tail.",
 		code: `const c = clock(120)
 clap({ trig: c.trig, decay: 0.35, tone: 0.8 })
-  .gain(0.5)
+  .gain(0.9)
   .out()`,
 	},
 	{
