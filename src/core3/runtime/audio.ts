@@ -8,8 +8,10 @@
 import type { Program } from "../types";
 import type { WorkletMessage, WorkletReply } from "./worklet/messages";
 
-// @ts-expect-error - Vite handles ?url imports
-import workletUrl from "./worklet/index.ts?url";
+// audioWorklet.addModule needs its own top-level script, not a chunk pulled
+// into the main module graph — built as a dedicated rollup entry (see
+// vite.config.ts) with a fixed filename so it can be addressed here.
+const workletUrl = `${import.meta.env.BASE_URL}assets/core3-worklet.js`;
 
 interface AudioHost {
 	readonly context: AudioContext;
