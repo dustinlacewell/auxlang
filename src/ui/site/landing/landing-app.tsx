@@ -34,7 +34,10 @@ export function LandingApp() {
 	return (
 		<SitePage current="home" narrow onStopAll={audio.halt}>
 			<div className="pt-8">
-				<h1 className="font-mono text-4xl font-bold mb-2">auxlang</h1>
+				<h1 className="flex items-center gap-3 font-mono text-4xl font-bold mb-2">
+						<img src="/logo.svg" alt="" className="h-11 w-11" />
+						auxlang
+					</h1>
 				<p className="text-lg text-gray-300 mb-6">Patterns and signals, one patch.</p>
 
 				<p className="text-gray-400 mb-8 leading-relaxed">
