@@ -21,7 +21,8 @@ export function SiteHeader({ current }: SiteHeaderProps) {
 	return (
 		<header className="sticky top-0 z-10 border-b border-surface-700 bg-surface-900/95 backdrop-blur">
 			<div className="max-w-6xl mx-auto px-5 h-11 flex items-center gap-6">
-				<a href="/" className="font-mono font-bold text-white hover:underline">
+				<a href="/" className="flex items-center gap-2 font-mono font-bold text-white hover:underline">
+					<img src="/logo.svg" alt="" className="h-7 w-7" />
 					auxlang
 				</a>
 				<nav className="flex gap-4 text-sm">
