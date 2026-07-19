@@ -1,9 +1,11 @@
+import { defmod } from "../patch/defmod";
 import { sig } from "../types";
-import { defineMap } from "./define-typed";
 
 /** Divide input by `by` (0 → 0, avoiding Infinity/NaN in the graph). */
-export const div = defineMap({
+defmod({
 	name: "div",
+	category: "utils",
+	doc: "Divides one signal by another.",
 	ins: { in: sig(0), by: sig(1) },
 	outs: { out: sig() },
 	defaultIn: "in",

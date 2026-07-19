@@ -7,10 +7,15 @@
 
 import type { GNode } from "../graph/node";
 import { getModule } from "../module/define";
+import { type SpecTable, resolveSpec } from "../module/resolve";
 
-export function resolveAmbientClocks(nodes: readonly GNode[], clockNode: GNode | null): void {
+export function resolveAmbientClocks(
+	nodes: readonly GNode[],
+	clockNode: GNode | null,
+	specs?: SpecTable,
+): void {
 	for (const node of nodes) {
-		const ann = getModule(node.module).ins.clk;
+		const ann = resolveSpec(node.module, specs).ins.clk;
 		if (ann === undefined || ann.unit !== "phase") continue;
 		if (node.inputs.clk !== undefined) continue;
 		if (clockNode === null) {

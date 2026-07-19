@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { defineModule, getRegistry } from "@/core3/module/define";
+import { getRegistry } from "@/core3/module/define";
+import { defmod } from "@/core3/patch/defmod";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { sig } from "@/core3/types";
 import { type IO, type St, c, pnode, prog } from "./helpers";
 
-defineModule({
+defmod({
 	name: "mg.count",
+	category: "utils",
 	ins: { step: sig(1) },
 	outs: { out: sig() },
 	defaultIn: "step",

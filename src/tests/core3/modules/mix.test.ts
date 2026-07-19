@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { mix } from "@/core3/modules/mix";
+import "@/core3/modules/mix";
+import { getModule } from "@/core3/module/define";
 import { reduceDriver } from "./helpers";
+
+const mix = getModule("mix");
 
 /** Build a lane array. */
 const lanes = (...v: number[]) => Float32Array.from(v);

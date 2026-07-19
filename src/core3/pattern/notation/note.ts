@@ -8,7 +8,7 @@
  * A bare number ("12", "0.5", "-3", ".75") is its own numeric value.
  */
 
-const LETTER_SEMITONE: Record<string, number> = {
+export const LETTER_SEMITONE: Record<string, number> = {
 	c: 0,
 	d: 2,
 	e: 4,

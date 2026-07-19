@@ -11,9 +11,10 @@
  * whole.begin) once per event — scrub-safe, thread-identical.
  */
 
-import type { Pat, PatOp, WChild } from "./ast";
+import type { Pat, PatOp, SignalKind, WChild } from "./ast";
 import { bjorklund } from "./bjorklund";
 import type { Ev, Span } from "./event";
+import { isOnset } from "./event";
 import { avalanche, hash01 } from "./random";
 import {
 	type R,
@@ -25,10 +26,12 @@ import {
 	rdiv,
 	rfloor,
 	rlt,
+	rlte,
 	rmax,
 	rmin,
 	rmul,
 	rsub,
+	rtof,
 } from "./rational";
 
 export interface QueryCtx {
@@ -102,6 +105,22 @@ function queryCycle(pat: Pat, span: Span, ctx: QueryCtx): Ev[] {
 				...ev,
 				tiePrev: true,
 			}));
+		case "mask":
+			return queryMask(pat.bool, pat.child, span, ctx);
+		case "struct":
+			return queryStruct(pat.bool, pat.child, span, ctx);
+		case "segment":
+			return querySegment(pat.n, pat.child, span, ctx);
+		case "clip":
+			return queryClip(pat.factor, pat.child, span, descend(ctx, "clip", 0));
+		case "chunk":
+			return queryChunk(pat.n, pat.child, pat.transformed, span, ctx);
+		case "sometimesBy":
+			return querySometimes(pat.prob, pat.child, pat.transformed, span, ctx);
+		case "signal":
+			return querySignal(pat.kind, span, ctx);
+		case "chordidx":
+			return queryChordIdx(pat.tables, pat.per, pat.child, span, ctx);
 	}
 }
 
@@ -129,6 +148,14 @@ const OP_CODE: Record<PatOp, number> = {
 	every: 17,
 	tieNext: 18,
 	tiePrev: 19,
+	mask: 20,
+	struct: 21,
+	segment: 22,
+	clip: 23,
+	chunk: 24,
+	sometimesBy: 25,
+	signal: 26,
+	chordidx: 27,
 };
 
 function descend(ctx: QueryCtx, op: PatOp, index: number): QueryCtx {
@@ -326,4 +353,161 @@ function queryEvery(n: number, child: Pat, transformed: Pat, span: Span, ctx: Qu
 	return active
 		? query(transformed, span, descend(ctx, "every", 1))
 		: query(child, span, descend(ctx, "every", 0));
+}
+
+// ---------------------------------------------------------------------------
+// Boolean-driven ops, sampling, and continuous signals
+// ---------------------------------------------------------------------------
+
+/** Value of a pattern at a single instant (the event whose part covers `at`). */
+function sampleAt(pat: Pat, at: R, ctx: QueryCtx): number | null {
+	const evs = query(pat, { begin: at, end: radd(at, r(1, 1_000_000)) }, ctx);
+	return evs.length > 0 ? (evs[evs.length - 1] as Ev).value : null;
+}
+
+/** A bool pattern's "true" mark is any onset with a nonzero value. */
+function trueSpans(bool: Pat, span: Span, ctx: QueryCtx): Span[] {
+	return query(bool, span, ctx)
+		.filter((ev) => isOnset(ev) && ev.value !== 0 && ev.whole !== null)
+		.map((ev) => ev.whole as Span);
+}
+
+/** Keep child events whose onset lands inside a true region of bool. */
+function queryMask(bool: Pat, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
+	const spans = trueSpans(bool, span, descend(ctx, "mask", 0));
+	const inside = (t: R) => spans.some((s) => rlte(s.begin, t) && rlt(t, s.end));
+	return query(child, span, descend(ctx, "mask", 1)).filter((ev) => inside(ev.part.begin));
+}
+
+/** Emit an event at each true bool step, sampling child's value there. */
+function queryStruct(bool: Pat, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
+	const out: Ev[] = [];
+	for (const ev of query(bool, span, descend(ctx, "struct", 0))) {
+		if (!isOnset(ev) || ev.value === 0 || ev.whole === null) continue;
+		const value = sampleAt(child, ev.part.begin, descend(ctx, "struct", 1));
+		if (value === null) continue;
+		out.push({ whole: ev.whole, part: ev.part, value });
+	}
+	return out;
+}
+
+/** Sample child into n equal steps per cycle (sample-and-hold at each step). */
+function querySegment(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
+	const cycle = rfloor(span.begin);
+	const out: Ev[] = [];
+	for (let i = 0; i < n; i++) {
+		const begin = radd(r(cycle), r(i, n));
+		const end = radd(r(cycle), r(i + 1, n));
+		const b = rmax(span.begin, begin);
+		const e = rmin(span.end, end);
+		if (!rlt(b, e)) continue;
+		const value = sampleAt(child, begin, descend(ctx, "segment", 0));
+		if (value === null) continue;
+		out.push({ whole: { begin, end }, part: { begin: b, end: e }, value });
+	}
+	return out;
+}
+
+/** Shrink each event's whole to `factor` of its length (gate/note length). */
+function queryClip(factor: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
+	const f = asR01(factor);
+	return query(child, span, ctx).map((ev) => {
+		if (!ev.whole) return ev;
+		const len = rsub(ev.whole.end, ev.whole.begin);
+		const end = radd(ev.whole.begin, rmul(len, f));
+		return { ...ev, whole: { begin: ev.whole.begin, end } };
+	});
+}
+
+/** every(n) with a rotating slice: cycle c transforms slice (c % n) of n. */
+function queryChunk(n: number, child: Pat, transformed: Pat, span: Span, ctx: QueryCtx): Ev[] {
+	const cycle = rfloor(span.begin);
+	const active = ((cycle % n) + n) % n;
+	const sliceBegin = radd(r(cycle), r(active, n));
+	const sliceEnd = radd(r(cycle), r(active + 1, n));
+	const inSlice = (t: R) => rlte(sliceBegin, t) && rlt(t, sliceEnd);
+	const base = query(child, span, descend(ctx, "chunk", 0)).filter((ev) => !inSlice(ev.part.begin));
+	const trans = query(transformed, span, descend(ctx, "chunk", 1)).filter((ev) =>
+		inSlice(ev.part.begin),
+	);
+	return [...base, ...trans].sort((a, b) => rcmp(a.part.begin, b.part.begin));
+}
+
+/** Per event, use transformed's value with probability prob (seeded), else child. */
+function querySometimes(
+	prob: number,
+	child: Pat,
+	transformed: Pat,
+	span: Span,
+	ctx: QueryCtx,
+): Ev[] {
+	const transEvs = query(transformed, span, descend(ctx, "sometimesBy", 1));
+	return query(child, span, descend(ctx, "sometimesBy", 0)).map((ev) => {
+		const at = ev.whole ? ev.whole.begin : ev.part.begin;
+		if (hash01(ctx.seed, ctx.path, at.n, at.d) >= prob) return ev;
+		const match = transEvs.find((t) => rcmp(t.part.begin, ev.part.begin) === 0);
+		return match ? { ...ev, value: match.value } : ev;
+	});
+}
+
+/** Continuous generator sampled at the queried point's onset. */
+function querySignal(kind: SignalKind, span: Span, ctx: QueryCtx): Ev[] {
+	const value = signalValue(kind, span.begin, ctx);
+	return [{ whole: null, part: span, value }];
+}
+
+function signalValue(kind: SignalKind, at: R, ctx: QueryCtx): number {
+	const t = rtof(at);
+	switch (kind) {
+		case "rand":
+			// S&H per queried instant: hash the rational position so segment(n)
+			// and struct sample distinct values within a cycle (like degrade).
+			return hash01(ctx.seed, ctx.path, at.n, at.d);
+		case "perlin":
+			return perlin1(ctx.seed, ctx.path, t);
+		case "sine":
+			return 0.5 + 0.5 * Math.sin(2 * Math.PI * t);
+		case "saw":
+			return t - Math.floor(t);
+		case "isaw":
+			return 1 - (t - Math.floor(t));
+		case "tri": {
+			const p = t - Math.floor(t);
+			return p < 0.5 ? p * 2 : 2 - p * 2;
+		}
+		default:
+			return 0;
+	}
+}
+
+/** Value-noise 1D: smoothstep-interpolated hash at integer lattice points. */
+function perlin1(seed: number, path: number, t: number): number {
+	const i = Math.floor(t);
+	const f = t - i;
+	const a = hash01(seed, path, i);
+	const b = hash01(seed, path, i + 1);
+	const s = f * f * (3 - 2 * f);
+	return a + (b - a) * s;
+}
+
+const asR01 = (x: number): R => r(Math.min(Math.max(x, 0), 1) * 1_000_000, 1_000_000);
+
+/** Map integer index events onto the active slot's chord-tone table. */
+function queryChordIdx(
+	tables: readonly (readonly number[])[],
+	per: number,
+	child: Pat,
+	span: Span,
+	ctx: QueryCtx,
+): Ev[] {
+	const cycle = rfloor(span.begin);
+	const slot = Math.floor(cycle / per) % tables.length;
+	const table = tables[((slot % tables.length) + tables.length) % tables.length] as readonly number[];
+	const len = table.length;
+	return query(child, span, descend(ctx, "chordidx", 0)).map((ev) => {
+		const i = Math.round(ev.value);
+		const octave = Math.floor(i / len);
+		const tone = table[((i % len) + len) % len] as number;
+		return { ...ev, value: tone + 12 * octave };
+	});
 }

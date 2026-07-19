@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { quantize } from "@/core3/modules/quantize";
+import "@/core3/modules/quantize";
+import { getModule } from "@/core3/module/define";
 import { driver } from "./helpers";
+
+const quantize = getModule("quantize");
 
 /** Quantize a single pitch value with the given config/inputs. */
 function q(pitch: number, cfg: Record<string, unknown> = {}, over: Record<string, number> = {}) {

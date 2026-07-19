@@ -249,6 +249,11 @@ One namespace, consistent port names: default output is `out` everywhere;
 semantic outputs (`pitch`, `gate`, `trig`) only where those words mean exactly
 that. No `cv`/`audio`/`signal`/`val` dialects.
 
+Modules are defined by ONE function, `defmod(spec)`, regardless of where the
+definition lives — it is scope-aware. At root scope it registers into the
+bundle's registry; inside a patch eval it registers into that patch alone,
+scoped to the eval that defines it. Same contract either way.
+
 Time-valued inputs accept both domains: a plain number means the declared unit;
 `beats(3/8)` and `secs(0.02)` convert explicitly.
 
@@ -345,6 +350,9 @@ Re-evaluation is the core interaction, so its semantics are language-level:
 - The old and new graphs crossfade equal-power over a short window.
 - Because module state is data (§5), migration is clone-and-carry — including
   WASM, which serializes through the same contract.
+- A patch-defined module's source participates in its structural identity:
+  redefining its tick is a different machine, so its state resets unless
+  pinned.
 
 ---
 
@@ -371,7 +379,9 @@ The spec constrains the implementation only where semantics leak through:
   cycle are precomputed or allocation-free; module ticks write into
   preallocated frames.
 - **Library code lives in the audio thread** (bundled), not serialized through
-  strings. Only user-written inline lambdas cross the boundary by value.
+  strings. Only user-written code — inline lambdas and patch-defined module
+  specs — crosses the boundary by value; such code must be closure-free, and
+  it travels inside the `Program`.
 - Mixing and spatialization at the boundary: reducers use equal-power laws;
   `out` applies 1/√n lane mixdown, a DC guard, and a true-peak safety clip.
 

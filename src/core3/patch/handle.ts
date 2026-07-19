@@ -1,6 +1,6 @@
 /**
  * The ONE wrapper. A single Proxy over `{ node, port?, lane? }` covering all
- * fluent behavior: chaining to any registered module, output taps, input
+ * fluent behavior: chaining to any registered or patch-defined module, output taps, input
  * setters (copy-with-change), call = set default input, and the reserved
  * methods `out / apply / lane / id / width`.
  *
@@ -10,12 +10,14 @@
  */
 
 import type { GNode } from "../graph/node";
-import { getModule, getRegistry, hasModule } from "../module/define";
+import { getRegistry } from "../module/define";
 import type { ModuleSpec } from "../types";
 import { buildNode } from "./build-node";
+import { currentSpecs } from "./context";
 import { HANDLE, type Handle, type HandleData } from "./handle-data";
 import { lift, refFromHandle } from "./lift";
 import { rootFromHandle } from "./out";
+import { isPatchModule, resolvePatchModule } from "./resolve";
 
 /** Names the handle claims for itself; module ports may not use them. */
 export const RESERVED_HANDLE_NAMES = new Set(["out", "apply", "lane", "id", "width"]);
@@ -35,7 +37,7 @@ const INTROSPECTION = new Set([
 ]);
 
 export function wrap(node: GNode, port?: string, lane?: number): Handle {
-	const spec = getModule(node.module);
+	const spec = resolvePatchModule(node.module);
 	assertNoReservedPorts(spec);
 	const data: HandleData = {
 		node,
@@ -58,8 +60,9 @@ export function wrap(node: GNode, port?: string, lane?: number): Handle {
 
 			if (prop in spec.outs) return wrap(node, prop, lane);
 			if (prop in spec.ins) return inputSetter(node, port, lane, spec, prop);
-			if (hasModule(prop)) {
-				return (...args: unknown[]) => wrap(buildNode(getModule(prop), args, refFromHandle(data)));
+			if (isPatchModule(prop)) {
+				return (...args: unknown[]) =>
+					wrap(buildNode(resolvePatchModule(prop), args, refFromHandle(data)));
 			}
 
 			throw new Error(unknownPropMessage(prop, spec));
@@ -145,7 +148,8 @@ function copyNode(node: GNode): GNode {
 	};
 }
 
-function assertNoReservedPorts(spec: ModuleSpec): void {
+/** Also enforced eagerly by defmod so a colliding port fails at the definition, not at wrap. */
+export function assertNoReservedPorts(spec: ModuleSpec): void {
 	for (const name of Object.keys(spec.ins)) {
 		if (RESERVED_HANDLE_NAMES.has(name)) throw reservedPortError(spec, name, "input");
 	}
@@ -165,10 +169,13 @@ function reservedPortError(spec: ModuleSpec, name: string, kind: string): Error 
 }
 
 function unknownPropMessage(prop: string, spec: ModuleSpec): string {
+	const specs = currentSpecs();
+	const defined =
+		specs && specs.size > 0 ? ` Patch-defined modules: [${[...specs.keys()].join(", ")}]` : "";
 	return (
 		`'${prop}' is not an input, output, or module for '${spec.name}'. ` +
 		`inputs: [${Object.keys(spec.ins).join(", ")}], outputs: [${Object.keys(spec.outs).join(", ")}]. ` +
 		`Set an input by calling it (h.${Object.keys(spec.ins)[0] ?? "input"}(x)), tap an output by name, ` +
-		`or chain to a registered module. Known modules: [${[...getRegistry().keys()].join(", ")}]`
+		`or chain to a registered module. Known modules: [${[...getRegistry().keys()].join(", ")}]${defined}`
 	);
 }

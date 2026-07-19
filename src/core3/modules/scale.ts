@@ -1,9 +1,11 @@
+import { defmod } from "../patch/defmod";
 import { sig } from "../types";
-import { defineMap } from "./define-typed";
 
 /** Map `in` from [from, to] onto [min, max] linearly (default: bipolar → unipolar). */
-export const scale = defineMap({
+defmod({
 	name: "scale",
+	category: "utils",
+	doc: "Remaps a signal from one range onto another.",
 	ins: { in: sig(0), from: sig(-1), to: sig(1), min: sig(0), max: sig(1) },
 	outs: { out: sig() },
 	defaultIn: "in",

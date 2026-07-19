@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { noise } from "@/core3/modules/noise";
+import "@/core3/modules/noise";
+import { getModule } from "@/core3/module/define";
 import { driver, maxAbs } from "./helpers";
+
+const noise = getModule("noise");
 
 describe("noise", () => {
 	it("is deterministic for a given seed", () => {

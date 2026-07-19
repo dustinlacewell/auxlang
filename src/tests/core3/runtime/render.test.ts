@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { defineModule, getRegistry } from "@/core3/module/define";
+import { getRegistry } from "@/core3/module/define";
+import { defmod } from "@/core3/patch/defmod";
 import { createEngine } from "@/core3/runtime/engine";
 import { render } from "@/core3/runtime/render";
 import { sig } from "@/core3/types";
 import { type IO, type St, c, n, pnode, prog } from "./helpers";
 
-defineModule({
+defmod({
 	name: "rn.osc",
+	category: "utils",
 	ins: { freq: sig(440) },
 	outs: { out: sig() },
 	defaultIn: "freq",
@@ -19,8 +21,9 @@ defineModule({
 	},
 });
 
-defineModule({
+defmod({
 	name: "rn.split",
+	category: "utils",
 	ins: { in: sig(0) },
 	outs: { l: sig(), r: sig() },
 	defaultIn: "in",
@@ -31,8 +34,9 @@ defineModule({
 	},
 });
 
-defineModule({
+defmod({
 	name: "rn.pair",
+	category: "utils",
 	ins: { in: sig(0) },
 	outs: { l: sig(), r: sig() },
 	defaultIn: "in",

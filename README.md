@@ -17,16 +17,19 @@ pnpm install
 pnpm dev
 ```
 
-The dev server serves three pages:
+The dev server serves the site:
 
-- `/` (`index.html`) — the live editor (core3-editor). Edit a patch, hear it,
+- `/` (`index.html`) — landing: what auxlang is, the hello patch, runnable.
+- `/editor.html` — the live editor (core3-editor). Edit a patch, hear it,
   re-evaluate live.
-- `/pattern-tests.html` — pattern and mini-notation documentation, with runnable
+- `/guide.html` — how to write patches, with runnable examples.
+- `/patterns.html` — pattern and mini-notation documentation, with runnable
   examples of every notation form and combinator.
-- `/test-suite.html` — module demos: every module with default, all-params,
+- `/modules.html` — module demos: every module with default, all-params,
   modulated, and showcase examples.
 
-(`/core2.html` is the retired previous engine; the current language is core3.)
+(`/core2.html` is the retired previous engine, unlisted; the current language
+is core3.)
 
 ## Hello patch
 

@@ -1,5 +1,5 @@
+import { defmod } from "../patch/defmod";
 import { secs, sig, unit } from "../types";
-import { defineMap } from "./define-typed";
 
 /**
  * Feedback delay with a fractional (linearly interpolated) read head. The delay
@@ -8,8 +8,10 @@ import { defineMap } from "./define-typed";
  */
 const MAX_SECS = 4;
 
-export const delay = defineMap({
+defmod({
 	name: "delay",
+	category: "effects",
+	doc: "Feedback delay — echoes with a wet/dry mix.",
 	ins: {
 		in: sig(0),
 		time: secs(0.25),

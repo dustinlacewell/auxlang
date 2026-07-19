@@ -11,6 +11,7 @@ import { getModule } from "../module/define";
 import { evalCtx } from "./context";
 import { wrap } from "./handle";
 import { type Handle, handleData, isHandle } from "./handle-data";
+import { resolvePatchModule } from "./resolve";
 
 export function loop(f: (fed: Handle) => unknown): Handle {
 	evalCtx("loop()");
@@ -23,7 +24,7 @@ export function loop(f: (fed: Handle) => unknown): Handle {
 	}
 
 	const data = handleData(result);
-	const port = data.port ?? getModule(data.node.module).defaultOut;
+	const port = data.port ?? resolvePatchModule(data.node.module).defaultOut;
 	placeholder.inputs[z1.defaultIn] = { z: { node: data.node, port } };
 	return result;
 }

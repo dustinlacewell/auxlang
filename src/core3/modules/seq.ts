@@ -1,9 +1,9 @@
+import { defmod } from "../patch/defmod";
 import type { Pat } from "../pattern/ast";
 import { query } from "../pattern/query";
 import { r } from "../pattern/rational";
 import { packLanes } from "../pattern/widths";
 import { gatePort, phasePort, semis, trigPort } from "../types";
-import { defineMap } from "./define-typed";
 import { advanceTrack, fillTrack, trackStateFields } from "./pattern-track";
 
 /**
@@ -19,8 +19,10 @@ import { advanceTrack, fillTrack, trackStateFields } from "./pattern-track";
  *          (tempo-independent) unless the event ties onward
  *   trig   single-sample 1 at each non-tied onset (tiePrev suppresses)
  */
-export const seq = defineMap({
+defmod({
 	name: "seq",
+	category: "timing",
+	doc: "Plays a pattern against the clock; outputs pitch, gate, and trig.",
 	ins: { clk: phasePort(0) },
 	outs: { pitch: semis(0), gate: gatePort(), trig: trigPort() },
 	defaultIn: "clk",

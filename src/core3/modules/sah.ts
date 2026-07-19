@@ -1,9 +1,11 @@
+import { defmod } from "../patch/defmod";
 import { sig, trigPort } from "../types";
-import { defineMap } from "./define-typed";
 
 /** Sample & hold — latches `in` when `trig` crosses 0.5, holds otherwise. */
-export const sah = defineMap({
+defmod({
 	name: "sah",
+	category: "utils",
+	doc: "Sample and hold: freezes the input on each trigger.",
 	ins: { in: sig(0), trig: trigPort() },
 	outs: { out: sig() },
 	defaultIn: "in",

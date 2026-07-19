@@ -1,19 +1,37 @@
 import { describe, expect, it } from "vitest";
 
-import { abs } from "@/core3/modules/abs";
-import { add } from "@/core3/modules/add";
-import { clip } from "@/core3/modules/clip";
-import { eq, gt, lt } from "@/core3/modules/cmp";
-import { div } from "@/core3/modules/div";
-import { mod } from "@/core3/modules/mod";
-import { mul, vca } from "@/core3/modules/mul";
-import { pan } from "@/core3/modules/pan";
-import { sah } from "@/core3/modules/sah";
-import { scale } from "@/core3/modules/scale";
-import { slew } from "@/core3/modules/slew";
-import { sub } from "@/core3/modules/sub";
-import { z1 } from "@/core3/modules/z1";
+import "@/core3/modules/abs";
+import "@/core3/modules/add";
+import "@/core3/modules/clip";
+import "@/core3/modules/cmp";
+import "@/core3/modules/div";
+import "@/core3/modules/mod";
+import "@/core3/modules/mul";
+import "@/core3/modules/pan";
+import "@/core3/modules/sah";
+import "@/core3/modules/scale";
+import "@/core3/modules/slew";
+import "@/core3/modules/sub";
+import "@/core3/modules/z1";
+import { getModule } from "@/core3/module/define";
 import { SR, driver } from "./helpers";
+
+const abs = getModule("abs");
+const add = getModule("add");
+const clip = getModule("clip");
+const gt = getModule("gt");
+const lt = getModule("lt");
+const eq = getModule("eq");
+const div = getModule("div");
+const mod = getModule("mod");
+const mul = getModule("mul");
+const vca = getModule("vca");
+const pan = getModule("pan");
+const sah = getModule("sah");
+const scale = getModule("scale");
+const slew = getModule("slew");
+const sub = getModule("sub");
+const z1 = getModule("z1");
 
 describe("z1", () => {
 	it("tick is a passthrough — the one-sample delay lives on the compiled z-edge", () => {

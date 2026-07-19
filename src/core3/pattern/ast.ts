@@ -44,6 +44,42 @@ export type Pat =
 	| { readonly op: "every"; readonly n: number; readonly child: Pat; readonly transformed: Pat }
 	// Tie markers (from notation `a_b`): flag emitted events.
 	| { readonly op: "tieNext"; readonly child: Pat }
-	| { readonly op: "tiePrev"; readonly child: Pat };
+	| { readonly op: "tiePrev"; readonly child: Pat }
+	// Keep child events whose onset lands in a "true" (nonzero) region of bool.
+	| { readonly op: "mask"; readonly bool: Pat; readonly child: Pat }
+	// Emit an event at each true step of bool, sampling child's value there.
+	| { readonly op: "struct"; readonly bool: Pat; readonly child: Pat }
+	// Sample-and-hold child into n discrete steps per cycle.
+	| { readonly op: "segment"; readonly n: number; readonly child: Pat }
+	// Scale each event's whole duration by factor (gate length; clamps to [0,1]).
+	| { readonly op: "clip"; readonly factor: number; readonly child: Pat }
+	// every(n)-family with a rotating slice: cycle i applies f to slice i%n of n.
+	| {
+			readonly op: "chunk";
+			readonly n: number;
+			readonly child: Pat;
+			readonly transformed: Pat;
+	  }
+	// Per-event probabilistic transform: keep f(child) with probability prob.
+	| {
+			readonly op: "sometimesBy";
+			readonly prob: number;
+			readonly child: Pat;
+			readonly transformed: Pat;
+	  }
+	// Continuous 0..1 signal sampled at query time (rand is seeded S&H per cycle).
+	| { readonly op: "signal"; readonly kind: SignalKind }
+	// Map integer index events onto a per-slot chord-tone table (baked notes).
+	// Slot for cycle c = tables[floor(c/per) mod tables.length]; index i picks
+	// table[i mod len] + 12*floor(i/len) so indices past the top wrap up octaves.
+	| {
+			readonly op: "chordidx";
+			readonly tables: readonly (readonly number[])[];
+			readonly per: number;
+			readonly child: Pat;
+	  };
+
+/** Continuous pattern generators, sampled wherever a value is needed. */
+export type SignalKind = "rand" | "perlin" | "sine" | "saw" | "tri" | "isaw";
 
 export type PatOp = Pat["op"];

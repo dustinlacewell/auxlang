@@ -1,6 +1,5 @@
-import type { ModuleSpec } from "../types";
+import { defmod } from "../patch/defmod";
 import { hz, optional, semis, sig, unit } from "../types";
-import { defineMap } from "./define-typed";
 
 /**
  * Oscillator family (osc/sin/saw/tri/sqr).
@@ -46,9 +45,11 @@ function sample(shape: Shape, phase: number, dt: number): number {
 	return phase < 0.5 ? 4 * phase - 1 : 3 - 4 * phase;
 }
 
-function createOsc(name: string, shape: Shape): ModuleSpec {
-	return defineMap({
+function createOsc(name: string, shape: Shape, doc: string): void {
+	defmod({
 		name,
+		category: "sources",
+		doc,
 		ins: {
 			pitch: semis(69),
 			freq: optional(hz(null)),
@@ -80,8 +81,8 @@ function createOsc(name: string, shape: Shape): ModuleSpec {
 	});
 }
 
-export const osc = createOsc("osc", "sin");
-export const sin = createOsc("sin", "sin");
-export const saw = createOsc("saw", "saw");
-export const tri = createOsc("tri", "tri");
-export const sqr = createOsc("sqr", "sqr");
+createOsc("osc", "sin", "Sine oscillator.");
+createOsc("sin", "sin", "Sine oscillator.");
+createOsc("saw", "saw", "Sawtooth oscillator, band-limited.");
+createOsc("tri", "tri", "Triangle oscillator.");
+createOsc("sqr", "sqr", "Square oscillator, band-limited.");

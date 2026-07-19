@@ -10,6 +10,7 @@
 import { getRegistry } from "../../module/define";
 import type { Program } from "../../types";
 import { Core3Engine } from "../engine";
+import { withProgramSpecs } from "../hydrate-specs";
 import type { WorkletMessage, WorkletReply } from "./messages";
 
 declare const sampleRate: number;
@@ -44,21 +45,32 @@ class Core3Processor extends AudioWorkletProcessor {
 	private handle(message: WorkletMessage): void {
 		if (message.type === "swap") this.swap(message.program);
 		else if (message.type === "stop") {
-			this.engine = null;
-			this.fading = null;
+			// Fade to silence instead of cutting mid-waveform: the live engine
+			// becomes the fading engine with no successor.
+			if (this.engine !== null) {
+				this.fading = this.engine;
+				this.fadePos = 0;
+				this.engine = null;
+			}
 		}
 	}
 
 	private swap(program: Program): void {
 		try {
-			const registry = getRegistry();
-			if (this.engine === null) {
+			// Patch-defined specs hydrate into a per-engine layered map; the global
+			// registry is never written, so two crossfading engines can safely
+			// carry different same-named specs.
+			const registry = withProgramSpecs(getRegistry(), program);
+			// A stop-fading engine still counts as "previous": a quick re-run
+			// migrates its state and crossfades from it.
+			const prev = this.engine ?? this.fading;
+			if (prev === null) {
 				this.engine = new Core3Engine(program, sampleRate, registry);
 				this.fading = null;
 				return;
 			}
-			const next = new Core3Engine(program, sampleRate, registry, this.engine.collectState());
-			this.fading = this.engine; // any engine already fading is dropped here
+			const next = new Core3Engine(program, sampleRate, registry, prev.collectState());
+			this.fading = prev; // any engine already fading is dropped here
 			this.fadePos = 0;
 			this.engine = next;
 		} catch (err) {
@@ -80,17 +92,20 @@ class Core3Processor extends AudioWorkletProcessor {
 				engine.tick(this.frame);
 				l = this.frame[0] as number;
 				r = this.frame[1] as number;
-				const fading = this.fading;
-				if (fading !== null) {
-					fading.tick(this.fadeFrame);
-					const t = this.fadePos / this.fadeLen;
-					const gNew = Math.sin(t * HALF_PI);
-					const gOld = Math.cos(t * HALF_PI);
-					l = l * gNew + (this.fadeFrame[0] as number) * gOld;
-					r = r * gNew + (this.fadeFrame[1] as number) * gOld;
-					this.fadePos++;
-					if (this.fadePos >= this.fadeLen) this.fading = null;
-				}
+			}
+			// The fade runs with or without a successor engine: crossfade on
+			// swap (engine set), fade to silence on stop (engine null — the
+			// gNew ramp scales the zero frame, leaving just the fade-out).
+			const fading = this.fading;
+			if (fading !== null) {
+				fading.tick(this.fadeFrame);
+				const t = this.fadePos / this.fadeLen;
+				const gNew = Math.sin(t * HALF_PI);
+				const gOld = Math.cos(t * HALF_PI);
+				l = l * gNew + (this.fadeFrame[0] as number) * gOld;
+				r = r * gNew + (this.fadeFrame[1] as number) * gOld;
+				this.fadePos++;
+				if (this.fadePos >= this.fadeLen) this.fading = null;
 			}
 			if (ch1 !== null) {
 				ch0[i] = l;

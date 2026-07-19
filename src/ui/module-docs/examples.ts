@@ -14,18 +14,6 @@
 
 import type { DocExample } from "@/ui/docs-kit/doc-example";
 
-/** Ordered list of section headings — drives page layout order. */
-export const SECTIONS: readonly string[] = [
-	"Sources",
-	"Filters",
-	"Envelopes",
-	"Effects",
-	"Utils",
-	"Math",
-	"Timing",
-	"Drums",
-];
-
 export const EXAMPLES: readonly DocExample[] = [
 	// ======================================================================
 	// Sources — osc/sin/saw/tri/sqr, noise
@@ -33,7 +21,8 @@ export const EXAMPLES: readonly DocExample[] = [
 	{
 		section: "Sources",
 		title: "sin — default",
-		description: "A bare sine at its default pitch (A4, 440 Hz): one pure, steady tone, no harmonics.",
+		description:
+			"A bare sine at its default pitch (A4, 440 Hz): one pure, steady tone, no harmonics.",
 		code: `sin()
   .gain(0.3)
   .out()`,
@@ -41,14 +30,16 @@ export const EXAMPLES: readonly DocExample[] = [
 	{
 		section: "Sources",
 		title: "sin — all params",
-		description: "Every port set: freq drives it to 220 Hz and the output is squeezed into [-0.4, 0.4] — a quiet low sine.",
+		description:
+			"Every port set: freq drives it to 220 Hz and the output is squeezed into [-0.4, 0.4] — a quiet low sine.",
 		code: `sin({ freq: 220, min: -0.4, max: 0.4, phase: 0 })
   .out()`,
 	},
 	{
 		section: "Sources",
 		title: "sin — freq modulated",
-		description: "A slow LFO sweeps the pitch between 200 and 600 Hz — a gentle siren wandering up and down.",
+		description:
+			"A slow LFO sweeps the pitch between 200 and 600 Hz — a gentle siren wandering up and down.",
 		code: `sin(sin(0.2, 200, 600))
   .gain(0.3)
   .out()`,
@@ -56,7 +47,8 @@ export const EXAMPLES: readonly DocExample[] = [
 	{
 		section: "Sources",
 		title: "sin — pitch modulated",
-		description: "Driven by pitch (semitones) instead of freq: an LFO walks pitch 48→72, a smooth four-octave glide.",
+		description:
+			"Driven by pitch (semitones) instead of freq: an LFO walks pitch 48→72, a smooth four-octave glide.",
 		code: `sin()
   .pitch(sin(0.2, 48, 72))
   .gain(0.3)
@@ -65,14 +57,16 @@ export const EXAMPLES: readonly DocExample[] = [
 	{
 		section: "Sources",
 		title: "sin — showcase",
-		description: "Two sines half a hertz apart, each sent to the output (roots auto-mix) — slow phasing beats as they drift in and out of tune.",
+		description:
+			"Two sines half a hertz apart, each sent to the output (roots auto-mix) — slow phasing beats as they drift in and out of tune.",
 		code: `sin(220).gain(0.2).out()
 sin(220.5).gain(0.2).out()`,
 	},
 	{
 		section: "Sources",
 		title: "tri — default",
-		description: "A triangle at A4 — softer than a saw, a few odd harmonics rolling off fast. Hollow, flute-ish.",
+		description:
+			"A triangle at A4 — softer than a saw, a few odd harmonics rolling off fast. Hollow, flute-ish.",
 		code: `tri()
   .gain(0.3)
   .out()`,
@@ -87,7 +81,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Sources",
 		title: "tri — freq modulated",
-		description: "A 0.2 Hz LFO sweeps the triangle 150→450 Hz — the same hollow tone, slowly climbing and falling.",
+		description:
+			"A 0.2 Hz LFO sweeps the triangle 150→450 Hz — the same hollow tone, slowly climbing and falling.",
 		code: `tri(sin(0.2, 150, 450))
   .gain(0.3)
   .out()`,
@@ -95,7 +90,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Sources",
 		title: "saw — default",
-		description: "A band-limited saw at A4: bright, buzzy, every harmonic present. The classic subtractive-synth raw material.",
+		description:
+			"A band-limited saw at A4: bright, buzzy, every harmonic present. The classic subtractive-synth raw material.",
 		code: `saw()
   .gain(0.25)
   .out()`,
@@ -103,7 +99,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Sources",
 		title: "saw — freq modulated",
-		description: "A slow LFO sweeps the saw 110→330 Hz — a rising buzz, brightest at the top of the sweep.",
+		description:
+			"A slow LFO sweeps the saw 110→330 Hz — a rising buzz, brightest at the top of the sweep.",
 		code: `saw(sin(0.2, 110, 330))
   .gain(0.2)
   .out()`,
@@ -127,15 +124,26 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Sources",
 		title: "osc — default",
-		description: "osc is the generic oscillator (sine shape by default): a plain A4 tone, same as sin.",
+		description:
+			"osc is the generic oscillator (sine shape by default): a plain A4 tone, same as sin.",
 		code: `osc()
   .gain(0.3)
   .out()`,
 	},
 	{
 		section: "Sources",
+		title: "osc — as LFO (min/max)",
+		description:
+			"min/max map the waveform into a control range — that's all an LFO is. A 2 Hz osc in [0, 0.4] wobbles the gain.",
+		code: `sin(330)
+  .gain(osc(2, 0, 0.4))
+  .out()`,
+	},
+	{
+		section: "Sources",
 		title: "noise — default",
-		description: "White noise, uniform in [-1, 1] — a steady wash of hiss, every frequency at once.",
+		description:
+			"White noise, uniform in [-1, 1] — a steady wash of hiss, every frequency at once.",
 		code: `noise()
   .gain(0.2)
   .out()`,
@@ -143,14 +151,15 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Sources",
 		title: "noise — range set",
-		description: "Noise clamped to [-0.3, 0.3]: the same hiss, quieter — the range ports set its amplitude directly.",
+		description: "min/max are noise's only ports — amplitude set at the source, no gain needed.",
 		code: `noise({ min: -0.3, max: 0.3 })
   .out()`,
 	},
 	{
 		section: "Sources",
 		title: "noise — filtered showcase",
-		description: "White noise swept by a resonant lowpass whose cutoff a slow LFO drags 300→4000 Hz — wind rising into a whistle.",
+		description:
+			"White noise swept by a resonant lowpass whose cutoff a slow LFO drags 300→4000 Hz — wind rising into a whistle.",
 		code: `noise()
   .lpf(sin(0.2, 300, 4000), 0.6)
   .gain(0.3)
@@ -163,7 +172,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Filters",
 		title: "lpf — default",
-		description: "A buzzy saw through a lowpass at the default 1 kHz — the top harmonics are gone, leaving a rounder tone.",
+		description:
+			"A buzzy saw through a lowpass at the default 1 kHz — the top harmonics are gone, leaving a rounder tone.",
 		code: `saw(110)
   .lpf()
   .gain(0.3)
@@ -172,7 +182,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Filters",
 		title: "lpf — all params",
-		description: "Cutoff 600 Hz with high resonance — a narrow, whistling peak sits right at the cutoff over the muffled saw.",
+		description:
+			"Cutoff 600 Hz with high resonance — a narrow, whistling peak sits right at the cutoff over the muffled saw.",
 		code: `saw(110)
   .lpf({ cutoff: 600, res: 0.85 })
   .gain(0.3)
@@ -181,7 +192,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Filters",
 		title: "lpf — cutoff modulated",
-		description: "A slow LFO drags the cutoff 200→3000 Hz — the classic filter sweep, dark to bright and back.",
+		description:
+			"A slow LFO drags the cutoff 200→3000 Hz — the classic filter sweep, dark to bright and back.",
 		code: `saw(110)
   .lpf(sin(0.2, 200, 3000), 0.4)
   .gain(0.3)
@@ -190,7 +202,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Filters",
 		title: "lpf — res modulated",
-		description: "Fixed cutoff, but an LFO opens resonance 0→0.9 — the peak at the cutoff grows from flat to a sharp whistle.",
+		description:
+			"Fixed cutoff, but an LFO opens resonance 0→0.9 — the peak at the cutoff grows from flat to a sharp whistle.",
 		code: `saw(110)
   .lpf(800, sin(0.2, 0, 0.9))
   .gain(0.3)
@@ -199,7 +212,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Filters",
 		title: "hpf — default",
-		description: "A saw through a highpass at 1 kHz — the body is scooped out, leaving a thin, fizzy top.",
+		description:
+			"A saw through a highpass at 1 kHz — the body is scooped out, leaving a thin, fizzy top.",
 		code: `saw(110)
   .hpf()
   .gain(0.3)
@@ -208,7 +222,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Filters",
 		title: "hpf — cutoff modulated",
-		description: "An LFO sweeps the highpass cutoff 200→3000 Hz — the low end drains away as the sweep rises.",
+		description:
+			"An LFO sweeps the highpass cutoff 200→3000 Hz — the low end drains away as the sweep rises.",
 		code: `saw(110)
   .hpf(sin(0.2, 200, 3000), 0.4)
   .gain(0.3)
@@ -217,7 +232,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Filters",
 		title: "bpf — default",
-		description: "A bandpass at 1 kHz — only a slice of the saw around the cutoff survives, a nasal, telephone-like tone.",
+		description:
+			"A bandpass at 1 kHz — only a slice of the saw around the cutoff survives, a nasal, telephone-like tone.",
 		code: `saw(110)
   .bpf({ cutoff: 1000, res: 0.6 })
   .gain(0.4)
@@ -226,7 +242,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Filters",
 		title: "bpf — cutoff modulated",
-		description: "An LFO slides the bandpass 300→2500 Hz — a wah as the surviving slice of harmonics moves up and down.",
+		description:
+			"An LFO slides the bandpass 300→2500 Hz — a wah as the surviving slice of harmonics moves up and down.",
 		code: `saw(110)
   .bpf(sin(0.2, 300, 2500), 0.7)
   .gain(0.4)
@@ -235,7 +252,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Filters",
 		title: "notch — default",
-		description: "A notch at 1 kHz over noise — one narrow band is scooped out of the hiss, a subtle hollow in the wash.",
+		description:
+			"A notch at 1 kHz over noise — one narrow band is scooped out of the hiss, a subtle hollow in the wash.",
 		code: `noise()
   .notch({ cutoff: 1000, res: 0.7 })
   .gain(0.3)
@@ -244,7 +262,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Filters",
 		title: "notch — cutoff modulated (showcase)",
-		description: "An LFO sweeps the notch 400→4000 Hz over noise — a phaser-like whoosh as the missing band travels up.",
+		description:
+			"An LFO sweeps the notch 400→4000 Hz over noise — a phaser-like whoosh as the missing band travels up.",
 		code: `noise()
   .notch(sin(0.15, 400, 4000), 0.8)
   .gain(0.3)
@@ -257,7 +276,8 @@ sin(220.5).gain(0.2).out()`,
 	{
 		section: "Envelopes",
 		title: "ad — default",
-		description: "A tone pinged by an attack-decay envelope on every clock beat — a short pluck, silent between hits.",
+		description:
+			"A tone pinged by an attack-decay envelope on every clock beat — a short pluck, silent between hits.",
 		code: `const c = clock(120)
 sin(330)
   .mul(c.gate.ad())
@@ -267,7 +287,8 @@ sin(330)
 	{
 		section: "Envelopes",
 		title: "ad — all params",
-		description: "Slow 50 ms attack, long 400 ms decay — each beat swells in and rings out, more bell than pluck.",
+		description:
+			"Slow 50 ms attack, long 400 ms decay — each beat swells in and rings out, more bell than pluck.",
 		code: `const c = clock(120)
 sin(330)
   .mul(c.gate.ad(0.05, 0.4))
@@ -277,7 +298,8 @@ sin(330)
 	{
 		section: "Envelopes",
 		title: "ad — decay modulated",
-		description: "An LFO stretches the decay 0.05→0.6 s over time — plucks that grow longer and shorter as it breathes.",
+		description:
+			"An LFO stretches the decay 0.05→0.6 s over time — plucks that grow longer and shorter as it breathes.",
 		code: `const c = clock(120)
 sin(330)
   .mul(c.gate.ad(0.005, sin(0.2, 0.05, 0.6)))
@@ -287,7 +309,8 @@ sin(330)
 	{
 		section: "Envelopes",
 		title: "ar — default",
-		description: "An attack-release envelope tracks the clock gate — the tone holds while the gate is high, then releases.",
+		description:
+			"An attack-release envelope tracks the clock gate — the tone holds while the gate is high, then releases.",
 		code: `const c = clock(120)
 tri(220)
   .mul(c.gate.ar())
@@ -297,7 +320,8 @@ tri(220)
 	{
 		section: "Envelopes",
 		title: "ar — all params",
-		description: "Soft 80 ms attack, long 300 ms release — each gated note fades in and trails off, a pad-like swell.",
+		description:
+			"Soft 80 ms attack, long 300 ms release — each gated note fades in and trails off, a pad-like swell.",
 		code: `const c = clock(90)
 tri(220)
   .mul(c.gate.ar(0.08, 0.3))
@@ -307,7 +331,8 @@ tri(220)
 	{
 		section: "Envelopes",
 		title: "ar — release modulated",
-		description: "An LFO drags the release 0.05→0.6 s — the tail on each note grows and shrinks as the sweep moves.",
+		description:
+			"An LFO drags the release 0.05→0.6 s — the tail on each note grows and shrinks as the sweep moves.",
 		code: `const c = clock(120)
 tri(220)
   .mul(c.gate.ar(0.01, sin(0.2, 0.05, 0.6)))
@@ -317,7 +342,8 @@ tri(220)
 	{
 		section: "Envelopes",
 		title: "adsr — default",
-		description: "The full envelope on each clock beat — attack, decay to a held sustain, then release. A rounded organ-ish note.",
+		description:
+			"The full envelope on each clock beat — attack, decay to a held sustain, then release. A rounded organ-ish note.",
 		code: `const c = clock(90)
 tri(220)
   .mul(c.gate.adsr())
@@ -327,7 +353,8 @@ tri(220)
 	{
 		section: "Envelopes",
 		title: "adsr — all params",
-		description: "Every stage set: snappy attack, quick decay to a low 0.3 sustain, long release — a plucky note with a tail.",
+		description:
+			"Every stage set: snappy attack, quick decay to a low 0.3 sustain, long release — a plucky note with a tail.",
 		code: `const c = clock(90)
 tri(220)
   .mul(c.gate.adsr(0.01, 0.12, 0.3, 0.35))
@@ -337,7 +364,8 @@ tri(220)
 	{
 		section: "Envelopes",
 		title: "adsr — sustain modulated",
-		description: "An LFO moves the sustain level 0.1→0.9 — the held middle of each note rises and falls between beats.",
+		description:
+			"An LFO moves the sustain level 0.1→0.9 — the held middle of each note rises and falls between beats.",
 		code: `const c = clock(90)
 tri(220)
   .mul(c.gate.adsr(0.01, 0.1, sin(0.2, 0.1, 0.9), 0.2))
@@ -347,7 +375,8 @@ tri(220)
 	{
 		section: "Envelopes",
 		title: "adsr — attack modulated",
-		description: "An LFO stretches the attack 0.002→0.3 s — notes shift from sharp plucks to slow swells and back.",
+		description:
+			"An LFO stretches the attack 0.002→0.3 s — notes shift from sharp plucks to slow swells and back.",
 		code: `const c = clock(90)
 tri(220)
   .mul(c.gate.adsr(sin(0.2, 0.002, 0.3), 0.1, 0.5, 0.2))
@@ -357,7 +386,8 @@ tri(220)
 	{
 		section: "Envelopes",
 		title: "adsr — showcase",
-		description: "A sequenced bass, each note shaped by a plucky ADSR and rounded by a lowpass — a bouncing, musical line.",
+		description:
+			"A sequenced bass, each note shaped by a plucky ADSR and rounded by a lowpass — a bouncing, musical line.",
 		code: `clock(120)
 const s = seq("c2 g2 c3 eb2 g2 c3 f2 g2")
 s.tri()
@@ -373,7 +403,8 @@ s.tri()
 	{
 		section: "Effects",
 		title: "delay — default",
-		description: "A plucked tone through the default 0.25 s delay — one clear echo trailing each note at 50% wet.",
+		description:
+			"A plucked tone through the default 0.25 s delay — one clear echo trailing each note at 50% wet.",
 		code: `const c = clock(90)
 sin(440)
   .mul(c.gate.ad(0.005, 0.1))
@@ -384,7 +415,8 @@ sin(440)
 	{
 		section: "Effects",
 		title: "delay — all params",
-		description: "Short 150 ms time, high 0.6 feedback, 0.4 mix — plucks smear into a repeating, decaying trail.",
+		description:
+			"Short 150 ms time, high 0.6 feedback, 0.4 mix — plucks smear into a repeating, decaying trail.",
 		code: `const c = clock(90)
 sin(440)
   .mul(c.gate.ad(0.005, 0.08))
@@ -395,7 +427,8 @@ sin(440)
 	{
 		section: "Effects",
 		title: "delay — time modulated",
-		description: "An LFO slides the delay time 0.05→0.4 s — the echo spacing stretches and squeezes, a tape-warble pitch bend.",
+		description:
+			"An LFO slides the delay time 0.05→0.4 s — the echo spacing stretches and squeezes, a tape-warble pitch bend.",
 		code: `const c = clock(90)
 tri(330)
   .mul(c.gate.ad(0.005, 0.1))
@@ -406,7 +439,8 @@ tri(330)
 	{
 		section: "Effects",
 		title: "delay — feedback modulated",
-		description: "An LFO opens feedback 0.1→0.85 — the echo tail lengthens from a single slap to a long repeating wash.",
+		description:
+			"An LFO opens feedback 0.1→0.85 — the echo tail lengthens from a single slap to a long repeating wash.",
 		code: `const c = clock(90)
 tri(330)
   .mul(c.gate.ad(0.005, 0.1))
@@ -417,7 +451,8 @@ tri(330)
 	{
 		section: "Effects",
 		title: "delay — mix modulated",
-		description: "An LFO crossfades mix 0→0.8 — the effect fades between dry plucks and drowning echoes.",
+		description:
+			"An LFO crossfades mix 0→0.8 — the effect fades between dry plucks and drowning echoes.",
 		code: `const c = clock(90)
 tri(330)
   .mul(c.gate.ad(0.005, 0.1))
@@ -427,8 +462,69 @@ tri(330)
 	},
 	{
 		section: "Effects",
+		title: "reverb — default",
+		description:
+			"A plucked tone into the default reverb (room 0.5, mix 0.33) — a short, natural room tail behind each note.",
+		code: `const c = clock(70)
+sin(440)
+  .mul(c.gate.ad(0.005, 0.08))
+  .reverb()
+  .gain(0.7)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "reverb — all params",
+		description:
+			"Every port: a big 0.9 room, dark 0.7 damp, fully wet — the pluck dissolves into a long, dim cathedral wash.",
+		code: `const c = clock(70)
+sin(440)
+  .mul(c.gate.ad(0.005, 0.08))
+  .reverb({ room: 0.9, damp: 0.7, mix: 1 })
+  .gain(0.6)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "reverb — room modulated",
+		description:
+			"An LFO sweeps room 0.2→0.95 — the tail grows from a tight closet slap to a huge decaying hall.",
+		code: `const c = clock(70)
+sin(440)
+  .mul(c.gate.ad(0.005, 0.08))
+  .reverb(sin(0.15, 0.2, 0.95), 0.5, 0.7)
+  .gain(0.6)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "reverb — damp modulated",
+		description:
+			"An LFO opens damp 0→0.9 — the tail's top end darkens and brightens, from a bright glassy ring to a muffled thud.",
+		code: `const c = clock(70)
+sin(440)
+  .mul(c.gate.ad(0.005, 0.08))
+  .reverb(0.8, sin(0.15, 0, 0.9), 0.7)
+  .gain(0.6)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "reverb — mix modulated (showcase)",
+		description:
+			"An LFO crossfades mix 0→1 over a sparse pattern — plucks swing between bone-dry and fully drowned in tail.",
+		code: `const c = clock(70)
+sin(440)
+  .mul(c.gate.ad(0.005, 0.08))
+  .reverb(0.85, 0.4, sin(0.1, 0, 1))
+  .gain(0.6)
+  .out()`,
+	},
+	{
+		section: "Effects",
 		title: "pan — default",
-		description: "A tone with pan at center (pos 0) — equal in both ears. Both jacks are patched to the master's l/r so the placement survives.",
+		description:
+			"A tone with pan at center (pos 0) — equal in both ears. Both jacks are patched to the master's l/r so the placement survives.",
 		code: `sin(330)
   .gain(0.3)
   .pan()
@@ -437,7 +533,8 @@ tri(330)
 	{
 		section: "Effects",
 		title: "pan — pos modulated (showcase)",
-		description: "A slow LFO drives pan pos -1→1 — the tone drifts hard from the left ear to the right and back; L and R trade fully.",
+		description:
+			"A slow LFO drives pan pos -1→1 — the tone drifts hard from the left ear to the right and back; L and R trade fully.",
 		code: `sin(330)
   .gain(0.3)
   .pan(sin(0.3, -1, 1))
@@ -445,20 +542,20 @@ tri(330)
 	},
 
 	// ======================================================================
-	// Utils — gain/mul, slew, sah, scale, quantize, mix, z1
+	// Utils — gain/mul/vca, slew, sah, scale, quantize, mix, z1, out
 	// ======================================================================
 	{
 		section: "Utils",
-		title: "gain — default",
-		description: "gain multiplies a signal by a level. At the default 1 the tone passes through unchanged — full amplitude.",
+		title: "gain — a level",
+		description: "gain multiplies by a level: 0.25 is the same tone at a quarter amplitude.",
 		code: `sin(330)
-  .gain(1)
+  .gain(0.25)
   .out()`,
 	},
 	{
 		section: "Utils",
 		title: "gain — level modulated",
-		description: "An LFO drives the gain level 0→0.5 — the tone swells and dips, a slow tremolo carved by the level input.",
+		description: "An LFO on the level, 0→0.5 — tremolo. A moving gain is all tremolo is.",
 		code: `sin(330)
   .gain(sin(0.5, 0, 0.5))
   .out()`,
@@ -466,7 +563,8 @@ tri(330)
 	{
 		section: "Utils",
 		title: "mul — as ring-mod (showcase)",
-		description: "Two sines multiplied: a 330 Hz tone times a 140 Hz tone — ring modulation, producing metallic sum/difference tones.",
+		description:
+			"Two audio-rate sines multiplied — ring modulation. Neither input pitch survives; you hear their sum and difference.",
 		code: `sin(330)
   .mul(sin(140))
   .gain(0.3)
@@ -474,8 +572,43 @@ tri(330)
 	},
 	{
 		section: "Utils",
+		title: "mul — tremolo into sidebands (showcase)",
+		description:
+			"Tremolo accelerated into the audio band: past ~20 Hz the wobble fuses into sideband tones — modulation becomes timbre.",
+		code: `sin(330)
+  .mul(sin(sin(0.1, 2, 250), 0, 1))
+  .gain(0.4)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "vca — the canonical patch",
+		description:
+			"Same module as mul and gain, named for the patch: audio in, envelope on the other input. Every note in these docs is this.",
+		code: `const c = clock(120)
+sin(330)
+  .vca(c.gate.adsr(0.01, 0.1, 0.6, 0.15))
+  .gain(0.4)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "vca — sidechain duck (showcase)",
+		description:
+			"The kick's envelope inverted (1 − env) drives the saw's vca — it ducks on every hit. The pump.",
+		code: `const c = clock(120)
+c.trig.kick().gain(0.7).out()
+saw(220)
+  .lpf(1400, 0.2)
+  .gain(0.25)
+  .vca(c.trig.ad(0.005, 0.3).sub(1))
+  .out()`,
+	},
+	{
+		section: "Utils",
 		title: "slew — default",
-		description: "A stepped LFO (sample-and-held) fed through slew — the jumps are rounded into glides. Portamento on pitch.",
+		description:
+			"A stepped LFO (sample-and-held) fed through slew — the jumps are rounded into glides. Portamento on pitch.",
 		code: `const c = clock(240)
 sin()
   .pitch(sin(0.4, 40, 70).sah(c.trig).slew(0.08, 0.08))
@@ -485,7 +618,8 @@ sin()
 	{
 		section: "Utils",
 		title: "slew — rate modulated",
-		description: "The same stepped pitch, but an LFO stretches the glide time 0.01→0.3 s — slides from instant jumps to lazy swoops.",
+		description:
+			"The same stepped pitch, but an LFO stretches the glide time 0.01→0.3 s — slides from instant jumps to lazy swoops.",
 		code: `const c = clock(240)
 const g = sin(0.2, 0.01, 0.3)
 sin()
@@ -496,7 +630,8 @@ sin()
 	{
 		section: "Utils",
 		title: "sah — default",
-		description: "White noise sampled and held on each clock trig — a staircase of random pitches, a classic random-note generator.",
+		description:
+			"White noise sampled and held on each clock trig — a staircase of random pitches, a classic random-note generator.",
 		code: `const c = clock(300)
 sin()
   .pitch(noise().scale({ min: 40, max: 76 }).sah(c.trig))
@@ -506,7 +641,8 @@ sin()
 	{
 		section: "Utils",
 		title: "sah — showcase (random arp)",
-		description: "Sampled noise quantized to a pentatonic scale on every trig — a tuneful random melody instead of atonal jumps.",
+		description:
+			"Sampled noise quantized to a pentatonic scale on every trig — a tuneful random melody instead of atonal jumps.",
 		code: `const c = clock(360)
 const notes = noise().scale({ min: 48, max: 84 }).sah(c.trig)
 sin()
@@ -518,7 +654,8 @@ sin()
 	{
 		section: "Utils",
 		title: "scale — default",
-		description: "scale maps a bipolar LFO [-1,1] onto [0,1]: here it drives gain, a smooth tremolo from a raw LFO.",
+		description:
+			"scale maps a bipolar LFO [-1,1] onto [0,1]: here it drives gain, a smooth tremolo from a raw LFO.",
 		code: `sin(330)
   .gain(sin(0.5).scale({ min: 0, max: 0.5 }))
   .out()`,
@@ -526,7 +663,8 @@ sin()
 	{
 		section: "Utils",
 		title: "scale — showcase (LFO to cutoff)",
-		description: "A bipolar sine LFO scaled to [300, 3000] Hz drives a filter cutoff — the idiom for remapping any modulator's range.",
+		description:
+			"A bipolar sine LFO scaled to [300, 3000] Hz drives a filter cutoff — the idiom for remapping any modulator's range.",
 		code: `saw(110)
   .lpf(sin(0.2).scale({ min: 300, max: 3000 }), 0.4)
   .gain(0.3)
@@ -535,7 +673,8 @@ sin()
 	{
 		section: "Utils",
 		title: "quantize — default",
-		description: "A smooth LFO pitch snapped to the major scale — the continuous glide becomes a staircase of in-key notes.",
+		description:
+			"A smooth LFO pitch snapped to the major scale — the continuous glide becomes a staircase of in-key notes.",
 		code: `const c = clock(240)
 sin()
   .pitch(sin(0.3, 48, 72).quantize({ scaleName: "major", root: 0, octave: 4, range: 2 }))
@@ -546,7 +685,8 @@ sin()
 	{
 		section: "Utils",
 		title: "quantize — scale modulated (showcase)",
-		description: "An LFO-swept pitch snapped to a blues scale, root walking with another LFO — a wandering but always in-key line.",
+		description:
+			"An LFO-swept pitch snapped to a blues scale, root walking with another LFO — a wandering but always in-key line.",
 		code: `const c = clock(300)
 sin()
   .pitch(sin(0.2, 40, 76).quantize({ scaleName: "pentatonic blues", root: sin(0.07, 0, 11), octave: 4, range: 3 }))
@@ -557,7 +697,8 @@ sin()
 	{
 		section: "Utils",
 		title: "mix — poly lanes to mono",
-		description: "A stacked chord {c,e,g} is three poly lanes; mix sums them to one lane with 1/√3 scaling — the chord, folded down without clipping.",
+		description:
+			"A stacked chord {c,e,g} is three poly lanes; mix sums them to one lane with 1/√3 scaling — the chord, folded down without clipping.",
 		code: `clock(90)
 const s = seq("{c3,e3,g3}")
 s.tri()
@@ -568,7 +709,8 @@ s.tri()
 	{
 		section: "Utils",
 		title: "mix — showcase (chord to filter)",
-		description: "A five-note stack mixed to mono, then a resonant lowpass sweep — mix is the summing point that lets one filter shape a whole chord.",
+		description:
+			"A five-note stack mixed to mono, then a resonant lowpass sweep — mix is the summing point that lets one filter shape a whole chord.",
 		code: `clock(80)
 const s = seq("{c3,e3,g3,b3,d4}")
 s.tri()
@@ -580,10 +722,42 @@ s.tri()
 	},
 	{
 		section: "Utils",
-		title: "z1 — one-sample delay (showcase)",
-		description: "A tone added to its own one-sample-delayed copy — a comb filter notching the spectrum, a subtly hollow colour.",
-		code: `const s = saw(110).gain(0.3)
-s.add(s.z1())
+		title: "z1 — average with the last sample",
+		description:
+			"Each sample plus the previous — the highs cancel and the hiss dulls. The one-sample average is the smallest lowpass.",
+		code: `const n = noise().gain(0.3)
+n.add(n.z1())
+  .gain(0.5)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "z1 — difference from the last sample",
+		description:
+			"Each sample minus the previous — only change survives; the hiss thins and brightens. The unit delay is the atom digital filters are built from.",
+		code: `const n = noise().gain(0.3)
+n.z1().sub(n)
+  .gain(0.5)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "out — the only thing that sounds",
+		description:
+			"Nothing plays until it reaches out; chains that never arrive are pruned. A mono input auto-centers.",
+		code: `sin(330)
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "out — poly auto-spread (showcase)",
+		description:
+			"Poly lanes fan across the stereo field at constant power — a four-voice chord gets width with no pan in sight.",
+		code: `clock(90)
+const s = seq("{c2,g2,e3,b3}")
+s.tri()
+  .mul(s.gate.adsr(0.02, 0.1, 0.6, 0.2))
   .gain(0.5)
   .out()`,
 	},
@@ -594,7 +768,8 @@ s.add(s.z1())
 	{
 		section: "Math",
 		title: "add — vibrato (showcase)",
-		description: "A base pitch of 69 with a fast vibrato LFO added in semitones — add offsets any signal, here a wobble on a steady tone.",
+		description:
+			"A base pitch of 69 with a fast vibrato LFO added in semitones — add offsets any signal, here a wobble on a steady tone.",
 		code: `sin()
   .pitch(sin(6, -0.5, 0.5).add(69))
   .gain(0.3)
@@ -603,24 +778,45 @@ s.add(s.z1())
 	{
 		section: "Math",
 		title: "add — modulated",
-		description: "A steady 300 Hz base with an LFO-driven offset added to its freq — the pitch drifts up and down around 300.",
+		description:
+			"A steady 300 Hz base with an LFO-driven offset added to its freq — the pitch drifts up and down around 300.",
 		code: `sin(sin(0.3, -80, 80).add(300))
   .gain(0.3)
   .out()`,
 	},
 	{
 		section: "Math",
-		title: "sub — pitch drop (showcase)",
-		description: "sub computes from − in. Here from is 72 and in is an LFO 0→12, so the pitch is dragged down by up to an octave and released.",
+		title: "sub — pitch dip",
+		description:
+			"sub is from − in: pitch 72 minus an LFO 0→12 — the tone dips down an octave and comes back.",
 		code: `sin()
-  .pitch(sub(sin(0.2, 0, 12)).from(72))
+  .pitch(sin(0.2, 0, 12).sub(72))
   .gain(0.3)
   .out()`,
 	},
 	{
 		section: "Math",
+		title: "sub — inverted gate (off-beats)",
+		description: "1 − gate flips a gate: the note sounds where the clock is silent — the off-beats.",
+		code: `const c = clock(120)
+tri(220)
+  .mul(c.gate.sub(1).ar(0.01, 0.08))
+  .gain(0.35)
+  .out()`,
+	},
+	{
+		section: "Math",
+		title: "div — sub-octave (showcase)",
+		description:
+			"The classic sub-oscillator: the same swept frequency divided by 2 rides an octave below, locked in tune.",
+		code: `const f = sin(0.2, 220, 440)
+saw(f).gain(0.12).out()
+saw(f.div(2)).gain(0.18).out()`,
+	},
+	{
+		section: "Math",
 		title: "div — modulated",
-		description: "A 660 Hz tone divided by an LFO 1→3 — the pitch drops toward a third of its frequency and climbs back.",
+		description: "660 Hz divided by an LFO 1→3 — the pitch sinks toward a third and climbs back.",
 		code: `sin(div({ in: 660, by: sin(0.2, 1, 3) }))
   .gain(0.3)
   .out()`,
@@ -628,7 +824,8 @@ s.add(s.z1())
 	{
 		section: "Math",
 		title: "gt — gate from LFO (showcase)",
-		description: "A slow LFO through gt(0) becomes a square gate — it opens an envelope for half of each cycle. Comparators make rhythms.",
+		description:
+			"A slow LFO through gt(0) becomes a square gate — the envelope opens for half of each cycle. Comparators make rhythms.",
 		code: `sin(330)
   .mul(sin(1).gt(0).ar(0.02, 0.1))
   .gain(0.35)
@@ -636,8 +833,19 @@ s.add(s.z1())
 	},
 	{
 		section: "Math",
+		title: "gt — threshold is pulse width",
+		description:
+			"An LFO moves the threshold itself: higher threshold, narrower gate — the notes stretch and shrink.",
+		code: `sin(330)
+  .mul(sin(1).gt(sin(0.1, -0.7, 0.7)).ar(0.01, 0.05))
+  .gain(0.35)
+  .out()`,
+	},
+	{
+		section: "Math",
 		title: "lt — inverted gate",
-		description: "lt(0) fires when the LFO is BELOW zero — the opposite half-cycle to gt, gating the tone on the down phase.",
+		description:
+			"lt(0) fires when the LFO is BELOW zero — the opposite half-cycle to gt, gating the down phase.",
 		code: `tri(220)
   .mul(sin(1).lt(0).ar(0.02, 0.15))
   .gain(0.35)
@@ -645,8 +853,42 @@ s.add(s.z1())
 	},
 	{
 		section: "Math",
+		title: "lt — coin flip per beat (showcase)",
+		description:
+			"Sampled noise below zero opens the gate — a seeded coin flip per beat, a random rhythm that repeats every run.",
+		code: `const c = clock(240)
+tri(330)
+  .mul(noise().sah(c.trig).lt(0).ar(0.01, 0.1))
+  .gain(0.35)
+  .out()`,
+	},
+	{
+		section: "Math",
+		title: "eq — select a step",
+		description:
+			"eq gates while two signals match: a step pattern against 2 — one pluck on that step, each cycle.",
+		code: `clock(120)
+sin(330)
+  .mul(eq({ in: p\`0 1 2 3\`, than: 2 }).ad(0.005, 0.2))
+  .gain(0.4)
+  .out()`,
+	},
+	{
+		section: "Math",
+		title: "eq — one row, three voices (showcase)",
+		description:
+			"A single number row demultiplexed by three comparators — each digit is an instrument. A whole kit from one pattern.",
+		code: `clock(120)
+const row = p\`0 2 1 2 0 2 1 2\`
+eq({ in: row, than: 0 }).kick().gain(0.7).out()
+eq({ in: row, than: 1 }).snare().gain(0.5).out()
+eq({ in: row, than: 2 }).hihat().gain(3.5).out()`,
+	},
+	{
+		section: "Math",
 		title: "clip — waveshaping (showcase)",
-		description: "A loud sine clipped to [-0.3, 0.3] — the peaks are flattened into a near-square, adding buzzy harmonics. Distortion.",
+		description:
+			"A loud sine clipped to [-0.3, 0.3] — the peaks are flattened into a near-square, adding buzzy harmonics. Distortion.",
 		code: `sin(150)
   .gain(3)
   .clip(-0.3, 0.3)
@@ -656,7 +898,8 @@ s.add(s.z1())
 	{
 		section: "Math",
 		title: "clip — threshold modulated",
-		description: "An LFO drives the symmetric clip threshold 0.1→0.9 — the distortion grinds harder as the ceiling drops, then cleans up.",
+		description:
+			"An LFO drives the symmetric clip threshold 0.1→0.9 — the distortion grinds harder as the ceiling drops, then cleans up.",
 		code: `const t = sin(0.2, 0.1, 0.9)
 sin(150)
   .gain(2)
@@ -667,7 +910,8 @@ sin(150)
 	{
 		section: "Math",
 		title: "abs — full-wave rectify (showcase)",
-		description: "abs folds a sine's negative half up — the waveform's period halves, so you hear a tone an octave up, buzzier.",
+		description:
+			"abs folds a sine's negative half up — the period halves, so the tone jumps an octave and buzzes.",
 		code: `sin(150)
   .abs()
   .gain(0.4)
@@ -675,11 +919,32 @@ sin(150)
 	},
 	{
 		section: "Math",
+		title: "abs — LFO swing to bounce",
+		description:
+			"The same fold on an LFO: a bipolar swing becomes unipolar humps at twice the rate — tremolo that bounces instead of sways.",
+		code: `sin(330)
+  .gain(sin(0.5).abs().mul(0.4))
+  .out()`,
+	},
+	{
+		section: "Math",
 		title: "mod — fold pitch into an octave (showcase)",
-		description: "A slow LFO ramps pitch across four octaves, taken mod 12 and lifted to octave 4 — the line keeps rising but folds back each octave.",
+		description:
+			"Pitch ramps across four octaves, taken mod 12 — the line keeps rising but folds back every octave. Wraparound is what mod is.",
 		code: `sin()
   .pitch(sin(0.2, 48, 96).mod(12).add(48))
   .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Math",
+		title: "mod — audio-rate wrap (distortion)",
+		description:
+			"A loud sine wrapped by mod — each overflow snaps back through zero, a harsher cousin of clip. The divisor sweeps from mangled to clean.",
+		code: `sin(150)
+  .gain(2)
+  .mod(sin(0.2, 0.4, 2.5))
+  .gain(0.5)
   .out()`,
 	},
 
@@ -689,7 +954,8 @@ sin(150)
 	{
 		section: "Timing",
 		title: "clock — gate",
-		description: "The clock's gate is high for the first half of every beat — here it chops a tone into steady on/off pulses.",
+		description:
+			"The clock's gate is high for the first half of every beat — here it chops a tone into steady on/off pulses.",
 		code: `const c = clock(120)
 sin(330)
   .mul(c.gate)
@@ -699,7 +965,8 @@ sin(330)
 	{
 		section: "Timing",
 		title: "clock — trig envelope",
-		description: "The clock's trig is a single-sample spike each beat — it fires an AD envelope, turning the pulse into a clean pluck.",
+		description:
+			"The clock's trig is a single-sample spike each beat — it fires an AD envelope, turning the pulse into a clean pluck.",
 		code: `const c = clock(120)
 sin(330)
   .mul(c.trig.ad(0.005, 0.12))
@@ -709,7 +976,8 @@ sin(330)
 	{
 		section: "Timing",
 		title: "clock — bpm modulated (showcase)",
-		description: "An LFO drags the tempo 60→240 bpm — the pluck pattern accelerates and slows, a rubato pulse.",
+		description:
+			"An LFO drags the tempo 60→240 bpm — the pluck pattern accelerates and slows, a rubato pulse.",
 		code: `const c = clock(sin(0.15, 60, 240))
 tri(220)
   .mul(c.trig.ad(0.005, 0.1))
@@ -719,7 +987,8 @@ tri(220)
 	{
 		section: "Timing",
 		title: "seq — a melody",
-		description: "seq turns a mini-notation string into pitch/gate/trig, clocked by the ambient clock. Here a four-note tune, once per cycle.",
+		description:
+			"seq turns a mini-notation string into pitch/gate/trig, clocked by the ambient clock. Here a four-note tune, once per cycle.",
 		code: `clock(120)
 const s = seq("c3 e3 g3 e3")
 s.tri()
@@ -730,7 +999,8 @@ s.tri()
 	{
 		section: "Timing",
 		title: "seq — gate and pitch",
-		description: "The same sequence, filtered and enveloped — seq.gate shapes each note while seq.pitch (the default) drives the oscillator.",
+		description:
+			"The same sequence, filtered and enveloped — seq.gate shapes each note while seq.pitch (the default) drives the oscillator.",
 		code: `clock(110)
 const s = seq("c2 g2 c3 g2 eb2 g2 c3 d3")
 s.tri()
@@ -742,7 +1012,8 @@ s.tri()
 	{
 		section: "Timing",
 		title: "seq — pattern language",
-		description: "The mini-notation is a whole language of its own — rests, groups, chords, euclids and more. See the Pattern Docs page (pattern-tests.html) for the full tour; here a taste with a rest and a subdivided beat.",
+		description:
+			"The mini-notation is a whole language of its own — rests, groups, chords, euclids and more. See the patterns page (patterns.html) for the full tour; here a taste with a rest and a subdivided beat.",
 		code: `clock(120)
 const s = seq("c3 [e3 g3] ~ c4")
 s.tri()
@@ -757,7 +1028,8 @@ s.tri()
 	{
 		section: "Drums",
 		title: "kick — default",
-		description: "An 808-style kick fired on each clock beat — a pitched sine thump with a click transient. The trig chains in as the default input.",
+		description:
+			"An 808-style kick fired on each clock beat — a pitched sine thump with a click transient. The trig chains in as the default input.",
 		code: `const c = clock(120)
 c.trig.kick()
   .gain(0.6)
@@ -766,7 +1038,8 @@ c.trig.kick()
 	{
 		section: "Drums",
 		title: "kick — all params",
-		description: "Every port: higher 60 Hz body, big pitch sweep, longer 0.4 s decay, softer click — a boomier, rounder kick.",
+		description:
+			"Every port: higher 60 Hz body, big pitch sweep, longer 0.4 s decay, softer click — a boomier, rounder kick.",
 		code: `const c = clock(120)
 kick({ trig: c.trig, pitch: 60, sweep: 6, decay: 0.4, click: 0.15 })
   .gain(0.6)
@@ -775,7 +1048,8 @@ kick({ trig: c.trig, pitch: 60, sweep: 6, decay: 0.4, click: 0.15 })
 	{
 		section: "Drums",
 		title: "kick — pitch modulated",
-		description: "An LFO walks the kick's base pitch 40→90 Hz — the thump rises and falls in tuning between hits.",
+		description:
+			"An LFO walks the kick's base pitch 40→90 Hz — the thump rises and falls in tuning between hits.",
 		code: `const c = clock(120)
 c.trig.kick()
   .pitch(sin(0.2, 40, 90))
@@ -785,7 +1059,8 @@ c.trig.kick()
 	{
 		section: "Drums",
 		title: "snare — default",
-		description: "A snare on each beat — a short tonal body plus a burst of filtered noise for the wires. Crisp and snappy.",
+		description:
+			"A snare on each beat — a short tonal body plus a burst of filtered noise for the wires. Crisp and snappy.",
 		code: `const c = clock(120)
 c.trig.snare()
   .gain(2)
@@ -794,7 +1069,8 @@ c.trig.snare()
 	{
 		section: "Drums",
 		title: "snare — all params",
-		description: "Every port: lower tone (more noise than body), longer decay, full snappy — a fatter, hissier snare.",
+		description:
+			"Every port: lower tone (more noise than body), longer decay, full snappy — a fatter, hissier snare.",
 		code: `const c = clock(120)
 snare({ trig: c.trig, pitch: 180, tone: 0.25, decay: 0.25, snappy: 1 })
   .gain(1.5)
@@ -803,7 +1079,8 @@ snare({ trig: c.trig, pitch: 180, tone: 0.25, decay: 0.25, snappy: 1 })
 	{
 		section: "Drums",
 		title: "snare — snappy modulated",
-		description: "An LFO opens the snappy control 0→1 — the noise wires brighten and dull, from a tight tick to a splashy crack.",
+		description:
+			"An LFO opens the snappy control 0→1 — the noise wires brighten and dull, from a tight tick to a splashy crack.",
 		code: `const c = clock(120)
 c.trig.snare()
   .snappy(sin(0.2, 0, 1))
@@ -813,7 +1090,8 @@ c.trig.snare()
 	{
 		section: "Drums",
 		title: "hihat — default",
-		description: "A steady stream of hi-hats — metallic square partials plus noise, high-passed to a bright tick. Short and shimmery.",
+		description:
+			"A steady stream of hi-hats — metallic square partials plus noise, high-passed to a bright tick. Short and shimmery.",
 		code: `clock(240)
 seq("c1*4").trig.hihat()
   .gain(4.5)
@@ -822,7 +1100,8 @@ seq("c1*4").trig.hihat()
 	{
 		section: "Drums",
 		title: "hihat — all params",
-		description: "Every port: longer 0.12 s decay (an open hat), brighter tone, full metal — a sustained, ringing shimmer.",
+		description:
+			"Every port: longer 0.12 s decay (an open hat), brighter tone, full metal — a sustained, ringing shimmer.",
 		code: `clock(240)
 const t = seq("c1*8").trig
 hihat({ trig: t, decay: 0.12, tone: 0.9, metal: 1 })
@@ -832,7 +1111,8 @@ hihat({ trig: t, decay: 0.12, tone: 0.9, metal: 1 })
 	{
 		section: "Drums",
 		title: "hihat — decay modulated",
-		description: "An LFO stretches the decay 0.02→0.2 s — the hat breathes between a closed tick and an open, ringing splash.",
+		description:
+			"An LFO stretches the decay 0.02→0.2 s — the hat breathes between a closed tick and an open, ringing splash.",
 		code: `clock(240)
 seq("c1*4").trig.hihat()
   .decay(sin(0.2, 0.02, 0.2))
@@ -842,7 +1122,8 @@ seq("c1*4").trig.hihat()
 	{
 		section: "Drums",
 		title: "clap — default",
-		description: "A hand clap on each beat — four quick noise bursts and a decay tail through a bandpass. That reverby snap.",
+		description:
+			"A hand clap on each beat — four quick noise bursts and a decay tail through a bandpass. That reverby snap.",
 		code: `const c = clock(120)
 c.trig.clap()
   .gain(1.3)
@@ -851,7 +1132,8 @@ c.trig.clap()
 	{
 		section: "Drums",
 		title: "clap — all params",
-		description: "Every port: longer 0.35 s decay and brighter tone — a wetter, more open clap with a longer tail.",
+		description:
+			"Every port: longer 0.35 s decay and brighter tone — a wetter, more open clap with a longer tail.",
 		code: `const c = clock(120)
 clap({ trig: c.trig, decay: 0.35, tone: 0.8 })
   .gain(0.9)
@@ -859,11 +1141,63 @@ clap({ trig: c.trig, decay: 0.35, tone: 0.8 })
 	},
 	{
 		section: "Drums",
-		title: "drums — showcase (a beat)",
-		description: "Kick, snare and hats sequenced into a backbeat — four-on-the-floor kick, snare on 2 and 4, hats on the eighths. Each voice is its own root; the outputs auto-mix.",
+		title: "kick — showcase (a backbeat)",
+		description:
+			"Kick four-on-the-floor, snare on 2 and 4, hats on the eighths — three seqs, one voice each; the outputs auto-mix.",
 		code: `clock(120)
 seq("c1 ~ c1 ~ c1 ~ c1 ~").trig.kick().gain(0.7).out()
 seq("~ ~ c1 ~ ~ ~ c1 ~").trig.snare().gain(0.5).out()
 seq("c1*8").trig.hihat().gain(0.3).out()`,
+	},
+
+	// ======================================================================
+	// Bridge — patsig, patstep
+	// ======================================================================
+	{
+		section: "Bridge",
+		title: "patsig — default",
+		description:
+			"A pattern fed straight into a knob becomes a patsig: queried at the clock's phase, sample-and-held. Four pitches step the oscillator — no seq.",
+		code: `clock(150)
+sin()
+  .pitch(p\`48 55 60 63\`)
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Bridge",
+		title: "patsig — stepped cutoff (showcase)",
+		description:
+			"The same lifting works on any port: a pattern clicks the cutoff between four values each cycle. slew it to glide.",
+		code: `clock(150)
+saw(110)
+  .lpf(p\`400 1600 800 2400\`, 0.3)
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Bridge",
+		title: "patstep — default",
+		description:
+			"One value per trigger, the pattern's own timing ignored — an analog step sequencer clocked by trig.",
+		code: `const c = clock(150)
+sin()
+  .pitch(patstep(p\`48 55 60 67\`, c.trig))
+  .mul(c.trig.ad(0.005, 0.15))
+  .gain(0.35)
+  .out()`,
+	},
+	{
+		section: "Bridge",
+		title: "patstep — accents (showcase)",
+		description:
+			"Timing from one pattern, dynamics from another: a euclidean line whose accent levels step forward on each onset.",
+		code: `clock(110)
+const s = seq("c2(4,8)")
+s.tri()
+  .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
+  .mul(patstep(p\`0.3 0.1 0.25 0.15\`, s.trig))
+  .gain(0.9)
+  .out()`,
 	},
 ];

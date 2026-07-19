@@ -18,6 +18,17 @@ export type Unit =
 	| "trig" // single-sample 1
 	| "phase"; // unbounded beat ramp
 
+/** Module family — drives docs grouping and node coloring (see src/theme/colors.ts). */
+export type Category =
+	| "timing"
+	| "sources"
+	| "filters"
+	| "envelopes"
+	| "effects"
+	| "drums"
+	| "bridge"
+	| "utils";
+
 export interface PortAnn {
 	readonly unit: Unit;
 	/** Default when unconnected. null = required (loud error if unconnected) unless `opt`. */
@@ -70,6 +81,10 @@ export type ReduceTickFn = (
 
 export interface ModuleSpec {
 	readonly name: string;
+	/** One-line human description, rendered by the site's module cards/reference. */
+	readonly doc?: string;
+	/** Module family — drives docs grouping and node coloring. */
+	readonly category: Category;
 	readonly ins: Record<string, PortAnn>;
 	readonly outs: Record<string, PortAnn>;
 	/** Static per-node values (JSON-serializable; pattern ASTs live here). */
@@ -91,6 +106,26 @@ export interface ModuleSpec {
 }
 
 export type Registry = ReadonlyMap<string, ModuleSpec>;
+
+/**
+ * A patch-defined ModuleSpec as it crosses the worklet boundary: `tick` (and
+ * `state`, when present) are function SOURCE strings; everything else is plain
+ * JSON. Hydrated back into a ModuleSpec per engine (runtime/hydrate-specs).
+ */
+export interface SerializedModuleSpec {
+	readonly name: string;
+	readonly doc?: string;
+	readonly category: Category;
+	readonly ins: Record<string, PortAnn>;
+	readonly outs: Record<string, PortAnn>;
+	readonly config?: Record<string, unknown>;
+	readonly positional?: readonly string[];
+	readonly defaultIn: string;
+	readonly defaultOut: string;
+	readonly policy?: "map" | "reduce";
+	readonly state?: string;
+	readonly tick: string;
+}
 
 // ---------------------------------------------------------------------------
 // Compiled program — serializable, interpreted by the engine
@@ -120,6 +155,8 @@ export interface Program {
 	/** Indices of `out` nodes; engine sums their `l`/`r` outputs. */
 	readonly outs: readonly number[];
 	readonly seed: number;
+	/** Patch-defined module specs used by `nodes` (defmod). Present only when non-empty. */
+	readonly specs?: readonly SerializedModuleSpec[];
 }
 
 // ---------------------------------------------------------------------------

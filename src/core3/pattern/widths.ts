@@ -5,12 +5,19 @@
 
 import type { Pat } from "./ast";
 import type { Ev } from "./event";
+import { period } from "./period";
 import { query } from "./query";
 import { r, rcmp, rlte } from "./rational";
 
-/** Max simultaneous overlapping events over [0, cycles). Touching parts don't overlap. */
-export function maxWidth(pat: Pat, cycles = 8): number {
-	const evs = query(pat, { begin: r(0), end: r(cycles) }, { seed: 0, path: 0 });
+/**
+ * Lane count for a seq: max simultaneous events over the pattern's full period,
+ * floored at 1. Touching parts don't overlap. Querying the true period (not a
+ * fixed window) guarantees a late-entering voice or a late chord is seen — a
+ * fixed window undercounts both. A seq always needs at least one lane, even for
+ * an all-rest pattern whose true simultaneity is zero.
+ */
+export function maxWidth(pat: Pat): number {
+	const evs = query(pat, { begin: r(0), end: r(period(pat)) }, { seed: 0, path: 0 });
 	const marks = evs.flatMap((ev) => [
 		{ t: ev.part.begin, delta: 1 },
 		{ t: ev.part.end, delta: -1 },
@@ -23,7 +30,7 @@ export function maxWidth(pat: Pat, cycles = 8): number {
 		current += mark.delta;
 		if (current > width) width = current;
 	}
-	return width;
+	return Math.max(1, width);
 }
 
 /** Greedy lane packing: by part.begin ascending, first lane whose last event has ended. */

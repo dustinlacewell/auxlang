@@ -1,8 +1,9 @@
 /**
- * User lambda hydration. Lambdas are the ONE thing that crosses the worklet
- * boundary as strings (platonic.md §8); they are compiled ONCE at engine build
- * via `new Function`, never per sample. Each occurrence gets its own persistent
- * state object, passed to the lambda every call.
+ * User lambda hydration. Lambdas cross the worklet boundary as strings (§8 —
+ * alongside patch-defined module specs, see hydrate-specs.ts); they are
+ * compiled ONCE at engine build via `new Function`, never per sample. Each
+ * occurrence gets its own persistent state object, passed to the lambda every
+ * call.
  *
  * Signature: (state, sampleRate, time) => number
  */

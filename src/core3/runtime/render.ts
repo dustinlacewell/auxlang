@@ -7,6 +7,7 @@
 import { getRegistry } from "../module/define";
 import type { Program, Registry } from "../types";
 import { Core3Engine } from "./engine";
+import { withProgramSpecs } from "./hydrate-specs";
 
 export interface StereoBuffers {
 	readonly l: Float32Array;
@@ -20,7 +21,7 @@ export function render(
 	registry: Registry = getRegistry(),
 ): StereoBuffers {
 	const samples = Math.round(seconds * sampleRate);
-	const engine = new Core3Engine(program, sampleRate, registry);
+	const engine = new Core3Engine(program, sampleRate, withProgramSpecs(registry, program));
 	const l = new Float32Array(samples);
 	const r = new Float32Array(samples);
 	const frame = new Float32Array(2);
@@ -40,7 +41,7 @@ export function renderTap(
 	samples: number,
 	registry: Registry = getRegistry(),
 ): Float32Array {
-	const engine = new Core3Engine(program, 48000, registry);
+	const engine = new Core3Engine(program, 48000, withProgramSpecs(registry, program));
 	const tap = new Float32Array(samples);
 	const frame = new Float32Array(2);
 	for (let i = 0; i < samples; i++) {

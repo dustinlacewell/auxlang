@@ -1,9 +1,11 @@
+import { defmod } from "../patch/defmod";
 import { sig } from "../types";
-import { defineMap } from "./define-typed";
 
 /** Absolute value. */
-export const abs = defineMap({
+defmod({
 	name: "abs",
+	category: "utils",
+	doc: "Absolute value — folds negatives to positive.",
 	ins: { in: sig(0) },
 	outs: { out: sig() },
 	defaultIn: "in",

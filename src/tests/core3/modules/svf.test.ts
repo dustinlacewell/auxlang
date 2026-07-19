@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { bpf, hpf, lpf, notch } from "@/core3/modules/svf";
+import "@/core3/modules/svf";
+import { getModule } from "@/core3/module/define";
 import { SR, driver, rms } from "./helpers";
+
+const lpf = getModule("lpf");
+const hpf = getModule("hpf");
+const bpf = getModule("bpf");
+const notch = getModule("notch");
 
 /** Feed a constant (DC) and read the settled output. */
 function dcResponse(spec: typeof lpf, cutoff: number): number {

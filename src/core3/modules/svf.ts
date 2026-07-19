@@ -1,6 +1,5 @@
-import type { ModuleSpec } from "../types";
+import { defmod } from "../patch/defmod";
 import { hz, sig, unit } from "../types";
-import { defineMap } from "./define-typed";
 
 /**
  * State-variable filter (lpf/hpf/bpf/notch) — ONE Zavalishin/TPT core, four mode
@@ -14,9 +13,11 @@ import { defineMap } from "./define-typed";
 
 type Mode = "lp" | "hp" | "bp" | "notch";
 
-function createSvf(name: string, mode: Mode): ModuleSpec {
-	return defineMap({
+function createSvf(name: string, mode: Mode, doc: string): void {
+	defmod({
 		name,
+		category: "filters",
+		doc,
 		ins: { in: sig(0), cutoff: hz(1000), res: unit(0.2) },
 		outs: { out: sig() },
 		defaultIn: "in",
@@ -64,7 +65,7 @@ function createSvf(name: string, mode: Mode): ModuleSpec {
 	});
 }
 
-export const lpf = createSvf("lpf", "lp");
-export const hpf = createSvf("hpf", "hp");
-export const bpf = createSvf("bpf", "bp");
-export const notch = createSvf("notch", "notch");
+createSvf("lpf", "lp", "Low-pass filter.");
+createSvf("hpf", "hp", "High-pass filter.");
+createSvf("bpf", "bp", "Band-pass filter.");
+createSvf("notch", "notch", "Notch filter — cuts a band, passes the rest.");

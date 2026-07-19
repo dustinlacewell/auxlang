@@ -1,5 +1,5 @@
+import { defmod } from "../patch/defmod";
 import { optional, sig, unit } from "../types";
-import { defineReduce } from "./define-typed";
 
 /**
  * Master output. Two ways to reach the stereo bus:
@@ -36,8 +36,11 @@ function sumLanes(jack: Float32Array | number, width: number): number {
 	return s;
 }
 
-export const out = defineReduce({
+defmod({
 	name: "out",
+	category: "utils",
+	doc: "The master output; the only thing that makes sound.",
+	policy: "reduce",
 	ins: { in: optional(sig(null)), gain: unit(0.8), l: optional(sig(null)), r: optional(sig(null)) },
 	outs: { l: sig(), r: sig() },
 	defaultIn: "in",

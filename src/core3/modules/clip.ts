@@ -1,9 +1,11 @@
+import { defmod } from "../patch/defmod";
 import { sig } from "../types";
-import { defineMap } from "./define-typed";
 
 /** Clamp signal to [min, max]. */
-export const clip = defineMap({
+defmod({
 	name: "clip",
+	category: "utils",
+	doc: "Clamps a signal between a minimum and maximum.",
 	ins: { in: sig(0), min: sig(-1), max: sig(1) },
 	outs: { out: sig() },
 	defaultIn: "in",

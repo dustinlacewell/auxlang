@@ -4,7 +4,7 @@
  * unit delay compiles. A cycle with no z-edge is a loud error.
  */
 
-import { compile, loop, factory, runEval, runProgram } from "@/core3/api";
+import { compile, factory, loop, runEval, runProgram } from "@/core3/api";
 import type { GNode } from "@/core3/graph/node";
 import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
@@ -52,7 +52,7 @@ describe("z-less cycle", () => {
 		b.inputs.in = { node: a, port: "out" };
 		const root: GNode = { module: "out", inputs: { in: { node: a, port: "out" } }, config: {} };
 
-		expect(() => compile({ roots: [root], clock: null, seed: 1 })).toThrow(
+		expect(() => compile({ roots: [root], clock: null, seed: 1, specs: new Map() })).toThrow(
 			/cycle without a unit delay.*tlpf.*tlpf/s,
 		);
 	});

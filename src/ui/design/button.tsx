@@ -7,10 +7,11 @@ interface ButtonProps {
 }
 
 const variantStyles = {
-	play: "bg-accent-green hover:bg-accent-green/80 text-white",
+	play: "bg-white hover:bg-white/80 text-surface-900",
 	stop: "bg-accent-red hover:bg-accent-red/80 text-white",
 	default: "bg-surface-700 hover:bg-surface-600 text-white",
-	chrome: "bg-surface-700 hover:bg-surface-600 text-gray-300 hover:text-white border border-surface-600",
+	chrome:
+		"bg-surface-700 hover:bg-surface-600 text-gray-300 hover:text-white border border-surface-600",
 };
 
 export function Button({ variant, onClick, children, disabled, className = "" }: ButtonProps) {
