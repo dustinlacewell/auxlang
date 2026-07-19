@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="icon" href="/logo.svg" type="image/svg+xml">
+	<title>Auxlang core3 — perf harness</title>
+	<style>
+		html, body { margin: 0; height: 100%; }
+		body {
+			font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+			font-size: 14px;
+			background: #1a1a1a;
+			color: #ddd;
+			padding: 16px;
+			box-sizing: border-box;
+		}
+		#toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+		button, select, input {
+			font: inherit;
+			padding: 4px 10px;
+			background: #333;
+			color: #ddd;
+			border: 1px solid #555;
+		}
+		button { cursor: pointer; }
+		button:hover { background: #444; }
+		.hint { color: #888; }
+		#status { margin: 8px 0; color: #9ad; }
+		table { border-collapse: collapse; margin: 8px 0; }
+		th, td { border: 1px solid #444; padding: 2px 10px; text-align: right; }
+		th { color: #8c8; }
+		.warn td { color: #ff9c9c; }
+		#error {
+			margin: 8px 0;
+			padding: 8px;
+			background: #3a1414;
+			color: #ff9c9c;
+			border: 1px solid #7a2222;
+			white-space: pre-wrap;
+			display: none;
+		}
+	</style>
+</head>
+<body>
+	<div id="toolbar">
+		<label>patch <select id="patch"></select></label>
+		<label>bpm <input id="bpm" type="number" style="width: 70px" placeholder="auto"></label>
+		<button id="start">Start</button>
+		<button id="stop">Stop</button>
+		<span class="hint">reports post to <code>window.__perf</code> and the console (<code>[PERF]</code> lines) for CDP scraping</span>
+	</div>
+	<div id="status">idle</div>
+	<div id="error"></div>
+	<div id="summary"></div>
+	<div id="overruns"></div>
+	<script type="module" src="/src/ui/core3-perf/main.ts"></script>
+</body>
+</html>

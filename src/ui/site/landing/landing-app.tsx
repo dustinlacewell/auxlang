@@ -38,15 +38,18 @@ export function LandingApp() {
 						<img src="/logo.svg" alt="" className="h-11 w-11" />
 						auxlang
 					</h1>
-				<p className="text-lg text-gray-300 mb-6">Patterns and signals, one patch.</p>
-
-				<p className="text-gray-400 mb-8 leading-relaxed">
-					A language for making music in the browser, embedded in JavaScript. Write Tidal-style
-					patterns. Patch modular-style signals. Each side plugs into the other: a pattern can turn
-					any knob, and a sequencer is just a module with pitch, gate, and trig outputs.
-				</p>
+				<p className="text-lg text-gray-300 mb-6">Text-based modular synthesis.</p>
 
 				<RunBlock id="landing::hello" code={HELLO_PATCH} audio={audio} />
+
+				<div style={{
+					color: "#aaa", 
+					textAlign: "right", 
+					width: "100%",
+					fontSize: ".6em"
+				}}>
+					Hold <code>ctrl</code> over module names for more info.
+				</div>
 
 				<ul className="mt-10 space-y-2">
 					{NEXT_STEPS.map((step) => (
