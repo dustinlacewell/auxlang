@@ -1,11 +1,11 @@
-import { defineConfig } from "vite";
 import { resolve } from "node:path";
-import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 import { interactiveTestsPlugin } from "./src/tests/interactive/vite-plugin";
 import { patternTestsPlugin } from "./src/tests/patterns/vite-plugin";
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
 	plugins: [react(), tailwindcss(), interactiveTestsPlugin(), patternTestsPlugin()],
 	build: {
 		target: "esnext",
@@ -17,6 +17,9 @@ export default defineConfig({
 				patterns: resolve(__dirname, "patterns.html"),
 				modules: resolve(__dirname, "modules.html"),
 				core3: resolve(__dirname, "core3.html"),
+				// perf.html is a dev-only diagnostic harness — served in dev, never
+				// built into a production bundle.
+				...(command === "serve" ? { perf: resolve(__dirname, "perf.html") } : {}),
 				"core3-worklet": resolve(__dirname, "src/core3/runtime/worklet/index.ts"),
 			},
 			output: {
@@ -36,4 +39,4 @@ export default defineConfig({
 			"@": resolve(__dirname, "src"),
 		},
 	},
-});
+}));
