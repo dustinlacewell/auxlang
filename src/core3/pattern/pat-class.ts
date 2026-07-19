@@ -4,9 +4,11 @@
  * `.ast` is the escape hatch to the serializable data.
  */
 
-import type { Pat } from "./ast";
+import type { Pat, SignalKind } from "./ast";
 import {
 	add,
+	chunk,
+	clip,
 	degrade,
 	early,
 	euclid,
@@ -15,13 +17,18 @@ import {
 	fastcat,
 	iter,
 	late,
+	mask,
 	mul,
 	ply,
 	pure,
 	rev,
+	segment,
+	signal,
 	slow,
 	slowcat,
+	sometimesBy,
 	stack,
+	struct,
 } from "./combinators";
 import type { R } from "./rational";
 
@@ -79,6 +86,66 @@ export class P {
 	/** Overlay a transformed copy shifted later by `amount`. */
 	off(amount: number | R, f: (p: P) => P): P {
 		return P.stack(this, f(this).late(amount));
+	}
+
+	/** Keep only this pattern's events falling under a true region of `bool`. */
+	mask(bool: P): P {
+		return new P(mask(bool.ast, this.ast));
+	}
+
+	/** Re-trigger this pattern's value on each true step of `bool`. */
+	struct(bool: P): P {
+		return new P(struct(bool.ast, this.ast));
+	}
+
+	/** Sample-and-hold into n discrete steps per cycle. */
+	segment(n: number): P {
+		return new P(segment(n, this.ast));
+	}
+
+	/** Scale each event's duration (gate/note length) to `factor` of its slot. */
+	clip(factor: number): P {
+		return new P(clip(factor, this.ast));
+	}
+
+	/** every(n) with a rotating 1/n slice: cycle i transforms slice i%n. */
+	chunk(n: number, f: (p: P) => P): P {
+		return new P(chunk(n, (child) => f(new P(child)).ast, this.ast));
+	}
+
+	/** Apply f to each event with probability prob (seeded). */
+	someBy(prob: number, f: (p: P) => P): P {
+		return new P(sometimesBy(prob, (child) => f(new P(child)).ast, this.ast));
+	}
+
+	sometimes(f: (p: P) => P): P {
+		return this.someBy(0.5, f);
+	}
+
+	often(f: (p: P) => P): P {
+		return this.someBy(0.75, f);
+	}
+
+	rarely(f: (p: P) => P): P {
+		return this.someBy(0.25, f);
+	}
+
+	always(f: (p: P) => P): P {
+		return this.someBy(1, f);
+	}
+
+	/** Map a 0..1 signal pattern into [lo, hi]. */
+	range(lo: number, hi: number): P {
+		return this.mul(hi - lo).add(lo);
+	}
+
+	static signal(kind: SignalKind): P {
+		return new P(signal(kind));
+	}
+
+	/** Index a chord's tones by this integer pattern: `n(...).set(chords)`. */
+	set(chords: { n(index: P): P }): P {
+		return chords.n(this);
 	}
 
 	stack(...others: readonly (number | Pat | P)[]): P {

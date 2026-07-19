@@ -1,5 +1,5 @@
+import { defmod } from "../patch/defmod";
 import { semis, sig } from "../types";
-import { defineMap } from "./define-typed";
 
 /**
  * Pitch quantizer — operates directly in SEMITONES (no Hz round-trip).
@@ -54,8 +54,10 @@ function snap(pitch: number, root: number, scale: number[]): number {
 	return root + octave * 12 + best;
 }
 
-export const quantize = defineMap({
+defmod({
 	name: "quantize",
+	category: "utils",
+	doc: "Snaps pitch to the nearest note of a scale.",
 	ins: {
 		pitch: semis(60),
 		root: semis(0),

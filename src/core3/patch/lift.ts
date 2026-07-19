@@ -7,8 +7,8 @@
 
 import { isGNode } from "../graph/input-kinds";
 import type { InputValue, NodeRef } from "../graph/node";
-import { getModule } from "../module/define";
 import { type HandleData, handleData, isHandle } from "./handle-data";
+import { resolvePatchModule } from "./resolve";
 
 export function lift(value: unknown, where: string): InputValue {
 	if (typeof value === "number") {
@@ -17,7 +17,7 @@ export function lift(value: unknown, where: string): InputValue {
 	}
 	if (isHandle(value)) return refFromHandle(handleData(value));
 	if (isGNode(value)) {
-		return { node: value, port: getModule(value.module).defaultOut };
+		return { node: value, port: resolvePatchModule(value.module).defaultOut };
 	}
 	if (typeof value === "function") {
 		return { lambda: value as (...args: unknown[]) => number };
@@ -32,7 +32,7 @@ export function lift(value: unknown, where: string): InputValue {
 }
 
 export function refFromHandle(data: HandleData): NodeRef {
-	const port = data.port ?? getModule(data.node.module).defaultOut;
+	const port = data.port ?? resolvePatchModule(data.node.module).defaultOut;
 	return { node: data.node, port, ...(data.lane !== undefined ? { lane: data.lane } : {}) };
 }
 

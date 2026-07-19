@@ -1,9 +1,11 @@
+import { defmod } from "../patch/defmod";
 import { sig } from "../types";
-import { defineMap } from "./define-typed";
 
 /** Subtract: `sub(x).from(y)` → y - x. */
-export const sub = defineMap({
+defmod({
 	name: "sub",
+	category: "utils",
+	doc: "Subtracts one signal from another.",
 	ins: { in: sig(0), from: sig(0) },
 	outs: { out: sig() },
 	defaultIn: "in",

@@ -30,6 +30,12 @@ async function ensureHost(): Promise<AudioHost> {
 	node.port.onmessage = (e: MessageEvent<WorkletReply>) => {
 		if (e.data.type === "error") throw new Error(`core3 worklet: ${e.data.message}`);
 	};
+	// An exception thrown INSIDE process() (not caught by swap's fence) kills the
+	// processor without a message-port reply; surface it loudly instead of
+	// letting the audio die in silence.
+	node.onprocessorerror = (e: Event) => {
+		console.error("core3 worklet: audio processor crashed — audio is dead until re-run", e);
+	};
 	node.connect(context.destination);
 	host = { context, node };
 	return host;

@@ -1,7 +1,8 @@
 /**
- * Toy modules for the patch/compile tests. Registered once per test file
- * (vitest isolates each file's module graph, so the registry starts empty and
- * the duplicate-name guard never trips across files). These are deliberately
+ * Toy modules for the patch/compile tests. Registered once per test file via
+ * root-scope `defmod` (vitest isolates each file's module graph, so the
+ * registry starts empty and the duplicate-name guard never trips across
+ * files). These are deliberately
  * minimal: the patch layer only reads their SPEC (ports, defaults, policy,
  * positional), never their tick.
  *
@@ -9,7 +10,7 @@
  * api/compile layer to work against arbitrary registered modules.
  */
 
-import { defineModule } from "@/core3/module/define";
+import { defmod } from "@/core3/patch/defmod";
 import { hz, semis, sig, unit } from "@/core3/types";
 
 const noop = () => {};
@@ -17,8 +18,9 @@ const noop = () => {};
 /** Registers the shared toy set. Call once at the top of a test file. */
 export function registerToyModules(): void {
 	// Oscillator: default-in `pitch`, positional [freq, min, max] (osc idiom).
-	defineModule({
+	defmod({
 		name: "tosc",
+		category: "utils",
 		ins: { pitch: semis(69), freq: hz(0), min: sig(-1), max: sig(1) },
 		outs: { out: sig() },
 		defaultIn: "pitch",
@@ -28,8 +30,9 @@ export function registerToyModules(): void {
 	});
 
 	// Filter: default-in `in`, a required (def:null) `cutoff` for the honesty test.
-	defineModule({
+	defmod({
 		name: "tlpf",
+		category: "utils",
 		ins: { in: sig(0), cutoff: hz(1000), res: unit(0.2) },
 		outs: { out: sig() },
 		defaultIn: "in",
@@ -39,8 +42,9 @@ export function registerToyModules(): void {
 	});
 
 	// A gain-like map module with a required input, to exercise def:null errors.
-	defineModule({
+	defmod({
 		name: "treq",
+		category: "utils",
 		ins: { in: sig(null), amt: unit(1) },
 		outs: { out: sig() },
 		defaultIn: "in",
@@ -50,8 +54,9 @@ export function registerToyModules(): void {
 	});
 
 	// A multi-output tap source: pitch/gate outputs, like a sequencer.
-	defineModule({
+	defmod({
 		name: "tseq",
+		category: "utils",
 		ins: { clk: sig(0) },
 		outs: { out: semis(0), gate: gateLike() },
 		defaultIn: "clk",
@@ -60,8 +65,9 @@ export function registerToyModules(): void {
 	});
 
 	// Unit delay — the loop() back-edge target. Must be named "z1".
-	defineModule({
+	defmod({
 		name: "z1",
+		category: "utils",
 		ins: { in: sig(0) },
 		outs: { out: sig() },
 		defaultIn: "in",
@@ -70,8 +76,9 @@ export function registerToyModules(): void {
 	});
 
 	// Master output — reduce policy, named "out". Required by out()/.out().
-	defineModule({
+	defmod({
 		name: "out",
+		category: "utils",
 		ins: { in: sig(0), gain: unit(0.8) },
 		outs: { l: sig(), r: sig() },
 		defaultIn: "in",

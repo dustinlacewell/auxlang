@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { ad, adsr, ar } from "@/core3/modules/env";
+import "@/core3/modules/env";
+import { getModule } from "@/core3/module/define";
 import { SR, driver } from "./helpers";
+
+const ad = getModule("ad");
+const ar = getModule("ar");
+const adsr = getModule("adsr");
 
 describe("ad", () => {
 	it("rises to 1 during attack then decays back to 0", () => {

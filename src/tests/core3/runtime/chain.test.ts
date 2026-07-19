@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { defineModule } from "@/core3/module/define";
 import { getRegistry } from "@/core3/module/define";
+import { defmod } from "@/core3/patch/defmod";
 import { renderTap } from "@/core3/runtime/render";
 import { sig } from "@/core3/types";
 import { type IO, type St, c, n, pnode, prog } from "./helpers";
 
-defineModule({
+defmod({
 	name: "ch.add1",
+	category: "utils",
 	ins: { in: sig(0) },
 	outs: { out: sig() },
 	defaultIn: "in",
@@ -17,8 +18,9 @@ defineModule({
 	},
 });
 
-defineModule({
+defmod({
 	name: "ch.mul2",
+	category: "utils",
 	ins: { in: sig(0) },
 	outs: { out: sig() },
 	defaultIn: "in",

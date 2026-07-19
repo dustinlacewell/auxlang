@@ -1,5 +1,5 @@
+import { defmod } from "../../patch/defmod";
 import { sig, trigPort, unit } from "../../types";
-import { defineMap } from "../define-typed";
 
 /**
  * Hand clap: seeded noise through a band-pass, shaped by the classic four quick
@@ -11,8 +11,10 @@ const HIT_DURATION = 0.012;
 const HIT_DECAY = 30;
 const TAIL_START = 0.025;
 
-export const clap = defineMap({
+defmod({
 	name: "clap",
+	category: "drums",
+	doc: "Hand clap.",
 	ins: { trig: trigPort(), decay: sig(0.2), tone: unit(0.5) },
 	outs: { out: sig() },
 	defaultIn: "trig",

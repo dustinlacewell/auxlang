@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { osc, saw, sin, sqr, tri } from "@/core3/modules/osc";
+import "@/core3/modules/osc";
+import { getModule } from "@/core3/module/define";
 import { SR, driver, maxAbs, periodFromCrossings } from "./helpers";
+
+const osc = getModule("osc");
+const sin = getModule("sin");
+const saw = getModule("saw");
+const tri = getModule("tri");
+const sqr = getModule("sqr");
 
 describe("osc", () => {
 	it("pitch 69 → 440 Hz fundamental (period ≈ sr/440)", () => {

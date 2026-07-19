@@ -1,16 +1,42 @@
 @import "tailwindcss";
 
 @theme {
-	/* Surface colors - dark theme */
-	--color-surface-900: #1a1a1a;
-	--color-surface-800: #2a2a2a;
-	--color-surface-700: #444444;
-	--color-surface-600: #666666;
+	/* Surface colors — cool-biased dark scale. Borders (700) sit barely above
+	   the card fill (800) so lines read as seams, not frames. */
+	--color-surface-900: #121214;
+	--color-surface-800: #1b1b1f;
+	--color-surface-700: #2a2a31;
+	--color-surface-600: #3f3f4a;
 
 	/* Accent colors */
-	--color-accent-green: #44aa99;
 	--color-accent-red: #aa4444;
+	/* NOTE: accent-blue sits ~1° in hue from category-timing (#4da3e8) — kept
+	   for now, candidates for consolidation. */
 	--color-accent-blue: #88ccff;
+
+	/* Signal-unit colors (pastel) — mirror src/theme/colors.ts, keep in sync */
+	--color-unit-sig: #c4c4c0;
+	--color-unit-hz: #9db8ea;
+	--color-unit-semis: #b9a7ec;
+	--color-unit-unit: #a8cba0;
+	--color-unit-beats: #e6d192;
+	--color-unit-secs: #eab58e;
+	--color-unit-phase: #e39390;
+	--color-unit-gate: #eaa4c5;
+	--color-unit-trig: #d99ae6;
+
+	/* Module-category colors (saturated) — mirror src/theme/colors.ts, keep in sync */
+	--color-category-timing: #4da3e8;
+	--color-category-sources: #e08c3a;
+	--color-category-filters: #a878e8;
+	--color-category-envelopes: #d6b13f;
+	--color-category-effects: #3ec6d6;
+	--color-category-drums: #e368a6;
+	--color-category-bridge: #7cc242;
+	--color-category-utils: #8a93a3;
+
+	/* Graph well — mirror src/theme/colors.ts graphBg, keep in sync */
+	--color-graph-bg: #0c0c0e;
 
 	/* Font family */
 	--font-mono: "Fira Code", Consolas, monospace;

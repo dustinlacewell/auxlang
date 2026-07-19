@@ -1,5 +1,5 @@
 /**
- * Entry point for the module-docs page, mounted from test-suite.html.
+ * Entry point for the module-docs page, mounted from modules.html.
  */
 
 import "@/ui/styles/globals.css";

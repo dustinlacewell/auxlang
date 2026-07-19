@@ -1,5 +1,5 @@
+import { defmod } from "../patch/defmod";
 import { sig } from "../types";
-import { defineMap } from "./define-typed";
 
 /**
  * Constant-power panner. `pos` in [-1,1] (−1 hard-left, 0 center, +1 hard-right)
@@ -7,8 +7,10 @@ import { defineMap } from "./define-typed";
  * "map" (per-lane): each lane produces its own {l, r} pair; stereo summing is the
  * `out` module's job.
  */
-export const pan = defineMap({
+defmod({
 	name: "pan",
+	category: "effects",
+	doc: "Constant-power stereo placement.",
 	ins: { in: sig(0), pos: sig(0) },
 	outs: { l: sig(), r: sig() },
 	defaultIn: "in",

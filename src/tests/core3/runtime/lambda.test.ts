@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { defineModule, getRegistry } from "@/core3/module/define";
+import { getRegistry } from "@/core3/module/define";
+import { defmod } from "@/core3/patch/defmod";
 import { createEngine } from "@/core3/runtime/engine";
 import { sig } from "@/core3/types";
 import { type IO, type St, lam, pnode, prog } from "./helpers";
 
-defineModule({
+defmod({
 	name: "lt.pass",
+	category: "utils",
 	ins: { v: sig(0) },
 	outs: { l: sig(), r: sig() },
 	defaultIn: "v",

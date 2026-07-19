@@ -1,13 +1,15 @@
+import { defmod } from "../../patch/defmod";
 import { hz, sig, trigPort, unit } from "../../types";
-import { defineMap } from "../define-typed";
 
 /**
  * 808-style kick: a sine body whose pitch is swept down by a fast envelope, plus
  * a short click transient. Retriggered on `trig` rising past 0.5. All state is
  * allocated in state(); no tick-time allocation.
  */
-export const kick = defineMap({
+defmod({
 	name: "kick",
+	category: "drums",
+	doc: "Kick drum.",
 	ins: {
 		trig: trigPort(),
 		pitch: hz(50),

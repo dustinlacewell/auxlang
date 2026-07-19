@@ -1,7 +1,9 @@
 /**
- * Worklet message protocol. Programs are plain data; module code is bundled
- * into the worklet (never stringified) — only user lambdas inside PortSrc "l"
- * entries cross this boundary as strings.
+ * Worklet message protocol. Programs are plain data; library module code is
+ * bundled into the worklet. Only user-written code crosses this boundary as
+ * strings, riding inside the Program: inline lambdas (PortSrc "l" entries)
+ * and patch-defined module specs (Program.specs, hydrated per engine by
+ * runtime/hydrate-specs).
  */
 
 import type { Program } from "../../types";

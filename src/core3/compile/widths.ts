@@ -9,16 +9,16 @@
 
 import { isLambdaInput, isNodeRef, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
-import { getModule } from "../module/define";
+import { type SpecTable, resolveSpec } from "../module/resolve";
 
-export function resolveWidths(nodes: readonly GNode[]): Map<GNode, number> {
+export function resolveWidths(nodes: readonly GNode[], specs?: SpecTable): Map<GNode, number> {
 	const widths = new Map<GNode, number>();
-	for (const node of nodes) widths.set(node, initialWidth(node));
+	for (const node of nodes) widths.set(node, initialWidth(node, specs));
 
 	for (let pass = 0; pass <= nodes.length; pass++) {
 		let changed = false;
 		for (const node of nodes) {
-			if (isPinnedWidth(node)) continue;
+			if (isPinnedWidth(node, specs)) continue;
 			const w = Math.max(widths.get(node) ?? 1, ...inputWidths(node, widths));
 			if (w !== widths.get(node)) {
 				widths.set(node, w);
@@ -30,12 +30,14 @@ export function resolveWidths(nodes: readonly GNode[]): Map<GNode, number> {
 	throw new Error("width resolution did not converge (internal error)");
 }
 
-function isPinnedWidth(node: GNode): boolean {
-	return getModule(node.module).policy === "reduce" || typeof node.config.__width === "number";
+function isPinnedWidth(node: GNode, specs?: SpecTable): boolean {
+	return (
+		resolveSpec(node.module, specs).policy === "reduce" || typeof node.config.__width === "number"
+	);
 }
 
-function initialWidth(node: GNode): number {
-	if (getModule(node.module).policy === "reduce") return 1;
+function initialWidth(node: GNode, specs?: SpecTable): number {
+	if (resolveSpec(node.module, specs).policy === "reduce") return 1;
 	const pinned = node.config.__width;
 	return typeof pinned === "number" ? pinned : 1;
 }

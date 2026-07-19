@@ -11,6 +11,12 @@
  *   index        topo position → node index
  *   ids          structural id per node (pin overrides at emit)
  *   emit         per-lane PortSrc resolution → PNode → Program
+ *   specs        eval-defined (defmod) specs used by reachable nodes
+ *                serialize into program.specs (tick/state as source strings);
+ *                each pays the closure-free fence at this crossing — a
+ *                closure-capturing tick fails HERE, loudly, never in the
+ *                audio thread. Unused definitions never cross, so they
+ *                never pay it.
  *
  * Nothing here imports the module library: modules are reached only through the
  * registry, so tests register their own toy modules.
@@ -18,9 +24,10 @@
 
 import { isLambdaInput, isNodeRef, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
-import { getModule } from "../module/define";
+import { type SpecTable, resolveSpec } from "../module/resolve";
+import { assertClosureFree, serializeSpec } from "../module/serialize";
 import type { EvalResult } from "../patch/context";
-import type { PNode, PortAnn, PortSrc, Program } from "../types";
+import type { ModuleSpec, PNode, PortAnn, PortSrc, Program, SerializedModuleSpec } from "../types";
 import { resolveAmbientClocks } from "./ambient-clock";
 import { collect } from "./collect";
 import { expandPatterns } from "./expand-patterns";
@@ -34,25 +41,48 @@ interface Resolved {
 	readonly widths: Map<GNode, number>;
 	readonly index: Map<GNode, number>;
 	readonly ids: Map<GNode, string>;
+	/** Patch-defined specs (defmod) from the eval, layered under every module lookup. */
+	readonly specs: SpecTable;
 }
 
 export function compile(evalResult: EvalResult): Program {
+	const specs = evalResult.specs;
 	const reachable = collect(evalResult.roots);
 	expandPatterns(reachable, evalResult.clock, evalResult.seed);
-	resolveAmbientClocks(reachable, evalResult.clock);
+	resolveAmbientClocks(reachable, evalResult.clock, specs);
 	const nodes = collect(evalResult.roots); // re-walk: patsig + ambient clock nodes are new
 	cutZ1Edges(nodes);
 
 	const order = toposort(nodes);
 	const resolved: Resolved = {
-		widths: resolveWidths(nodes),
+		widths: resolveWidths(nodes, specs),
 		index: indexByPosition(order),
-		ids: structuralIds(order),
+		ids: structuralIds(order, specs),
+		specs,
 	};
 
 	const pnodes = order.map((node) => emitNode(node, resolved));
 	const outs = outIndices(evalResult.roots, resolved.index);
-	return { nodes: pnodes, outs, seed: evalResult.seed };
+	const used = usedSpecs(order, specs);
+	return {
+		nodes: pnodes,
+		outs,
+		seed: evalResult.seed,
+		...(used.length > 0 ? { specs: used } : {}),
+	};
+}
+
+/** Only specs actually reached by the program ship; unused definitions are pruned with their chains. */
+function usedSpecs(order: readonly GNode[], specs: SpecTable): SerializedModuleSpec[] {
+	const modules = new Set(order.map((node) => node.module));
+	return [...specs.values()].filter((s) => modules.has(s.name)).map(serializeAndFence);
+}
+
+/** The string crossing, fenced: serialize, then trial the exact hydrate→tick round trip. */
+function serializeAndFence(spec: ModuleSpec): SerializedModuleSpec {
+	const serialized = serializeSpec(spec);
+	assertClosureFree(serialized);
+	return serialized;
 }
 
 function indexByPosition(order: readonly GNode[]): Map<GNode, number> {
@@ -74,7 +104,7 @@ function outIndices(roots: readonly GNode[], index: Map<GNode, number>): number[
 }
 
 function emitNode(node: GNode, r: Resolved): PNode {
-	const spec = getModule(node.module);
+	const spec = resolveSpec(node.module, r.specs);
 	const width = r.widths.get(node) ?? 1;
 	const lanes = Array.from({ length: width }, (_, lane) => resolveLane(node, spec.ins, lane, r));
 	return {

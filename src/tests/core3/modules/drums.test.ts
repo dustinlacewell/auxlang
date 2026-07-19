@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { clap } from "@/core3/modules/drums/clap";
-import { hihat } from "@/core3/modules/drums/hihat";
-import { kick } from "@/core3/modules/drums/kick";
-import { snare } from "@/core3/modules/drums/snare";
+import "@/core3/modules/drums/clap";
+import "@/core3/modules/drums/hihat";
+import "@/core3/modules/drums/kick";
+import "@/core3/modules/drums/snare";
+import { getModule } from "@/core3/module/define";
 import type { ModuleSpec } from "@/core3/types";
 import { SR, driver, maxAbs } from "./helpers";
+
+const kick = getModule("kick");
+const snare = getModule("snare");
+const hihat = getModule("hihat");
+const clap = getModule("clap");
 
 const DRUMS: [string, ModuleSpec][] = [
 	["kick", kick],

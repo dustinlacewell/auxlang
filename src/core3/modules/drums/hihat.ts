@@ -1,5 +1,5 @@
+import { defmod } from "../../patch/defmod";
 import { sig, trigPort, unit } from "../../types";
-import { defineMap } from "../define-typed";
 
 /**
  * Hi-hat: six inharmonically-detuned square waves (metallic) mixed with seeded
@@ -12,8 +12,10 @@ const BASE = 400;
 /** Naive square from phase — hoisted so tick allocates no closure. */
 const sq = (p: number): number => (p < 0.5 ? 1 : -1);
 
-export const hihat = defineMap({
+defmod({
 	name: "hihat",
+	category: "drums",
+	doc: "Hi-hat.",
 	ins: {
 		trig: trigPort(),
 		decay: sig(0.05),

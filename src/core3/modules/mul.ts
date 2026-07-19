@@ -1,11 +1,12 @@
-import type { ModuleSpec } from "../types";
+import { defmod } from "../patch/defmod";
 import { sig } from "../types";
-import { defineMap } from "./define-typed";
 
 /** Multiply two signals. `vca` and `gain` are the amplitude-named aliases. */
-function createMul(name: string): ModuleSpec {
-	return defineMap({
+function createMul(name: string, doc: string): void {
+	defmod({
 		name,
+		category: "utils",
+		doc,
 		ins: { in: sig(0), by: sig(1) },
 		outs: { out: sig() },
 		defaultIn: "in",
@@ -17,6 +18,6 @@ function createMul(name: string): ModuleSpec {
 	});
 }
 
-export const mul = createMul("mul");
-export const vca = createMul("vca");
-export const gain = createMul("gain");
+createMul("mul", "Multiplies two signals — amplitude control and VCAs.");
+createMul("vca", "Multiplies two signals — amplitude control and VCAs.");
+createMul("gain", "Multiplies two signals — amplitude control and VCAs.");

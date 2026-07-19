@@ -1,12 +1,14 @@
+import { defmod } from "../../patch/defmod";
 import { hz, sig, trigPort, unit } from "../../types";
-import { defineMap } from "../define-typed";
 
 /**
  * Snare: two detuned sine bodies plus band-passed noise for the wires. Noise is
  * a seeded xorshift32 (no Math.random — determinism law). Retriggered on `trig`.
  */
-export const snare = defineMap({
+defmod({
 	name: "snare",
+	category: "drums",
+	doc: "Snare drum.",
 	ins: {
 		trig: trigPort(),
 		pitch: hz(180),

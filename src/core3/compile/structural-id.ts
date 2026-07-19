@@ -4,26 +4,34 @@
  * per-port recursive source ids). Computed in topo order so every plain
  * dependency already has an id; z-edge sources are described shallowly
  * (module:port) to keep the recursion well-founded across cycles.
+ *
+ * Patch-defined (defmod) modules additionally fold their tick/state SOURCE
+ * into the hash: unchanged source → identical id → state migrates across
+ * re-runs; a changed tick is a different machine → fresh state (unless
+ * pinned). Bundled modules' hashing is untouched.
  */
 
 import { isLambdaInput, isNodeRef, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
-import { getModule } from "../module/define";
+import { type SpecTable, resolveSpec } from "../module/resolve";
 
 /** `order` must be topologically sorted (z-edges cut). */
-export function structuralIds(order: readonly GNode[]): Map<GNode, string> {
+export function structuralIds(order: readonly GNode[], specs?: SpecTable): Map<GNode, string> {
 	const ids = new Map<GNode, string>();
-	for (const node of order) ids.set(node, idOf(node, ids));
+	for (const node of order) ids.set(node, idOf(node, ids, specs));
 	return ids;
 }
 
-function idOf(node: GNode, ids: Map<GNode, string>): string {
-	const spec = getModule(node.module);
+function idOf(node: GNode, ids: Map<GNode, string>, specs?: SpecTable): string {
+	const spec = resolveSpec(node.module, specs);
 	const config = stableStringify({ ...spec.config, ...node.config });
 	const ports = Object.keys(spec.ins)
 		.sort()
 		.map((port) => `${port}=${sourceDesc(node.inputs[port], spec.ins[port]?.def ?? null, ids)}`);
-	return `n${fnv1a(`${node.module}|${config}|${ports.join(",")}`)}`;
+	const src = specs?.has(node.module)
+		? `|src:${fnv1a(spec.tick.toString() + (spec.state?.toString() ?? ""))}`
+		: "";
+	return `n${fnv1a(`${node.module}|${config}|${ports.join(",")}${src}`)}`;
 }
 
 function sourceDesc(

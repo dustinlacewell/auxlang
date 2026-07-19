@@ -4,7 +4,7 @@
  * Validation is loud and happens here, at build time.
  */
 
-import type { Pat, WChild } from "./ast";
+import type { Pat, SignalKind, WChild } from "./ast";
 import { type R, R1, r } from "./rational";
 
 const asR = (x: number | R): R => (typeof x === "number" ? r(x) : x);
@@ -102,3 +102,40 @@ export function every(n: number, f: (child: Pat) => Pat, child: Pat): Pat {
 export const tieNext = (child: Pat): Pat => ({ op: "tieNext", child });
 
 export const tiePrev = (child: Pat): Pat => ({ op: "tiePrev", child });
+
+export const mask = (bool: Pat, child: Pat): Pat => ({ op: "mask", bool, child });
+
+export const struct = (bool: Pat, child: Pat): Pat => ({ op: "struct", bool, child });
+
+export const segment = (n: number, child: Pat): Pat => ({
+	op: "segment",
+	n: positiveInt(n, "segment"),
+	child,
+});
+
+export function clip(factor: number, child: Pat): Pat {
+	if (!(factor >= 0)) throw new Error(`clip: factor must be >= 0, got ${factor}`);
+	return { op: "clip", factor, child };
+}
+
+/** every(n)-family with a rotating slice. f applies at build time to child. */
+export function chunk(n: number, f: (child: Pat) => Pat, child: Pat): Pat {
+	return { op: "chunk", n: positiveInt(n, "chunk"), child, transformed: f(child) };
+}
+
+export function sometimesBy(prob: number, f: (child: Pat) => Pat, child: Pat): Pat {
+	if (!(prob >= 0 && prob <= 1)) throw new Error(`sometimesBy: prob must be in [0,1], got ${prob}`);
+	return { op: "sometimesBy", prob, child, transformed: f(child) };
+}
+
+export const signal = (kind: SignalKind): Pat => ({ op: "signal", kind });
+
+export function chordidx(
+	tables: readonly (readonly number[])[],
+	per: number,
+	child: Pat,
+): Pat {
+	if (tables.length === 0) throw new Error("chordidx: needs at least one tone table");
+	if (tables.some((t) => t.length === 0)) throw new Error("chordidx: tone tables must be non-empty");
+	return { op: "chordidx", tables, per: positiveInt(per, "chordidx"), child };
+}

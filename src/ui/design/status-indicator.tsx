@@ -6,7 +6,7 @@ interface StatusIndicatorProps {
 
 const statusColorStyles: Record<PlaybackState, string> = {
 	idle: "bg-surface-600",
-	playing: "bg-accent-green",
+	playing: "bg-white",
 	error: "bg-accent-red",
 };
 

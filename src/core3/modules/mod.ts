@@ -1,9 +1,11 @@
+import { defmod } from "../patch/defmod";
 import { sig } from "../types";
-import { defineMap } from "./define-typed";
 
 /** Modulo — remainder of `in` by `by` (0 → 0). */
-export const mod = defineMap({
+defmod({
 	name: "mod",
+	category: "utils",
+	doc: "Modulo — arithmetic remainder, not modulation.",
 	ins: { in: sig(0), by: sig(1) },
 	outs: { out: sig() },
 	defaultIn: "in",

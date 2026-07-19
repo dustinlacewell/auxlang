@@ -12,6 +12,8 @@ import {
 	rectangularSelection,
 } from "@codemirror/view";
 
+import { moduleHighlight } from "./module-highlight";
+
 export function createExtensions(): Extension[] {
 	return [
 		lineNumbers(),
@@ -25,6 +27,7 @@ export function createExtensions(): Extension[] {
 		closeBrackets(),
 		autocompletion(),
 		javascript({ typescript: true }),
+		moduleHighlight,
 		EditorState.tabSize.of(2),
 	];
 }

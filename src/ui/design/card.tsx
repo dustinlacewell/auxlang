@@ -8,7 +8,7 @@ interface CardProps {
 
 const statusBorderStyles: Record<PlaybackState, string> = {
 	idle: "border-surface-700",
-	playing: "border-accent-green",
+	playing: "border-white",
 	error: "border-accent-red bg-accent-red/10",
 };
 

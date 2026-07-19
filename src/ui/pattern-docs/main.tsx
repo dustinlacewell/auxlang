@@ -1,5 +1,5 @@
 /**
- * Entry point for the pattern-docs page, mounted from pattern-tests.html.
+ * Entry point for the pattern-docs page, mounted from patterns.html.
  */
 
 import "@/ui/styles/globals.css";

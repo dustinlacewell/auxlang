@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { delay } from "@/core3/modules/delay";
+import "@/core3/modules/delay";
+import { getModule } from "@/core3/module/define";
 import { SR, driver } from "./helpers";
+
+const delay = getModule("delay");
 
 describe("delay", () => {
 	it("echoes an impulse at round(time*sr) samples (mix=1, no feedback)", () => {

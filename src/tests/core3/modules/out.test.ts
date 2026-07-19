@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { out } from "@/core3/modules/out";
+import "@/core3/modules/out";
+import { getModule } from "@/core3/module/define";
 import { reduceDriver } from "./helpers";
+
+const out = getModule("out");
 
 const lanes = (...v: number[]) => Float32Array.from(v);
 

@@ -12,9 +12,10 @@ export default defineConfig({
 		rollupOptions: {
 			input: {
 				main: resolve(__dirname, "index.html"),
-				"test-suite": resolve(__dirname, "test-suite.html"),
-				"pattern-tests": resolve(__dirname, "pattern-tests.html"),
-				core2: resolve(__dirname, "core2.html"),
+				editor: resolve(__dirname, "editor.html"),
+				guide: resolve(__dirname, "guide.html"),
+				patterns: resolve(__dirname, "patterns.html"),
+				modules: resolve(__dirname, "modules.html"),
 				core3: resolve(__dirname, "core3.html"),
 			},
 		},

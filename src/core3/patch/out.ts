@@ -19,6 +19,7 @@ import type { ModuleSpec } from "../types";
 import { evalCtx } from "./context";
 import { type HandleData, handleData, isHandle } from "./handle-data";
 import { lift, refFromHandle } from "./lift";
+import { resolvePatchModule } from "./resolve";
 
 /** The master's stereo jacks; an object arg may name only these. */
 const STEREO_JACKS = ["l", "r"] as const;
@@ -77,7 +78,7 @@ function liftStereoJacks(named: Record<string, unknown>): Record<string, InputVa
  * silently keeping only the default output drops the other channel.
  */
 export function rootFromHandle(data: HandleData): void {
-	const spec = getModule(data.node.module);
+	const spec = resolvePatchModule(data.node.module);
 	if (data.port === undefined && isStereoSource(spec)) {
 		throw stereoSourceError(spec);
 	}
