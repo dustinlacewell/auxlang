@@ -12,8 +12,15 @@ import type { Program } from "../../types";
 import { Core3Engine } from "../engine";
 import { withProgramSpecs } from "../hydrate-specs";
 import type { WorkletMessage, WorkletReply } from "./messages";
+import { QuantumMeter } from "./quantum-meter";
 
 declare const sampleRate: number;
+declare const currentFrame: number;
+
+// Perf instrumentation is a dev-only diagnostic. `import.meta.env.DEV` is a
+// build-time constant, so a production build folds every PERF branch to `false`
+// and the meter is never constructed or called (zero runtime cost).
+const PERF = import.meta.env.DEV;
 
 declare class AudioWorkletProcessor {
 	readonly port: MessagePort;
@@ -36,6 +43,10 @@ class Core3Processor extends AudioWorkletProcessor {
 	private readonly fadeLen = Math.max(1, Math.floor((CROSSFADE_MS / 1000) * sampleRate));
 	private readonly frame = new Float32Array(2);
 	private readonly fadeFrame = new Float32Array(2);
+	// Opt-in render-quantum instrumentation; null until a "perf" message enables
+	// it, so the hot path pays nothing by default.
+	private meter: QuantumMeter | null = null;
+	private meterWarm = true;
 
 	constructor() {
 		super();
@@ -44,7 +55,9 @@ class Core3Processor extends AudioWorkletProcessor {
 
 	private handle(message: WorkletMessage): void {
 		if (message.type === "swap") this.swap(message.program);
-		else if (message.type === "stop") {
+		else if (message.type === "perf") {
+			if (PERF) this.setPerf(message.enabled);
+		} else if (message.type === "stop") {
 			// Fade to silence instead of cutting mid-waveform: the live engine
 			// becomes the fading engine with no successor.
 			if (this.engine !== null) {
@@ -52,6 +65,15 @@ class Core3Processor extends AudioWorkletProcessor {
 				this.fadePos = 0;
 				this.engine = null;
 			}
+		}
+	}
+
+	private setPerf(enabled: boolean): void {
+		if (enabled) {
+			this.meter = new QuantumMeter();
+			this.meterWarm = true; // drop the first quantum's cold-JIT time
+		} else {
+			this.meter = null;
 		}
 	}
 
@@ -84,6 +106,9 @@ class Core3Processor extends AudioWorkletProcessor {
 		const ch0 = channels[0] as Float32Array;
 		const ch1 = channels.length > 1 ? (channels[1] as Float32Array) : null;
 
+		const meter = this.meter;
+		if (PERF && meter !== null) meter.mark(currentFrame);
+
 		for (let i = 0; i < ch0.length; i++) {
 			let l = 0;
 			let r = 0;
@@ -113,6 +138,12 @@ class Core3Processor extends AudioWorkletProcessor {
 			} else {
 				ch0[i] = 0.5 * (l + r);
 			}
+		}
+
+		if (PERF && meter !== null) {
+			const report = meter.measure(this.meterWarm);
+			this.meterWarm = false;
+			if (report !== null) this.port.postMessage(report);
 		}
 		return true;
 	}
