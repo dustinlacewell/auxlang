@@ -7,7 +7,7 @@ clock(90)
       .lpf(1200)
       .gain(s.gate.ad({ attack: 0.005, decay: 0.15 }))
       .tape({
-        time: sin(0.2, 0.1, 0.4),
+        time: lfo(0.2, 0.1, 0.4),
         feedback: 0.45,
         wow: 0.1,
         flutter: 0.1})

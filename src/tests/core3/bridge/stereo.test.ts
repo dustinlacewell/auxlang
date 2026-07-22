@@ -14,13 +14,14 @@ import { rms } from "./helpers";
 
 const sin = factory("sin");
 const tri = factory("tri");
+const lfo = factory("lfo");
 
 type Stereo = { l: unknown; r: unknown };
 
 /** Render a mono source panned to a fixed position; return channel RMS. */
 function panFixed(pos: number) {
 	const program = runProgram(() => {
-		sin(330)
+		sin({ freq: 330 })
 			.pan(pos)
 			.apply((p: Stereo) => out({ l: p.l, r: p.r }));
 	});
@@ -65,8 +66,8 @@ describe("stereo routing pan → out", () => {
 
 	it("a modulated pan makes L and R trade over time (motion correlation)", () => {
 		const program = runProgram(() => {
-			sin(330)
-				.pan(sin(0.5, -1, 1)) // one full sweep every 2 s
+			sin({ freq: 330 })
+				.pan(lfo(0.5, -1, 1)) // one full sweep every 2 s
 				.apply((p: Stereo) => out({ l: p.l, r: p.r }));
 		});
 		const { l, r } = render(program, 2);
@@ -134,7 +135,7 @@ describe("stereo routing pan → out", () => {
 
 	it("mono .out() is unchanged (auto-spread center)", () => {
 		const program = runProgram(() => {
-			sin(330).out();
+			sin({ freq: 330 }).out();
 		});
 		const { l, r } = render(program, 0.25);
 		const rl = rms(l);
@@ -146,14 +147,14 @@ describe("stereo routing pan → out", () => {
 	it("bare .out() off a stereo source is a loud error", () => {
 		expect(() =>
 			runProgram(() => {
-				sin(330).pan(0.5).out();
+				sin({ freq: 330 }).pan(0.5).out();
 			}),
 		).toThrow(/stereo/i);
 	});
 
 	it("out({ l, r }) object form works as a free function too", () => {
 		const program = runProgram(() => {
-			const p = sin(330).pan(-1);
+			const p = sin({ freq: 330 }).pan(-1);
 			out({ l: p.l, r: p.r });
 		});
 		const { l, r } = render(program, 0.25);

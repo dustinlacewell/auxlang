@@ -1,3 +1,3 @@
-// sin as lfo - all params
-// Sine with explicit freq, min, max
-saw(sin(2, 200, 400)).out()
+// lfo - all params
+// LFO with explicit freq, min, max modulating a sine's Hz range
+sin({ freq: lfo({ freq: 2, min: 200, max: 400 }) }).out()

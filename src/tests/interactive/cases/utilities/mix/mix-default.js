@@ -1,3 +1,3 @@
 // mix - defaults
 // Mix saw and slightly detuned sin for beating
-mix({ a: sin(220), b: sin(222) }).out()
+mix({ a: sin({ freq: 220 }), b: sin({ freq: 222 }) }).out()

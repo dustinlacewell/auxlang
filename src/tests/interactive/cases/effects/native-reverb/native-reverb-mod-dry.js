@@ -9,6 +9,6 @@ clock(60)
         room: 0.7,
         damp: 0.5,
         wet: 0.4,
-        dry: sin(0.2, 0.3, 0.9)})
+        dry: lfo(0.2, 0.3, 0.9)})
       .gain(0.3)
       .out())
