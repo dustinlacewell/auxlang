@@ -15,7 +15,7 @@ s.voices[2]
 s.voices[3]
   .apply(v=>v
   .saw()
-  .lpf(sin(0.3, 800, 2000))
+  .lpf(lfo(0.3, 800, 2000))
   .gain(v.gate.adsr())
   .delay({ 
     time: 0.125, 

@@ -4,5 +4,5 @@ clock(120)
   .seq("c4*4")
   .apply(s =>
     s.trig
-      .hihat({ metal: sin(0.5, 0.2, 0.9) })
+      .hihat({ metal: lfo(0.5, 0.2, 0.9) })
       .out())

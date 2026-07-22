@@ -1,3 +1,3 @@
 // sqr - all params
-// Square at 110Hz with reduced range
-sqr({ freq: 110, min: -0.3, max: 0.3 }).out()
+// Square at 220Hz with custom range
+sqr({ freq: 220, min: -0.5, max: 0.5 }).out()

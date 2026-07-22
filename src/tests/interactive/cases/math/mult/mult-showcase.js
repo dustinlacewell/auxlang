@@ -5,7 +5,7 @@ clock(120)
   .apply(s =>
     s.cv
       .saw()
-      .mult(sin(200))
+      .mult(sin({ freq: 200 }))
       .lpf({ cutoff: 2000 })
       .gain({ level: s.gate.adsr() })
       .out())

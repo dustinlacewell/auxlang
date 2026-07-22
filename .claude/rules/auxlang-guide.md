@@ -15,9 +15,12 @@ s.tri()
 
 ## Modules (real signatures)
 
-- **Osc** `osc/sin/saw/tri/sqr` — ins `pitch`(semis, def 69, DEFAULT), `freq`(hz,
-  optional, WINS when set), `min/max`(range -1/1), `phase`. Positional `[freq,min,max]`
-  → `sin(0.3,100,800)` is an LFO. `sin(0)` = freq 0 = SILENCE; use `sin()` or `sin({pitch:60})`.
+- **Osc** `sin/saw/tri/sqr` — ins `pitch`(semis, def 69, DEFAULT), `freq`(hz,
+  optional, WINS when set), `min/max`(range -1/1), `phase`. Positional `[pitch,min,max]`
+  → `sin(69)`/`sin()` = A440. `sin(0)` = pitch 0 ≈ 8.18 Hz, NOT silence.
+- **Lfo** `lfo` — the Hz-rate modulation source. ins `freq`(hz, def 1), `min/max`(range -1/1),
+  `phase`. Positional `[freq,min,max]` → `lfo(0.3,100,800)` sweeps 100–800 at 0.3 Hz.
+  Shape via config: `lfo({shape:"tri"})` — sin (default), saw, tri, sqr.
 - **Filters** `lpf/hpf/bpf/notch` — `{cutoff, res}`, positional `[cutoff, res]`.
 - **Env** `ad(a,d)` · `ar(a,r)` · `adsr(a,d,s,r)` — gate-driven. NO `env` module.
 - **Amp/math** `mul` (aliases `gain`, `vca`) · `add(to)` · `sub(from)` · `div(by)` ·
@@ -60,8 +63,8 @@ Statics: `P.stack`, `P.cat`, `P.fastcat`. Splice: `p\`\${hook} \${hook.rev().add
 
 ## Modulation
 
-Any input takes number | output | lambda `(s,sr,t)=>n` | pattern. LFO = slow osc into
-a knob: `sin(0.3, 300, 2000)`. **Pattern-as-signal**: `p\`...\`` into any knob lifts
+Any input takes number | output | lambda `(s,sr,t)=>n` | pattern. Hz-rate modulation
+uses `lfo`: `lfo(0.3, 300, 2000)`. **Pattern-as-signal**: `p\`...\`` into any knob lifts
 automatically. It STEPS (clicks into a cutoff) — declick with
 `slew({ in: p\`400 800 1600\`, rise: 5e-6, fall: 5e-6 })`. Drive pitch directly:
 `tri(p\`48 55 60 63\`)`.
@@ -79,11 +82,11 @@ A bare `.out()` off a stereo source (pan) is a LOUD ERROR (drops a channel).
 ## patstep (trigger domain)
 
 `patstep(pattern, trigSignal)` advances onset values per rising trigger, IGNORING
-durations. Any trigger: `s.trig`, `sin(6).gt(0.7)`.
+durations. Any trigger: `s.trig`, `lfo(6).gt(0.7)`.
 
 ## Key gotchas
 
-1. `sin(0)` = freq 0 = silence. Default A4 is `sin()`.
+1. `sin(0)` = pitch 0 (≈8.18 Hz), NOT silence. Default A4 is `sin()`; exact Hz needs `sin({freq:...})`.
 2. Stereo needs explicit `out({ l, r })`; bare `.out()` off pan throws.
 3. `seq` uses the ambient `clock(...)`; no clock ⇒ unclocked.
 4. `mod` is modulo; `factory(name)` is the module-lookup helper, not musical.

@@ -23,7 +23,8 @@ describe("registry is populated", () => {
 	it("has every expected module registered", () => {
 		expect(specs.length).toBeGreaterThan(20);
 		for (const name of [
-			"osc",
+			"sin",
+			"lfo",
 			"lpf",
 			"adsr",
 			"delay",

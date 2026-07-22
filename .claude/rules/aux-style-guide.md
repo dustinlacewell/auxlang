@@ -17,12 +17,12 @@ Generally speaking,
 
 
 // good
-sin(0.3, 100, 800)
+lfo(0.3, 100, 800)
   .quantize({
     scaleName: "pentatonic blues",
-    root: sin(0.07, 0, 11),
-    octave: sin(0.13, 2, 4),
-    range: sin(0.09, 1, 5)})
+    root: lfo(0.07, 0, 11),
+    octave: lfo(0.13, 2, 4),
+    range: lfo(0.09, 1, 5)})
   .saw()
   .lpf(1800, 0.2)
   .gain(0.3)
@@ -30,11 +30,11 @@ sin(0.3, 100, 800)
   .out()
 
 // bad
-sin({ // common device, positional args preferred
+lfo({ // common device, positional args preferred
     freq: 0.3,
     min: 100,
     max: 800
-}).quantize("pentatonic blues", sin(0.07, 0, 11), sin(0.13, 2, 4), sin(0.09, 1, 5)) // too long! use object config
+}).quantize("pentatonic blues", lfo(0.07, 0, 11), lfo(0.13, 2, 4), lfo(0.09, 1, 5)) // too long! use object config
   .saw()
   .lpf({ // common device, object config preferred
     cutoff: 1800,

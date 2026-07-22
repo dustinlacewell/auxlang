@@ -9,7 +9,7 @@ clock(60)
         s
           .gate
           .adsr({
-            attack: sin(0.1, 0.01, 0.5),
+            attack: lfo(0.1, 0.01, 0.5),
             decay: 0.1,
             sustain: 0.5,
             release: 0.3}))

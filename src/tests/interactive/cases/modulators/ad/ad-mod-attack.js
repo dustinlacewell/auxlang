@@ -8,5 +8,5 @@ clock(120)
       .gain(
         s
           .gate
-          .ad({ attack: sin(0.2, 0.001, 0.1), decay: 0.15 }))
+          .ad({ attack: lfo(0.2, 0.001, 0.1), decay: 0.15 }))
       .out())
