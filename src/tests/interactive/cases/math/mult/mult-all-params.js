@@ -1,3 +1,3 @@
 // mult - all params
 // Ring modulation
-sin(220).mult(sin(221)).out()
+sin({ freq: 220 }).mult(sin({ freq: 221 })).out()

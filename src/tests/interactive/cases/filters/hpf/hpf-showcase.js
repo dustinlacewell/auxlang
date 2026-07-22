@@ -5,5 +5,5 @@ clock(240)
   .apply(s =>
     s.trig
       .hihat()
-      .hpf({ cutoff: sin(0.25, 2000, 10000) })
+      .hpf({ cutoff: lfo(0.25, 2000, 10000) })
       .out())

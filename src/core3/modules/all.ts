@@ -10,6 +10,7 @@ import "./seq";
 import "./patsig";
 import "./patstep";
 import "./osc";
+import "./lfo";
 import "./fm";
 import "./svf";
 import "./env";

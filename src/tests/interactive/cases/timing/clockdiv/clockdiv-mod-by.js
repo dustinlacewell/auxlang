@@ -10,7 +10,7 @@ clock(240)
             .tri()
             .gain({ level: s.gate.ar() })),
       b: clockDiv(c)
-        .by(sin(0.1, 2, 6))
+        .by(lfo(0.1, 2, 6))
         .seq("c3")
         .apply(s =>
           s.cv

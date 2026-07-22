@@ -6,7 +6,7 @@ clock(60)
     s.saw()
       .gain({ level: s.gate.adsr() })
       .nativeReverb({
-        room: sin(0.1, 0.3, 0.9),
+        room: lfo(0.1, 0.3, 0.9),
         damp: 0.5,
         wet: 0.4,
         dry: 0.6})

@@ -101,7 +101,7 @@ export class Core3Engine implements Engine {
 			for (const port of Object.keys(spec.ins)) ins[port] = 0;
 			return {
 				tick: spec.tick,
-				config: node.config,
+				config: { ...spec.config, ...node.config },
 				laneCount: node.lanes.length,
 				states: laneStates.states[i] as Record<string, unknown>[],
 				ins,

@@ -8,7 +8,7 @@ clock(60)
       .nativeReverb({
         room: 0.7,
         damp: 0.5,
-        wet: sin(0.2, 0.1, 0.6),
+        wet: lfo(0.2, 0.1, 0.6),
         dry: 0.7})
       .gain(0.3)
       .out())

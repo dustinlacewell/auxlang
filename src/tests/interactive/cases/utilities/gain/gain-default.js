@@ -1,3 +1,3 @@
 // gain - defaults
 // Unity gain (passthrough)
-saw(220).gain().out()
+saw({ freq: 220 }).gain().out()

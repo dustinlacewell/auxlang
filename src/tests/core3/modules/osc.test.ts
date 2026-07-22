@@ -4,7 +4,6 @@ import "@/core3/modules/osc";
 import { getModule } from "@/core3/module/define";
 import { SR, driver, maxAbs, periodFromCrossings } from "./helpers";
 
-const osc = getModule("osc");
 const sin = getModule("sin");
 const saw = getModule("saw");
 const tri = getModule("tri");
@@ -49,12 +48,6 @@ describe("osc", () => {
 		const d = driver(sin);
 		const xs = d.trace(SR, "out", { freq: 220 });
 		expect(maxAbs(xs)).toBeLessThanOrEqual(1.0 + 1e-9);
-	});
-
-	it("osc alias behaves as sine", () => {
-		const d = driver(osc);
-		const xs = d.trace(SR, "out", { pitch: 69 });
-		expect(periodFromCrossings(xs)).toBeCloseTo(SR / 440, 0);
 	});
 
 	it("saw stays bounded (polyBLEP overshoot small)", () => {

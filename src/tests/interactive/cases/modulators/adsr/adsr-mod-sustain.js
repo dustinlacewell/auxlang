@@ -11,6 +11,6 @@ clock(60)
           .adsr({
             attack: 0.05,
             decay: 0.15,
-            sustain: sin(0.2, 0.1, 0.9),
+            sustain: lfo(0.2, 0.1, 0.9),
             release: 0.3}))
       .out())

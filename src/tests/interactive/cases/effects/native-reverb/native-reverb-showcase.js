@@ -4,7 +4,7 @@ clock(40)
   .seq("{c3,e3,g3} {d3,f3,a3}")
   .apply(s =>
     s.tri()
-      .lpf(sin(0.05, 400, 1200), 0.1)
+      .lpf(lfo(0.05, 400, 1200), 0.1)
       .gain({
         level: s
           .gate

@@ -1,3 +1,3 @@
 // lpf - defaults
 // Lowpass at 1kHz on saw
-saw(110).lpf().out()
+saw({ freq: 110 }).lpf().out()

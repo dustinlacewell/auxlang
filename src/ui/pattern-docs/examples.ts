@@ -513,7 +513,7 @@ s.tri()
 		code: `clock(100)
 tri({ pitch: p\`48 55 60 63\` })
   .lpf({ cutoff: 1200, res: 0.2 })
-  .mul(sin(0.5, 0.2, 0.5))
+  .mul(lfo(0.5, 0.2, 0.5))
   .gain(0.3)
   .out()`,
 	},
@@ -551,9 +551,9 @@ s.tri()
 		section: "Bridge: trigger domain",
 		title: "stepped by an LFO comparator",
 		description:
-			"Any trigger works: a sine through .gt(0.7) fires an irregular pulse, and patstep walks its value list on each — no clock division involved.",
+			"Any trigger works: an LFO through .gt(0.7) fires an irregular pulse, and patstep walks its value list on each — no clock division involved.",
 		code: `clock(110)
-const trg = sin(6).gt(0.7)
+const trg = lfo(6).gt(0.7)
 tri(patstep(p\`48 52 55 60\`, trg))
   .mul(trg.ar(0.002, 0.12))
   .gain(0.3)

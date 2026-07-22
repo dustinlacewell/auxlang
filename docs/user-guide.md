@@ -11,7 +11,7 @@ A patch is a JavaScript expression. Evaluating it builds pure values that descri
 A chain reads left-to-right: source → processors → out.
 
 ```js
-tri(220)
+tri({ freq: 220 })
   .lpf({ cutoff: 1200, res: 0.2 })
   .gain(0.3)
   .out()
@@ -33,7 +33,8 @@ The module families:
 
 ### Sources
 
-- `osc` / `sin` / `saw` / `tri` / `sqr` — oscillators. Pitch is in MIDI semitones and defaults to 69 (A4). Frequency is in Hz, optional, and wins when set. There is an output range (`min`/`max`). Positional signature is `[freq, min, max]`, so `sin(0.3, 100, 800)` is a slow LFO sweeping 100–800.
+- `sin` / `saw` / `tri` / `sqr` — oscillators. Positional signature is `[pitch, min, max]`, where pitch is in MIDI semitones and defaults to 69 (A4): `sin(69)` and `sin()` both mean A440. Frequency (Hz) is object-config only, e.g. `sin({ freq: 440 })`, and wins over pitch when set. There is an output range (`min`/`max`).
+- `lfo` — Hz-rate LFO, the device for modulation. Positional signature is `[freq, min, max]` in Hz: `lfo(0.3, 100, 800)` sweeps 100–800 at 0.3 Hz. Defaults to freq 1, min -1, max 1. Shape is config — `lfo({ shape: "tri" })` — sin (default), saw, tri, or sqr.
 - `noise` — noise source.
 
 ### Filters
@@ -77,7 +78,7 @@ The module families:
 
 `.method()` continues the chain from the previous value's default output. `s.tri()` chains a triangle from `s`'s default output.
 
-**Signal-uniformity rule (gotcha).** Setting the default input while chaining is an error, because the chain already bound it. `seq.pitch.saw({ freq: 880 })` errors — `.saw()` chained off `seq.pitch` already wired the oscillator's default input, and `freq` is that same default port. To set another value on a chained module, use a non-default port, or a positional that is not the default port.
+**Signal-uniformity rule (gotcha).** Setting the default input while chaining is an error, because the chain already bound it. `seq.pitch.saw({ pitch: 60 })` errors — `.saw()` chained off `seq.pitch` already wired the oscillator's default input (`pitch`), and the object arg tries to set that same port. To set another value on a chained module, use a non-default port, or a positional that is not the default port.
 
 ```js
 clock(120)
@@ -98,7 +99,7 @@ Here `s.pitch.saw()` chains an oscillator off the pitch tap without re-setting i
 Setters return new values; the original is unchanged. A discarded value is not merely unused — it is unregistered. A chain that never reaches `out()` is pruned at compile time. It is garbage, not a silent zombie.
 
 ```js
-const base = tri(220)
+const base = tri({ freq: 220 })
 const bright = base.lpf({ cutoff: 3000 }) // new value; base unchanged
 base.lpf({ cutoff: 400 }) // discarded — never reaches out(), so it is pruned
 bright.gain(0.3).out()
@@ -227,16 +228,16 @@ Three-note stack → width 3. The oscillator, filter, and envelope run independe
 
 ## 9. Modulation
 
-Any input accepts a number, another module's output, a lambda, or a pattern. An LFO is nothing special — it is a slow oscillator patched into a knob.
+Any input accepts a number, another module's output, a lambda, or a pattern. For Hz-rate modulation, patch an `lfo` into a knob.
 
 ```js
-saw(110)
-  .lpf({ cutoff: sin(0.3, 300, 2000), res: 0.3 })
+saw({ freq: 110 })
+  .lpf({ cutoff: lfo(0.3, 300, 2000), res: 0.3 })
   .gain(0.3)
   .out()
 ```
 
-`sin(0.3, 300, 2000)` sweeps the cutoff between 300 and 2000 Hz at 0.3 Hz.
+`lfo(0.3, 300, 2000)` sweeps the cutoff between 300 and 2000 Hz at 0.3 Hz.
 
 ### Pattern-as-signal
 
@@ -246,7 +247,7 @@ A `` p`...` `` handed to any knob lifts automatically. It is queried at the ambi
 clock(100)
 tri(p`48 55 60 63`)
   .lpf({ cutoff: 1200, res: 0.2 })
-  .mul(sin(0.5, 0.2, 0.5))
+  .mul(lfo(0.5, 0.2, 0.5))
   .gain(0.3)
   .out()
 ```
@@ -272,7 +273,7 @@ Snap an LFO-driven pitch onto a scale with `.quantize({ scaleName, root })`:
 
 ```js
 sin()
-  .pitch(sin(0.2, 36, 72).quantize({ scaleName: "minor pentatonic", root: 0 }))
+  .pitch(lfo(0.2, 36, 72).quantize({ scaleName: "minor pentatonic", root: 0 }))
   .lpf({ cutoff: 1600, res: 0.2 })
   .gain(0.3)
   .out()
@@ -287,8 +288,8 @@ The slow LFO ramps pitch from 36 to 72 semitones; `quantize` snaps each value to
 A cycle in the graph is only legal if it passes through one unit delay. Write it as `loop(fb => ...)`, where `fb` is the fed-back signal exactly one sample late. This covers filter pinging, echoes, Karplus-Strong, and any recursive structure.
 
 ```js
-saw(110)
-  .mul(sin(2).gt(0).mul(0.5))
+saw({ freq: 110 })
+  .mul(lfo(2).gt(0).mul(0.5))
   .apply((dry) => loop((fb) => dry.add(fb.delay({ time: 0.18, mix: 1 }).mul(0.6))))
   .gain(0.3)
   .out()
@@ -307,7 +308,7 @@ clock(120)
 const s = seq("c3 e3 g3 e3")
 s.tri()
   .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.15))
-  .pan(sin(0.5, -1, 1))
+  .pan(lfo(0.5, -1, 1))
   .apply((v) => out({ l: v.l, r: v.r }))
 ```
 
@@ -347,7 +348,7 @@ The language never silently no-ops. At eval time it throws — naming what was a
 
 ### Common footguns
 
-- **`sin(0)` sets FREQ to 0** — that is silence. For a default A4 use `sin()`; to set pitch instead of frequency use `sin({ pitch: 60 })`.
+- **`sin(0)` sets PITCH to 0** (≈8.18 Hz), not silence — pitch is the positional default. For a default A4 use `sin()`; for an exact Hz value use `sin({ freq: ... })`.
 - **Forgetting `clock(...)`** leaves seqs unclocked.
 - **`mod` is modulo** (arithmetic remainder), not "modulation". And `factory()` is the module-lookup helper, not a musical term.
 - **A pattern into a filter cutoff clicks** without a `slew` — see the slew-declick idiom.

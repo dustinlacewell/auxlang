@@ -1,8 +1,8 @@
 // scale - showcase
 // LFO controlling filter cutoff
-saw(110)
+saw({ freq: 110 })
   .lpf({
-    cutoff: sin(0.5)
+    cutoff: lfo(0.5)
       .scale({
         from: -1,
         to: 1,
