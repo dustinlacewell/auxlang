@@ -16,7 +16,7 @@ import type { DocExample } from "@/ui/docs-kit/doc-example";
 
 export const EXAMPLES: readonly DocExample[] = [
 	// ======================================================================
-	// Sources — sin/saw/tri/sqr, lfo, noise
+	// Sources — sin/saw/tri/sqr, lfo, noise, fm
 	// ======================================================================
 	{
 		section: "Sources",
@@ -163,6 +163,54 @@ sin({ freq: 220.5 }).gain(0.2).out()`,
 		code: `noise()
   .lpf(lfo(0.2, 300, 4000), 0.6)
   .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "fm — default",
+		description:
+			"Two-op FM at A4, ratio 1, moderate index — a clean sine mildly enriched with sidebands.",
+		code: `fm()
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "fm — all params",
+		description:
+			"220 Hz carrier, ratio 2 (harmonic), high index — a bright, clangy bell tone.",
+		code: `fm({ freq: 220, index: 6, ratio: 2 })
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "fm — index modulated",
+		description:
+			"An LFO sweeps index 0→8 — the tone grows from a clean sine into a bright bell and back.",
+		code: `fm({ freq: 220, index: lfo(0.2, 0, 8) })
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "fm — ratio modulated",
+		description:
+			"An LFO sweeps ratio 1→3 — the timbre drifts from harmonic to clangy and back.",
+		code: `fm({ freq: 220, index: 4, ratio: lfo(0.2, 1, 3) })
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "fm — showcase",
+		description:
+			"A plucky FM bell sequence, index driven by each note's envelope so the brightness snaps down with the pluck.",
+		code: `clock(90)
+const s = seq("c4 e4 g4 c5")
+s.pitch
+  .fm({ index: s.gate.ad(0.005, 0.3).mul(5), ratio: 1.5 })
+  .gain(s.gate.ad(0.005, 0.3))
   .out()`,
 	},
 
@@ -398,7 +446,7 @@ s.tri()
 	},
 
 	// ======================================================================
-	// Effects — delay, pan
+	// Effects — delay, reverb, pan, phaser, shape
 	// ======================================================================
 	{
 		section: "Effects",
@@ -539,6 +587,94 @@ sin({ freq: 440 })
   .gain(0.3)
   .pan(lfo(0.3, -1, 1))
   .apply(p => out({ l: p.l, r: p.r }))`,
+	},
+	{
+		section: "Effects",
+		title: "phaser — default",
+		description:
+			"A saw through the default phaser — a gentle sweeping shimmer as the moving notches pass through the harmonics.",
+		code: `saw({ freq: 110 })
+  .phaser()
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "phaser — all params",
+		description:
+			"Fast rate, deep sweep, high feedback, fully wet — a swirling, resonant sweep.",
+		code: `saw({ freq: 110 })
+  .phaser({ rate: 1.2, depth: 0.9, feedback: 0.6, mix: 0.8 })
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "phaser — rate modulated",
+		description:
+			"An LFO sweeps the phaser rate 0.1→2 Hz — the sweep itself speeds up and slows down.",
+		code: `saw({ freq: 110 })
+  .phaser(lfo(0.2, 0.1, 2), 0.7, 0.5)
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "phaser — depth modulated",
+		description:
+			"An LFO opens depth 0.1→1 — the notches travel a wider range as it swells.",
+		code: `saw({ freq: 110 })
+  .phaser(0.5, lfo(0.2, 0.1, 1), 0.5)
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "phaser — feedback modulated",
+		description:
+			"An LFO opens feedback 0.1→0.85 — the notches sharpen into a resonant peak.",
+		code: `saw({ freq: 110 })
+  .phaser({ feedback: lfo(0.2, 0.1, 0.85) })
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "phaser — mix modulated (showcase)",
+		description:
+			"An LFO crossfades mix 0→1 — swings between the dry saw and the full phaser wash.",
+		code: `saw({ freq: 110 })
+  .phaser(0.5, 0.7, lfo(0.2, 0, 1))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "shape — default",
+		description: "A sine through the default waveshaper — mild tanh warmth.",
+		code: `sin({ freq: 220 })
+  .shape()
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "shape — all params",
+		description: "Amount at 0.9 — heavy tanh saturation, a fuzzy, crunchy sine.",
+		code: `sin({ freq: 220 })
+  .shape({ amount: 0.9 })
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "shape — amount modulated (showcase)",
+		description:
+			"An LFO sweeps amount 0→1 — the clean sine grows into heavy fuzz and back.",
+		code: `sin({ freq: 220 })
+  .shape(lfo(0.2, 0, 1))
+  .gain(0.3)
+  .out()`,
 	},
 
 	// ======================================================================
