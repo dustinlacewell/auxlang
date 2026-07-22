@@ -16,7 +16,7 @@ import type { DocExample } from "@/ui/docs-kit/doc-example";
 
 export const EXAMPLES: readonly DocExample[] = [
 	// ======================================================================
-	// Sources — osc/sin/saw/tri/sqr, noise
+	// Sources — sin/saw/tri/sqr, lfo, noise
 	// ======================================================================
 	{
 		section: "Sources",
@@ -31,16 +31,16 @@ export const EXAMPLES: readonly DocExample[] = [
 		section: "Sources",
 		title: "sin — all params",
 		description:
-			"Every port set: freq drives it to 220 Hz and the output is squeezed into [-0.4, 0.4] — a quiet low sine.",
-		code: `sin({ freq: 220, min: -0.4, max: 0.4, phase: 0 })
+			"Every port set: freq drives it to 220 Hz and the output is squeezed into [-0.5, 0.5] — a quiet low sine.",
+		code: `sin({ freq: 220, min: -0.5, max: 0.5, phase: 0 })
   .out()`,
 	},
 	{
 		section: "Sources",
 		title: "sin — freq modulated",
 		description:
-			"A slow LFO sweeps the pitch between 200 and 600 Hz — a gentle siren wandering up and down.",
-		code: `sin({ freq: lfo(0.2, 200, 600) })
+			"A slow LFO sweeps the pitch between 100 and 400 Hz — a gentle siren wandering up and down.",
+		code: `sin({ freq: lfo(0.2, 100, 400) })
   .gain(0.3)
   .out()`,
 	},
@@ -74,16 +74,16 @@ sin({ freq: 220.5 }).gain(0.2).out()`,
 	{
 		section: "Sources",
 		title: "tri — all params",
-		description: "All ports: a 110 Hz triangle mapped to [-0.5, 0.5] — a mellow low drone.",
-		code: `tri({ freq: 110, min: -0.5, max: 0.5, phase: 0 })
+		description: "All ports: a 220 Hz triangle mapped to [-0.5, 0.5] — a mellow low drone.",
+		code: `tri({ freq: 220, min: -0.5, max: 0.5, phase: 0 })
   .out()`,
 	},
 	{
 		section: "Sources",
 		title: "tri — freq modulated",
 		description:
-			"A 0.2 Hz LFO sweeps the triangle 150→450 Hz — the same hollow tone, slowly climbing and falling.",
-		code: `tri({ freq: lfo(0.2, 150, 450) })
+			"A 0.2 Hz LFO sweeps the triangle 100→400 Hz — the same hollow tone, slowly climbing and falling.",
+		code: `tri({ freq: lfo(0.2, 100, 400) })
   .gain(0.3)
   .out()`,
 	},
@@ -100,8 +100,8 @@ sin({ freq: 220.5 }).gain(0.2).out()`,
 		section: "Sources",
 		title: "saw — freq modulated",
 		description:
-			"A slow LFO sweeps the saw 110→330 Hz — a rising buzz, brightest at the top of the sweep.",
-		code: `saw({ freq: lfo(0.2, 110, 330) })
+			"A slow LFO sweeps the saw 100→400 Hz — a rising buzz, brightest at the top of the sweep.",
+		code: `saw({ freq: lfo(0.2, 100, 400) })
   .gain(0.2)
   .out()`,
 	},
@@ -123,20 +123,20 @@ sin({ freq: 220.5 }).gain(0.2).out()`,
 	},
 	{
 		section: "Sources",
-		title: "osc — default",
+		title: "lfo — default",
 		description:
-			"osc is the generic oscillator (sine shape by default): a plain A4 tone, same as sin.",
-		code: `osc()
-  .gain(0.3)
+			"The Hz-rate modulation source: a 2 Hz sine in [0, 0.4] wobbles the gain of a steady tone.",
+		code: `sin({ freq: 330 })
+  .gain(lfo(2, 0, 0.4))
   .out()`,
 	},
 	{
 		section: "Sources",
-		title: "osc — as LFO (min/max)",
+		title: "lfo — shape config",
 		description:
-			"lfo is exactly this shape, purpose-built: a 2 Hz sine in [0, 0.4] wobbles the gain.",
+			"shape picks the waveform (sin default, saw/tri/sqr): a square LFO chops the gain on/off.",
 		code: `sin({ freq: 330 })
-  .gain(lfo(2, 0, 0.4))
+  .gain(lfo({ freq: 2, min: 0, max: 0.4, shape: "sqr" }))
   .out()`,
 	},
 	{
@@ -243,9 +243,9 @@ sin({ freq: 220.5 }).gain(0.2).out()`,
 		section: "Filters",
 		title: "bpf — cutoff modulated",
 		description:
-			"An LFO slides the bandpass 300→2500 Hz — a wah as the surviving slice of harmonics moves up and down.",
+			"An LFO slides the bandpass 200→3000 Hz — a wah as the surviving slice of harmonics moves up and down.",
 		code: `saw({ freq: 110 })
-  .bpf(lfo(0.2, 300, 2500), 0.7)
+  .bpf(lfo(0.2, 200, 3000), 0.7)
   .gain(0.4)
   .out()`,
 	},
@@ -263,9 +263,9 @@ sin({ freq: 220.5 }).gain(0.2).out()`,
 		section: "Filters",
 		title: "notch — cutoff modulated (showcase)",
 		description:
-			"An LFO sweeps the notch 400→4000 Hz over noise — a phaser-like whoosh as the missing band travels up.",
+			"An LFO sweeps the notch 200→3000 Hz over noise — a phaser-like whoosh as the missing band travels up.",
 		code: `noise()
-  .notch(lfo(0.15, 400, 4000), 0.8)
+  .notch(lfo(0.2, 200, 3000), 0.8)
   .gain(0.3)
   .out()`,
 	},
@@ -279,7 +279,7 @@ sin({ freq: 220.5 }).gain(0.2).out()`,
 		description:
 			"A tone pinged by an attack-decay envelope on every clock beat — a short pluck, silent between hits.",
 		code: `const c = clock(120)
-sin({ freq: 330 })
+tri({ freq: 220 })
   .mul(c.gate.ad())
   .gain(0.35)
   .out()`,
@@ -290,7 +290,7 @@ sin({ freq: 330 })
 		description:
 			"Slow 50 ms attack, long 400 ms decay — each beat swells in and rings out, more bell than pluck.",
 		code: `const c = clock(120)
-sin({ freq: 330 })
+tri({ freq: 220 })
   .mul(c.gate.ad(0.05, 0.4))
   .gain(0.35)
   .out()`,
@@ -301,7 +301,7 @@ sin({ freq: 330 })
 		description:
 			"An LFO stretches the decay 0.05→0.6 s over time — plucks that grow longer and shorter as it breathes.",
 		code: `const c = clock(120)
-sin({ freq: 330 })
+tri({ freq: 220 })
   .mul(c.gate.ad(0.005, lfo(0.2, 0.05, 0.6)))
   .gain(0.35)
   .out()`,
