@@ -4,7 +4,10 @@ import { hz, optional, semis, sig, unit } from "../types";
 /**
  * Oscillator family (osc/sin/saw/tri/sqr).
  *
- * Frequency: `freq` wins when connected (non-null), else 440*2^((pitch-69)/12).
+ * Pitch-first: positional signature is [pitch, min, max] (MIDI semis), so
+ * `sin(69)`, `sin(p\`a4\`)`, and `seq(...).sin()` all mean A440. `freq` (Hz) is
+ * object-config only and wins when connected (non-null), else
+ * 440*2^((pitch-69)/12). For Hz-rate modulators use the `lfo` module.
  * `phase` sets INITIAL phase only (seeded on first tick, not a running offset).
  * Output maps the [-1,1] waveform into [min,max].
  *
@@ -60,7 +63,7 @@ function createOsc(name: string, shape: Shape, doc: string): void {
 		outs: { out: sig() },
 		defaultIn: "pitch",
 		defaultOut: "out",
-		positional: ["freq", "min", "max"],
+		positional: ["pitch", "min", "max"],
 		config: { shape },
 		state: () => ({ phase: 0, started: 0 }),
 		tick: (s, i, o, cfg, sr) => {

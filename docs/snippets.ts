@@ -71,7 +71,7 @@ s.saw()
 
 const s = seq(p\`c3 [e3 g3] <a2 b2> ~\`.every(4, (q) => q.rev()))
 s.pitch.saw()
-  .lpf({ cutoff: sin(0.2, 400, 2600), res: 0.3 })
+  .lpf({ cutoff: lfo(0.2, 400, 2600), res: 0.3 })
   .mul(s.gate.adsr(0.005, 0.1, 0.6, 0.2))
   .gain(0.3)
   .out()`,
@@ -117,7 +117,7 @@ loop((fb) =>
 // drums: euclidean kick, backbeat snare, hat velocity stepped by a comparator
 seq(p\`60(4,4)\`).trig.kick().out()
 seq("~ 60 ~ 60").trig.snare().out()
-sin(9).gt(0.7).apply((tg) => tg.hihat().mul(patstep(p\`1 0.6 0.8 0.5\`, tg)).gain(0.8).out())`,
+lfo(9).gt(0.7).apply((tg) => tg.hihat().mul(patstep(p\`1 0.6 0.8 0.5\`, tg)).gain(0.8).out())`,
 	},
 
 	// -- USER GUIDE -----------------------------------------------------------
@@ -125,7 +125,7 @@ sin(9).gt(0.7).apply((tg) => tg.hihat().mul(patstep(p\`1 0.6 0.8 0.5\`, tg)).gai
 	{
 		id: "guide-chain",
 		audible: true,
-		code: `tri(220)
+		code: `tri({ freq: 220 })
   .lpf({ cutoff: 1200, res: 0.2 })
   .gain(0.3)
   .out()`,
@@ -134,7 +134,7 @@ sin(9).gt(0.7).apply((tg) => tg.hihat().mul(patstep(p\`1 0.6 0.8 0.5\`, tg)).gai
 	{
 		id: "guide-value-semantics",
 		audible: true,
-		code: `const base = tri(220)
+		code: `const base = tri({ freq: 220 })
 const bright = base.lpf({ cutoff: 3000 }) // new value; base unchanged
 base.lpf({ cutoff: 400 }) // discarded — never reaches out(), so it is pruned
 bright.gain(0.3).out()`,
@@ -186,12 +186,12 @@ pad.tri()
   .gain(0.25)
   .out()`,
 	},
-	// Modulation with a plain LFO (sin as LFO: positional freq,min,max).
+	// Modulation with a plain LFO (Hz-rate, sine-shaped).
 	{
 		id: "guide-lfo-mod",
 		audible: true,
-		code: `saw(110)
-  .lpf({ cutoff: sin(0.3, 300, 2000), res: 0.3 })
+		code: `saw({ freq: 110 })
+  .lpf({ cutoff: lfo(0.3, 300, 2000), res: 0.3 })
   .gain(0.3)
   .out()`,
 	},
@@ -202,7 +202,7 @@ pad.tri()
 		code: `clock(100)
 tri(p\`48 55 60 63\`)
   .lpf({ cutoff: 1200, res: 0.2 })
-  .mul(sin(0.5, 0.2, 0.5))
+  .mul(lfo(0.5, 0.2, 0.5))
   .gain(0.3)
   .out()`,
 	},
@@ -223,8 +223,8 @@ s.saw()
 	{
 		id: "guide-loop-echo",
 		audible: true,
-		code: `saw(110)
-  .mul(sin(2).gt(0).mul(0.5))
+		code: `saw({ freq: 110 })
+  .mul(lfo(2).gt(0).mul(0.5))
   .apply((dry) => loop((fb) => dry.add(fb.delay({ time: 0.18, mix: 1 }).mul(0.6))))
   .gain(0.3)
   .out()`,
@@ -237,7 +237,7 @@ s.saw()
 const s = seq("c3 e3 g3 e3")
 s.tri()
   .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.15))
-  .pan(sin(0.5, -1, 1))
+  .pan(lfo(0.5, -1, 1))
   .apply((v) => out({ l: v.l, r: v.r }))`,
 	},
 	// seq + gate + trig for drums.
@@ -266,7 +266,7 @@ s.tri()
 		id: "guide-quantize",
 		audible: true,
 		code: `sin()
-  .pitch(sin(0.2, 36, 72).quantize({ scaleName: "minor pentatonic", root: 0 }))
+  .pitch(lfo(0.2, 36, 72).quantize({ scaleName: "minor pentatonic", root: 0 }))
   .lpf({ cutoff: 1600, res: 0.2 })
   .gain(0.3)
   .out()`,

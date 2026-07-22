@@ -4,7 +4,7 @@ clock(120)
   .seq("c4*4")
   .apply(s =>
     sah({
-      input: sin(7)
+      input: lfo(7)
         .scale({
           from: -1,
           to: 1,

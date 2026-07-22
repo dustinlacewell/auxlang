@@ -138,7 +138,7 @@ back.trig.clap({ decay: 0.22, tone: 0.55 })
 // ---- dub stab on the and-of-2: Fm7 · Fm7 · Dbmaj7 · Eb9 ----
 const stabSeq = seq(p\`[~ [~ <{f2,ab2,c3,eb3} {f2,ab2,c3,eb3} {f2,ab2,c3,db3} {f2,g2,bb2,db3}>] ~ ~]\`.slow(4))
 const stab = stabSeq.saw()
-  .bpf({ cutoff: sin(0.045, 750, 1350), res: 0.35 })
+  .bpf({ cutoff: lfo(0.045, 750, 1350), res: 0.35 })
   .mul(stabSeq.gate.adsr(0.004, 0.16, 0, 0.1))
 // delay feedback stays 0: the loop IS the feedback path, so every repeat re-passes the lpf
 // a touch of reverb behind the echoes glues them into one room instead of discrete slaps
@@ -151,7 +151,7 @@ loop((fb) =>
 
 // ---- pad: two saws seven cents apart, above the stab's band ----
 saw({ pitch: 53 }).add(saw({ pitch: 53.07 }))
-  .lpf({ cutoff: sin(0.035, 350, 750), res: 0.1 })
+  .lpf({ cutoff: lfo(0.035, 350, 750), res: 0.1 })
   .mul(0.1)
   .out()
 
@@ -168,7 +168,7 @@ lead.tri()
   .mul(lead.gate.adsr(0.006, 0.12, 0.35, 0.15))
   .delay({ time: 0.369, feedback: 0.5, mix: 0.32 })
   .mul(0.4)
-  .pan(sin(0.05, -0.4, 0.4))
+  .pan(lfo(0.05, -0.4, 0.4))
   .apply((v) => out({ l: v.l, r: v.r }))
 `;
 
@@ -252,8 +252,8 @@ const arp = chords.anchor("D5").n(
 // a soft round FM tone: low index (gentle color, not a bell), warm ratio,
 // mellow non-resonant filter, and a slower attack so it breathes rather than pings
 const mel = seq(arp)
-mel.pitch.fm({ index: sin(0.06, 0.4, 1.6), ratio: 1 })
-  .lpf({ cutoff: sin(0.06, 380, 820), res: 0.12 })
+mel.pitch.fm({ index: lfo(0.06, 0.4, 1.6), ratio: 1 })
+  .lpf({ cutoff: lfo(0.06, 380, 820), res: 0.12 })
   .mul(mel.gate.adsr(0.02, 0.25, 0, 0.16))
   .shape(0.1)
   .delay({ time: 0.25, feedback: 0.3, mix: 0.25 })

@@ -12,5 +12,5 @@ clock(60)
             attack: 0.01,
             decay: 0.1,
             sustain: 0.5,
-            release: sin(0.15, 0.1, 0.8)}))
+            release: lfo(0.15, 0.1, 0.8)}))
       .out())

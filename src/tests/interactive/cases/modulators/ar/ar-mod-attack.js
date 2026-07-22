@@ -8,5 +8,5 @@ clock(60)
       .gain(
         s
           .gate
-          .ar({ attack: sin(0.15, 0.01, 0.5), release: 0.2 }))
+          .ar({ attack: lfo(0.15, 0.01, 0.5), release: 0.2 }))
       .out())

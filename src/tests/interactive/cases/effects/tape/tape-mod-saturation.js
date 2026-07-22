@@ -7,7 +7,7 @@ clock(90)
       .lpf(800)
       .gain(s.gate.ad({ attack: 0.01, decay: 0.2 }))
       .tape({
-        saturation: sin(0.15, 0.1, 0.8),
+        saturation: lfo(0.15, 0.1, 0.8),
         feedback: 0.45,
         mix: 0.55})
       .out())

@@ -4,5 +4,5 @@ clock(120)
   .seq("~ c4 ~ c4")
   .apply(s =>
     s.trig
-      .snare({ pitch: sin(0.25, 150, 220) })
+      .snare({ pitch: lfo(0.25, 150, 220) })
       .out())

@@ -12,7 +12,7 @@ import { render } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { SR, allFinite, maxAbs, rms } from "./helpers";
 
-const sin = factory("sin");
+const lfo = factory("lfo");
 
 function build() {
 	return runProgram(() => {
@@ -42,7 +42,7 @@ function build() {
 		// --- drums: euclidean kick, backbeat snare, hat stepped by a comparator
 		seq(p`60(4,4)`).trig.kick().out();
 		seq(p`~ 60 ~ 60`).trig.snare().out();
-		sin(9)
+		lfo(9)
 			.gt(0.7)
 			.apply((tg: Handle) => tg.hihat().mul(patstep(p`1 0.6 0.8 0.5`, tg)).mul(0.8).out());
 	});
