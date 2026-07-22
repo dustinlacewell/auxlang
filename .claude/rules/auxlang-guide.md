@@ -15,11 +15,12 @@ s.tri()
 
 ## Modules (real signatures)
 
-- **Osc** `osc/sin/saw/tri/sqr` — ins `pitch`(semis, def 69, DEFAULT), `freq`(hz,
+- **Osc** `sin/saw/tri/sqr` — ins `pitch`(semis, def 69, DEFAULT), `freq`(hz,
   optional, WINS when set), `min/max`(range -1/1), `phase`. Positional `[pitch,min,max]`
   → `sin(69)`/`sin()` = A440. `sin(0)` = pitch 0 ≈ 8.18 Hz, NOT silence.
 - **Lfo** `lfo` — the Hz-rate modulation source. ins `freq`(hz, def 1), `min/max`(range -1/1),
   `phase`. Positional `[freq,min,max]` → `lfo(0.3,100,800)` sweeps 100–800 at 0.3 Hz.
+  Shape via config: `lfo({shape:"tri"})` — sin (default), saw, tri, sqr.
 - **Filters** `lpf/hpf/bpf/notch` — `{cutoff, res}`, positional `[cutoff, res]`.
 - **Env** `ad(a,d)` · `ar(a,r)` · `adsr(a,d,s,r)` — gate-driven. NO `env` module.
 - **Amp/math** `mul` (aliases `gain`, `vca`) · `add(to)` · `sub(from)` · `div(by)` ·

@@ -33,8 +33,8 @@ The module families:
 
 ### Sources
 
-- `osc` / `sin` / `saw` / `tri` / `sqr` — oscillators. Positional signature is `[pitch, min, max]`, where pitch is in MIDI semitones and defaults to 69 (A4): `sin(69)` and `sin()` both mean A440. Frequency (Hz) is object-config only, e.g. `sin({ freq: 440 })`, and wins over pitch when set. There is an output range (`min`/`max`).
-- `lfo` — Hz-rate sine LFO, the device for modulation. Positional signature is `[freq, min, max]` in Hz: `lfo(0.3, 100, 800)` sweeps 100–800 at 0.3 Hz. Defaults to freq 1, min -1, max 1.
+- `sin` / `saw` / `tri` / `sqr` — oscillators. Positional signature is `[pitch, min, max]`, where pitch is in MIDI semitones and defaults to 69 (A4): `sin(69)` and `sin()` both mean A440. Frequency (Hz) is object-config only, e.g. `sin({ freq: 440 })`, and wins over pitch when set. There is an output range (`min`/`max`).
+- `lfo` — Hz-rate LFO, the device for modulation. Positional signature is `[freq, min, max]` in Hz: `lfo(0.3, 100, 800)` sweeps 100–800 at 0.3 Hz. Defaults to freq 1, min -1, max 1. Shape is config — `lfo({ shape: "tri" })` — sin (default), saw, tri, or sqr.
 - `noise` — noise source.
 
 ### Filters
@@ -78,7 +78,7 @@ The module families:
 
 `.method()` continues the chain from the previous value's default output. `s.tri()` chains a triangle from `s`'s default output.
 
-**Signal-uniformity rule (gotcha).** Setting the default input while chaining is an error, because the chain already bound it. `seq.pitch.saw({ freq: 880 })` errors — `.saw()` chained off `seq.pitch` already wired the oscillator's default input, and `freq` is that same default port. To set another value on a chained module, use a non-default port, or a positional that is not the default port.
+**Signal-uniformity rule (gotcha).** Setting the default input while chaining is an error, because the chain already bound it. `seq.pitch.saw({ pitch: 60 })` errors — `.saw()` chained off `seq.pitch` already wired the oscillator's default input (`pitch`), and the object arg tries to set that same port. To set another value on a chained module, use a non-default port, or a positional that is not the default port.
 
 ```js
 clock(120)
