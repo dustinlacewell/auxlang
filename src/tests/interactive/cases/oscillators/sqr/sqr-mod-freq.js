@@ -1,3 +1,3 @@
 // sqr - modulated freq
 // Square with LFO-modulated frequency
-sqr({ freq: lfo(0.5, 200, 400) }).out()
+sqr(hz(lfo(0.5, 200, 400))).out()
