@@ -2,10 +2,12 @@
  * Main-thread audio host: owns the AudioContext + AudioWorkletNode pair and
  * the worklet's message port. `play(program)` posts a swap (the worklet
  * crossfades and migrates state); `stop()` silences it. The worklet bundle is
- * loaded via Vite's `?url` import, same mechanism as core2.
+ * loaded via Vite's `?url` import, which resolves to a real module URL in
+ * both dev and build.
  */
 
 import type { Program } from "../types";
+import workletUrl from "./worklet/index.ts?url";
 import type { PerfOverrun, PerfReport, WorkletMessage, WorkletReply } from "./worklet/messages";
 
 /** A perf window with beat positions resolved main-thread, for UI/scraping. */
@@ -18,11 +20,6 @@ export interface PerfWindow extends PerfReport {
 /** Optional sink for structured perf windows (a harness page reads these). */
 type PerfListener = (w: PerfWindow) => void;
 let perfListener: PerfListener | null = null;
-
-// audioWorklet.addModule needs its own top-level script, not a chunk pulled
-// into the main module graph — built as a dedicated rollup entry (see
-// vite.config.ts) with a fixed filename so it can be addressed here.
-const workletUrl = `${import.meta.env.BASE_URL}assets/core3-worklet.js`;
 
 interface AudioHost {
 	readonly context: AudioContext;

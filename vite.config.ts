@@ -20,14 +20,6 @@ export default defineConfig(({ command }) => ({
 				// perf.html is a dev-only diagnostic harness — served in dev, never
 				// built into a production bundle.
 				...(command === "serve" ? { perf: resolve(__dirname, "perf.html") } : {}),
-				"core3-worklet": resolve(__dirname, "src/core3/runtime/worklet/index.ts"),
-			},
-			output: {
-				// The worklet is loaded at runtime via a fixed URL (audioWorklet.addModule
-				// can't resolve an import.meta.url-relative chunk the way workers can), so
-				// its filename must be stable, unlike every other content-hashed chunk.
-				entryFileNames: (chunk) =>
-					chunk.name === "core3-worklet" ? "assets/core3-worklet.js" : "assets/[name]-[hash].js",
 			},
 		},
 	},
