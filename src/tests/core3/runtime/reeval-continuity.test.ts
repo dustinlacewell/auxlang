@@ -126,6 +126,21 @@ describe("config edit resets only that module", () => {
 	});
 });
 
+describe("sample-rate change", () => {
+	it("48 kHz → 44.1 kHz migrates nothing: the delay buffer is sized for 44.1 kHz", () => {
+		const program = runProgram(() => {
+			factory("saw")(48).delay({ time: 0.1 }).out();
+		});
+		const old = new Core3Engine(program, 48000, getRegistry());
+		run(old, 1000);
+		const swapped = new Core3Engine(program, 44100, getRegistry(), old.collectState());
+		const lanes = lanesOf(swapped.collectState(), program, "delay");
+		const buf = (lanes?.[0] as Record<string, unknown>).buf as Float32Array;
+		expect(buf.length).toBe(4 * 44100);
+		expect(buf.every((v) => v === 0)).toBe(true);
+	});
+});
+
 describe("re-eval of an unchanged patch", () => {
 	const patch = () =>
 		runProgram(() => {

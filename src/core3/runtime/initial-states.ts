@@ -4,7 +4,8 @@
  * migrated from a previous EngineState. Migration matches by migration key
  * (pin first, then structural id, positional `~k` suffix for duplicates —
  * see state-keys.ts) and clones so the old engine's state is never shared.
- * A matched node still starts fresh, alone, when its own config changed
+ * Nothing migrates across a sample-rate change (state buffers are sized from
+ * it). A matched node still starts fresh, alone, when its own config changed
  * (config-fingerprint.ts) or its carried state does not fit the fresh state's
  * shape (state-fits.ts). A migrated lane keeps its `__rng`, so its random
  * stream continues.
@@ -39,7 +40,7 @@ export function buildLaneStates(
 	const states = nodes.map((node, i) => {
 		const spec = specs[i] as ModuleSpec;
 		const key = keys[i] as string;
-		const prevLanes = carriedLanes(prev, key, configs[i] as string);
+		const prevLanes = carriedLanes(prev, sampleRate, key, configs[i] as string);
 		return node.lanes.map((_, lane) => {
 			const carried = prevLanes?.[lane];
 			const fresh = freshLaneState(spec, sampleRate, streamSeed(seed, key, lane));
@@ -53,12 +54,17 @@ export function buildLaneStates(
 	return { keys, configs, states };
 }
 
-/** The previous engine's lanes for `key`, unless that node's config changed. */
+/**
+ * The previous engine's lanes for `key`, unless the sample rate changed (state
+ * buffers are sized from it, so nothing migrates) or that node's config changed.
+ */
 function carriedLanes(
 	prev: EngineState | undefined,
+	sampleRate: number,
 	key: string,
 	config: string,
 ): Record<string, unknown>[] | undefined {
-	if (prev === undefined || prev.configs[key] !== config) return undefined;
+	if (prev === undefined || prev.sampleRate !== sampleRate) return undefined;
+	if (prev.configs[key] !== config) return undefined;
 	return prev.nodes[key];
 }

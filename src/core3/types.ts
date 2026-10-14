@@ -170,6 +170,8 @@ export interface EngineState {
 	readonly nodes: Record<string, Record<string, unknown>[]>;
 	/** migration key -> config fingerprint (a changed config starts that node fresh) */
 	readonly configs: Record<string, string>;
+	/** The rate the state was built at; a different rate migrates nothing. */
+	readonly sampleRate: number;
 	readonly sampleCount: number;
 }
 

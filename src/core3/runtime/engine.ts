@@ -136,7 +136,7 @@ export class Core3Engine implements Engine {
 			nodes[key] = r.states.map((s) => deepClone(s));
 			configs[key] = this.configs[i] as string;
 		});
-		return { nodes, configs, sampleCount: this.count };
+		return { nodes, configs, sampleRate: this.sr, sampleCount: this.count };
 	}
 
 	/** Read a node's output for the sample just ticked. Test/tap hook, not part of the Engine contract. */

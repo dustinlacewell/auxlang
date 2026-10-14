@@ -31,11 +31,33 @@ interface Run {
 
 function run(program: Program, codegen: boolean): Run {
 	const registry = withProgramSpecs(getRegistry(), program);
-	const engine = new Core3Engine(program, SR, registry, undefined, { codegen });
+	return render(new Core3Engine(program, SR, registry, undefined, { codegen }), SAMPLES);
+}
+
+/** Render `before` for 0.5 s, then swap to `after` with its migrated state for 0.5 s. */
+function swapRun(before: Program, after: Program, codegen: boolean): Run {
+	const half = SAMPLES / 2;
+	const first = new Core3Engine(before, SR, withProgramSpecs(getRegistry(), before), undefined, {
+		codegen,
+	});
+	const head = render(first, half);
+	const registry = withProgramSpecs(getRegistry(), after);
+	const second = new Core3Engine(after, SR, registry, first.collectState(), { codegen });
+	const tail = render(second, half);
 	const l = new Float32Array(SAMPLES);
 	const r = new Float32Array(SAMPLES);
+	l.set(head.l);
+	l.set(tail.l, half);
+	r.set(head.r);
+	r.set(tail.r, half);
+	return { l, r, state: tail.state };
+}
+
+function render(engine: Core3Engine, samples: number): Run {
+	const l = new Float32Array(samples);
+	const r = new Float32Array(samples);
 	const frame = new Float32Array(2);
-	for (let i = 0; i < SAMPLES; i++) {
+	for (let i = 0; i < samples; i++) {
 		engine.tick(frame);
 		l[i] = frame[0] as number;
 		r[i] = frame[1] as number;
@@ -78,6 +100,28 @@ describe("codegen driver is bit-identical to the interpreter", () => {
 	for (const c of CASES) {
 		it(c.label, () => expectIdentical(evalPatch(c.code)));
 	}
+
+	it("a re-eval swap with migrated state (seq, lpf cutoff edit, delay)", () => {
+		const patch = (cutoff: number) =>
+			evalPatch(`clock(120)
+const s = seq("c3 e3 g3 b3")
+s.saw()
+  .lpf(${cutoff})
+  .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.2))
+  .delay({ time: 0.15, feedback: 0.4, mix: 0.3 })
+  .gain(0.3)
+  .out()`);
+		const before = patch(800);
+		const after = patch(1400);
+		expect(after.nodes.map((n) => n.id)).toEqual(before.nodes.map((n) => n.id));
+
+		const ref = swapRun(before, after, false);
+		const gen = swapRun(before, after, true);
+		expect(firstBitDiff(ref.l, gen.l), "first differing left sample").toBe(-1);
+		expect(firstBitDiff(ref.r, gen.r), "first differing right sample").toBe(-1);
+		expect(gen.state).toEqual(ref.state);
+		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.01);
+	});
 
 	it("a patch-defined module with a hostile port name stays data, not code", () => {
 		const hostile = '"]; globalThis.__codegenPwned = 1; //';
