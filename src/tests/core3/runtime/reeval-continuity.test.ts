@@ -1,0 +1,160 @@
+/**
+ * Live re-eval continuity (MANIFESTO §6.2): constants and config are not
+ * identity, so editing a value keeps the state of the edited module (unless its
+ * own config changed) and of everything downstream. The clock position carries
+ * across a tempo edit, and patterns pick up mid-cycle.
+ */
+
+import { describe, expect, it } from "vitest";
+
+import "@/core3/modules/all";
+import { clock, factory, patstep, runProgram, seq } from "@/core3/api";
+import { getRegistry } from "@/core3/module/define";
+import { Core3Engine } from "@/core3/runtime/engine";
+import type { EngineState, Program } from "@/core3/types";
+
+const SR = 48000;
+/** 2.6 beats at 120 bpm: mid-cycle, inside the third quarter of a 4-step cycle. */
+const MID = Math.round(2.6 * (SR / 2));
+
+function run(engine: Core3Engine, samples: number): number[] {
+	const frame = new Float32Array(2);
+	const out: number[] = [];
+	for (let k = 0; k < samples; k++) {
+		engine.tick(frame);
+		out.push(frame[0] as number, frame[1] as number);
+	}
+	return out;
+}
+
+const indexOf = (program: Program, module: string): number =>
+	program.nodes.findIndex((n) => n.module === module);
+
+/** Run `before` for `samples`, then build an engine for `after` from its state. */
+function swap(before: Program, after: Program, samples = MID) {
+	const old = new Core3Engine(before, SR, getRegistry());
+	run(old, samples);
+	const state = old.collectState();
+	return { old, state, swapped: new Core3Engine(after, SR, getRegistry(), state) };
+}
+
+const keyOf = (program: Program, module: string): string => {
+	const node = program.nodes[indexOf(program, module)];
+	return node?.pin ?? (node?.id as string);
+};
+
+const lanesOf = (state: EngineState, program: Program, module: string) =>
+	state.nodes[keyOf(program, module)];
+
+const tempo = (bpm: number) =>
+	runProgram(() => {
+		clock(bpm);
+		seq("c3 e3 g3 b3").tri().out();
+	});
+
+describe("tempo edit keeps the clock position", () => {
+	it("clock(120) → clock(130) mid-cycle: the phase continues", () => {
+		const before = tempo(120);
+		const after = tempo(130);
+		const { old, swapped } = swap(before, after);
+		const oldPhase = old.peek(indexOf(before, "clock"), "phase", 0);
+		run(swapped, 1);
+		const newPhase = swapped.peek(indexOf(after, "clock"), "phase", 0);
+		expect(oldPhase).toBeCloseTo(2.6, 3);
+		expect(newPhase).toBeCloseTo(oldPhase + 130 / 60 / SR, 9);
+	});
+
+	it("a seq under that clock keeps reading mid-cycle", () => {
+		const after = tempo(130);
+		const { swapped } = swap(tempo(120), after);
+		run(swapped, 1);
+		expect(swapped.peek(indexOf(after, "seq"), "pitch", 0)).toBe(55); // g3, not c3
+	});
+});
+
+describe("constant edit keeps state downstream", () => {
+	const filtered = (cutoff: number) =>
+		runProgram(() => {
+			factory("saw")(48).lpf(cutoff).delay({ time: 0.1, feedback: 0.5, mix: 0.5 }).out();
+		});
+
+	it("lpf(800) → lpf(900) keeps the filter's state and the delay buffer after it", () => {
+		const before = filtered(800);
+		const after = filtered(900);
+		const { state, swapped } = swap(before, after);
+		const carried = swapped.collectState();
+		for (const module of ["saw", "lpf", "delay"]) {
+			expect(lanesOf(carried, after, module), module).toEqual(lanesOf(state, before, module));
+		}
+		const buf = (lanesOf(carried, after, "delay")?.[0] as Record<string, unknown>).buf;
+		expect((buf as Float32Array).some((v) => v !== 0)).toBe(true);
+	});
+
+	it("editing a lambda keeps the state of the modules it feeds", () => {
+		type Cutoff = (s: number, sr: number, t: number) => number;
+		const lambda = (cutoff: Cutoff) =>
+			runProgram(() => {
+				factory("saw")(48).lpf(cutoff).delay({ time: 0.1, feedback: 0.5, mix: 0.5 }).out();
+			});
+		// Lambdas cross to the engine as source, so they cannot close over a parameter.
+		const before = lambda((_s, _sr, t) => 800 + 100 * t);
+		const after = lambda((_s, _sr, t) => 900 + 50 * t);
+		expect(after.nodes.map((n) => n.id)).toEqual(before.nodes.map((n) => n.id));
+		const { state, swapped } = swap(before, after);
+		const carried = swapped.collectState();
+		for (const module of ["lpf", "delay"]) {
+			expect(lanesOf(carried, after, module), module).toEqual(lanesOf(state, before, module));
+		}
+	});
+});
+
+describe("config edit resets only that module", () => {
+	const shaped = (shape: string) =>
+		runProgram(() => {
+			factory("lfo")({ freq: 3, shape }).mul(factory("sin")(60)).delay({ time: 0.05 }).out();
+		});
+
+	it("a changed config starts that module fresh; the modules after it keep state", () => {
+		const before = shaped("sin");
+		const after = shaped("tri");
+		const { state, swapped } = swap(before, after);
+		const carried = swapped.collectState();
+		expect(lanesOf(carried, after, "lfo")?.[0]?.phase).toBe(0);
+		for (const module of ["sin", "mul", "delay"]) {
+			expect(lanesOf(carried, after, module), module).toEqual(lanesOf(state, before, module));
+		}
+	});
+});
+
+describe("re-eval of an unchanged patch", () => {
+	const patch = () =>
+		runProgram(() => {
+			clock(120);
+			const s = seq("c3 ~ e3 g3");
+			s.tri().mul(s.gate.adsr(0.005, 0.1, 0.5, 0.2)).out();
+			patstep("1 2 3 4 5", factory("lfo")(7).gt(0.5)).mul(0.01).out();
+		});
+
+	it("is bit-exact against an engine that never swapped (seq → adsr, patstep)", () => {
+		const reference = new Core3Engine(patch(), SR, getRegistry());
+		run(reference, MID);
+		const expected = run(reference, SR / 2);
+		const { swapped } = swap(patch(), patch());
+		expect(run(swapped, SR / 2)).toEqual(expected);
+	});
+});
+
+describe("pattern edit", () => {
+	const melody = (pattern: string) =>
+		runProgram(() => {
+			clock(120);
+			seq(pattern).tri().out();
+		});
+
+	it("takes effect at once, at the current position in the cycle", () => {
+		const after = melody("d3 f3 a3 c4");
+		const { swapped } = swap(melody("c3 e3 g3 b3"), after);
+		run(swapped, 1);
+		expect(swapped.peek(indexOf(after, "seq"), "pitch", 0)).toBe(57); // a3
+	});
+});

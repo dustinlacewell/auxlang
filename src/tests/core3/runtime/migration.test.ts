@@ -22,6 +22,21 @@ defmod({
 	},
 });
 
+/** Same ports as mg.count, a different state shape (an extra key). */
+defmod({
+	name: "mg.wide",
+	category: "utils",
+	ins: { step: sig(1) },
+	outs: { out: sig() },
+	defaultIn: "step",
+	defaultOut: "out",
+	state: () => ({ n: 0, buf: new Float32Array(4), extra: 0 }),
+	tick: (s: St, ins: IO, o: IO) => {
+		s.n = (s.n as number) + (ins.step as number);
+		o.out = s.n as number;
+	},
+});
+
 const SR = 48000;
 
 function tapRun(engine: Core3Engine, node: number, samples: number): number[] {
@@ -78,6 +93,39 @@ describe("engine: state migration", () => {
 			pnode("mg.count", [{ step: c(2) }], { id: "c" }), // new identity
 		]);
 		const swapped = new Core3Engine(changed, SR, registry, first.collectState());
+		const frame = new Float32Array(2);
+		swapped.tick(frame);
+		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
+		expect(swapped.peek(1, "out", 0)).toBe(2); // fresh state
+	});
+
+	it("a matched node whose state no longer fits resets alone", () => {
+		const registry = getRegistry();
+		const first = new Core3Engine(program, SR, registry);
+		tapRun(first, 0, 100); // a: 100, b: 200
+
+		const reshaped = prog([
+			pnode("mg.count", [{ step: c(1) }], { id: "a" }),
+			pnode("mg.wide", [{ step: c(2) }], { id: "b" }), // same key, extra state key
+		]);
+		const swapped = new Core3Engine(reshaped, SR, registry, first.collectState());
+		const frame = new Float32Array(2);
+		swapped.tick(frame);
+		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
+		expect(swapped.peek(1, "out", 0)).toBe(2); // fresh state
+	});
+
+	it("a matched node whose own config changed resets alone", () => {
+		const registry = getRegistry();
+		const configured = (k: number) =>
+			prog([
+				pnode("mg.count", [{ step: c(1) }], { id: "a" }),
+				pnode("mg.count", [{ step: c(2) }], { id: "b", config: { k } }),
+			]);
+		const first = new Core3Engine(configured(1), SR, registry);
+		tapRun(first, 0, 100); // a: 100, b: 200
+
+		const swapped = new Core3Engine(configured(2), SR, registry, first.collectState());
 		const frame = new Float32Array(2);
 		swapped.tick(frame);
 		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state

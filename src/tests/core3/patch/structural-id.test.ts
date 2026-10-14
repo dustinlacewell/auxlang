@@ -26,12 +26,28 @@ describe("structural id stability", () => {
 		expect(idsB).toEqual(idsA);
 	});
 
-	it("differing config produces a different id", () => {
-		const a = runProgram(() => factory("tosc")(220).out());
-		const b = runProgram(() => factory("tosc")(330).out());
-		const idA = a.nodes.find((n) => n.module === "tosc")!.id;
-		const idB = b.nodes.find((n) => n.module === "tosc")!.id;
-		expect(idB).not.toEqual(idA);
+	/** The last tosc in topo order: the one feeding out. */
+	const oscId = (fn: () => void) => {
+		const oscs = runProgram(fn).nodes.filter((n) => n.module === "tosc");
+		return oscs[oscs.length - 1]!.id;
+	};
+
+	it("a differing constant keeps the id (constants are not identity)", () => {
+		expect(oscId(() => factory("tosc")(330).out())).toEqual(
+			oscId(() => factory("tosc")(220).out()),
+		);
+	});
+
+	it("a differing lambda keeps the id (a lambda is stateless)", () => {
+		expect(oscId(() => factory("tosc")(() => 330).out())).toEqual(
+			oscId(() => factory("tosc")(() => 220).out()),
+		);
+	});
+
+	it("different wiring produces a different id", () => {
+		const constant = oscId(() => factory("tosc")(220).out());
+		const wired = oscId(() => factory("tosc")(factory("tosc")(3)).out());
+		expect(wired).not.toEqual(constant);
 	});
 });
 

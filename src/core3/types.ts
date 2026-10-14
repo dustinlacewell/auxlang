@@ -140,7 +140,7 @@ export type PortSrc =
 	| { readonly k: "l"; readonly src: string }; // user lambda, stringified (state, sr, time) => number
 
 export interface PNode {
-	/** Stable structural id (hash of module+config+input structure) for state migration. */
+	/** Stable structural id (hash of module + wiring; constants and config excluded) for state migration. */
 	readonly id: string;
 	readonly module: string;
 	readonly width: number;
@@ -166,8 +166,10 @@ export interface Program {
 // ---------------------------------------------------------------------------
 
 export interface EngineState {
-	/** nodeStructuralId -> per-lane state array */
+	/** migration key -> per-lane state array */
 	readonly nodes: Record<string, Record<string, unknown>[]>;
+	/** migration key -> config fingerprint (a changed config starts that node fresh) */
+	readonly configs: Record<string, string>;
 	readonly sampleCount: number;
 }
 
