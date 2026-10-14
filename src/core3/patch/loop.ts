@@ -11,7 +11,7 @@ import { getModule } from "../module/define";
 import { evalCtx } from "./context";
 import { wrap } from "./handle";
 import { type Handle, handleData, isHandle } from "./handle-data";
-import { resolvePatchModule } from "./resolve";
+import { refFromHandle } from "./lift";
 
 export function loop(f: (fed: Handle) => unknown): Handle {
 	evalCtx("loop()");
@@ -23,8 +23,7 @@ export function loop(f: (fed: Handle) => unknown): Handle {
 		throw new Error("loop(f): f must return a handle (the loop body output to feed back)");
 	}
 
-	const data = handleData(result);
-	const port = data.port ?? resolvePatchModule(data.node.module).defaultOut;
-	placeholder.inputs[z1.defaultIn] = { z: { node: data.node, port } };
+	const { node, port } = refFromHandle(handleData(result), "loop(f) feedback");
+	placeholder.inputs[z1.defaultIn] = { z: { node, port } };
 	return result;
 }

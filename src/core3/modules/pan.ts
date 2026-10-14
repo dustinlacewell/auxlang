@@ -6,6 +6,11 @@ import { sig } from "../types";
  * maps to an equal-power angle so l²+r² is preserved across the sweep. Policy is
  * "map" (per-lane): each lane produces its own {l, r} pair; stereo summing is the
  * `out` module's job.
+ *
+ * Stereo module: chained or passed whole, it connects by name (`.out()` wires
+ * l→l, r→r). Into a destination without an l/r pair it is a loud error, since
+ * one input would drop a channel (patch/stereo.ts). `defaultOut` is set only
+ * because the spec contract requires one; no connection reads it.
  */
 defmod({
 	name: "pan",

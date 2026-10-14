@@ -9,16 +9,15 @@ import { isGNode } from "../graph/input-kinds";
 import type { InputValue, NodeRef } from "../graph/node";
 import { type HandleData, handleData, isHandle } from "./handle-data";
 import { resolvePatchModule } from "./resolve";
+import { droppedChannelError, isStereoSource } from "./stereo";
 
 export function lift(value: unknown, where: string): InputValue {
 	if (typeof value === "number") {
 		if (!Number.isFinite(value)) throw new Error(`${where}: ${value} is not a finite number`);
 		return value;
 	}
-	if (isHandle(value)) return refFromHandle(handleData(value));
-	if (isGNode(value)) {
-		return { node: value, port: resolvePatchModule(value.module).defaultOut };
-	}
+	if (isHandle(value)) return refFromHandle(handleData(value), where);
+	if (isGNode(value)) return refFromHandle({ node: value }, where);
 	if (typeof value === "function") {
 		return { lambda: value as (...args: unknown[]) => number };
 	}
@@ -31,8 +30,15 @@ export function lift(value: unknown, where: string): InputValue {
 	);
 }
 
-export function refFromHandle(data: HandleData): NodeRef {
-	const port = data.port ?? resolvePatchModule(data.node.module).defaultOut;
+/**
+ * The single-port reference for a handle: its tapped port, else the module's
+ * default output. A whole stereo source has no single port to give — taking
+ * one would drop the other channel — so that is a loud error naming `where`.
+ */
+export function refFromHandle(data: HandleData, where: string): NodeRef {
+	const spec = resolvePatchModule(data.node.module);
+	if (data.port === undefined && isStereoSource(spec)) throw droppedChannelError(spec, where);
+	const port = data.port ?? spec.defaultOut;
 	return { node: data.node, port, ...(data.lane !== undefined ? { lane: data.lane } : {}) };
 }
 

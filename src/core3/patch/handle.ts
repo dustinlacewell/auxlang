@@ -13,9 +13,10 @@ import type { GNode } from "../graph/node";
 import { getRegistry } from "../module/define";
 import type { ModuleSpec } from "../types";
 import { buildNode } from "./build-node";
+import { connectWhole } from "./connect";
 import { currentSpecs } from "./context";
 import { HANDLE, type Handle, type HandleData } from "./handle-data";
-import { lift, refFromHandle } from "./lift";
+import { lift } from "./lift";
 import { rootFromHandle } from "./out";
 import { isPatchModule, resolvePatchModule } from "./resolve";
 
@@ -61,8 +62,8 @@ export function wrap(node: GNode, port?: string, lane?: number): Handle {
 			if (prop in spec.outs) return wrap(node, prop, lane);
 			if (prop in spec.ins) return inputSetter(node, port, lane, spec, prop);
 			if (isPatchModule(prop)) {
-				return (...args: unknown[]) =>
-					wrap(buildNode(resolvePatchModule(prop), args, refFromHandle(data)));
+				const dest = resolvePatchModule(prop);
+				return (...args: unknown[]) => wrap(buildNode(dest, args, connectWhole(data, dest)));
 			}
 
 			throw new Error(unknownPropMessage(prop, spec));

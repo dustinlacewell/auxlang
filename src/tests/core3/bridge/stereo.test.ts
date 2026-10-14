@@ -3,11 +3,11 @@
  * jacks patch straight into the master's left/right. These end-to-end renders
  * prove the placement survives to the output (L≠R, hard-left → R≈0), that total
  * power stays ~constant across the sweep, that poly panning is per-lane, that a
- * mono `.out()` is unchanged, and that a bare `.out()` off a stereo source is a
- * loud error.
+ * mono `.out()` is unchanged, that a bare `.out()` off a stereo source connects
+ * by name (l→l, r→r), and that any connection dropping a channel is a loud error.
  */
 
-import { clock, factory, out, runProgram, seq } from "@/core3/api";
+import { clock, factory, loop, out, runProgram, seq } from "@/core3/api";
 import { render } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { rms } from "./helpers";
@@ -144,12 +144,83 @@ describe("stereo routing pan → out", () => {
 		expect(Math.abs(rl - rr)).toBeLessThan(rl * 0.05); // dead center
 	});
 
-	it("bare .out() off a stereo source is a loud error", () => {
+	it("bare .out() off pan connects by name: same render as out({ l, r })", () => {
+		const bare = render(
+			runProgram(() => {
+				sin().pan(0.5).out();
+			}),
+			0.25,
+		);
+		const explicit = render(
+			runProgram(() => {
+				sin()
+					.pan(0.5)
+					.apply((p: Stereo) => out({ l: p.l, r: p.r }));
+			}),
+			0.25,
+		);
+		expect(rms(bare.l)).toBeGreaterThan(0.01);
+		expect(bare.l).toEqual(explicit.l);
+		expect(bare.r).toEqual(explicit.r);
+	});
+
+	it("out(x) with a whole pan connects by name too", () => {
+		const free = render(
+			runProgram(() => {
+				out(sin().pan(-1));
+			}),
+			0.25,
+		);
+		const chained = render(
+			runProgram(() => {
+				sin().pan(-1).out();
+			}),
+			0.25,
+		);
+		expect(free.l).toEqual(chained.l);
+		expect(free.r).toEqual(chained.r);
+	});
+
+	it("chaining a stereo source into a mono module is a loud error naming l/r", () => {
 		expect(() =>
 			runProgram(() => {
-				sin({ freq: 330 }).pan(0.5).out();
+				tri().pan(0.5).lpf(800).out();
 			}),
-		).toThrow(/stereo/i);
+		).toThrow(/into 'lpf'.*'pan' is stereo \(outputs l, r\)/);
+	});
+
+	it("a stereo source into a mono-only input is a loud error naming l/r", () => {
+		expect(() =>
+			runProgram(() => {
+				sin().mul(tri().pan(0.5)).out();
+			}),
+		).toThrow(/mul\.\w+: 'pan' is stereo \(outputs l, r\)/);
+		expect(() =>
+			runProgram(() => {
+				sin()
+					.lpf({ cutoff: tri().pan(0.5) })
+					.out();
+			}),
+		).toThrow(/lpf\.cutoff: 'pan' is stereo \(outputs l, r\)/);
+	});
+
+	it("a whole stereo source as loop feedback is a loud error naming l/r", () => {
+		expect(() =>
+			runProgram(() => {
+				loop((fb) => sin().add(fb).pan(0)).l.out();
+			}),
+		).toThrow(/loop\(f\) feedback: 'pan' is stereo \(outputs l, r\)/);
+	});
+
+	it("a single tapped channel still connects as mono", () => {
+		const { l, r } = render(
+			runProgram(() => {
+				sin().pan(-1).l.out();
+			}),
+			0.25,
+		);
+		expect(rms(l)).toBeGreaterThan(0.01);
+		expect(Math.abs(rms(l) - rms(r))).toBeLessThan(rms(l) * 0.05); // auto-spread center
 	});
 
 	it("out({ l, r }) object form works as a free function too", () => {

@@ -1,31 +1,37 @@
 /**
  * Node construction from factory/chain arguments. Positional args fill
- * `spec.positional` in order (minus the default input when chaining); a plain
- * object arg carries named inputs/config. Unknown keys and excess positionals
- * fail loudly, naming what was available.
+ * `spec.positional` in order (minus the chain-bound inputs when chaining); a
+ * plain object arg carries named inputs/config. Unknown keys and excess
+ * positionals fail loudly, naming what was available.
+ *
+ * A chain source, or a handle passed positionally into the default input, is a
+ * whole-module connection: it binds by name (`connectWhole`), so a stereo
+ * source fills `l` and `r` together.
  */
 
 import { isGNode } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
 import type { ModuleSpec } from "../types";
+import { connectWhole } from "./connect";
 import { evalCtx } from "./context";
-import { isHandle } from "./handle-data";
+import { handleData, isHandle } from "./handle-data";
 import { lift } from "./lift";
 
 export function buildNode(
 	spec: ModuleSpec,
 	args: readonly unknown[],
-	chainSrc?: InputValue,
+	chained?: Record<string, InputValue>,
 ): GNode {
 	evalCtx(`${spec.name}(...)`);
 	const inputs: Record<string, InputValue> = {};
 	const config: Record<string, unknown> = {};
+	const bound = new Set(Object.keys(chained ?? {}));
 
-	const positional = positionalSlots(spec, chainSrc !== undefined);
+	const positional = positionalSlots(spec, chained !== undefined, bound);
 	let slot = 0;
 	for (const arg of args) {
 		if (isNamedArgs(arg)) {
-			applyNamedArgs(spec, arg as Record<string, unknown>, inputs, config, chainSrc !== undefined);
+			applyNamedArgs(spec, arg as Record<string, unknown>, inputs, config, bound);
 			continue;
 		}
 		if (slot >= positional.length) {
@@ -34,27 +40,55 @@ export function buildNode(
 					`Positional: [${positional.join(", ")}]. Use an object for other parameters.`,
 			);
 		}
-		assign(spec, positional[slot]!, arg, inputs, config);
+		assignPositional(spec, positional[slot]!, arg, inputs, config);
 		slot++;
 	}
 
-	if (chainSrc !== undefined) {
-		if (spec.defaultIn in inputs) {
-			throw new Error(
-				`Cannot set '${spec.defaultIn}' when chaining into '${spec.name}' — ` +
-					`it is already bound from the chain source`,
-			);
-		}
-		inputs[spec.defaultIn] = chainSrc;
-	}
+	if (chained !== undefined) bindChain(spec, chained, inputs);
 
 	return { module: spec.name, inputs, config };
 }
 
-/** Positional names, skipping the default input when it is bound by a chain. */
-function positionalSlots(spec: ModuleSpec, chaining: boolean): readonly string[] {
+/** Positional names, skipping the default input and the chain-bound inputs when chaining. */
+function positionalSlots(
+	spec: ModuleSpec,
+	chaining: boolean,
+	bound: ReadonlySet<string>,
+): readonly string[] {
 	const names = spec.positional ?? [];
-	return chaining ? names.filter((n) => n !== spec.defaultIn) : names;
+	return chaining ? names.filter((n) => n !== spec.defaultIn && !bound.has(n)) : names;
+}
+
+/** A handle into the default input is a whole-module connection; anything else assigns. */
+function assignPositional(
+	spec: ModuleSpec,
+	name: string,
+	value: unknown,
+	inputs: Record<string, InputValue>,
+	config: Record<string, unknown>,
+): void {
+	if (name === spec.defaultIn && isHandle(value)) {
+		Object.assign(inputs, connectWhole(handleData(value), spec));
+		return;
+	}
+	assign(spec, name, value, inputs, config);
+}
+
+function bindChain(
+	spec: ModuleSpec,
+	chained: Record<string, InputValue>,
+	inputs: Record<string, InputValue>,
+): void {
+	for (const [name, value] of Object.entries(chained)) {
+		if (name in inputs) throw chainBoundError(spec, name);
+		inputs[name] = value;
+	}
+}
+
+function chainBoundError(spec: ModuleSpec, name: string): Error {
+	return new Error(
+		`Cannot set '${name}' when chaining into '${spec.name}' — it is already bound from the chain source`,
+	);
 }
 
 function applyNamedArgs(
@@ -62,14 +96,10 @@ function applyNamedArgs(
 	named: Record<string, unknown>,
 	inputs: Record<string, InputValue>,
 	config: Record<string, unknown>,
-	chaining: boolean,
+	bound: ReadonlySet<string>,
 ): void {
 	for (const [key, value] of Object.entries(named)) {
-		if (chaining && key === spec.defaultIn) {
-			throw new Error(
-				`Cannot set '${key}' when chaining into '${spec.name}' — it is already bound from the chain source`,
-			);
-		}
+		if (bound.has(key)) throw chainBoundError(spec, key);
 		if (!knownKey(spec, key)) {
 			throw new Error(
 				`${spec.name}: unknown parameter '${key}'. ` +

@@ -9,8 +9,8 @@ import { optional, sig, unit } from "../types";
  *    This is the auto-spread for sources that don't carry their own stereo.
  *  - `l` / `r`: pre-panned stereo jacks (a `pan`, or a stereo effect). ALL lanes
  *    of each jack sum straight into that channel — no re-pan. This is how the
- *    panner's constant-power placement survives to the master: patch it as
- *    `out({ l: x.l, r: x.r })`.
+ *    panner's constant-power placement survives to the master: `x.pan(p).out()`
+ *    connects by name (l→l, r→r); `out({ l, r })` is the general form.
  *
  * The two paths add: a patch may auto-spread some voices while hard-routing
  * others. Both jacks are optional (`def: null`, opt) — unconnected arrives as
