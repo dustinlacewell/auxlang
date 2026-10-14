@@ -439,66 +439,45 @@ seq("[~ 60]*4").trig
   .out()
 `;
 
-/** (k) A dance track: song-position effects, formant lead, a patch-defined crusher. */
+/** (k) A dance track: an arrangement of section patterns, glided into effects. */
 const pocketRocket = `// pocket rocket — future house in C, 128 bpm
 //
 // Form: intro 8 · build 8 · drop 8 · drop 8, then around again.
 // The chords run the "royal road" (IV V iii vi) and dodge the tonic until
 // the last two bars of every eight: Ab Bb C, the Mario cadence.
-// The sound effects are patches too: a riser and a tape-stop dive computed
-// from the song position, an impact, laser zaps, a lead that talks through
-// two formant filters, and a bitcrusher defined right here.
-const c = clock(32) // 32 bars a minute = 128 bpm; one cycle = one bar
-
-// ---- song position ----
-const bar = c.phase.mod(32) // where we are in the loop, in bars
-const rise = bar.add(-8).mul(1 / 8).clip(0, 1).mul(bar.lt(16)) // 0 → 1 across the build
-const dive = bar.add(-15.5).mul(-24).clip(-12, 0).mul(bar.lt(16)) // last half bar: down an octave
+// The sound effects are patches too: a riser and a tape-stop dive glided
+// out of section patterns, an impact, laser zaps, and a lead that talks
+// through two formant filters.
+clock(32) // 32 bars a minute = 128 bpm; one cycle = one bar
 
 // one value per 8-bar section: intro, build, drop, drop 2
 const sections = (a, b, d1, d2) => p\`<\${a} \${b} \${d1} \${d2}>\`.slow(8)
 const mask = (a, b, d1, d2) => slew({ in: sections(a, b, d1, d2), rise: 0.005, fall: 0.005 })
 const drops = mask(0, 0, 1, 1)
 
-// a bitcrusher: round to 2^bits levels, hold each value for \`hold\` samples
-defmod({
-  name: "crush",
-  category: "effects",
-  doc: "bit and sample-rate reduction",
-  ins: { in: sig(0), bits: sig(8), hold: sig(1) },
-  outs: { out: sig() },
-  defaultIn: "in",
-  defaultOut: "out",
-  positional: ["bits", "hold"],
-  state: () => ({ left: 0, held: 0 }),
-  tick: (s, i, o) => {
-    if (s.left <= 0) {
-      const levels = 2 ** i.bits
-      s.held = Math.round(i.in * levels) / levels
-      s.left = i.hold
-    }
-    s.left -= 1
-    o.out = s.held
-  },
-})
+// slew turns section steps into sweeps (rise/fall are seconds per unit)
+const rise = slew({ in: sections(0, 1, 0, 0), rise: 15, fall: 0.001 }) // 0 → 1 over the 15 s build
+const swell = rise.mul(rise)
+const dive = slew({ in: sections(0, p\`0!7 [0 -12]\`, 0, 0), rise: 0.001, fall: 0.078 }) // last half bar: down an octave
 
 // ---- harmony: Fmaj9 G9 Em7 Am9 | Fmaj9 G9 Abmaj7 Bb6 | Cadd9 ----
 const chords = seq(p\`<{a3,c4,e4,g4} {b3,d4,f4,a4} {b3,d4,e4,g4} {b3,c4,e4,g4}
   {a3,c4,e4,g4} {b3,d4,f4,a4} [{ab3,c4,eb4,g4} {bb3,d4,f4,g4}] {c4,d4,e4,g4}>\`)
-const roots = p\`<f1 g1 e1 a1 f1 g1 [ab1 bb1] c2>\`
+const bass = seq(p\`<f1 g1 e1 a1 f1 g1 [ab1 bb1] c2>\`)
+const groove = mask(1, p\`1!4 0!4\`, 1, 1) // the build drops clap and sub halfway
 
 // ---- drums ----
 const beat = seq("60*4")
 beat.trig
   .kick({ pitch: 50, sweep: 4, decay: 0.35, click: 0.1 })
-  .mul(mask(1, p\`1 1 1 1 1 1 0 0\`, 1, 1))
+  .mul(sections(1, p\`1!6 0!2\`, 1, 1))
   .gain(0.8)
   .out()
 const pump = beat.trig.ad(0.002, 0.25).sub(1) // sidechain: duck on every kick
 
 seq("~ 60 ~ 60").trig
   .clap({ decay: 0.3, tone: 0.6 })
-  .mul(mask(1, p\`1 1 1 1 0 0 0 0\`, 1, 1))
+  .mul(groove)
   .gain(0.7)
   .out()
 
@@ -506,17 +485,15 @@ const tick = seq("60*16")
 tick.trig
   .hihat({ decay: 0.03, tone: 0.8, metal: 0.5 })
   .mul(patstep(p\`0.35 0.5 1 0.5\`, tick.trig))
-  .mul(mask(1, p\`1 1 1 1 1 1 1 0\`, 1, 1))
+  .mul(sections(1, p\`1!7 0\`, 1, 1))
   .gain(2)
-  .pan(0.3)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 
 seq("[~ 60]*4").trig
   .hihat({ decay: 0.18, tone: 0.6, metal: 0.8 })
   .mul(drops)
   .gain(1.5)
-  .pan(-0.3)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 
 // the build's snare roll doubles in speed every two bars, then stops dead
 const roll = seq(sections(p\`~\`, p\`[60*4]!2 [60*8]!2 [60*16]!2 60*32 ~\`, p\`~\`, p\`~\`))
@@ -533,36 +510,35 @@ chords.pitch.add(dive)
   .mix()
   .lpf(rise.mul(4000).add(900), 0.3)
   .mul(stab.gate.adsr(0.002, 0.18, 0, 0.05))
-  .mul(mask(1, 1, 0, 0))
+  .mul(drops.sub(1))
   .delay({ time: 0.351, feedback: 0.35, mix: 0.25 })
   .gain(0.15)
   .out()
 
-// ---- sub: the roots, ducked by the kick; out for the back half of the build ----
-sin(roots)
+// ---- sub: the roots, ducked by the kick ----
+bass.sin()
   .mul(pump)
-  .mul(mask(1, p\`1 1 1 1 0 0 0 0\`, 1, 1))
+  .mul(groove)
   .gain(0.35)
   .out()
 
-// ---- drop: supersaw chords, three detuned saws per voice, pumping ----
-chords.pitch.saw()
-  .add(chords.pitch.add(0.12).saw())
-  .add(chords.pitch.add(-0.12).saw())
+// ---- drop: supersaw chords, two saws a fifth of a semitone apart, pumping ----
+chords.pitch.add(0.1).saw()
+  .add(chords.pitch.add(-0.1).saw())
   .mix()
   .lpf(lfo(0.1, 2500, 5000))
   .mul(chords.gate.adsr(0.01, 0.3, 0.8, 0.2))
   .mul(pump)
   .mul(drops)
-  .gain(0.045)
+  .gain(0.06)
   .out()
 
-// offbeat bass: each note opens its filter; the 4th bar's back half crushes to 3 bits
-const offbeat = seq("[~ 60]*4")
-sqr(roots.add(12))
+// offbeat bass: each note opens its filter; every 4th bar ends in a 16th-note fill
+const offbeat = seq("<[~ 60]*4 [~ 60]*4 [~ 60]*4 [[~ 60]*2 60*8]>")
+bass.pitch.add(12)
+  .sqr()
   .lpf(offbeat.gate.adsr(0.002, 0.12, 0.1, 0.05).mul(2400).add(150), 0.5)
   .mul(offbeat.gate.adsr(0.002, 0.15, 0.6, 0.05))
-  .crush(p\`<12 12 12 [12 3]>\`, 2)
   .mul(pump)
   .mul(drops)
   .gain(0.3)
@@ -585,38 +561,32 @@ mouth.bpf(f1, 0.4)
   .gain(0.3)
   .out()
 
-// drop 2 doubles the hook an octave up
-hook.pitch.add(12)
-  .tri()
-  .mul(hook.gate.adsr(0.005, 0.1, 0.6, 0.1))
-  .mul(mask(0, 0, 0, 1))
-  .gain(0.12)
-  .out()
-
 // ---- effects ----
 // riser: noise through a band-pass sweeping up the build
 noise()
-  .bpf(rise.mul(rise).mul(8000).add(300), 0.3)
-  .mul(rise.mul(rise))
+  .bpf(swell.mul(8000).add(300), 0.3)
+  .mul(swell)
   .gain(0.6)
   .out()
 
 // impact on each drop: a noise slam closing down, plus a sub that dives two octaves
 const hit = seq(sections(p\`~\`, p\`~\`, p\`60 ~!7\`, p\`60 ~!7\`)).trig
+const slam = hit.ad(0.001, 1.2)
 noise()
-  .lpf(hit.ad(0.001, 1.2).mul(8000).add(200))
-  .mul(hit.ad(0.001, 1.5))
-  .add(hit.ad(0.001, 0.6).mul(36).add(24).sin().mul(hit.ad(0.001, 1)))
+  .lpf(slam.mul(8000).add(200))
+  .add(hit.ad(0.001, 0.6).mul(36).add(24).sin())
+  .mul(slam)
   .reverb({ room: 0.9, damp: 0.3, mix: 0.4 })
-  .gain(0.3)
+  .gain(0.15)
   .out()
 
 // laser zaps: a square whose pitch falls three octaves in a tenth of a second
 const zap = seq("60(5,16,2)")
-zap.trig.ad(0.001, 0.1).mul(36).add(60)
+const pew = zap.trig.ad(0.001, 0.1)
+pew.mul(36).add(60)
   .sqr()
-  .mul(zap.trig.ad(0.001, 0.12))
-  .mul(mask(0, 0, 0.6, 1))
+  .mul(pew)
+  .mul(sections(0, 0, 0.6, 1))
   .delay({ time: 0.351, feedback: 0.4, mix: 0.3 })
   .gain(0.08)
   .pan(lfo(0.5, -0.8, 0.8))
