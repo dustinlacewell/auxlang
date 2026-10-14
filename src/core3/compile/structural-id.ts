@@ -5,9 +5,9 @@
  * and port; a constant or unconnected port is just "constant" and a lambda
  * just "lambda" (stateless, so its source is not identity either). Constant
  * values and the node's config are NOT identity, so `lpf(800)` → `lpf(900)`
- * keeps the filter's state and everything downstream. (A module whose own
- * config changed, or whose state no longer fits, starts fresh alone at
- * migration — runtime/initial-states.ts.) Computed in topo
+ * keeps the filter's state and everything downstream. (A module whose state
+ * no longer fits starts fresh alone at migration —
+ * runtime/initial-states.ts.) Computed in topo
  * order so every plain dependency already has an id; z-edge sources are
  * described shallowly (module:port) to keep the recursion well-founded.
  *

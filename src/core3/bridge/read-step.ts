@@ -11,7 +11,7 @@
  *         change, when a trig lands while the gate is high.
  */
 
-import { KIND_REST } from "../pattern/table/event-table";
+import { KIND_REST, NO_NOTE } from "../pattern/table/event-table";
 
 /** The gate dip's length. */
 export const DIP_SECONDS = 0.001;
@@ -20,9 +20,9 @@ export function trigOf(kind: number, noteId: number, prevNoteId: number): number
 	return kind !== KIND_REST && noteId !== prevNoteId ? 1 : 0;
 }
 
-/** The note id the reader remembers: none (NaN) inside a rest. */
+/** The note id the reader remembers: none (NO_NOTE) inside a rest. */
 export function heldNoteId(kind: number, noteId: number): number {
-	return kind === KIND_REST ? Number.NaN : noteId;
+	return kind === KIND_REST ? NO_NOTE : noteId;
 }
 
 /** Unclocked dip countdown in samples: restarts on a trig into a high gate, else counts down. */
@@ -49,7 +49,7 @@ export function dipSamplesAt(sampleRate: number): number {
 	return Math.round(DIP_SECONDS * sampleRate);
 }
 
-/** The dip's length in position units, from the position's per-sample step. */
-export function dipBeatsAt(step: number, sampleRate: number): number {
-	return step > 0 ? DIP_SECONDS * sampleRate * step : 0;
+/** The dip's length in position units, from the position's per-sample step (0 before a first step). */
+export function dipBeatsAt(started: number, step: number, sampleRate: number): number {
+	return started === 1 && step > 0 ? DIP_SECONDS * sampleRate * step : 0;
 }

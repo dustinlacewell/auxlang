@@ -23,13 +23,14 @@ Two hosts run the same Engine. An offline renderer runs it headless and is what 
 `compile(evalResult)` then runs, in order:
 
 1. **`collect`** — walk the object-identity graph from roots to find reachable nodes. Cycles are fine at this stage.
-2. **`expandPatterns`** — pattern-valued inputs become `patsig` nodes wired to the ambient clock's phase.
-3. **`resolveAmbientClocks`** — unconnected phase-unit `clk` inputs bind to the ambient clock.
-4. **re-collect** — `patsig` and ambient-clock nodes introduced above are new; collect again.
-5. **`cutZ1Edges`** — connections into `z1` nodes become z-edges (the unit-delay marker).
-6. **`toposort`** — z-edges are cut first; a cycle with no z1 in it is a loud error.
-7. **`resolveWidths`** — max-input-width fixpoint. A reduce-policy node collapses to width 1. Lane broadcast is `lane % srcWidth`.
-8. **index by topo position**, compute `structuralIds`, then **`emit`** → per-lane `PortSrc` resolution → `PNode[]` → `Program { nodes, outs, seed }`.
+2. **`expandPatterns`** — pattern-valued inputs become `seq(pattern).out` nodes with no position (patterns as knobs); re-collect.
+3. **`prepareSeqs`** — each seq's pattern config becomes voiced Pat data with its lane count, a `__minWidth` hint, and the program seed.
+4. **`resolveAmbientClocks`** — unconnected phase-unit inputs (a seq's `position`, a tempo converter's `clk`) bind to the ambient clock's position output. **`markClocked`** then sets `clocked` on seqs read straight from a clock.
+5. **re-collect** — the ambient clock may be new; collect again.
+6. **`cutZ1Edges`** — connections into `z1` nodes become z-edges (the unit-delay marker).
+7. **`toposort`** — z-edges are cut first; a cycle with no z1 in it is a loud error.
+8. **`resolveWidths`** — max-input-width fixpoint. A reduce-policy node collapses to width 1. Lane broadcast is `lane % srcWidth`.
+9. **index by topo position**, compute `structuralIds`, then **`emit`** → per-lane `PortSrc` resolution → `PNode[]` → `Program { nodes, outs, seed }`.
 
 Config keys prefixed `__` are compile hints and are stripped from the shipped Program. A required input — `def: null`, not optional — left unconnected is a loud compile error.
 
@@ -60,9 +61,9 @@ Feedback is legal only when every cycle passes through a `z1` unit delay; the `l
 
 Live re-eval keeps running state — oscillator phase, delay lines, envelope position, seq cycle — by matching nodes structurally across edits.
 
-`id(node) = fnv1a(module | config-JSON | recursive source ids)`, computed in topo order so every dependency already has an id when the node is hashed. Z-edge sources are described shallowly (`module:port`) to keep the recursion well-founded across cycles.
+`id(node) = fnv1a(module | per-port source descriptions)`, computed in topo order so every dependency already has an id when the node is hashed. Constants, lambdas, and config are not identity. Z-edge sources are described shallowly (`module:port`) to keep the recursion well-founded across cycles.
 
-Editing a node's config changes its id and, recursively, every downstream id. So a config edit resets that node and everything after it — this is by design (a non-recursive variant is a backlog tradeoff). `x.id("name")` pins a `pin` that overrides the structural id, letting state survive a structural change. State is plain serializable data, so migration is clone-and-carry: `deepClone` per lane.
+A matched node keeps its state whenever the carried state fits the fresh state's shape: same keys, value kinds, and array lengths (`state-fits.ts`). Config is not consulted, so module state must not cache values derived from config; a config edit that resizes state resets that module through its shape. A sample-rate change migrates nothing. `x.id("name")` pins a `pin` that overrides the structural id, letting state survive a structural change. State is plain serializable data, so migration is clone-and-carry: `deepClone` per lane. Each lane also gets two engine fields outside the shape: `__lane` and `__scratch`, a record for derived data (seq's event tables) that every engine starts empty.
 
 ---
 
@@ -78,6 +79,6 @@ A graph swap builds a new Engine seeded from the previous `EngineState` and equa
 
 Patterns are serializable data — an AST. `query(pat, span, { seed, path })` interprets them. `path` mixes `(op, childIndex)` hashes on descent, giving every AST position a stable integer identity; that is the basis for deterministic `?`/`degrade` via `hash01(seed, path, cycle)`.
 
-Pattern width is computed from structure, not by querying (`stack` sums, sequences and `every` take the max, `off`/`chunk` sum). Lane numbering follows the same structural rule a query assigns at runtime, so a held note keeps its lane across cycle edges. The `seq` module is one node per lane: each lane, every time the clock phase crosses a cycle boundary, queries its pattern for that one cycle and caches the events for its own lane in state (double-buffered, no steady-state allocation). Per sample it binary-searches the current event to emit pitch/gate/trig. `patsig` does the same for a single value stream. `patstep` flattens onset values once and advances by trigger.
+Pattern width is computed from structure, not by querying (`stack` sums, sequences and `every` take the max, `off`/`chunk` sum). Lane numbering follows the same structural rule a query assigns at runtime, so a held note keeps its lane across cycle edges. The `seq` module reads a pattern at a position signal; lane `l` reads pattern lane `l % lanes`. Each lane keeps an event table (`pattern/table/`) in its scratch: the cycle under the position as contiguous rows (rest rows fill gaps), each with a note id (the onset of its note; a tie keeps its note's), plus the carry from earlier cycles and the dip marks between touching notes. `fillTable` refills it when the position leaves its cycle; `locate` walks or searches to the row. `bridge/read-step.ts` turns the row and the reader's fixed-shape state (row, note id, gate, dip countdown, last position) into `out`/`gate`/`trig`. A pattern used as a knob is the same `seq`.
 
 Alternation, `every`, and `iter` are pure functions of the cycle number — never visit-counting — so the sequencer is fully scrubbable.

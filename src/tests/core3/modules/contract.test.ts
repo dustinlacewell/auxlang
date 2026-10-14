@@ -14,7 +14,6 @@ const NON_OUT_DEFAULTS: Record<string, string> = {
 	clock: "phase",
 	pan: "l",
 	out: "l",
-	seq: "pitch",
 };
 
 const registry = getRegistry();

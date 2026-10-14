@@ -21,9 +21,7 @@ import { moduleFactory } from "./patch/factory";
 import type { Handle } from "./patch/handle-data";
 import { loop } from "./patch/loop";
 import { out } from "./patch/out";
-import { patstep } from "./patch/patstep";
 import { RESERVED_SCOPE_NAMES } from "./patch/scope-names";
-import { seq } from "./patch/seq";
 import { chord } from "./pattern/chord/chord";
 import { P } from "./pattern/pat-class";
 import { p } from "./pattern/notation/template";
@@ -37,7 +35,6 @@ export { defmod } from "./patch/defmod";
 export { loop } from "./patch/loop";
 export { out } from "./patch/out";
 export { seq } from "./patch/seq";
-export { patstep } from "./patch/patstep";
 export { compile } from "./compile/compile";
 export { p } from "./pattern/notation/template";
 export { hashRandom } from "./random/hash-random";
@@ -63,9 +60,7 @@ export function factory(name: string): (...args: unknown[]) => Handle {
  */
 const RESERVED = {
 	clock,
-	seq,
 	out,
-	patstep,
 	loop,
 	p,
 	defmod,
@@ -85,7 +80,7 @@ const RESERVED = {
 } as const;
 
 /** Reserved names that intentionally override a same-named registered module. */
-const MODULE_OVERRIDES = new Set(["clock", "seq", "out", "patstep"]);
+const MODULE_OVERRIDES = new Set(["clock", "out"]);
 
 /**
  * The complete user scope, generated from the registry: every registered module

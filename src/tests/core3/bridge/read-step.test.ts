@@ -14,20 +14,20 @@ import {
 	inDipWindow,
 	trigOf,
 } from "@/core3/bridge/read-step";
-import { KIND_NOTE, KIND_REST, KIND_TIE } from "@/core3/pattern/table/event-table";
+import { KIND_NOTE, KIND_REST, KIND_TIE, NO_NOTE } from "@/core3/pattern/table/event-table";
 import { describe, expect, it } from "vitest";
 
 describe("trigOf", () => {
 	it("fires on a note different from the one before, in any direction", () => {
 		expect(trigOf(KIND_NOTE, 0.5, 0.25)).toBe(1);
 		expect(trigOf(KIND_NOTE, 0.25, 0.5)).toBe(1);
-		expect(trigOf(KIND_NOTE, 7, Number.NaN)).toBe(1);
+		expect(trigOf(KIND_NOTE, 7, NO_NOTE)).toBe(1);
 	});
 
 	it("stays quiet inside the same note, its tie, and rests", () => {
 		expect(trigOf(KIND_NOTE, 0.5, 0.5)).toBe(0);
 		expect(trigOf(KIND_TIE, 0.5, 0.5)).toBe(0);
-		expect(trigOf(KIND_REST, Number.NaN, 0.5)).toBe(0);
+		expect(trigOf(KIND_REST, NO_NOTE, 0.5)).toBe(0);
 	});
 
 	it("fires when a tie is entered from outside its note", () => {
@@ -35,7 +35,7 @@ describe("trigOf", () => {
 	});
 
 	it("re-fires a note entered again after a rest", () => {
-		const inRest = heldNoteId(KIND_REST, Number.NaN);
+		const inRest = heldNoteId(KIND_REST, NO_NOTE);
 		expect(trigOf(KIND_NOTE, 0.5, inRest)).toBe(1);
 	});
 });
@@ -71,10 +71,13 @@ describe("clocked dip", () => {
 	});
 
 	it("measures 1 ms in position units from the per-sample step", () => {
-		expect(dipBeatsAt(2 / 48000, 48000)).toBeCloseTo(0.002, 12);
-		expect(dipBeatsAt(0, 48000)).toBe(0);
-		expect(dipBeatsAt(-1, 48000)).toBe(0);
-		expect(dipBeatsAt(Number.NaN, 48000)).toBe(0);
+		expect(dipBeatsAt(1, 2 / 48000, 48000)).toBeCloseTo(0.002, 12);
+		expect(dipBeatsAt(1, 0, 48000)).toBe(0);
+		expect(dipBeatsAt(1, -1, 48000)).toBe(0);
+	});
+
+	it("is empty before the reader has a first step", () => {
+		expect(dipBeatsAt(0, 2 / 48000, 48000)).toBe(0);
 	});
 });
 

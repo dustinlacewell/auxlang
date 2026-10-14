@@ -96,9 +96,13 @@ export interface ModuleSpec {
 	 * Fresh state per lane. MUST return plain serializable data (numbers, typed
 	 * arrays, nested plain objects). After construction (or migration) the engine
 	 * injects `state.__lane = laneIndex`, so per-lane modules (seq) know which
-	 * packed lane they render without any extra contract surface. A fresh lane
-	 * also gets `state.__rng`, its own random stream position seeded from
+	 * packed lane they render without any extra contract surface, and
+	 * `state.__scratch = {}`, a per-lane record for data derived from config
+	 * (seq's event tables); scratch is never carried across a re-eval. A fresh
+	 * lane also gets `state.__rng`, its own random stream position seeded from
 	 * (patch seed, identity, lane); draw from it with random/next-random.ts.
+	 * State is fixed-shape: a re-eval keeps it whenever its shape still fits,
+	 * whatever the config, so state must not cache values derived from config.
 	 */
 	readonly state?: (sampleRate: number) => Record<string, unknown>;
 	readonly tick: TickFn | ReduceTickFn;
@@ -165,8 +169,6 @@ export interface Program {
 export interface EngineState {
 	/** migration key -> per-lane state array */
 	readonly nodes: Record<string, Record<string, unknown>[]>;
-	/** migration key -> config fingerprint (a changed config starts that node fresh) */
-	readonly configs: Record<string, string>;
 	/** The rate the state was built at; a different rate migrates nothing. */
 	readonly sampleRate: number;
 	readonly sampleCount: number;

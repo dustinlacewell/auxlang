@@ -5,15 +5,19 @@
  * (pin first, then structural id, positional `~k` suffix for duplicates —
  * see state-keys.ts) and clones so the old engine's state is never shared.
  * Nothing migrates across a sample-rate change (state buffers are sized from
- * it). A matched node still starts fresh, alone, when its own config changed
- * (config-fingerprint.ts) or its carried state does not fit the fresh state's
- * shape (state-fits.ts). A migrated lane keeps its `__rng`, so its random
- * stream continues.
+ * it). A matched node still starts fresh, alone, when its carried state does
+ * not fit the fresh state's shape (state-fits.ts) — config is not consulted
+ * (MANIFESTO §6.2). A migrated lane keeps its `__rng`, so its random stream
+ * continues.
+ *
+ * The engine injects two per-lane fields after construction, neither part of
+ * the state's shape: `__lane` (the lane index) and `__scratch` (an empty
+ * record a module may fill with data derived from config, such as event
+ * tables). Scratch is never carried: every engine starts it empty.
  */
 
 import { streamSeed } from "../random/stream-seed";
 import type { EngineState, ModuleSpec, PNode } from "../types";
-import { configFingerprint } from "./config-fingerprint";
 import { deepClone } from "./deep-clone";
 import { freshLaneState } from "./fresh-lane-state";
 import { stateFits } from "./state-fits";
@@ -22,8 +26,6 @@ import { migrationKeys } from "./state-keys";
 export interface LaneStateSet {
 	/** keys[i] is node i's migration key (also used by collectState). */
 	readonly keys: readonly string[];
-	/** configs[i] is node i's config fingerprint (also used by collectState). */
-	readonly configs: readonly string[];
 	/** states[i][lane] is node i's lane state. */
 	readonly states: readonly Record<string, unknown>[][];
 }
@@ -36,35 +38,28 @@ export function buildLaneStates(
 	prev?: EngineState,
 ): LaneStateSet {
 	const keys = migrationKeys(nodes);
-	const configs = nodes.map((node, i) => configFingerprint(specs[i] as ModuleSpec, node));
 	const states = nodes.map((node, i) => {
 		const spec = specs[i] as ModuleSpec;
 		const key = keys[i] as string;
-		const prevLanes = carriedLanes(prev, sampleRate, key, configs[i] as string);
+		const prevLanes = carriedLanes(prev, sampleRate, key);
 		return node.lanes.map((_, lane) => {
 			const carried = prevLanes?.[lane];
 			const fresh = freshLaneState(spec, sampleRate, streamSeed(seed, key, lane));
-			const state =
-				carried !== undefined && stateFits(carried, fresh) ? deepClone(carried) : fresh;
-			// Engine-injected lane identity (see ModuleSpec.state in types.ts).
+			const state = carried !== undefined && stateFits(carried, fresh) ? deepClone(carried) : fresh;
 			state.__lane = lane;
+			state.__scratch = {};
 			return state;
 		});
 	});
-	return { keys, configs, states };
+	return { keys, states };
 }
 
-/**
- * The previous engine's lanes for `key`, unless the sample rate changed (state
- * buffers are sized from it, so nothing migrates) or that node's config changed.
- */
+/** The previous engine's lanes for `key`, unless the sample rate changed (state buffers are sized from it). */
 function carriedLanes(
 	prev: EngineState | undefined,
 	sampleRate: number,
 	key: string,
-	config: string,
 ): Record<string, unknown>[] | undefined {
 	if (prev === undefined || prev.sampleRate !== sampleRate) return undefined;
-	if (prev.configs[key] !== config) return undefined;
 	return prev.nodes[key];
 }

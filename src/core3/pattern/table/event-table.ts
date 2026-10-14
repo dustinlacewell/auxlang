@@ -7,13 +7,16 @@
  *   value       the row's value; a rest row holds the value before it
  *   kind        KIND_REST | KIND_NOTE | KIND_TIE
  *   noteId      onset of the row's own note, in absolute beats; a tie carries
- *               its note's id; NaN on a rest row
+ *               its note's id; NO_NOTE on a rest row
  *   dipBefore   1 when the next row (peeking the next cycle for the last row)
  *               is a different note touching this one
  *
  * `carryValue`/`carryNoteId` describe what came before row 0. A table is
  * derived data: rebuilt from (pattern, seed, lane, cycle), never migrated.
  */
+
+/** The note id of "no note" (a rest, or nothing before). A finite number so reader state stays JSON. */
+export const NO_NOTE = -Number.MAX_VALUE;
 
 export const KIND_REST = 0;
 export const KIND_NOTE = 1;
@@ -44,7 +47,7 @@ export function createTable(capacity = 8): EventTable {
 		noteId: new Float64Array(capacity),
 		dipBefore: new Int8Array(capacity),
 		carryValue: 0,
-		carryNoteId: Number.NaN,
+		carryNoteId: NO_NOTE,
 	};
 }
 

@@ -2,7 +2,7 @@
  * `clock(bpm)` — creates a clock node and binds it as the eval's AMBIENT
  * clock if none is bound yet (first call wins). Consumers that want a
  * different clock connect one explicitly; everyone else gets the ambient one
- * (pattern lifting wires patsig.phase to it at compile).
+ * (compile wires every unconnected seq position to it).
  */
 
 import { getModule } from "../module/define";

@@ -13,6 +13,7 @@ import {
 	KIND_NOTE,
 	KIND_REST,
 	KIND_TIE,
+	NO_NOTE,
 	createTable,
 } from "@/core3/pattern/table/event-table";
 import { fillTable } from "@/core3/pattern/table/fill-table";
@@ -50,7 +51,7 @@ describe("fillTable", () => {
 		const t = table(p`c4 ~ e4 ~`.ast, 1);
 		expect(rows(t, "kind")).toEqual([KIND_NOTE, KIND_REST, KIND_NOTE, KIND_REST]);
 		expect(rows(t, "value")).toEqual([60, 60, 64, 64]);
-		expect(rows(t, "noteId").map(Number.isNaN)).toEqual([false, true, false, true]);
+		expect(rows(t, "noteId")).toEqual([1, NO_NOTE, 1.5, NO_NOTE]);
 		expect(rows(t, "dipBefore")).toEqual([0, 0, 0, 0]);
 	});
 
@@ -73,7 +74,7 @@ describe("fillTable", () => {
 		expect(t.count).toBe(1);
 		expect(rows(t, "kind")).toEqual([KIND_REST]);
 		expect(t.carryValue).toBe(0);
-		expect(Number.isNaN(t.carryNoteId)).toBe(true);
+		expect(t.carryNoteId).toBe(NO_NOTE);
 	});
 
 	it("gives a tie its note's id and no dip between them", () => {

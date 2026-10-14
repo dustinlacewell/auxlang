@@ -4,8 +4,10 @@
  *
  *   mods         `.mod` terms → base + Σ(signal × depth) as add/mul nodes
  *   collect      reachable nodes from the roots (object-identity graph walk)
- *   expand       pattern inputs → patsig nodes (clocked by the ambient clock)
- *   clocks       unconnected phase-unit `clk` inputs → the ambient clock
+ *   expand       pattern inputs → `seq(pattern).out` nodes (patterns as knobs)
+ *   seqs         seq pattern config → voiced Pat data, lane count, seed
+ *   clocks       unconnected phase-unit inputs → the ambient clock's position
+ *   clocked      seqs read straight from a clock are marked clocked
  *   z1           connections into z1 nodes become z-edges (the unit delay)
  *   widths       max-input-width fixpoint (reduce collapses to 1)
  *   toposort     z-edges cut; a z-less cycle is a loud error
@@ -33,6 +35,8 @@ import { resolveAmbientClocks } from "./ambient-clock";
 import { collect } from "./collect";
 import { expandMods } from "./expand-mods";
 import { expandPatterns } from "./expand-patterns";
+import { markClocked } from "./mark-clocked";
+import { prepareSeqs } from "./prepare-seqs";
 import { structuralIds } from "./structural-id";
 import { toposort } from "./toposort";
 import { resolveWidths } from "./widths";
@@ -51,9 +55,12 @@ export function compile(evalResult: EvalResult): Program {
 	const specs = evalResult.specs;
 	expandMods(collect(evalResult.roots), specs);
 	const reachable = collect(evalResult.roots); // re-walk: the mod arithmetic nodes are new
-	expandPatterns(reachable, evalResult.clock, evalResult.seed);
-	resolveAmbientClocks(reachable, evalResult.clock, specs);
-	const nodes = collect(evalResult.roots); // re-walk: patsig + ambient clock nodes are new
+	expandPatterns(reachable, evalResult.clock);
+	const lifted = collect(evalResult.roots); // re-walk: the knob seq nodes are new
+	prepareSeqs(lifted, evalResult.seed);
+	resolveAmbientClocks(lifted, evalResult.clock, specs);
+	markClocked(lifted);
+	const nodes = collect(evalResult.roots); // re-walk: the ambient clock may be new
 	cutZ1Edges(nodes);
 
 	const order = toposort(nodes);

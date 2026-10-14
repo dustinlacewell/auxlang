@@ -2,7 +2,8 @@
  * Width resolution. A node's width is the max of its input source widths
  * (constants/lambdas are 1; a lane-selected ref is 1). `policy: "reduce"`
  * collapses output width to 1. `config.__width` pins a node's width
- * explicitly (test hook; seq/patsig width rules land with the bridge track).
+ * explicitly (`.width(n)`); `config.__minWidth` is a floor that wider inputs
+ * still raise (a seq is at least as wide as its pattern).
  *
  * Computed as a monotone fixpoint so widths propagate through z-edge cycles.
  */
@@ -39,7 +40,9 @@ function isPinnedWidth(node: GNode, specs?: SpecTable): boolean {
 function initialWidth(node: GNode, specs?: SpecTable): number {
 	if (resolveSpec(node.module, specs).policy === "reduce") return 1;
 	const pinned = node.config.__width;
-	return typeof pinned === "number" ? pinned : 1;
+	if (typeof pinned === "number") return pinned;
+	const floor = node.config.__minWidth;
+	return typeof floor === "number" ? floor : 1;
 }
 
 function inputWidths(node: GNode, widths: Map<GNode, number>): number[] {

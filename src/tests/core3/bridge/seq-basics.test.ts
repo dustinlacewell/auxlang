@@ -25,7 +25,7 @@ describe("seq basics", () => {
 	const { program, seq: si } = build("c4 e4 g4 b4");
 
 	it("pitch sample-and-holds 60/64/67/71 at note boundaries, repeating per cycle", () => {
-		const pitch = renderTap(program, si, "pitch", 0, 2 * CYCLE);
+		const pitch = renderTap(program, si, "out", 0, 2 * CYCLE);
 		expect(pitch[Math.floor(NOTE * 0.5)]).toBe(60);
 		expect(pitch[Math.floor(NOTE * 1.5)]).toBe(64);
 		expect(pitch[Math.floor(NOTE * 2.5)]).toBe(67);
@@ -66,7 +66,7 @@ describe("seq ties", () => {
 
 	it("a tie is legato: continuous gate across the pitch change, one trig", () => {
 		const gate = renderTap(program, si, "gate", 0, CYCLE);
-		const pitch = renderTap(program, si, "pitch", 0, CYCLE);
+		const pitch = renderTap(program, si, "out", 0, CYCLE);
 		const trig = renderTap(program, si, "trig", 0, CYCLE);
 		// pitch still changes 60 -> 64 halfway through the tied step
 		expect(pitch[Math.floor(STEP * 0.25)]).toBe(60);

@@ -37,6 +37,21 @@ defmod({
 	},
 });
 
+/** Same ports and keys as mg.count, a longer buffer. */
+defmod({
+	name: "mg.long",
+	category: "utils",
+	ins: { step: sig(1) },
+	outs: { out: sig() },
+	defaultIn: "step",
+	defaultOut: "out",
+	state: () => ({ n: 0, buf: new Float32Array(8) }),
+	tick: (s: St, ins: IO, o: IO) => {
+		s.n = (s.n as number) + (ins.step as number);
+		o.out = s.n as number;
+	},
+});
+
 const SR = 48000;
 
 function tapRun(engine: Core3Engine, node: number, samples: number): number[] {
@@ -115,7 +130,7 @@ describe("engine: state migration", () => {
 		expect(swapped.peek(1, "out", 0)).toBe(2); // fresh state
 	});
 
-	it("a matched node whose own config changed resets alone", () => {
+	it("a matched node whose own config changed keeps its state", () => {
 		const registry = getRegistry();
 		const configured = (k: number) =>
 			prog([
@@ -129,7 +144,33 @@ describe("engine: state migration", () => {
 		const frame = new Float32Array(2);
 		swapped.tick(frame);
 		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
+		expect(swapped.peek(1, "out", 0)).toBe(202); // kept state: config is not consulted
+	});
+
+	it("a matched node whose buffer changed length resets alone", () => {
+		const registry = getRegistry();
+		const first = new Core3Engine(program, SR, registry);
+		tapRun(first, 0, 100); // a: 100, b: 200
+
+		const resized = prog([
+			pnode("mg.count", [{ step: c(1) }], { id: "a" }),
+			pnode("mg.long", [{ step: c(2) }], { id: "b" }), // same key, longer buffer
+		]);
+		const swapped = new Core3Engine(resized, SR, registry, first.collectState());
+		const frame = new Float32Array(2);
+		swapped.tick(frame);
+		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
 		expect(swapped.peek(1, "out", 0)).toBe(2); // fresh state
+	});
+
+	it("never carries a lane's scratch", () => {
+		const registry = getRegistry();
+		const first = new Core3Engine(program, SR, registry);
+		tapRun(first, 0, 10);
+		const state = first.collectState();
+		for (const lanes of Object.values(state.nodes)) {
+			for (const lane of lanes) expect(lane).not.toHaveProperty("__scratch");
+		}
 	});
 
 	it("pin overrides structural id", () => {

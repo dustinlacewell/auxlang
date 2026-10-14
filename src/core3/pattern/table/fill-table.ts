@@ -9,7 +9,7 @@ import type { Pat } from "../ast";
 import type { Ev } from "../event";
 import { rtof } from "../rational";
 import { carryBefore } from "./carry-before";
-import { type EventTable, KIND_REST, ensureCapacity, sounds } from "./event-table";
+import { type EventTable, KIND_REST, NO_NOTE, ensureCapacity, sounds } from "./event-table";
 import { laneCycle } from "./lane-cycle";
 import { kindOf, noteIdOf } from "./note-id";
 
@@ -44,13 +44,13 @@ function writeRows(
 		const begin = rtof(ev.part.begin);
 		const next = evs[i + 1];
 		const end = Math.min(rtof(ev.part.end), next === undefined ? c + 1 : rtof(next.part.begin));
-		if (begin > cursor) pushRow(t, cursor, begin, held, KIND_REST, Number.NaN);
+		if (begin > cursor) pushRow(t, cursor, begin, held, KIND_REST, NO_NOTE);
 		noteId = noteIdOf(ev, noteId);
 		held = ev.value;
 		if (end > begin) pushRow(t, begin, end, held, kindOf(ev), noteId);
 		cursor = Math.max(cursor, end);
 	}
-	if (cursor < c + 1) pushRow(t, cursor, c + 1, held, KIND_REST, Number.NaN);
+	if (cursor < c + 1) pushRow(t, cursor, c + 1, held, KIND_REST, NO_NOTE);
 	return noteId;
 }
 
@@ -81,7 +81,7 @@ interface Head {
 function nextHead(pat: Pat, seed: number, lane: number, c: number, prevNoteId: number): Head {
 	const first = laneCycle(pat, seed, lane, c)[0];
 	if (first === undefined || rtof(first.part.begin) > c) {
-		return { kind: KIND_REST, noteId: Number.NaN };
+		return { kind: KIND_REST, noteId: NO_NOTE };
 	}
 	return { kind: kindOf(first), noteId: noteIdOf(first, prevNoteId) };
 }

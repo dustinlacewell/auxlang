@@ -66,8 +66,10 @@ describe.each(DRUMS)("drum %s", (name, spec) => {
 		d.run(1000, { trig: 1 });
 		const keysAfter = Object.keys(d.state).sort();
 		expect(keysAfter).toEqual(keysBefore);
-		// and no state value is an object/array (only primitives/typed arrays)
-		for (const v of Object.values(d.state)) {
+		// and no state value is an object/array (only primitives/typed arrays);
+		// the engine's own per-lane scratch record is not module state
+		for (const [k, v] of Object.entries(d.state)) {
+			if (k === "__scratch") continue;
 			expect(typeof v === "number" || ArrayBuffer.isView(v)).toBe(true);
 		}
 	});

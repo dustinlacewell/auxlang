@@ -1,14 +1,14 @@
 /**
  * Live re-eval continuity (MANIFESTO §6.2): constants and config are not
- * identity, so editing a value keeps the state of the edited module (unless its
- * own config changed) and of everything downstream. The clock position carries
- * across a tempo edit, and patterns pick up mid-cycle.
+ * identity, so editing a value keeps the state of the edited module and of
+ * everything downstream. The clock position carries across a tempo edit, and
+ * patterns pick up mid-cycle; a pattern edit keeps the note under the position.
  */
 
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
-import { clock, factory, patstep, runProgram, seq } from "@/core3/api";
+import { clock, factory, p, runProgram, seq } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
 import { Core3Engine } from "@/core3/runtime/engine";
 import type { EngineState, Program } from "@/core3/types";
@@ -68,7 +68,7 @@ describe("tempo edit keeps the clock position", () => {
 		const after = tempo(130);
 		const { swapped } = swap(tempo(120), after);
 		run(swapped, 1);
-		expect(swapped.peek(indexOf(after, "seq"), "pitch", 0)).toBe(55); // g3, not c3
+		expect(swapped.peek(indexOf(after, "seq"), "out", 0)).toBe(55); // g3, not c3
 	});
 });
 
@@ -108,19 +108,19 @@ describe("constant edit keeps state downstream", () => {
 	});
 });
 
-describe("config edit resets only that module", () => {
+describe("config edit keeps state (config is not identity, §6.2)", () => {
 	const shaped = (shape: string) =>
 		runProgram(() => {
 			factory("lfo")({ freq: 3, shape }).mul(factory("sin")(60)).delay({ time: 0.05 }).out();
 		});
 
-	it("a changed config starts that module fresh; the modules after it keep state", () => {
+	it("a changed config keeps that module's state and the state after it", () => {
 		const before = shaped("sin");
 		const after = shaped("tri");
 		const { state, swapped } = swap(before, after);
 		const carried = swapped.collectState();
-		expect(lanesOf(carried, after, "lfo")?.[0]?.phase).toBe(0);
-		for (const module of ["sin", "mul", "delay"]) {
+		expect(lanesOf(carried, after, "lfo")?.[0]?.phase).not.toBe(0);
+		for (const module of ["lfo", "sin", "mul", "delay"]) {
 			expect(lanesOf(carried, after, module), module).toEqual(lanesOf(state, before, module));
 		}
 	});
@@ -147,10 +147,10 @@ describe("re-eval of an unchanged patch", () => {
 			clock(120);
 			const s = seq("c3 ~ e3 g3");
 			s.tri().mul(s.gate.adsr(0.005, 0.1, 0.5, 0.2)).out();
-			patstep("1 2 3 4 5", factory("lfo")(7).gt(0.5)).mul(0.01).out();
+			factory("sin")(p`60 67 ~ 72`).mul(0.01).out();
 		});
 
-	it("is bit-exact against an engine that never swapped (seq → adsr, patstep)", () => {
+	it("is bit-exact against an engine that never swapped (seq → adsr, pattern knob)", () => {
 		const reference = new Core3Engine(patch(), SR, getRegistry());
 		run(reference, MID);
 		const expected = run(reference, SR / 2);
@@ -170,6 +170,37 @@ describe("pattern edit", () => {
 		const after = melody("d3 f3 a3 c4");
 		const { swapped } = swap(melody("c3 e3 g3 b3"), after);
 		run(swapped, 1);
-		expect(swapped.peek(indexOf(after, "seq"), "pitch", 0)).toBe(57); // a3
+		expect(swapped.peek(indexOf(after, "seq"), "out", 0)).toBe(57); // a3
+	});
+
+	// MID is 2.6 beats: inside g3's step [2.5, 2.75). 3000 samples stay inside it.
+	const REST_OF_NOTE = 3000;
+
+	it("leaving the note under the position unchanged gives no trig and no gate dip", () => {
+		const after = melody("c3 e3 g3 c4"); // only the last note changes
+		const { swapped } = swap(melody("c3 e3 g3 b3"), after);
+		const { trig, gate } = seqTaps(swapped, indexOf(after, "seq"), REST_OF_NOTE);
+		expect(trig.every((v) => v === 0)).toBe(true);
+		expect(gate.every((v) => v === 1)).toBe(true);
+	});
+
+	it("putting a different note under the position fires one trig", () => {
+		const after = melody("c3 e3 g3"); // 2.6 now sits in the e3 of [2⅓, 2⅔)
+		const { swapped } = swap(melody("c3 e3 g3 b3"), after);
+		const { trig } = seqTaps(swapped, indexOf(after, "seq"), 1200); // ends before 2⅔
+		expect(trig.filter((v) => v === 1).length).toBe(1);
+		expect(trig[0]).toBe(1);
 	});
 });
+
+function seqTaps(engine: Core3Engine, node: number, samples: number) {
+	const frame = new Float32Array(2);
+	const trig: number[] = [];
+	const gate: number[] = [];
+	for (let k = 0; k < samples; k++) {
+		engine.tick(frame);
+		trig.push(engine.peek(node, "trig", 0));
+		gate.push(engine.peek(node, "gate", 0));
+	}
+	return { trig, gate };
+}

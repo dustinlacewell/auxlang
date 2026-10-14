@@ -22,7 +22,7 @@ export interface LambdaInput {
 	readonly lambda: (...args: unknown[]) => number;
 }
 
-/** Opaque pattern data (a Pat AST); compile expands it into a patsig node. */
+/** Opaque pattern data (a Pat AST); compile expands it into `seq(pattern).out`. */
 export interface PatternInput {
 	readonly pattern: unknown;
 }

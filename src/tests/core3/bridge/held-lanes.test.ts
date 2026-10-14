@@ -34,7 +34,7 @@ describe("held notes keep their lane", () => {
 
 	it("c4 holds lane 1 for both cycles: one trig, no gate rise at the edge", () => {
 		expect(program.nodes[si]?.width).toBe(2);
-		const pitch = renderTap(program, si, "pitch", 1, SPAN);
+		const pitch = renderTap(program, si, "out", 1, SPAN);
 		const gate = renderTap(program, si, "gate", 1, SPAN);
 		const trig = renderTap(program, si, "trig", 1, SPAN);
 		expect(pitch[100]).toBe(60);
@@ -46,7 +46,7 @@ describe("held notes keep their lane", () => {
 	});
 
 	it("e4 enters lane 0 at the edge with its own trig and gate rise", () => {
-		const pitch = renderTap(program, si, "pitch", 0, SPAN);
+		const pitch = renderTap(program, si, "out", 0, SPAN);
 		const gate = renderTap(program, si, "gate", 0, SPAN);
 		const trig = renderTap(program, si, "trig", 0, SPAN);
 		expect(pitch[CYCLE + 100]).toBe(64);

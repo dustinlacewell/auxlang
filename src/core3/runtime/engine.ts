@@ -29,7 +29,6 @@ export class Core3Engine implements Engine {
 	private readonly runs: NodeRun[];
 	private readonly driver: Driver;
 	private readonly keys: readonly string[];
-	private readonly configs: readonly string[];
 	private readonly sr: number;
 	private cur: Float64Array;
 	private prv: Float64Array;
@@ -54,7 +53,6 @@ export class Core3Engine implements Engine {
 		const specs = program.nodes.map((n) => registry.get(n.module) as ModuleSpec);
 		const laneStates = buildLaneStates(program.nodes, specs, sampleRate, program.seed, prev);
 		this.keys = laneStates.keys;
-		this.configs = laneStates.configs;
 
 		this.runs = program.nodes.map((node, i) => {
 			const spec = specs[i] as ModuleSpec;
@@ -128,15 +126,14 @@ export class Core3Engine implements Engine {
 		this.count++;
 	}
 
+	/** Lane states to carry, minus each lane's scratch (derived data, never carried). */
 	collectState(): EngineState {
 		const nodes: Record<string, Record<string, unknown>[]> = {};
-		const configs: Record<string, string> = {};
 		this.runs.forEach((r, i) => {
 			const key = this.keys[i] as string;
-			nodes[key] = r.states.map((s) => deepClone(s));
-			configs[key] = this.configs[i] as string;
+			nodes[key] = r.states.map(({ __scratch: _scratch, ...carried }) => deepClone(carried));
 		});
-		return { nodes, configs, sampleRate: this.sr, sampleCount: this.count };
+		return { nodes, sampleRate: this.sr, sampleCount: this.count };
 	}
 
 	/** Read a node's output for the sample just ticked. Test/tap hook, not part of the Engine contract. */

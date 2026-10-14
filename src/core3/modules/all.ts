@@ -7,8 +7,6 @@
 
 import "./clock";
 import "./seq";
-import "./patsig";
-import "./patstep";
 import "./osc";
 import "./lfo";
 import "./fm";

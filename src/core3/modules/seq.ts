@@ -1,70 +1,74 @@
+import { laneTable } from "../bridge/lane-table";
+import {
+	dipBeatsAt,
+	dipLeftAfter,
+	dipSamplesAt,
+	gateOf,
+	heldNoteId,
+	inDipWindow,
+	trigOf,
+} from "../bridge/read-step";
 import { defmod } from "../patch/defmod";
-import type { Pat } from "../pattern/ast";
-import { laneEvents } from "../pattern/lane-events";
-import { query } from "../pattern/query";
-import { r } from "../pattern/rational";
+import { NO_NOTE } from "../pattern/table/event-table";
+import { locate } from "../pattern/table/locate";
 import { gatePort, phasePort, trigPort } from "../types";
 import { semis } from "../units/tag";
-import { advanceTrack, fillTrack, trackStateFields } from "./pattern-track";
 
 /**
- * seq — the pattern→signal bridge. ONE node, one lane per voice (the seq
- * factory wraps the pattern in `voices` and pins the width to its lane count);
- * `config.pattern` is Pat DATA, `config.seed` the program seed. Each cycle
- * (= floor of the clock phase, in beats) the lane queries the pattern and
- * caches the events whose lane is its engine-injected `state.__lane`. Lanes
- * come from pattern structure, so a held note keeps its lane across cycles.
+ * seq — the bridge (MANIFESTO §4.1): reads a pattern at a position signal.
+ * `config.pattern` is Pat data (voiced; `config.lanes` lanes), `config.seed`
+ * the program seed, `config.clocked` 1 when the position is wired straight to
+ * a clock (set at compile). An unconnected position is the ambient clock.
+ * Each lane reads its event table (lane-table.ts) at the position:
  *
- * Outputs, all pure functions of (pattern, phase, seed) — scrub-safe:
- *   pitch  semitones, sample-and-held per event; holds the last value through rests
- *   gate   1 while the event sounds, minus a fixed 1 ms pre-release gap
- *          (tempo-independent) unless the event ties onward
- *   trig   single-sample 1 at each non-tied onset (tiePrev suppresses)
+ *   out   the value under the position, held through rests
+ *   gate  high in a note and its ties; a 1 ms dip between touching notes
+ *   trig  one sample when the position enters a different note
+ *
+ * State is fixed-shape: the reader's row, note id, gate, dip countdown, last
+ * position, and whether it has ticked. The tables are scratch, rebuilt, never
+ * carried — so a pattern edit keeps the reader, and a note still under the
+ * position after the edit gives no trig and no dip.
  */
 defmod({
 	name: "seq",
 	category: "timing",
-	doc: "Plays a pattern against the clock; outputs pitch, gate, and trig.",
-	ins: { clk: phasePort(0) },
-	outs: { pitch: semis(0), gate: gatePort(), trig: trigPort() },
-	defaultIn: "clk",
-	defaultOut: "pitch",
-	positional: ["clk"],
-	config: { pattern: { op: "silence" }, seed: 1 },
-	state: () => ({ ...trackStateFields(), value: 0, lastPhase: 0 }),
+	doc: "Reads a pattern at a position (default: the clock); outputs value, gate, and trig.",
+	ins: { position: phasePort(0) },
+	outs: { out: semis(0), gate: gatePort(), trig: trigPort() },
+	defaultIn: "position",
+	defaultOut: "out",
+	positional: ["pattern", "position"],
+	config: { pattern: { op: "silence" }, seed: 1, lanes: 1, clocked: 0 },
+	state: () => ({ row: 0, noteId: NO_NOTE, gate: 0, dipLeft: 0, lastPos: 0, started: 0 }),
 	tick: (s, i, o, cfg, sr) => {
-		const phase = i.clk;
-		const cycle = Math.floor(phase);
-		if ((s.primed as number) === 0 || cycle !== (s.cycle as number)) {
-			const evs = query(
-				cfg.pattern as Pat,
-				{ begin: r(cycle), end: r(cycle + 1) },
-				{ seed: (cfg.seed as number) | 0, path: 0 },
-			);
-			const lane = (s.__lane as number | undefined) ?? 0;
-			fillTrack(s, laneEvents(evs, lane));
-			s.cycle = cycle;
-			s.primed = 1;
-		}
+		const pos = i.position;
+		const t = laneTable(s, cfg, pos);
+		const row = locate(t, pos, s.row as number);
+		const kind = t.kind[row] as number;
+		const trig = trigOf(kind, t.noteId[row] as number, s.noteId as number);
+		const clocked = cfg.clocked === 1;
+		const dipLeft = clocked
+			? 0
+			: dipLeftAfter(trig, s.gate as number, s.dipLeft as number, dipSamplesAt(sr));
+		const dipWindow = clocked
+			? inDipWindow(
+					pos,
+					t.end[row] as number,
+					t.dipBefore[row] as number,
+					dipBeatsAt(s.started as number, pos - (s.lastPos as number), sr),
+				)
+			: 0;
+		const gate = gateOf(kind, dipLeft, dipWindow);
 
-		const entered = advanceTrack(s, phase);
-		const idx = s.idx as number;
-		if (idx > 0) s.value = (s.evVal as Float64Array)[idx - 1] as number;
-
-		// 1 ms in beats, from the observed per-sample phase increment.
-		const gapBeats = 0.001 * sr * Math.max(phase - (s.lastPhase as number), 0);
-		let gate = 0;
-		if (idx > 0) {
-			const start = (s.evStart as Float64Array)[idx - 1] as number;
-			const end = (s.evEnd as Float64Array)[idx - 1] as number;
-			const held = (s.evHold as Int8Array)[idx - 1] === 1;
-			const gateEnd = held ? end : Math.max(start, end - gapBeats);
-			if (phase < gateEnd) gate = 1;
-		}
-
-		o.pitch = s.value as number;
+		o.out = t.value[row] as number;
 		o.gate = gate;
-		o.trig = entered;
-		s.lastPhase = phase;
+		o.trig = trig;
+		s.row = row;
+		s.noteId = heldNoteId(kind, t.noteId[row] as number);
+		s.gate = gate;
+		s.dipLeft = dipLeft;
+		s.lastPos = pos;
+		s.started = 1;
 	},
 });
