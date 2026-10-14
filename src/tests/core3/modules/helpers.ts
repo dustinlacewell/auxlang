@@ -1,8 +1,12 @@
+import { DEFAULT_SEED } from "@/core3/random/default-seed";
+import { streamSeed } from "@/core3/random/stream-seed";
+import { freshLaneState } from "@/core3/runtime/fresh-lane-state";
 import type { ModuleSpec } from "@/core3/types";
 
 /**
  * Test harness that drives a ModuleSpec's tick() directly — no engine.
- * state = spec.state(sr); ins/outs are plain records. This mirrors exactly
+ * state = the engine's fresh lane state (spec.state(sr) plus the random
+ * stream seeded from `seed`); ins/outs are plain records. This mirrors exactly
  * what the engine does per lane, minus port-source resolution.
  */
 
@@ -42,9 +46,19 @@ export interface Driver {
 	trace(n: number, port: string, over?: Ins): number[];
 }
 
-/** Build a map-policy driver over a spec. */
-export function driver(spec: ModuleSpec, config: Record<string, unknown> = {}, sr = SR): Driver {
-	const state = spec.state ? spec.state(sr) : {};
+/** A lane state as the engine builds it, for a node named after the module. */
+function laneState(spec: ModuleSpec, sr: number, seed: number): Record<string, unknown> {
+	return freshLaneState(spec, sr, streamSeed(seed, spec.name, 0));
+}
+
+/** Build a map-policy driver over a spec. `seed` is the patch seed. */
+export function driver(
+	spec: ModuleSpec,
+	config: Record<string, unknown> = {},
+	sr = SR,
+	seed = DEFAULT_SEED,
+): Driver {
+	const state = laneState(spec, sr, seed);
 	const cfg = { ...(spec.config ?? {}), ...config };
 	const tick = spec.tick as (
 		s: Record<string, unknown>,
@@ -78,8 +92,9 @@ export function reduceDriver(
 	width: number,
 	config: Record<string, unknown> = {},
 	sr = SR,
+	seed = DEFAULT_SEED,
 ) {
-	const state = spec.state ? spec.state(sr) : {};
+	const state = laneState(spec, sr, seed);
 	const cfg = { ...(spec.config ?? {}), ...config };
 	const tick = spec.tick as (
 		s: Record<string, unknown>,

@@ -8,6 +8,7 @@
  */
 
 import type { GNode } from "../graph/node";
+import { DEFAULT_SEED } from "../random/default-seed";
 import type { ModuleSpec } from "../types";
 
 export interface EvalResult {
@@ -32,7 +33,12 @@ let current: EvalCtx | null = null;
 
 export function runEval(fn: () => void, opts: { seed?: number } = {}): EvalResult {
 	if (current !== null) throw new Error("runEval: nested runEval is not allowed");
-	const ctx: EvalCtx = { roots: [], clock: null, seed: opts.seed ?? 1, specs: new Map() };
+	const ctx: EvalCtx = {
+		roots: [],
+		clock: null,
+		seed: opts.seed ?? DEFAULT_SEED,
+		specs: new Map(),
+	};
 	current = ctx;
 	try {
 		fn();

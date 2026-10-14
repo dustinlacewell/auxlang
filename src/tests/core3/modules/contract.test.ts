@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
 import { getRegistry } from "@/core3/module/define";
+import { freshLaneState } from "@/core3/runtime/fresh-lane-state";
 import type { ModuleSpec } from "@/core3/types";
 import { SR } from "./helpers";
 
@@ -86,8 +87,7 @@ describe.each(specs)("contract: %s", (name, spec) => {
 	});
 
 	it("tick runs without allocating new state keys (steady-state key set is stable)", () => {
-		if (!spec.state) return;
-		const st = spec.state(SR);
+		const st = freshLaneState(spec, SR, 1);
 		const before = Object.keys(st).sort();
 		const ins: Record<string, number> = {};
 		for (const [p, ann] of Object.entries(spec.ins)) ins[p] = ann.def == null ? 0 : ann.def;

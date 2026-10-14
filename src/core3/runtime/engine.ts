@@ -74,7 +74,7 @@ export class Core3Engine implements Engine {
 		this.prv = new Float64Array(this.layout.size);
 
 		const specs = program.nodes.map((n) => registry.get(n.module) as ModuleSpec);
-		const laneStates = buildLaneStates(program.nodes, specs, sampleRate, prev);
+		const laneStates = buildLaneStates(program.nodes, specs, sampleRate, program.seed, prev);
 		this.keys = laneStates.keys;
 
 		this.runs = program.nodes.map((node, i) => {

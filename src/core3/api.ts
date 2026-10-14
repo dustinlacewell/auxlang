@@ -50,6 +50,7 @@ export { seq } from "./patch/seq";
 export { patstep } from "./patch/patstep";
 export { compile } from "./compile/compile";
 export { p } from "./pattern/notation/template";
+export { hashRandom } from "./random/hash-random";
 export type { EvalResult } from "./patch/context";
 export type { Handle } from "./patch/handle-data";
 export type { Program } from "./types";

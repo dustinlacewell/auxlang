@@ -99,7 +99,9 @@ export interface ModuleSpec {
 	 * Fresh state per lane. MUST return plain serializable data (numbers, typed
 	 * arrays, nested plain objects). After construction (or migration) the engine
 	 * injects `state.__lane = laneIndex`, so per-lane modules (seq) know which
-	 * packed lane they render without any extra contract surface.
+	 * packed lane they render without any extra contract surface. A fresh lane
+	 * also gets `state.__rng`, its own random stream position seeded from
+	 * (patch seed, identity, lane); draw from it with random/next-random.ts.
 	 */
 	readonly state?: (sampleRate: number) => Record<string, unknown>;
 	readonly tick: TickFn | ReduceTickFn;

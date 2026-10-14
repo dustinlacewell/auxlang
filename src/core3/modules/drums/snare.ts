@@ -1,9 +1,11 @@
 import { defmod } from "../../patch/defmod";
+import { nextRandom } from "../../random/next-random";
 import { hz, sig, trigPort, unit } from "../../types";
 
 /**
- * Snare: two detuned sine bodies plus band-passed noise for the wires. Noise is
- * a seeded xorshift32 (no Math.random — determinism law). Retriggered on `trig`.
+ * Snare: two detuned sine bodies plus band-passed noise for the wires. Noise
+ * comes from the lane's seeded random stream (no Math.random — determinism
+ * law). Retriggered on `trig`.
  */
 defmod({
 	name: "snare",
@@ -20,7 +22,6 @@ defmod({
 	defaultIn: "trig",
 	defaultOut: "out",
 	positional: ["pitch", "tone", "decay", "snappy"],
-	config: { __seed: 1 },
 	state: () => ({
 		phase1: 0,
 		phase2: 0,
@@ -28,16 +29,9 @@ defmod({
 		noiseAmp: 0,
 		lpState: 0,
 		hpState: 0,
-		rng: 0,
 		wasTrig: 0,
-		started: 0,
 	}),
-	tick: (s, i, o, cfg, sr) => {
-		if ((s.started as number) === 0) {
-			const seed = (cfg.__seed as number) | 0;
-			s.rng = seed === 0 ? 1 : seed >>> 0;
-			s.started = 1;
-		}
+	tick: (s, i, o, _cfg, sr) => {
 		if (i.trig > 0.5 && (s.wasTrig as number) <= 0.5) {
 			s.bodyAmp = 1;
 			s.noiseAmp = 1;
@@ -58,13 +52,7 @@ defmod({
 		bodyAmp = Math.max(0, bodyAmp - bodyAmp * (1 / (decay * 0.5 * sr)) * 5);
 		s.bodyAmp = bodyAmp;
 
-		let x = s.rng as number;
-		x ^= x << 13;
-		x ^= x >>> 17;
-		x ^= x << 5;
-		x >>>= 0;
-		s.rng = x;
-		const rawNoise = (x / 0xffffffff) * 2 - 1;
+		const rawNoise = nextRandom(s) * 2 - 1;
 
 		const hpCutoff = 2000 + snappy * 4000;
 		const lpCutoff = 5000 + snappy * 7000;

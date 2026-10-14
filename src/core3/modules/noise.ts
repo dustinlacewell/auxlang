@@ -1,10 +1,12 @@
 import { defmod } from "../patch/defmod";
+import { nextRandom } from "../random/next-random";
 import { sig } from "../types";
 
 /**
- * White noise via a seeded xorshift32 PRNG (no Math.random — determinism law).
- * The seed is `config.__seed`, injected by compile from the Program seed +
- * structural id; defaults to 1. Output is uniform in [min, max].
+ * White noise from the lane's seeded random stream (no Math.random —
+ * determinism law). The engine seeds each lane's stream from (patch seed,
+ * node identity, lane), so every instance and every lane differs, and re-eval
+ * continues the stream. Output is uniform in [min, max].
  */
 defmod({
 	name: "noise",
@@ -14,22 +16,7 @@ defmod({
 	outs: { out: sig() },
 	defaultIn: "min",
 	defaultOut: "out",
-	config: { __seed: 1 },
-	state: () => ({ x: 0, started: 0 }),
-	tick: (s, i, o, cfg) => {
-		let x = s.x as number;
-		if ((s.started as number) === 0) {
-			const seed = (cfg.__seed as number) | 0;
-			x = seed === 0 ? 1 : seed >>> 0;
-			s.started = 1;
-		}
-		// xorshift32
-		x ^= x << 13;
-		x ^= x >>> 17;
-		x ^= x << 5;
-		x >>>= 0;
-		s.x = x;
-		const r = x / 0xffffffff; // [0,1]
-		o.out = i.min + r * (i.max - i.min);
+	tick: (s, i, o) => {
+		o.out = i.min + nextRandom(s) * (i.max - i.min);
 	},
 });

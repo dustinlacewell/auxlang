@@ -1,9 +1,10 @@
 import { defmod } from "../../patch/defmod";
+import { nextRandom } from "../../random/next-random";
 import { sig, trigPort, unit } from "../../types";
 
 /**
- * Hi-hat: six inharmonically-detuned square waves (metallic) mixed with seeded
- * noise, high-passed and enveloped. The six partial frequencies are precomputed
+ * Hi-hat: six inharmonically-detuned square waves (metallic) mixed with noise
+ * from the lane's seeded random stream, high-passed and enveloped. The six partial frequencies are precomputed
  * into state() once — tick does no allocation and no `.map()`.
  */
 const RATIOS = [1.0, 1.4471, 1.617, 1.9265, 2.5028, 2.6637];
@@ -26,7 +27,6 @@ defmod({
 	defaultIn: "trig",
 	defaultOut: "out",
 	positional: ["decay", "tone", "metal"],
-	config: { __seed: 1 },
 	state: () => ({
 		p0: 0,
 		p1: 0,
@@ -42,16 +42,9 @@ defmod({
 		f5: BASE * RATIOS[5]!,
 		amp: 0,
 		hpState: 0,
-		rng: 0,
 		wasTrig: 0,
-		started: 0,
 	}),
-	tick: (s, i, o, cfg, sr) => {
-		if ((s.started as number) === 0) {
-			const seed = (cfg.__seed as number) | 0;
-			s.rng = seed === 0 ? 1 : seed >>> 0;
-			s.started = 1;
-		}
+	tick: (s, i, o, _cfg, sr) => {
 		if (i.trig > 0.5 && (s.wasTrig as number) <= 0.5) s.amp = 1;
 		s.wasTrig = i.trig;
 
@@ -74,13 +67,7 @@ defmod({
 
 		const metallic = (sq(p0) + sq(p1) + sq(p2) + sq(p3) + sq(p4) + sq(p5)) / 6;
 
-		let x = s.rng as number;
-		x ^= x << 13;
-		x ^= x >>> 17;
-		x ^= x << 5;
-		x >>>= 0;
-		s.rng = x;
-		const rawNoise = (x / 0xffffffff) * 2 - 1;
+		const rawNoise = nextRandom(s) * 2 - 1;
 
 		const mixed = metallic * metal + rawNoise * (1 - metal);
 
