@@ -351,11 +351,44 @@ lpf({ cutoff: 60 })
 Setting a port sets its base. Each `.mod(port, signal, depth = 1)` adds
 `signal × depth`. Modulo is `wrap(by)`, so `mod` means modulation.
 
-### 5.3 Knobs
+### 5.3 Controls
 
-A plain number is baked into the compiled patch. `knob(800)` is a live value:
-the editor can drag it, and the new value goes straight into the running engine
-with no re-eval. `knob(800, "cut")` names it so its identity survives edits.
+Controls are **boundary modules**, like MIDI input: signals that come from your
+hands. Each draws an inline widget in the code.
+
+| Control | Outputs | Rack analogy |
+|---|---|---|
+| `slider(value, min, max)` | `out` | a fader |
+| `knob(value, min, max)` | `out` | a pot |
+| `toggle(on)` | `out` (0/1) | a latching switch |
+| `button()` | `out` (gate), `trig` | a manual gate button |
+| `xy(x, y, min, max)` | `x`, `y` | an XY pad / joystick |
+
+- Moving a control sends its value straight into the running engine. No
+  re-eval.
+- Moving a control **rewrites its value in the code**. The code always holds
+  the current value, so a re-eval never jumps back.
+- Output is smoothed by a short slew (10 ms default, `{ slew }` to change) so a
+  sweep never zippers. `button` and `toggle` are not smoothed.
+- Values clamp to `[min, max]`, in the unit of the port they feed.
+- Identity is the control's place in the code, or `{ name }` when given.
+  Rewriting its value does not change its identity.
+- Every move is logged as input (§7).
+
+**Any number is draggable.** A plain number in the code works like an endless
+encoder: it nudges up or down from where it is, so it needs no range.
+
+- The digit you grab sets the step: the tens digit of `440` moves by 10, the
+  first decimal of `0.25` by 0.1. Shift is finer.
+- The port's unit shapes the drag: a 0..1 port clamps, a gate snaps to 0/1, a
+  semitone port steps by whole semitones, seconds and rates move by a
+  percentage.
+- The first drag re-evals once and turns that number into a live slot. State
+  survives, because constants are not identity (§6.2). Later moves only write
+  the slot and rewrite the code. The next ordinary eval bakes it again.
+
+A range is needed only for absolute controls: `slider`, `knob`, `xy`, and
+mapping a MIDI controller onto a value.
 
 ### 5.4 The oscillator family
 
@@ -446,7 +479,10 @@ Re-eval is the core interaction, so its rules are part of the language:
 - Module state is data (§5), so migration is copy-and-carry.
 - A patch-defined module's source is part of its identity. A changed tick is a
   different machine, so its state resets unless pinned.
-- Knob moves (§5.3) are not re-evals. They change a value and nothing else.
+- A constant's value is not identity. Identity is module type, wiring, `.id()`
+  pins, and state shape. Changing `lpf(800)` to `lpf(900)` keeps state; a change
+  that alters state shape resets only that module.
+- Control moves (§5.3) are not re-evals. They change a value and nothing else.
 
 ---
 
@@ -461,7 +497,8 @@ A performance is a pure function of (timestamped code log, seed, input log).
   code above a module can change its identity and so its randomness; `.id()` or
   `.seed()` holds it.
 - **The log.** Each eval is logged with the sample at which it took effect.
-  MIDI and other live inputs are logged as they arrive.
+  Control moves, number drags, MIDI, and other live inputs are logged with the
+  sample at which they arrive.
 - **Math.** Auxlang ships its own `sin`, `exp`, `tanh`, and friends. Host math
   differs between engines; ours does not.
 
@@ -495,8 +532,8 @@ Runtime obligations:
   built one cycle ahead. A position with a known range (a counter's `length`,
   an LFO's min/max) gets tables for that range. Any other position uses a query
   path that does not allocate.
-- **Knobs are slots.** Plain numbers are baked in; `knob` values are read from a
-  slot the editor writes.
+- **Controls are slots.** Plain numbers are baked in. Controls and dragged
+  numbers are read from slots the editor writes.
 - **Backends agree.** The JS backend is the reference. A WASM backend compiles
   the same tick subset with the same math, and must match it bit for bit.
 - **Re-eval does not glitch.** A new program is compiled and warmed before the
@@ -517,7 +554,8 @@ Runtime obligations:
 - **No macro layer.** JS is the metaprogramming. Sub-patch modules (§5) give
   reuse a module's shape.
 - **No inheritance.** Modules compose by patching.
-- **No MIDI-first design.** MIDI in/out are modules at the boundary.
+- **No MIDI-first design.** MIDI in/out are modules at the boundary, like the
+  controls (§5.3).
 - **No whole-patch seeking** (§7).
 - **No host randomness.** `Math.random` is always the seeded stream.
 
@@ -525,19 +563,54 @@ Runtime obligations:
 
 ## 10. The instrument surface
 
-The editor is part of the instrument. It must:
+The editor is part of the instrument. The code is the panel: it shows what is
+moving, and you play it in place.
 
-- let you drag any `knob` and hear it at once;
-- show the current seed, and reroll it on request;
-- show small meters on outputs and modulation sources, like a rack's LEDs;
-- highlight the event each `seq` is reading.
+### 10.1 Source locations
+
+Before eval, a rewrite step tags every module call, every number, and every
+pattern token with its range in the code. Everything below rests on this.
+Errors use it too: a loud failure points at the exact code.
+
+### 10.2 What it shows
+
+- **Pattern highlights.** A pattern token lights while its note sounds. Rests
+  stay dark. A tie extends its note's light.
+- **LED glow.** Every module call glows behind its text with the level of its
+  default output, like the LED beside a jack.
+  - Unipolar signals (gates, envelopes) set brightness. Bipolar signals use
+    two colors, one for each sign, like a bipolar LED.
+  - Audio-rate signals show their level, not the raw wave.
+  - A trig flashes and fades, so a single-sample pulse is visible.
+  - The glow sits behind the text and never lowers its contrast.
+- **Exact values on hover.** Brightness shows motion and rough level; hovering
+  a call shows its value.
+- **The seed**, with a reroll button.
+
+Flashing is capped for safety. Anything that would flash more than about three
+times a second shows its steady average instead. The editor respects the
+system's reduce-motion setting.
+
+### 10.3 Where the truth comes from
+
+The audio thread reports what actually played: each note a `seq` enters, with
+its sample time, and a level summary of each shown output about 60 times a
+second. The editor never recomputes this itself, because positions and tempo
+are signals. It times each light to when the sound leaves the speakers, so
+light and sound agree (§7).
+
+### 10.4 What you play
+
+Controls and draggable numbers (§5.3). Moving them rewrites the code and logs
+the move; it never re-evals.
 
 ---
 
 ## 11. A closing patch
 
 Everything at once: ambient tempo, pattern algebra, records, voices, additive
-modulation, knobs, step reading, signals in patterns, stereo by name, feedback.
+modulation, a live control, step reading, signals in patterns, stereo by name,
+feedback.
 
 ```js
 const t = tempo(126)
@@ -552,12 +625,12 @@ pad.saw()
   .pan(lfo(0.05, -0.6, 0.6))
   .out()
 
-// acid line: transformed hook, live cutoff knob, envelope sweep, synced echo
+// acid line: transformed hook, cutoff on a knob, envelope sweep, synced echo
 const hook = p`c2 [c2 eb2] g1 <bb1 c2>`
 const line = seq(hook.every(4, (q) => q.rev()).off(1 / 8, (q) => q.add(12).degrade(0.4)))
 loop((fb) =>
   line.slew(0.03).saw()
-    .lpf({ cutoff: knob(52, "acid"), res: 0.85 })
+    .lpf({ cutoff: knob(52, 36, 96), res: 0.85 })
     .mod("cutoff", line.gate.adsr(0.001, 0.12, 0, 0), 48)
     .mul(line.gate)
     .add(fb.delay({ time: beats(3 / 4), mix: 1 }).mul(0.35)),
