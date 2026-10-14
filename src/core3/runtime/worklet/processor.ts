@@ -9,7 +9,7 @@
 
 import { getRegistry } from "../../module/define";
 import type { Program } from "../../types";
-import { Core3Engine } from "../engine";
+import { Core3Engine, type EngineOptions } from "../engine";
 import { withProgramSpecs } from "../hydrate-specs";
 import type { WorkletMessage, WorkletReply } from "./messages";
 import { QuantumMeter } from "./quantum-meter";
@@ -35,6 +35,9 @@ declare function registerProcessor(name: string, processorCtor: typeof AudioWork
 
 const CROSSFADE_MS = 100;
 const HALF_PI = Math.PI / 2;
+// The worklet runs the generated per-program driver; the engine falls back to
+// the interpreter (logged) if the host forbids `new Function`.
+const ENGINE_OPTIONS: EngineOptions = { codegen: true };
 
 class Core3Processor extends AudioWorkletProcessor {
 	private engine: Core3Engine | null = null;
@@ -87,11 +90,17 @@ class Core3Processor extends AudioWorkletProcessor {
 			// migrates its state and crossfades from it.
 			const prev = this.engine ?? this.fading;
 			if (prev === null) {
-				this.engine = new Core3Engine(program, sampleRate, registry);
+				this.engine = new Core3Engine(program, sampleRate, registry, undefined, ENGINE_OPTIONS);
 				this.fading = null;
 				return;
 			}
-			const next = new Core3Engine(program, sampleRate, registry, prev.collectState());
+			const next = new Core3Engine(
+				program,
+				sampleRate,
+				registry,
+				prev.collectState(),
+				ENGINE_OPTIONS,
+			);
 			this.fading = prev; // any engine already fading is dropped here
 			this.fadePos = 0;
 			this.engine = next;
