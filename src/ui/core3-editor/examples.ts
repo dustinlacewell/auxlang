@@ -120,14 +120,14 @@ const hat = seq("~ 60")
 hat.trig.hihat({ decay: p\`0.025 0.025 0.025 <0.09 0.09 0.09 0.16>\`.slow(4), tone: 0.8, metal: 0.7 })
   .mul(2.6)
   .pan(0.1)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 
 // ghost sixteenths — degrade reseeds every cycle (a beat here); a flurry each 4th bar
 const ghost = seq(p\`<60*4 60*4 60*4 60*8>\`.degrade(0.65))
 ghost.trig.hihat({ decay: 0.014, tone: 0.9, metal: 0.5 })
   .mul(1.6)
   .pan(-0.35)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 
 // ---- clap on two and four ----
 const back = seq(p\`~ 60 ~ 60\`.slow(4))
@@ -169,7 +169,7 @@ lead.tri()
   .delay({ time: 0.369, feedback: 0.5, mix: 0.32 })
   .mul(0.4)
   .pan(lfo(0.05, -0.4, 0.4))
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 `;
 
 /** (h) A port: eddyflux's strudel piece "coastline", now with the real vocabulary. */
@@ -206,7 +206,7 @@ hats.trig.hihat({ decay: 0.04, tone: 0.6, metal: 0.6 })
   .mul(1.6)
   .mul(bandMask)
   .pan(-0.2)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 
 // ---- ride: rd*2, masked to the back half of the form ----
 const ride = seq(p\`60*2\`)
@@ -214,7 +214,7 @@ ride.trig.hihat({ decay: 0.18, tone: 0.45, metal: 0.85 })
   .mul(0.8)
   .mul(rideMask)
   .pan(0.3)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 
 // ---- epiano: chords.offset(-1).voicing() through a phaser and a room ----
 const epiano = seq(chords.offset(-1).voicing())
@@ -262,7 +262,7 @@ mel.pitch.fm({ index: lfo(0.06, 0.4, 1.6), ratio: 1 })
   .mul(melodyMask)
   .mul(0.4)
   .pan(0.15)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 `;
 
 /** (i) A mirror canon: one theme, flipped and reversed by pattern arithmetic. */
@@ -311,7 +311,7 @@ lead.pitch.add(lfo(5, -0.08, 0.08))
   .reverb({ room: 0.7, damp: 0.5, mix: 0.25 })
   .gain(0.22)
   .pan(0.35)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 
 // answer: a soft triangle, left; it waits four bars to enter
 const entry = slew({ in: p\`<0 1 1 1 1 1 1 1>\`.slow(4), rise: 0.02, fall: 0.02 })
@@ -322,7 +322,7 @@ answer.tri()
   .reverb({ room: 0.7, damp: 0.5, mix: 0.25 })
   .gain(0.3)
   .pan(-0.35)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 
 // ---- drums: in for the middle sixteen bars of every thirty-two ----
 const groove = slew({ in: p\`<0 1 1 0>\`.slow(8), rise: 0.02, fall: 0.02 })
@@ -396,7 +396,7 @@ harp.pitch
   .delay({ time: 0.5625, feedback: 0.3, mix: 0.2 })
   .gain(0.2)
   .pan(-0.25)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 
 // ---- the melody ----
 // the theme climbs D E F G against the falling bass, peaks on D6,
@@ -414,7 +414,7 @@ melody.pitch.slew(0.01, 0.01).add(lfo(5, -0.1, 0.1))
   .reverb({ room: 0.8, damp: 0.5, mix: 0.3 })
   .gain(0.22)
   .pan(0.15)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 
 // ---- drums: comparators on the energy decide when they play ----
 const pulse = energy.gt(0.45).slew(2, 2)
@@ -590,7 +590,7 @@ pew.mul(36).add(60)
   .delay({ time: 0.351, feedback: 0.4, mix: 0.3 })
   .gain(0.08)
   .pan(lfo(0.5, -0.8, 0.8))
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 `;
 
 export const EXAMPLES: readonly Example[] = [

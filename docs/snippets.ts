@@ -102,7 +102,7 @@ pad.pitch.saw()
   .lpf({ cutoff: p\`400 <800 1600>\`.slow(2), res: 0.2 })
   .mul(pad.gate.adsr(0.4, 0.3, 0.7, 1.2))
   .pan(0.4)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 
 // acid line: transformed hook, feedback delay
 const hook = p\`c2 [c2 eb2] g1 <bb1 c2>\`
@@ -238,7 +238,7 @@ const s = seq("c3 e3 g3 e3")
 s.tri()
   .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.15))
   .pan(lfo(0.5, -1, 1))
-  .apply((v) => out({ l: v.l, r: v.r }))`,
+  .out()`,
 	},
 	// seq + gate + trig for drums.
 	{
