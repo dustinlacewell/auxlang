@@ -1,5 +1,6 @@
 import { defmod } from "../patch/defmod";
-import { secs, sig } from "../types";
+import { sig } from "../types";
+import { secs } from "../units/tag";
 
 /**
  * Slew limiter / lag. `rise`/`fall` are the seconds to traverse one full unit;

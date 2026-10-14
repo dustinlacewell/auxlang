@@ -19,7 +19,7 @@ describe("shape config through the engine", () => {
 	it("sin/tri/sqr/saw render distinct waveforms", () => {
 		const [sin, tri, sqr, saw] = ["sin", "tri", "sqr", "saw"].map((name) => {
 			const f = factory(name);
-			return renderOf(() => f({ freq: 220 }).out());
+			return renderOf(() => f(57).out());
 		});
 		expect(differ(sin!, tri!)).toBe(true);
 		expect(differ(sin!, sqr!)).toBe(true);

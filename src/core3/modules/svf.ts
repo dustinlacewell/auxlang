@@ -1,5 +1,7 @@
 import { defmod } from "../patch/defmod";
-import { hz, sig, unit } from "../types";
+import { sig, unit } from "../types";
+import { semisToHz } from "../units/pitch";
+import { semis } from "../units/tag";
 
 /**
  * State-variable filter (lpf/hpf/bpf/notch) — ONE Zavalishin/TPT core, four mode
@@ -9,8 +11,10 @@ import { hz, sig, unit } from "../types";
  * res→Q is a single shared mapping: Q = 0.5 + res*9.5 (res 0 → Q 0.5, res 1 → Q 10).
  * res defaults to 0: no peak, so gain never exceeds unity unless asked. A peak
  * above unity in a loop() feedback path makes the loop run away.
- * cutoff is clamped to 0.49*sr. Coefficients (g, k, a1, a2, a3) are recomputed
- * only when cutoff or res changed since the last sample (cached in state).
+ * cutoff is in semitones (MIDI numbering, 69 = A440; `hz(800)` converts), so a
+ * sweep is even to the ear and keytracking is `s.add(n)`. Its frequency is
+ * clamped to 0.49*sr. Coefficients (g, k, a1, a2, a3) are recomputed only when
+ * cutoff or res changed since the last sample (cached in state).
  */
 
 type Mode = "lp" | "hp" | "bp" | "notch";
@@ -20,7 +24,7 @@ function createSvf(name: string, mode: Mode, doc: string): void {
 		name,
 		category: "filters",
 		doc,
-		ins: { in: sig(0), cutoff: hz(1000), res: unit(0) },
+		ins: { in: sig(0), cutoff: semis(84), res: unit(0) },
 		outs: { out: sig() },
 		defaultIn: "in",
 		defaultOut: "out",
@@ -28,10 +32,11 @@ function createSvf(name: string, mode: Mode, doc: string): void {
 		config: { mode },
 		state: () => ({ ic1: 0, ic2: 0, lastCut: -1, lastRes: -1, a1: 0, a2: 0, a3: 0, k: 0 }),
 		tick: (s, i, o, cfg, sr) => {
-			const cutoff = Math.min(i.cutoff, 0.49 * sr);
+			const cutoff = i.cutoff;
 			const res = i.res;
 			if (cutoff !== (s.lastCut as number) || res !== (s.lastRes as number)) {
-				const g = Math.tan((Math.PI * cutoff) / sr);
+				const freq = Math.min(semisToHz(cutoff), 0.49 * sr);
+				const g = Math.tan((Math.PI * freq) / sr);
 				const k = 1 / (0.5 + res * 9.5);
 				const a1 = 1 / (1 + g * (g + k));
 				s.k = k;

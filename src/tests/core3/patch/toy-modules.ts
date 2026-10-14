@@ -11,7 +11,8 @@
  */
 
 import { defmod } from "@/core3/patch/defmod";
-import { hz, semis, sig, unit } from "@/core3/types";
+import { sig, unit } from "@/core3/types";
+import { hz, semis } from "@/core3/units/tag";
 
 const noop = () => {};
 

@@ -1,5 +1,6 @@
 import { defmod } from "../patch/defmod";
-import { secs, sig, unit } from "../types";
+import { sig, unit } from "../types";
+import { secs } from "../units/tag";
 
 /**
  * Feedback delay with a fractional (linearly interpolated) read head. The delay

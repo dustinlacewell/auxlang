@@ -11,13 +11,13 @@ A patch is a JavaScript expression. Evaluating it builds pure values that descri
 A chain reads left-to-right: source → processors → out.
 
 ```js
-tri({ freq: 220 })
-  .lpf({ cutoff: 1200, res: 0.2 })
+tri(57)
+  .lpf({ cutoff: 86, res: 0.2 })
   .gain(0.3)
   .out()
 ```
 
-A triangle oscillator at 220 Hz feeds a low-pass filter, then an amplitude scale, then output. Read top to bottom, it is the whole strategy: what the sound is, what shapes it, that it plays.
+A triangle oscillator at semitone 57 (220 Hz) feeds a low-pass filter, then an amplitude scale, then output. Read top to bottom, it is the whole strategy: what the sound is, what shapes it, that it plays.
 
 ---
 
@@ -27,19 +27,20 @@ Modules are pure state machines with named inputs and outputs. Each has a defaul
 
 - Positional args fill declared ports in their declared order.
 - An object arg names ports explicitly.
-- Method setters copy-with-change: `x.lpf({ cutoff: 400 })` returns a new value.
+- Method setters copy-with-change: `x.lpf({ cutoff: 67 })` returns a new value.
 
 The module families:
 
 ### Sources
 
-- `sin` / `saw` / `tri` / `sqr` — oscillators. Positional signature is `[pitch, min, max]`, where pitch is in MIDI semitones and defaults to 69 (A4): `sin(69)` and `sin()` both mean A440. Frequency (Hz) is object-config only, e.g. `sin({ freq: 440 })`, and wins over pitch when set. There is an output range (`min`/`max`).
+- `sin` / `saw` / `tri` / `sqr` — oscillators. Positional signature is `[pitch, min, max]`, where pitch is in MIDI semitones and defaults to 69 (A4): `sin(69)` and `sin()` both mean A440. `fm` adds Hz straight to the frequency from `pitch` (linear FM). For an exact Hz value, tag it: `sin(hz(440))`. There is an output range (`min`/`max`).
 - `lfo` — Hz-rate LFO, the device for modulation. Positional signature is `[freq, min, max]` in Hz: `lfo(0.3, 100, 800)` sweeps 100–800 at 0.3 Hz. Defaults to freq 1, min -1, max 1. Shape is config — `lfo({ shape: "tri" })` — sin (default), saw, tri, or sqr.
+- `fm(pitch, index, ratio)` — a 2-operator FM voice. `pitch` is semitones; no `freq` port.
 - `noise` — noise source.
 
 ### Filters
 
-- `lpf` / `hpf` / `bpf` / `notch` — `{ cutoff, res }`, positional `[cutoff, res]`.
+- `lpf` / `hpf` / `bpf` / `notch` — `{ cutoff, res }`, positional `[cutoff, res]`. `cutoff` is in semitones (69 = 440 Hz), same numbering as pitch.
 
 ### Envelopes (gate-driven)
 
@@ -59,6 +60,7 @@ The module families:
 
 - `delay({ time, feedback, mix })` — `time` in seconds.
 - `pan({ pos })` — constant-power pan, outputs `l` and `r`.
+- `period(pitch)` — seconds per cycle of a pitch in semitones; feed it to `delay`'s `time` to tune an echo or a Karplus-Strong string to a note.
 
 ### Timing and bridge
 
@@ -72,6 +74,10 @@ The module families:
 
 - `mix`, `out`.
 
+### Units
+
+Each port has a native unit: pitch and cutoff are semitones (69 = 440 Hz); `fm` and `lfo` rate are Hz; delay and envelope times are seconds. A unit tag — `hz(x)`, `semis(x)`, `secs(x)`, `beats(x)` — says what unit a number or signal is in; the port it's wired to converts. Tagging a value in a unit the port can't convert from is an error.
+
 ---
 
 ## 3. Chaining
@@ -84,7 +90,7 @@ The module families:
 clock(120)
 const s = seq("c3 e3 g3 e3")
 s.pitch.saw()
-  .lpf({ cutoff: 1400, res: 0.3 })
+  .lpf({ cutoff: 89, res: 0.3 })
   .mul(s.gate.adsr(0.005, 0.08, 0.4, 0.1))
   .gain(0.3)
   .out()
@@ -99,13 +105,13 @@ Here `s.pitch.saw()` chains an oscillator off the pitch tap without re-setting i
 Setters return new values; the original is unchanged. A discarded value is not merely unused — it is unregistered. A chain that never reaches `out()` is pruned at compile time. It is garbage, not a silent zombie.
 
 ```js
-const base = tri({ freq: 220 })
-const bright = base.lpf({ cutoff: 3000 }) // new value; base unchanged
-base.lpf({ cutoff: 400 }) // discarded — never reaches out(), so it is pruned
+const base = tri(57)
+const bright = base.lpf({ cutoff: 102 }) // new value; base unchanged
+base.lpf({ cutoff: 67 }) // discarded — never reaches out(), so it is pruned
 bright.gain(0.3).out()
 ```
 
-Only `bright.gain(0.3).out()` produces sound. `base` is untouched and the dead `base.lpf({ cutoff: 400 })` value evaporates.
+Only `bright.gain(0.3).out()` produces sound. `base` is untouched and the dead `base.lpf({ cutoff: 67 })` value evaporates.
 
 ---
 
@@ -216,7 +222,7 @@ A `{a,b,c}` stack widens the seq into one packed lane per voice. Chaining forwar
 clock(90)
 const pad = seq("{c3,e3,g3}")
 pad.tri()
-  .lpf({ cutoff: 1400, res: 0.2 })
+  .lpf({ cutoff: 89, res: 0.2 })
   .mul(pad.gate.adsr(0.02, 0.2, 0.7, 0.4))
   .gain(0.25)
   .out()
@@ -231,13 +237,13 @@ Three-note stack → width 3. The oscillator, filter, and envelope run independe
 Any input accepts a number, another module's output, a lambda, or a pattern. For Hz-rate modulation, patch an `lfo` into a knob.
 
 ```js
-saw({ freq: 110 })
-  .lpf({ cutoff: lfo(0.3, 300, 2000), res: 0.3 })
+saw(45)
+  .lpf({ cutoff: lfo(0.3, 62, 95), res: 0.3 })
   .gain(0.3)
   .out()
 ```
 
-`lfo(0.3, 300, 2000)` sweeps the cutoff between 300 and 2000 Hz at 0.3 Hz.
+`lfo(0.3, 62, 95)` sweeps the cutoff between semitones 62 and 95 (roughly 300–2000 Hz) at 0.3 Hz.
 
 ### Pattern-as-signal
 
@@ -246,7 +252,7 @@ A `` p`...` `` handed to any knob lifts automatically. It is queried at the ambi
 ```js
 clock(100)
 tri(p`48 55 60 63`)
-  .lpf({ cutoff: 1200, res: 0.2 })
+  .lpf({ cutoff: 86, res: 0.2 })
   .mul(lfo(0.5, 0.2, 0.5))
   .gain(0.3)
   .out()
@@ -259,7 +265,7 @@ A lifted pattern steps discontinuously. Driving a filter cutoff with raw steps c
 ```js
 clock(100)
 const s = seq("c2 c2 c2 c2")
-const cutoff = slew({ in: p`400 800 [1600 300] <200 3200>`, rise: 5e-6, fall: 5e-6 })
+const cutoff = slew({ in: p`67 79 [91 62] <55 103>`, rise: 5e-6, fall: 5e-6 })
 s.saw()
   .lpf({ cutoff, res: 0.5 })
   .mul(s.gate.adsr(0.005, 0.1, 0.6, 0.15))
@@ -274,7 +280,7 @@ Snap an LFO-driven pitch onto a scale with `.quantize({ scaleName, root })`:
 ```js
 sin()
   .pitch(lfo(0.2, 36, 72).quantize({ scaleName: "minor pentatonic", root: 0 }))
-  .lpf({ cutoff: 1600, res: 0.2 })
+  .lpf({ cutoff: 91, res: 0.2 })
   .gain(0.3)
   .out()
 ```
@@ -288,7 +294,7 @@ The slow LFO ramps pitch from 36 to 72 semitones; `quantize` snaps each value to
 A cycle in the graph is only legal if it passes through one unit delay. Write it as `loop(fb => ...)`, where `fb` is the fed-back signal exactly one sample late. This covers filter pinging, echoes, Karplus-Strong, and any recursive structure.
 
 ```js
-saw({ freq: 110 })
+saw(45)
   .mul(lfo(2).gt(0).mul(0.5))
   .apply((dry) => loop((fb) => dry.add(fb.delay({ time: 0.18, mix: 1 }).mul(0.6))))
   .gain(0.3)
@@ -348,7 +354,7 @@ The language never silently no-ops. At eval time it throws — naming what was a
 
 ### Common footguns
 
-- **`sin(0)` sets PITCH to 0** (≈8.18 Hz), not silence — pitch is the positional default. For a default A4 use `sin()`; for an exact Hz value use `sin({ freq: ... })`.
+- **`sin(0)` sets PITCH to 0** (≈8.18 Hz), not silence — pitch is the positional default. For a default A4 use `sin()`; for an exact Hz value use `sin(hz(...))`.
 - **Forgetting `clock(...)`** leaves seqs unclocked.
 - **`mod` is modulo** (arithmetic remainder), not "modulation". And `factory()` is the module-lookup helper, not a musical term.
 - **A pattern into a filter cutoff clicks** without a `slew` — see the slew-declick idiom.

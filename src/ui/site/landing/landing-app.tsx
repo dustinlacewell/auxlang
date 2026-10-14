@@ -12,7 +12,7 @@ const HELLO_PATCH = `clock(120)
 
 const s = seq("c3 e3 g3 <b2 a2>")
 s.tri()
-  .lpf({ cutoff: 900, res: 0.3 })
+  .lpf({ cutoff: 81, res: 0.3 })
   .mul(s.gate.adsr(0.005, 0.12, 0.5, 0.2))
   .gain(0.3)
   .out()`;

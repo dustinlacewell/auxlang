@@ -1,14 +1,17 @@
 import { defmod } from "../patch/defmod";
-import { hz, optional, semis, sig, unit } from "../types";
+import { sig, unit } from "../types";
+import { semisToHz } from "../units/pitch";
+import { hz, semis } from "../units/tag";
 import { type Shape, sample } from "./wave";
 
 /**
  * Oscillator family (sin/saw/tri/sqr).
  *
  * Pitch-first: positional signature is [pitch, min, max] (MIDI semis), so
- * `sin(69)`, `sin(p\`a4\`)`, and `seq(...).sin()` all mean A440. `freq` (Hz) is
- * object-config only and wins when connected (non-null), else
- * 440*2^((pitch-69)/12). For Hz-rate modulators use the `lfo` module.
+ * `sin(69)`, `sin(p\`a4\`)`, and `seq(...).sin()` all mean A440. An exact
+ * frequency is `sin(hz(440))` (the pitch port converts it). `fm` (Hz) adds
+ * linearly to the frequency from `pitch` — linear FM. For Hz-rate modulators
+ * use the `lfo` module.
  * `phase` sets INITIAL phase only (seeded on first tick, not a running offset).
  * Output maps the [-1,1] waveform into [min,max].
  *
@@ -22,7 +25,7 @@ function createOsc(name: string, shape: Shape, doc: string): void {
 		doc,
 		ins: {
 			pitch: semis(69),
-			freq: optional(hz(null)),
+			fm: hz(0),
 			min: sig(-1),
 			max: sig(1),
 			phase: unit(0),
@@ -38,8 +41,7 @@ function createOsc(name: string, shape: Shape, doc: string): void {
 				s.phase = ((i.phase % 1) + 1) % 1;
 				s.started = 1;
 			}
-			const freq =
-				i.freq !== null && Number.isFinite(i.freq) ? i.freq : 440 * 2 ** ((i.pitch - 69) / 12);
+			const freq = semisToHz(i.pitch) + i.fm;
 			const dt = Math.min(0.5, Math.abs(freq) / sr);
 			const phase = s.phase as number;
 			const raw = sample(cfg.shape as Shape, phase, dt);

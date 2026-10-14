@@ -1,6 +1,7 @@
 import { defmod } from "../../patch/defmod";
 import { nextRandom } from "../../random/next-random";
-import { hz, sig, trigPort, unit } from "../../types";
+import { sig, trigPort, unit } from "../../types";
+import { hz } from "../../units/tag";
 
 /**
  * Snare: two detuned sine bodies plus band-passed noise for the wires. Noise

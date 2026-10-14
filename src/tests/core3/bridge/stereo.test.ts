@@ -21,7 +21,7 @@ type Stereo = { l: unknown; r: unknown };
 /** Render a mono source panned to a fixed position; return channel RMS. */
 function panFixed(pos: number) {
 	const program = runProgram(() => {
-		sin({ freq: 330 })
+		sin(64)
 			.pan(pos)
 			.apply((p: Stereo) => out({ l: p.l, r: p.r }));
 	});
@@ -66,7 +66,7 @@ describe("stereo routing pan → out", () => {
 
 	it("a modulated pan makes L and R trade over time (motion correlation)", () => {
 		const program = runProgram(() => {
-			sin({ freq: 330 })
+			sin(64)
 				.pan(lfo(0.5, -1, 1)) // one full sweep every 2 s
 				.apply((p: Stereo) => out({ l: p.l, r: p.r }));
 		});
@@ -156,7 +156,7 @@ describe("stereo routing pan → out", () => {
 
 	it("mono .out() is unchanged (auto-spread center)", () => {
 		const program = runProgram(() => {
-			sin({ freq: 330 }).out();
+			sin(64).out();
 		});
 		const { l, r } = render(program, 0.25);
 		const rl = rms(l);
@@ -246,7 +246,7 @@ describe("stereo routing pan → out", () => {
 
 	it("out({ l, r }) object form works as a free function too", () => {
 		const program = runProgram(() => {
-			const p = sin({ freq: 330 }).pan(-1);
+			const p = sin(64).pan(-1);
 			out({ l: p.l, r: p.r });
 		});
 		const { l, r } = render(program, 0.25);

@@ -5,21 +5,21 @@
  */
 
 export const GUIDE_EXAMPLES = {
-	modules: "sin({ freq: 440 }).out({ gain: 0.3 })",
+	modules: "sin(69).out({ gain: 0.3 })",
 
-	signals: `sin({ freq: lfo(0.2, 200, 600) })
+	signals: `sin(hz(lfo(0.2, 200, 600)))
   .gain(0.3)
   .out()`,
 
-	routing: `saw({ freq: 110 })
-  .lpf({ cutoff: lfo(0.3, 300, 2000), res: 0.3 })
+	routing: `saw(45)
+  .lpf({ cutoff: lfo(0.3, 62, 95), res: 0.3 })
   .gain(0.3)
   .out()`,
 
 	sequencing: `clock(120)
 const s = seq("c3 e3 g3 e3")
 s.tri()
-  .lpf({ cutoff: 1400, res: 0.3 })
+  .lpf({ cutoff: 89, res: 0.3 })
   .mul(s.gate.adsr(0.005, 0.08, 0.4, 0.1))
   .gain(0.3)
   .out()`,
@@ -34,7 +34,7 @@ line.tri()
 
 	patternModulation: `clock(100)
 const s = seq("c2 c2 c2 c2")
-const cutoff = slew({ in: p\`400 800 [1600 300] <200 3200>\`, rise: 5e-6, fall: 5e-6 })
+const cutoff = slew({ in: p\`67 79 [91 62] <55 103>\`, rise: 5e-6, fall: 5e-6 })
 s.saw()
   .lpf({ cutoff, res: 0.5 })
   .mul(s.gate.adsr(0.005, 0.1, 0.6, 0.15))
@@ -49,7 +49,7 @@ seq("60*8").trig.hihat({ decay: 0.04 }).gain(0.4).out()`,
 	polyphony: `clock(90)
 const pad = seq("{c3,e3,g3}")
 pad.tri()
-  .lpf({ cutoff: 1400, res: 0.2 })
+  .lpf({ cutoff: 89, res: 0.2 })
   .mul(pad.gate.adsr(0.02, 0.2, 0.7, 0.4))
   .gain(0.25)
   .out()`,
@@ -61,7 +61,7 @@ s.tri()
   .pan(lfo(0.5, -1, 1))
   .apply((v) => out({ l: v.l, r: v.r }))`,
 
-	feedback: `saw({ freq: 110 })
+	feedback: `saw(45)
   .mul(lfo(2).gt(0).mul(0.5))
   .apply((dry) => loop((fb) => dry.add(fb.delay({ time: 0.18, mix: 1 }).mul(0.6))))
   .gain(0.3)

@@ -43,7 +43,7 @@ const visualizationStyles = EditorView.theme({
  * the winner arbitrarily. Single owner, no cascade race.
  *
  * Departures from oneDark: variables are pure white; property access — port
- * reads (`s.gate`), method chains, object keys (`{ cutoff: 900 }`) — is a quiet
+ * reads (`s.gate`), method chains, object keys (`{ cutoff: 81 }`) — is a quiet
  * gray, so the only strong color in code is a registered module name in its
  * category color (the `aux-mod-*` decorations, which out-rank this via
  * `!important` + descendant selectors). Grays are literal hexes on purpose —

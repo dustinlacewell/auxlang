@@ -27,6 +27,13 @@ export function validateSpec(spec: ModuleSpec): void {
 			throw new Error(`module '${spec.name}': positional '${p}' is neither input nor config`);
 		}
 	}
+	for (const [port, ann] of [...Object.entries(spec.ins), ...Object.entries(spec.outs)]) {
+		if (ann.def !== null && typeof ann.def !== "number") {
+			throw new Error(
+				`module '${spec.name}': port '${port}' default must be a number or null, got ${typeof ann.def}`,
+			);
+		}
+	}
 }
 
 /** Root-scope write: validate and register into the realm registry. Duplicate name is a loud error. */

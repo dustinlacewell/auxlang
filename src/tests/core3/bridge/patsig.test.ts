@@ -16,7 +16,7 @@ describe("patsig", () => {
 	it("a pattern-modulated parameter steps at pattern boundaries (with alternation)", () => {
 		const program = runProgram(() => {
 			clock(60);
-			sin({ freq: p`110 220 <330 440>` }).out();
+			sin({ fm: p`110 220 <330 440>` }).out();
 		});
 		const ps = nodeIndex(program, "patsig");
 		const tap = renderTap(program, ps, "out", 0, 2 * CYCLE);
@@ -33,7 +33,7 @@ describe("patsig", () => {
 	it("is 0 before the first event ever, then holds the last value through gaps", () => {
 		const program = runProgram(() => {
 			clock(60);
-			sin({ freq: p`~ 220` }).out();
+			sin({ fm: p`~ 220` }).out();
 		});
 		const ps = nodeIndex(program, "patsig");
 		const tap = renderTap(program, ps, "out", 0, 2 * CYCLE);

@@ -12,10 +12,11 @@
 import { isGNode } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
 import type { ModuleSpec } from "../types";
+import { isUnitTag } from "../units/tag";
+import { bindInput } from "./bind-input";
 import { connectWhole } from "./connect";
 import { evalCtx } from "./context";
 import { handleData, isHandle } from "./handle-data";
-import { lift } from "./lift";
 
 export function buildNode(
 	spec: ModuleSpec,
@@ -118,12 +119,12 @@ function assign(
 	config: Record<string, unknown>,
 ): void {
 	if (name in spec.ins) {
-		inputs[name] = lift(value, `${spec.name}.${name}`);
+		inputs[name] = bindInput(spec, name, value);
 		return;
 	}
 	// Config: static per-node value. `__`-prefixed keys are compile hints
 	// (e.g. __width) and always allowed.
-	if (isHandle(value) || isGNode(value) || typeof value === "function") {
+	if (isHandle(value) || isGNode(value) || isUnitTag(value) || typeof value === "function") {
 		throw new Error(`${spec.name}: config '${name}' takes a static value, not a signal`);
 	}
 	config[name] = value;
@@ -136,7 +137,7 @@ function knownKey(spec: ModuleSpec, key: string): boolean {
 /** A plain object that is not itself a signal value is a named-args bag. */
 function isNamedArgs(v: unknown): boolean {
 	if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
-	if (isHandle(v) || isGNode(v)) return false;
+	if (isHandle(v) || isGNode(v) || isUnitTag(v)) return false;
 	const ast = (v as Record<string, unknown>).ast;
 	if (typeof ast === "object" && ast !== null) return false; // P-like pattern
 	return true;

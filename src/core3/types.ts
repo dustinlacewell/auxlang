@@ -36,17 +36,14 @@ export interface PortAnn {
 	/**
 	 * With `def: null`: unconnected is LEGAL. The engine binds NaN as the
 	 * "absent" sentinel (direct-driver tests pass null); modules guard with
-	 * `Number.isFinite` (see osc `freq`).
+	 * `Number.isFinite`.
 	 */
 	readonly opt?: true;
 }
 
+// The convertible units (hz, semis, secs, beats) are unit tags: units/tag.ts.
 export const sig = (def: number | null = 0): PortAnn => ({ unit: "sig", def });
-export const hz = (def: number | null): PortAnn => ({ unit: "hz", def });
 export const unit = (def: number | null): PortAnn => ({ unit: "unit", def });
-export const semis = (def: number | null): PortAnn => ({ unit: "semis", def });
-export const beats = (def: number | null): PortAnn => ({ unit: "beats", def });
-export const secs = (def: number | null): PortAnn => ({ unit: "secs", def });
 export const gatePort = (def: number | null = 0): PortAnn => ({ unit: "gate", def });
 export const trigPort = (def: number | null = 0): PortAnn => ({ unit: "trig", def });
 export const phasePort = (def: number | null = 0): PortAnn => ({ unit: "phase", def });

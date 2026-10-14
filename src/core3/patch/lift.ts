@@ -7,6 +7,7 @@
 
 import { isGNode } from "../graph/input-kinds";
 import type { InputValue, NodeRef } from "../graph/node";
+import { isUnitTag } from "../units/tag";
 import { type HandleData, handleData, isHandle } from "./handle-data";
 import { resolvePatchModule } from "./resolve";
 import { droppedChannelError, isStereoSource } from "./stereo";
@@ -53,6 +54,7 @@ function isPatternLike(v: unknown): boolean {
 }
 
 function describe(v: unknown): string {
+	if (isUnitTag(v)) return `a ${v.unit}() unit tag here (tags convert only at a module input with a unit)`;
 	if (v === null) return "null";
 	if (v === undefined) return "undefined";
 	if (Array.isArray(v)) return "an array";

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/osc";
 import { getModule } from "@/core3/module/define";
+import { hzToSemis } from "@/core3/units/pitch";
 import { SR, driver, maxAbs, periodFromCrossings } from "./helpers";
 
 const sin = getModule("sin");
@@ -23,22 +24,26 @@ describe("osc", () => {
 		expect(periodFromCrossings(xs)).toBeCloseTo(SR / 880, 0);
 	});
 
-	it("freq input overrides pitch when finite", () => {
+	it("fm adds Hz linearly to the pitch frequency", () => {
 		const d = driver(sin);
-		// pitch 69 would be 440; freq 100 must win
-		const xs = d.trace(SR, "out", { pitch: 69, freq: 100 });
-		expect(periodFromCrossings(xs)).toBeCloseTo(SR / 100, -1);
+		// pitch 69 is 440 Hz; fm 110 makes it 550 Hz
+		const xs = d.trace(SR, "out", { pitch: 69, fm: 110 });
+		expect(periodFromCrossings(xs)).toBeCloseTo(SR / 550, 0);
 	});
 
-	it("falls back to pitch when freq is null (default)", () => {
+	it("fm on pitch 0 (≈8.18 Hz) lands at 8.18 + fm Hz", () => {
 		const d = driver(sin);
-		const xs = d.trace(SR, "out", { pitch: 69 }); // freq default null
-		expect(periodFromCrossings(xs)).toBeCloseTo(SR / 440, 0);
+		const xs = d.trace(SR, "out", { pitch: 0, fm: 440 });
+		expect(periodFromCrossings(xs)).toBeCloseTo(SR / (440 * 2 ** (-69 / 12) + 440), 0);
+	});
+
+	it("has no freq input", () => {
+		expect("freq" in sin.ins).toBe(false);
 	});
 
 	it("min/max range maps the waveform (100..800 LFO idiom)", () => {
 		const d = driver(sin);
-		const xs = d.trace(SR, "out", { freq: 100, min: 100, max: 800 });
+		const xs = d.trace(SR, "out", { pitch: 0, fm: 92, min: 100, max: 800 });
 		// sin fully sweeps [-1,1] → [100,800]
 		expect(Math.min(...xs)).toBeCloseTo(100, 0);
 		expect(Math.max(...xs)).toBeCloseTo(800, 0);
@@ -46,26 +51,26 @@ describe("osc", () => {
 
 	it("default output stays in [-1,1] for sin", () => {
 		const d = driver(sin);
-		const xs = d.trace(SR, "out", { freq: 220 });
+		const xs = d.trace(SR, "out", { pitch: 57 });
 		expect(maxAbs(xs)).toBeLessThanOrEqual(1.0 + 1e-9);
 	});
 
 	it("saw stays bounded (polyBLEP overshoot small)", () => {
 		const d = driver(saw);
-		const xs = d.trace(SR, "out", { freq: 220 });
+		const xs = d.trace(SR, "out", { pitch: 57 });
 		// naive saw is exactly [-1,1]; polyBLEP adds a small residual near the wrap.
 		expect(maxAbs(xs)).toBeLessThan(1.3);
 	});
 
 	it("sqr stays bounded", () => {
 		const d = driver(sqr);
-		const xs = d.trace(SR, "out", { freq: 220 });
+		const xs = d.trace(SR, "out", { pitch: 57 });
 		expect(maxAbs(xs)).toBeLessThan(1.3);
 	});
 
 	it("tri is unit-amplitude with no DC offset", () => {
 		const d = driver(tri);
-		const xs = d.trace(SR, "out", { freq: 220 });
+		const xs = d.trace(SR, "out", { pitch: 57 });
 		// direct-from-phase triangle: exactly [-1,1], symmetric about 0
 		expect(maxAbs(xs)).toBeLessThanOrEqual(1 + 1e-9);
 		expect(Math.max(...xs)).toBeCloseTo(1, 2);
@@ -79,7 +84,7 @@ describe("osc", () => {
 		// Band-limited saw should have a smaller max sample-to-sample jump.
 		const freq = 4000; // high freq: dt large, correction visible
 		const d = driver(saw);
-		const xs = d.trace(2000, "out", { freq });
+		const xs = d.trace(2000, "out", { pitch: hzToSemis(freq) });
 		let maxJump = 0;
 		for (let k = 1; k < xs.length; k++) {
 			maxJump = Math.max(maxJump, Math.abs(xs[k]! - xs[k - 1]!));
@@ -91,8 +96,8 @@ describe("osc", () => {
 	it("phase input sets initial phase", () => {
 		const a = driver(sin);
 		const b = driver(sin);
-		const xa = a.trace(10, "out", { freq: 100, phase: 0 });
-		const xb = b.trace(10, "out", { freq: 100, phase: 0.25 });
+		const xa = a.trace(10, "out", { pitch: hzToSemis(100), phase: 0 });
+		const xb = b.trace(10, "out", { pitch: hzToSemis(100), phase: 0.25 });
 		// quarter-phase start on a sine → begins near peak (1), not 0
 		expect(xa[0]!).toBeCloseTo(0, 2);
 		expect(xb[0]!).toBeCloseTo(1, 1);

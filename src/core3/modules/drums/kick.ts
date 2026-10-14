@@ -1,5 +1,6 @@
 import { defmod } from "../../patch/defmod";
-import { hz, sig, trigPort, unit } from "../../types";
+import { sig, trigPort, unit } from "../../types";
+import { hz } from "../../units/tag";
 
 /**
  * 808-style kick: a sine body whose pitch is swept down by a fast envelope, plus

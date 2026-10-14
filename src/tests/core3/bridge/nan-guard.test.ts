@@ -27,10 +27,10 @@ describe("NaN/Inf never reach the rendered output", () => {
 
 	it("a single-sample NaN into lpf.cutoff stays out of l/r", () => {
 		const program = runProgram(() => {
-			saw({ freq: 220 })
+			saw(57)
 				.lpf({
 					cutoff: (_s: unknown, sr: number, t: number) =>
-						Math.round(t * sr) === 50 ? Number.NaN : 800,
+						Math.round(t * sr) === 50 ? Number.NaN : 79,
 				})
 				.out();
 		});

@@ -1,5 +1,6 @@
 import { defmod } from "../patch/defmod";
-import { hz, sig, unit } from "../types";
+import { sig, unit } from "../types";
+import { hz } from "../units/tag";
 import { type Shape, sample } from "./wave";
 
 /**

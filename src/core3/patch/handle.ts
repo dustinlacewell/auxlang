@@ -12,11 +12,11 @@
 import type { GNode } from "../graph/node";
 import { getRegistry } from "../module/define";
 import type { ModuleSpec } from "../types";
+import { bindInput } from "./bind-input";
 import { buildNode } from "./build-node";
 import { connectWhole } from "./connect";
 import { currentSpecs } from "./context";
 import { HANDLE, type Handle, type HandleData } from "./handle-data";
-import { lift } from "./lift";
 import { rootFromHandle } from "./out";
 import { isPatchModule, resolvePatchModule } from "./resolve";
 
@@ -136,7 +136,7 @@ function setInput(
 	value: unknown,
 ): Handle {
 	const copy = copyNode(node);
-	copy.inputs[input] = lift(value, `${spec.name}.${input}`);
+	copy.inputs[input] = bindInput(spec, input, value);
 	return wrap(copy, port, lane);
 }
 

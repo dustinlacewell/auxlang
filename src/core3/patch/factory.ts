@@ -1,6 +1,6 @@
 /**
  * moduleFactory — turns a ModuleSpec into the user-facing callable:
- * `tosc(440)`, `lpf({ cutoff: 800 })`, positionals per spec.positional.
+ * `tosc(440)`, `lpf({ cutoff: 79 })`, positionals per spec.positional.
  * Only usable inside runEval (buildNode enforces it).
  */
 

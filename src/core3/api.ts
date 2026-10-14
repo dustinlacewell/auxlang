@@ -28,18 +28,8 @@ import { chord } from "./pattern/chord/chord";
 import { P } from "./pattern/pat-class";
 import { p } from "./pattern/notation/template";
 import type { Program } from "./types";
-import {
-	beats,
-	gatePort,
-	hz,
-	optional,
-	phasePort,
-	secs,
-	semis,
-	sig,
-	trigPort,
-	unit,
-} from "./types";
+import { gatePort, optional, phasePort, sig, trigPort, unit } from "./types";
+import { beats, hz, secs, semis } from "./units/tag";
 
 export { runEval } from "./patch/context";
 export { clock } from "./patch/clock";

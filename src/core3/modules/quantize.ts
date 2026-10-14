@@ -1,5 +1,6 @@
 import { defmod } from "../patch/defmod";
-import { semis, sig } from "../types";
+import { sig } from "../types";
+import { semis } from "../units/tag";
 
 /**
  * Pitch quantizer — operates directly in SEMITONES (no Hz round-trip).

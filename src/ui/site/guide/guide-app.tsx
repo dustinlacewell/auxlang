@@ -81,8 +81,8 @@ export function GuideApp() {
 					<ModuleCard name="out" />
 				</div>
 				<P>
-					A module's input ports are set positionally — <C>sin(440)</C> is 440 Hz — by name —{" "}
-					<C>{"sin({ freq: 440 })"}</C> — or with a setter — <C>.freq(440)</C>.
+					A module's input ports are set positionally — <C>sin(69)</C> is pitch 69, A440 — by name
+					— <C>{"sin({ pitch: 69 })"}</C> — or with a setter — <C>.pitch(69)</C>.
 				</P>
 				<P>
 					Chaining is the patch cable: each link routes the previous module's output into the next
@@ -93,12 +93,12 @@ export function GuideApp() {
 
 			<Section title="Signals">
 				<P>
-					Ports take signals. The <C>440</C> above is a static signal — it never changes. But an
+					Ports take signals. The <C>69</C> above is a static signal — it never changes. But an
 					input port will just as happily take a changing signal: another module's output.
 				</P>
 				<P>
-					Oscillator positional args are <C>(freq, min, max)</C>, so <C>sin(0.2, 200, 600)</C> is a
-					slow sine sweeping 200 to 600. Route it into another oscillator's <C>freq</C> and the
+					An LFO stays in Hz — <C>lfo(0.2, 200, 600)</C> is a slow sine sweeping 200 to 600 Hz.
+					Wrap it in <C>hz(...)</C> to route it into an oscillator's <C>pitch</C> port, and the
 					pitch follows it — a siren:
 				</P>
 				{ex("signals")}
@@ -223,11 +223,11 @@ export function GuideApp() {
 			<Section title="When it errors">
 				<P>
 					Everything fails loud at eval time — unknown ports, missing required inputs, notation
-					parse errors — naming what was available. Four footguns: <C>sin(0)</C> is frequency 0,
-					which is silence (use <C>sin()</C> or <C>{"sin({ pitch: 60 })"}</C>); forgetting{" "}
-					<C>clock(...)</C> leaves seqs unclocked; <C>mod</C> is modulo, not modulation; and an
-					input the chain already wired can't also be set — <C>{"s.pitch.saw({ freq: 880 })"}</C>{" "}
-					throws.
+					parse errors — naming what was available. Four footguns: <C>sin(0)</C> is pitch 0, not
+					silence — it's ≈8.18 Hz (use <C>sin()</C> or <C>{"sin({ pitch: 60 })"}</C> for A-440 or
+					a chosen note); forgetting <C>clock(...)</C> leaves seqs unclocked; <C>mod</C> is modulo,
+					not modulation; and an input the chain already wired can't also be set —{" "}
+					<C>{"s.pitch.saw({ pitch: 72 })"}</C> throws.
 				</P>
 			</Section>
 		</SitePage>

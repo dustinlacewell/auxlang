@@ -3,7 +3,8 @@ import type { Pat } from "../pattern/ast";
 import { laneEvents } from "../pattern/lane-events";
 import { query } from "../pattern/query";
 import { r } from "../pattern/rational";
-import { gatePort, phasePort, semis, trigPort } from "../types";
+import { gatePort, phasePort, trigPort } from "../types";
+import { semis } from "../units/tag";
 import { advanceTrack, fillTrack, trackStateFields } from "./pattern-track";
 
 /**

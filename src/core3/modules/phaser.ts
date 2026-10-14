@@ -1,5 +1,6 @@
 import { defmod } from "../patch/defmod";
-import { hz, sig, unit } from "../types";
+import { sig, unit } from "../types";
+import { hz } from "../units/tag";
 
 /**
  * Phaser: a cascade of first-order allpass stages whose break frequency is

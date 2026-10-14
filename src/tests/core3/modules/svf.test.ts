@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/svf";
 import { getModule } from "@/core3/module/define";
+import { hzToSemis } from "@/core3/units/pitch";
 import { SR, driver, rms } from "./helpers";
 
 const lpf = getModule("lpf");
@@ -9,14 +10,15 @@ const hpf = getModule("hpf");
 const bpf = getModule("bpf");
 const notch = getModule("notch");
 
-/** Feed a constant (DC) and read the settled output. */
-function dcResponse(spec: typeof lpf, cutoff: number): number {
+/** Feed a constant (DC) and read the settled output. Cutoffs below are in Hz; the port takes semitones. */
+function dcResponse(spec: typeof lpf, cutoffHz: number): number {
 	const d = driver(spec);
-	return d.run(4000, { in: 1, cutoff }).out!;
+	return d.run(4000, { in: 1, cutoff: hzToSemis(cutoffHz) }).out!;
 }
 
 /** RMS gain at a given input frequency by driving a sine directly. */
-function sineGain(spec: typeof lpf, freqHz: number, cutoff: number, res = 0.2): number {
+function sineGain(spec: typeof lpf, freqHz: number, cutoffHz: number, res = 0.2): number {
+	const cutoff = hzToSemis(cutoffHz);
 	const d = driver(spec);
 	const w = (2 * Math.PI * freqHz) / SR;
 	const n = 8000;
