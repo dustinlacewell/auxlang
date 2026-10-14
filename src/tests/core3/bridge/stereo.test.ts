@@ -133,6 +133,27 @@ describe("stereo routing pan → out", () => {
 		expect(rms(rh.r)).toBeGreaterThan(rms(rh.l) * 5); // all voices right
 	});
 
+	it("an n-lane pan into out({ l, r }) keeps the power of one lane (1/√n mixdown)", () => {
+		// Equal-level lanes at distinct pitches are uncorrelated, so 1/√n keeps the
+		// summed power equal to one lane's. Level kept well below the safety clip.
+		const power = (chord: string) => {
+			const program = runProgram(() => {
+				clock(120);
+				seq(chord)
+					.sin()
+					.mul(0.3)
+					.pan(0)
+					.apply((p: Stereo) => out({ l: p.l, r: p.r }));
+			});
+			const { l, r } = render(program, 0.5);
+			return rms(l) ** 2 + rms(r) ** 2;
+		};
+		const one = power("c4");
+		const four = power("{c4,e4,g4,b4}");
+		expect(one).toBeGreaterThan(1e-3);
+		expect(10 * Math.log10(four / one)).toBeCloseTo(0, 0); // within ±0.5 dB
+	});
+
 	it("mono .out() is unchanged (auto-spread center)", () => {
 		const program = runProgram(() => {
 			sin({ freq: 330 }).out();

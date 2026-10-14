@@ -42,7 +42,7 @@ describe("out", () => {
 		// Drive each of the N lanes ALONE in an N-wide out; the placed lane's
 		// pan angle changes but l²+r² for that lane is invariant.
 		const width = 8;
-		const amp = 1e-3; // tiny so tanh(x) ≈ x and we measure the pan law, not the clip
+		const amp = 1e-3; // well below the safety clip threshold
 		const energies: number[] = [];
 		for (let lane = 0; lane < width; lane++) {
 			const d = reduceDriver(out, width);
@@ -59,7 +59,26 @@ describe("out", () => {
 		for (const e of energies) expect(e).toBeCloseTo(first, 5);
 	});
 
-	it("tanh soft-clip bounds output to [-1, 1] even with huge input", () => {
+	it("a signal at 0.5 passes unchanged (gain 1)", () => {
+		const d = reduceDriver(out, 1);
+		// first sample: DC blocker y = x (x1 = y1 = 0), so only the clip acts
+		const o = d.step({ l: lanes(0.5), r: lanes(-0.5), gain: 1 });
+		expect(o.l).toBe(0.5);
+		expect(o.r).toBe(-0.5);
+	});
+
+	it("the safety clip is transparent just below −1 dBFS (a 0.88-peak 1 kHz sine)", () => {
+		const d = reduceDriver(out, 1);
+		let peak = 0;
+		for (let k = 0; k < 24000; k++) {
+			const v = 0.88 * Math.sin((2 * Math.PI * 1000 * k) / 48000);
+			const o = d.step({ l: lanes(v), r: lanes(v), gain: 1 });
+			if (k > 14400) peak = Math.max(peak, Math.abs(o.l!)); // after the DC guard's onset transient
+		}
+		expect(peak).toBeCloseTo(0.88, 3); // tanh would give 0.706
+	});
+
+	it("a huge input stays within [-1, 1]", () => {
 		const d = reduceDriver(out, 1);
 		let maxL = 0;
 		for (let k = 0; k < 500; k++) {
@@ -68,15 +87,33 @@ describe("out", () => {
 			const o = d.step({ in: lanes(v), gain: 5 });
 			maxL = Math.max(maxL, Math.abs(o.l!));
 		}
-		expect(maxL).toBeLessThanOrEqual(1); // tanh saturates to 1.0 in float64
+		expect(maxL).toBeLessThanOrEqual(1);
 		expect(maxL).toBeGreaterThan(0.9); // actually driven into clip
 	});
 
-	it("soft-clip is smooth (moderate overdrive stays strictly below 1)", () => {
+	it("the DC blocker's −3 dB point is the same at 48 kHz and 96 kHz", () => {
+		const gainAt = (hz: number, sr: number) => {
+			const d = reduceDriver(out, 1, {}, sr);
+			let peak = 0;
+			const n = 2 * sr; // 2 s: settle for 1 s, measure the last 1 s
+			for (let k = 0; k < n; k++) {
+				const v = 0.5 * Math.sin((2 * Math.PI * hz * k) / sr);
+				const o = d.step({ l: lanes(v), r: lanes(v), gain: 1 });
+				if (k >= sr) peak = Math.max(peak, Math.abs(o.l!));
+			}
+			return peak / 0.5;
+		};
+		const at48 = gainAt(5, 48000);
+		const at96 = gainAt(5, 96000);
+		expect(at48).toBeCloseTo(Math.SQRT1_2, 2); // −3 dB at the 5 Hz corner
+		expect(at96).toBeCloseTo(at48, 3);
+	});
+
+	it("the safety clip's soft knee keeps moderate overdrive strictly below 1", () => {
 		const d = reduceDriver(out, 1);
 		let maxL = 0;
 		for (let k = 0; k < 500; k++) {
-			const v = k % 2 === 0 ? 1 : -1; // ~unit AC, gain pushes into tanh knee
+			const v = k % 2 === 0 ? 1 : -1; // ~unit AC, gain pushes into the clip knee
 			const o = d.step({ in: lanes(v), gain: 1.5 });
 			maxL = Math.max(maxL, Math.abs(o.l!));
 		}

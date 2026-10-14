@@ -14,26 +14,52 @@ import { optional, sig, unit } from "../types";
  *
  * The two paths add: a patch may auto-spread some voices while hard-routing
  * others. Both jacks are optional (`def: null`, opt) — unconnected arrives as
- * the NaN "absent" sentinel and contributes nothing.
+ * the NaN "absent" sentinel and contributes nothing. Both paths mix lanes down
+ * by 1/√n, so n uncorrelated lanes at equal level keep the power of one.
  *
- * `gain` scales the pre-clip signal (read from lane 0 — a broadcast knob), then
- * a one-pole DC blocker and a tanh soft-clip run per channel on the final sums.
+ * `gain` scales the mixed signal (read from lane 0 — a broadcast knob), then
+ * per channel: a DC guard (one-pole high-pass at DC_CUTOFF_HZ, pole derived
+ * from the sample rate) and a peak safety clip (transparent below
+ * CLIP_THRESHOLD, soft knee into ±1 above it).
  */
-const DC = 0.999;
+
+/** DC guard corner. Below musical content (−0.12 dB at 30 Hz); time constant ~32 ms. */
+const DC_CUTOFF_HZ = 5;
+
+/** Safety clip threshold: −1 dBFS, the usual true-peak ceiling. Below it, output = input. */
+const CLIP_THRESHOLD = 10 ** (-1 / 20);
+
+/** One-pole DC blocker pole for a fixed corner frequency, independent of sample rate. */
+function dcPole(sr: number): number {
+	return Math.exp((-2 * Math.PI * DC_CUTOFF_HZ) / sr);
+}
 
 /**
- * Sum all lanes of a reduce-gathered stereo jack straight into one channel.
- * An UNCONNECTED optional jack arrives as a plain number (the NaN "absent"
- * sentinel) → contributes nothing. A CONNECTED jack arrives as a lane array;
- * its lanes sum raw — a non-finite lane (diverging feedback) is deliberately
- * left to poison the sum so the master's flush guard fires, exactly as it does
- * for the `in` path.
+ * Peak safety clip. Identity up to CLIP_THRESHOLD; above it a tanh knee that
+ * meets the identity with slope 1 and approaches ±1, so no level ever leaves
+ * [-1, 1] and normal levels are never bent.
  */
-function sumLanes(jack: Float32Array | number, width: number): number {
+function safetyClip(x: number): number {
+	const a = Math.abs(x);
+	if (a <= CLIP_THRESHOLD) return x;
+	const room = 1 - CLIP_THRESHOLD;
+	const y = CLIP_THRESHOLD + room * Math.tanh((a - CLIP_THRESHOLD) / room);
+	return x < 0 ? -y : y;
+}
+
+/**
+ * Mix all lanes of a reduce-gathered stereo jack down into one channel, by
+ * 1/√width like the `in` path. An UNCONNECTED optional jack arrives as a plain
+ * number (the NaN "absent" sentinel) → contributes nothing; a constant is one
+ * signal and passes as is. A CONNECTED jack arrives as a lane array — a
+ * non-finite lane (diverging feedback) is deliberately left to poison the sum
+ * so the master's flush guard fires, exactly as it does for the `in` path.
+ */
+function mixdownJack(jack: Float32Array | number, width: number): number {
 	if (typeof jack === "number") return Number.isFinite(jack) ? jack : 0;
 	let s = 0;
 	for (let l = 0; l < width; l++) s += jack[l] ?? 0;
-	return s;
+	return s / Math.sqrt(Math.max(1, width));
 }
 
 defmod({
@@ -45,7 +71,7 @@ defmod({
 	outs: { l: sig(), r: sig() },
 	defaultIn: "in",
 	defaultOut: "l",
-	state: () => ({ dcxL: 0, dcyL: 0, dcxR: 0, dcyR: 0 }),
+	state: (sr) => ({ dcxL: 0, dcyL: 0, dcxR: 0, dcyR: 0, dcPole: dcPole(sr) }),
 	tick: (s, ins, o, _cfg, _sr, width) => {
 		const lanes = ins.in;
 		const gains = ins.gain;
@@ -70,9 +96,9 @@ defmod({
 		sumL *= norm;
 		sumR *= norm;
 
-		// Stereo jack path: pre-panned l/r lanes sum straight into each channel.
-		sumL += sumLanes(ins.l, width);
-		sumR += sumLanes(ins.r, width);
+		// Stereo jack path: pre-panned l/r lanes mix straight into each channel.
+		sumL += mixdownJack(ins.l, width);
+		sumR += mixdownJack(ins.r, width);
 
 		sumL *= gain;
 		sumR *= gain;
@@ -90,15 +116,16 @@ defmod({
 			return;
 		}
 
-		// One-pole DC block per channel: y = x - x1 + DC*y1
-		const yL = sumL - (s.dcxL as number) + DC * (s.dcyL as number);
+		// One-pole DC block per channel: y = x - x1 + pole*y1
+		const pole = s.dcPole as number;
+		const yL = sumL - (s.dcxL as number) + pole * (s.dcyL as number);
 		s.dcxL = sumL;
 		s.dcyL = yL;
-		const yR = sumR - (s.dcxR as number) + DC * (s.dcyR as number);
+		const yR = sumR - (s.dcxR as number) + pole * (s.dcyR as number);
 		s.dcxR = sumR;
 		s.dcyR = yR;
 
-		o.l = Math.tanh(yL);
-		o.r = Math.tanh(yR);
+		o.l = safetyClip(yL);
+		o.r = safetyClip(yR);
 	},
 });
