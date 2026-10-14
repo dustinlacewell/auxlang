@@ -260,6 +260,21 @@ s.pitch
 	},
 	{
 		section: "Filters",
+		title: "lpf — additive .mod (showcase)",
+		description:
+			"Cutoff base 60, plus a slow LFO ±12 semitones, plus an envelope adding up to 36 on each note — a wobbling filter that also blips open on every hit.",
+		code: `clock(120)
+const s = seq("c2 c2 eb2 g1")
+s.saw()
+  .lpf({ cutoff: 60, res: 0.4 })
+  .mod("cutoff", lfo(0.3), 12)
+  .mod("cutoff", s.gate.ad(0.01, 0.3), 36)
+  .mul(s.gate.adsr(0.005, 0.1, 0.6, 0.15))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Filters",
 		title: "hpf — default",
 		description:
 			"A saw through a highpass at the default cutoff 84 (≈1 kHz) — the body is scooped out, leaving a thin, fizzy top.",
@@ -1089,22 +1104,22 @@ sin(hz(150))
 	},
 	{
 		section: "Math",
-		title: "mod — fold pitch into an octave (showcase)",
+		title: "wrap — fold pitch into an octave (showcase)",
 		description:
-			"Pitch ramps across four octaves, taken mod 12 — the line keeps rising but folds back every octave. Wraparound is what mod is.",
+			"Pitch ramps across four octaves, wrapped modulo 12 — the line keeps rising but folds back every octave.",
 		code: `sin()
-  .pitch(lfo(0.2, 48, 96).mod(12).add(48))
+  .pitch(lfo(0.2, 48, 96).wrap(12).add(48))
   .gain(0.3)
   .out()`,
 	},
 	{
 		section: "Math",
-		title: "mod — audio-rate wrap (distortion)",
+		title: "wrap — audio-rate wrap (distortion)",
 		description:
-			"A loud sine wrapped by mod — each overflow snaps back through zero, a harsher cousin of clip. The divisor sweeps from mangled to clean.",
+			"A loud sine wrapped modulo — each overflow snaps back through zero, a harsher cousin of clip. The divisor sweeps from mangled to clean.",
 		code: `sin(hz(150))
   .gain(2)
-  .mod(lfo(0.2, 0.4, 2.5))
+  .wrap(lfo(0.2, 0.4, 2.5))
   .gain(0.5)
   .out()`,
 	},

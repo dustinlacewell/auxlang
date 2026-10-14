@@ -29,9 +29,18 @@ export interface PatternInput {
 
 export type InputValue = number | NodeRef | ZRef | LambdaInput | PatternInput;
 
+/** One modulation source on a port: adds `signal × depth` to the port's base. */
+export interface ModTerm {
+	readonly signal: InputValue;
+	readonly depth: InputValue;
+}
+
 export interface GNode {
 	readonly module: string;
+	/** Each port's BASE value. A port with `mods` sums base + Σ(signal × depth). */
 	inputs: Record<string, InputValue>;
 	config: Record<string, unknown>;
 	pin?: string;
+	/** Modulation terms per port, from `.mod(port, signal, depth)`. Compile desugars them. */
+	mods?: Record<string, readonly ModTerm[]>;
 }

@@ -21,7 +21,7 @@ import "./div";
 import "./cmp";
 import "./clip";
 import "./abs";
-import "./mod";
+import "./wrap";
 import "./period";
 import "./units/pitch-conversions";
 import "./units/tempo-conversions";

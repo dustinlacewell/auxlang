@@ -7,7 +7,7 @@ import type { ModuleSpec } from "@/core3/types";
 import { SR } from "./helpers";
 
 /** Reserved wrapper/handle words that must never be a port name. */
-const RESERVED_PORTS = ["apply", "lane", "id", "width"];
+const RESERVED_PORTS = ["apply", "lane", "id", "width", "mod"];
 
 /** Modules whose default output is legitimately NOT "out". */
 const NON_OUT_DEFAULTS: Record<string, string> = {

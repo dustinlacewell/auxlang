@@ -225,8 +225,8 @@ export function GuideApp() {
 					Everything fails loud at eval time — unknown ports, missing required inputs, notation
 					parse errors — naming what was available. Four footguns: <C>sin(0)</C> is pitch 0, not
 					silence — it's ≈8.18 Hz (use <C>sin()</C> or <C>{"sin({ pitch: 60 })"}</C> for A-440 or
-					a chosen note); forgetting <C>clock(...)</C> leaves seqs unclocked; <C>mod</C> is modulo,
-					not modulation; and an input the chain already wired can't also be set —{" "}
+					a chosen note); forgetting <C>clock(...)</C> leaves seqs unclocked; <C>.mod(port, signal, depth)</C>{" "}
+					adds modulation to a port (modulo is <C>wrap</C>); and an input the chain already wired can't also be set —{" "}
 					<C>{"s.pitch.saw({ pitch: 72 })"}</C> throws.
 				</P>
 			</Section>

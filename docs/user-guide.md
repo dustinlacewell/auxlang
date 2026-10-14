@@ -50,7 +50,7 @@ The module families:
 
 ### Amplitude and math
 
-- `mul` (aliases `gain`, `vca`), `add`, `sub`, `div`, `mod` (modulo — arithmetic remainder, not "modulation"), `abs`, `clip`, `scale`, `slew`, `sah`, `quantize`.
+- `mul` (aliases `gain`, `vca`), `add`, `sub`, `div`, `wrap` (modulo — arithmetic remainder), `abs`, `clip`, `scale`, `slew`, `sah`, `quantize`.
 
 ### Comparators
 
@@ -245,6 +245,8 @@ saw(45)
 
 `lfo(0.3, 62, 95)` sweeps the cutoff between semitones 62 and 95 (roughly 300–2000 Hz) at 0.3 Hz.
 
+Setting a port replaces its value. To add modulation on top of a value, use `.mod(port, signal, depth)`: the port becomes its base plus `signal × depth`, and several `.mod` calls on one port sum. `lpf({ cutoff: 60 }).mod("cutoff", lfo(0.3), 12)` swings the cutoff 12 semitones either side of 60.
+
 ### Pattern-as-signal
 
 A `` p`...` `` handed to any knob lifts automatically. It is queried at the ambient clock's phase and sample-and-held, so a pattern can drive pitch directly with no `seq`:
@@ -356,5 +358,5 @@ The language never silently no-ops. At eval time it throws — naming what was a
 
 - **`sin(0)` sets PITCH to 0** (≈8.18 Hz), not silence — pitch is the positional default. For a default A4 use `sin()`; for an exact Hz value use `sin(hz(...))`.
 - **Forgetting `clock(...)`** leaves seqs unclocked.
-- **`mod` is modulo** (arithmetic remainder), not "modulation". And `factory()` is the module-lookup helper, not a musical term.
+- **`.mod` is modulation**, not modulo: `.mod(port, signal, depth)` adds `signal × depth` to a port. Modulo is `wrap`. And `factory()` is the module-lookup helper, not a musical term.
 - **A pattern into a filter cutoff clicks** without a `slew` — see the slew-declick idiom.

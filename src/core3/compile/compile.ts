@@ -2,6 +2,7 @@
  * Top-level compile entry: an `EvalResult` (roots + ambient clock + seed) in,
  * a serializable `Program` out. The pipeline, in order:
  *
+ *   mods         `.mod` terms → base + Σ(signal × depth) as add/mul nodes
  *   collect      reachable nodes from the roots (object-identity graph walk)
  *   expand       pattern inputs → patsig nodes (clocked by the ambient clock)
  *   clocks       unconnected phase-unit `clk` inputs → the ambient clock
@@ -30,6 +31,7 @@ import type { EvalResult } from "../patch/context";
 import type { ModuleSpec, PNode, PortAnn, PortSrc, Program, SerializedModuleSpec } from "../types";
 import { resolveAmbientClocks } from "./ambient-clock";
 import { collect } from "./collect";
+import { expandMods } from "./expand-mods";
 import { expandPatterns } from "./expand-patterns";
 import { structuralIds } from "./structural-id";
 import { toposort } from "./toposort";
@@ -47,7 +49,8 @@ interface Resolved {
 
 export function compile(evalResult: EvalResult): Program {
 	const specs = evalResult.specs;
-	const reachable = collect(evalResult.roots);
+	expandMods(collect(evalResult.roots), specs);
+	const reachable = collect(evalResult.roots); // re-walk: the mod arithmetic nodes are new
 	expandPatterns(reachable, evalResult.clock, evalResult.seed);
 	resolveAmbientClocks(reachable, evalResult.clock, specs);
 	const nodes = collect(evalResult.roots); // re-walk: patsig + ambient clock nodes are new

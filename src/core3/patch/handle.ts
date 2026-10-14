@@ -1,8 +1,8 @@
 /**
  * The ONE wrapper. A single Proxy over `{ node, port?, lane? }` covering all
  * fluent behavior: chaining to any registered or patch-defined module, output taps, input
- * setters (copy-with-change), call = set default input, and the reserved
- * methods `out / apply / lane / id / width`.
+ * setters (copy-with-change, setting a port's base), call = set default input,
+ * and the reserved methods `out / apply / lane / id / width / mod`.
  *
  * Unknown string props fail loudly listing what was available; symbols and a
  * small introspection whitelist return undefined so debuggers, JSON.stringify,
@@ -17,11 +17,12 @@ import { buildNode } from "./build-node";
 import { connectWhole } from "./connect";
 import { currentSpecs } from "./context";
 import { HANDLE, type Handle, type HandleData } from "./handle-data";
+import { withModTerm } from "./mod-terms";
 import { rootFromHandle } from "./out";
 import { isPatchModule, resolvePatchModule } from "./resolve";
 
 /** Names the handle claims for itself; module ports may not use them. */
-export const RESERVED_HANDLE_NAMES = new Set(["out", "apply", "lane", "id", "width"]);
+export const RESERVED_HANDLE_NAMES = new Set(["out", "apply", "lane", "id", "width", "mod"]);
 
 /** Introspection props that must return undefined instead of erroring. */
 const INTROSPECTION = new Set([
@@ -58,6 +59,10 @@ export function wrap(node: GNode, port?: string, lane?: number): Handle {
 			if (prop === "lane") return (i: number) => laneHandle(node, port, i, spec);
 			if (prop === "id") return (name: string) => pinned(node, port, lane, name);
 			if (prop === "width") return (n: number) => withWidth(node, port, lane, n, spec);
+			if (prop === "mod") {
+				return (input: unknown, signal: unknown, depth: unknown = 1) =>
+					modulated(node, port, lane, spec, input, signal, depth);
+			}
 
 			if (prop in spec.outs) return wrap(node, prop, lane);
 			if (prop in spec.ins) return inputSetter(node, port, lane, spec, prop);
@@ -140,12 +145,29 @@ function setInput(
 	return wrap(copy, port, lane);
 }
 
+/** Value semantics: `.mod` returns a COPY with one more modulation term on `input`. */
+function modulated(
+	node: GNode,
+	port: string | undefined,
+	lane: number | undefined,
+	spec: ModuleSpec,
+	input: unknown,
+	signal: unknown,
+	depth: unknown,
+): Handle {
+	const copy = copyNode(node);
+	copy.mods = withModTerm(node.mods, spec, input, signal, depth);
+	return wrap(copy, port, lane);
+}
+
+/** Shallow copy; `mods` records are never mutated, so they are shared. */
 function copyNode(node: GNode): GNode {
 	return {
 		module: node.module,
 		inputs: { ...node.inputs },
 		config: { ...node.config },
 		...(node.pin !== undefined ? { pin: node.pin } : {}),
+		...(node.mods !== undefined ? { mods: node.mods } : {}),
 	};
 }
 
