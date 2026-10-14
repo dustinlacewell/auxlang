@@ -1,454 +1,582 @@
 # Auxlang: The Platonic Design
 
-A greenfield specification. No debt to the current implementation; where the two
-agree, the implementation was already right.
+The target design of the language. It says what auxlang is, not what is built.
+The gap between this document and the code lives on the board
+(`.devtool/features/`).
 
 ---
 
 ## 0. Thesis
 
 The uzulangs (Tidal, Strudel, Vortex) put the **pattern** at the center and bolt a
-synth onto the end: `Pattern → Events → SuperDirt`. Modular synthesis puts the
-**signal** at the center and bolts sequencing onto the side: everything is voltage,
-a sequencer is just a module that emits some. Each tradition has what the other
-lacks — uzulangs have a transformational pattern algebra and nothing to patch;
-modulars have infinite patchability and no algebra of time.
+synth onto the end. Modular synthesis puts the **signal** at the center and bolts
+sequencing onto the side. Uzulangs have a pattern algebra and nothing to patch.
+Modulars have infinite patching and no algebra of time.
 
-Auxlang's claim: these are one language with **two time domains and one bridge**.
+Auxlang's claim: these are one language with **two calculi and one bridge**.
 
-- The **pattern calculus**: discrete, cycle-based, rational time. Patterns are
+- The **pattern calculus**: discrete structure in rational time. Patterns are
   pure, transformable, deterministic values.
-- The **signal calculus**: continuous, sample-based time. Modules are pure state
-  machines wired into a graph. Feedback is legal.
-- The **bridge**: a clock is a signal (a phase ramp in beats); a sequencer is a
-  module that queries a pattern with that phase and emits pitch/gate/trig — which
-  are just signals, and go anywhere any signal goes.
+- The **signal calculus**: per-sample time. Modules are state machines wired into
+  a graph. Feedback is legal.
+- The **bridge**: `seq(pattern, position)` reads a pattern at a position, and the
+  position is a signal. A clock gives a position in beats. A counter gives a
+  position in steps. An LFO scans. The outputs are signals and go anywhere.
 
-Everything below is the working-out of that claim under three invariants:
+Three invariants:
 
 1. **Signal uniformity.** Anything that produces a value over time can be used
    anywhere a value over time is consumed. No privileged positions.
 2. **Pattern transparency.** Patterns are first-class values. Mini-notation is
-   literal syntax — sugar with a total desugaring into combinators. Nothing is
-   expressible in notation that isn't expressible (and transformable) as a value.
-3. **Determinism.** A performance is a pure function of (code, seed, time). Same
-   code, same seed → same audio, same visualization, every run, on every thread.
+   sugar with a total desugaring into combinators.
+3. **Determinism.** A performance is a pure function of (timestamped code log,
+   seed, input log). Same inputs → same audio, live or offline, on any machine.
 
 ---
 
-## 1. The five concepts
+## 1. The four concepts
 
-The whole language is five concepts. Everything else is a library.
-
-| Concept | What it is | Analogy |
+| Concept | What it is | Rack analogy |
 |---|---|---|
-| **Signal** | a value stream at audio rate, width *n* | a bundle of patch cables |
-| **Module** | a pure state transition `(state, inputs) → (state′, outputs)` | a Eurorack module |
-| **Patch** | a pure expression denoting a graph of modules | the patched system |
-| **Pattern** | a pure value: `Cycle → [Event]`, rational time | a musical score fragment |
-| **Clock** | the bridge: a phase signal in beats, ambient by default | the master clock bus |
+| **Signal** | a value per sample, width *n* | a bundle of patch cables |
+| **Module** | a state machine `(state, inputs) → (state′, outputs)` | a module |
+| **Pattern** | a pure function from position to events | a score fragment |
+| **Read** | `seq(pattern, position)`: pattern × position signal → signals | a voltage-addressed sequencer |
 
-There is no sixth concept. No event bus, no voice allocator, no message queue, no
-scheduler. Discrete musical structure lives in patterns; everything at runtime is
-a signal.
+Clocks and counters are ordinary modules that emit positions. Every patch also
+has three properties, fixed at eval: each signal's **width**, each node's
+**identity**, and the **seed**. There is no event bus, no voice allocator at
+runtime, no message queue, no scheduler.
 
 ---
 
 ## 2. Signals
 
 A signal is a stream of real-number frames of **width n** (n ≥ 1). Width is the
-polyphony dimension and it is static: fixed when the patch is compiled.
+polyphony dimension. It is static: fixed when the patch compiles.
 
-- Scalars broadcast: a width-1 signal used where width-3 is consumed is applied
-  to every lane.
-- Modules process **per-lane by default** (map). A module declared as a
-  *reducer* (`mix`, `out`) consumes all lanes; a *reshaper* (`pan`) maps each
-  lane to a stereo `{l, r}` position via a constant-power law. Stereo is explicit
-  two-cable patching: a stereo source's two channels feed the master's `l`/`r`
-  jacks with `out({ l: v.l, r: v.r })`. A bare `.out()` chained off a stereo
-  source is a loud error — it would drop one channel.
-- `sig.width` is known statically. `sig.lane(i)` selects one lane (width 1).
+- Scalars broadcast: a width-1 signal used where width-3 is consumed feeds every
+  lane.
+- Modules process **per lane** by default. A *reducer* (`mix`, `out`) consumes
+  all lanes. A *reshaper* (`pan`) maps each lane to a stereo position.
+- `sig.width` is known statically. `sig.lane(i)` selects one lane.
+- Ports connect **by name** when a whole module is passed: a source with `l`/`r`
+  outputs into a destination with `l`/`r` inputs connects both. A bare `.out()`
+  chained off `pan` connects `l→l`, `r→r`. A connection that would drop a
+  channel is a loud error.
 
-Units are **conventions, not types**. A signal is numbers; modules document what
-they expect. The conventions:
+Units are **conventions, not types**:
 
-| Quantity | Unit | Rationale |
+| Quantity | Unit | Why |
 |---|---|---|
-| pitch | **semitones** (MIDI numbering, 69 = A440) | linear pitch: transpose = add, glide = slew, quantize = round. Hz appears only inside oscillators. |
-| audio | −1..1 linear | |
+| audio-band frequency (oscillator pitch, filter cutoff) | **semitones**, MIDI numbering, 69 = A440 | transpose = add, glide = slew, keytrack = add, sweeps are even to the ear |
+| rate (LFO frequency, tempo) | Hz, BPM | 0.3 Hz is −57 semitones; rates are not pitches |
+| audio | −1..1 | |
 | control knobs | 0..1 | |
 | time (musical) | beats | resolved against the governing clock |
-| time (physical) | seconds | envelopes, physical delays |
-| phase | beats, unbounded ramp | what clocks emit |
+| time (physical) | seconds | envelopes, delays |
+| position | beats (clock) or steps (counter), unbounded | what `seq` reads |
 | gate | 0/1, threshold 0.5 | |
 | trig | single-sample 1 | |
 
-Pitch in semitones is load-bearing: it is what makes `.add(12)` an octave, makes
-`slew` a correct portamento, makes quantizers linear, and makes pattern
-arithmetic musical. `hz(x)` and `semis(x)` convert explicitly when needed.
+Every port declares a unit. An untagged number or signal means that unit and is
+never rejected. A **unit tag** — `hz(x)`, `semis(x)`, `secs(x)`, `beats(x)` —
+says a value is in another unit, and the port converts it: `sin(hz(440))` is
+exactly A440, `delay({ time: beats(3/4) })` follows the clock. A tag with no
+conversion to the port's unit (`hz` into a time port) is a loud error. The same
+tags declare ports in `defmod` (§5). `period(pitch)` is a module: seconds per
+cycle of a pitch, for tuned delays. Hz appears inside oscillators and filters,
+and at the physical edge.
 
 ---
 
 ## 3. Patterns
 
-A pattern is a pure value: a function from a cycle-span to timed events, with
-**rational** onsets and durations (exact under any nesting of triplets against
-quintuplets; no float drift, ever). Patterns are polymorphic: patterns of notes,
-of numbers, of anything a module parameter accepts.
+A pattern is a pure value: a function from a span of rational time to events.
+Onsets and durations are **rational**: exact under any nesting of triplets
+against quintuplets. Patterns are polymorphic: patterns of notes, numbers,
+records, or signals (§4.4).
 
-### 3.1 The algebra
+### 3.1 Events
 
-The combinators are the language. Notation (3.2) is sugar for them.
+An event is `{ whole, part, value, kind }`.
 
-```js
-p.fast(2)  p.slow(2)          // scale time
-p.rev()                        // reverse within each cycle
-p.early(1/8)  p.late(1/8)      // rotate
-p.every(4, q => q.rev())       // apply a transform every nth cycle
-p.iter(4)                      // shift starting point each cycle
-p.ply(2)                       // repeat each event in place
-p.euclid(3, 8)  p.euclid(3,8,2) // euclidean mask, with rotation
-p.degrade(0.3)                 // drop events with probability (seeded)
-p.add(12)  p.mul(2)            // arithmetic on payloads (semitones!)
-p.off(1/8, q => q.add(12))     // overlay a transformed, shifted copy
-stack(p, q)                    // simultaneous (widens)
-cat(p, q)                      // one per cycle
-fastcat(p, q)                  // squeezed into one cycle
-```
+- `whole` is the event's full span; `part` is the slice inside the query.
+  An onset is real only where `part` starts at `whole`'s start. This is what
+  stops a note that crosses a cycle edge from restarting there.
+- `kind` is `note`, `rest`, or `tie`. A **rest is an event** with its gate off.
+  A **tie** continues the previous note: no trig, no gate dip.
+- `value` is a number (semitones for notes) or a record of named numbers (§3.4).
 
-Two properties matter more than the list:
+Rests and ties are events so that every step exists, whether it sounds or not.
+This is the analog step sequencer's model: a step with its gate switch off is
+still a step.
 
-- **Closure.** Every combinator takes patterns and returns a pattern. Transforms
-  compose without restriction: `p.euclid(3,8).every(2, q => q.rev()).fast(2)`.
-- **Purity.** Querying a pattern at cycle *c* allocates nothing persistent and
-  depends on nothing but (pattern, c, seed). Randomness (`degrade`, `?`) is a
-  hash of (seed, node path, cycle) — scrub-safe, reversible, identical across
-  audio thread and visualization.
+### 3.2 The algebra
 
-### 3.2 Notation
-
-Mini-notation is a tagged template literal. Interpolation splices values —
-patterns, notes, numbers, arrays — so notation and combinators mix freely:
+The combinators are the language. Notation (§3.3) is sugar for them.
 
 ```js
-let hook = p`c4 [e4 g4] <a4 b4>`
-let line = p`${hook} ${hook.rev().add(12)} ~ ${hook.fast(2)}`
+p.fast(2)  p.slow(2)            // scale time
+p.rev()                          // reverse within each cycle
+p.early(1/8)  p.late(1/8)        // rotate
+p.every(4, q => q.rev())         // transform every nth cycle
+p.iter(4)                        // shift start point each cycle
+p.ply(2)                         // repeat each event in place
+p.euclid(3, 8, 2)                // euclidean: 3 notes, 5 rests, rotated
+p.degrade(0.3)                   // turn notes into rests with probability 0.3
+p.add(12)  p.mul(2)              // arithmetic on values
+p.off(1/8, q => q.add(12))       // overlay a transformed, shifted copy
+p.with({ vel: q })               // add record fields, structure from p (§3.4)
+p.steps()                        // re-time: the nth event spans [n, n+1)
+p.compact()                      // drop rests
+p.voices("stable", 3)            // assign events to lanes (§3.5)
+p.seed(7)                        // local seed for this pattern's randomness
+stack(p, q)  cat(p, q)  fastcat(p, q)  timecat([2, p], [1, q])  polymeter(p, q)
 ```
 
-The grammar, with its total desugaring:
+- **Closure.** Every combinator takes patterns and returns a pattern.
+- **Purity.** A query depends only on (pattern, span, seed). Randomness (`?`,
+  `degrade`) hashes (seed, node path, cycle). The same query always returns the
+  same events, on any thread.
+- **Static width.** Width is computed from structure: `stack` sums, sequences
+  take the max, `every` takes the max of both branches, `off` sums. This works
+  because every pattern is built from combinators (invariant 2). There is no
+  escape hatch for raw user query functions; it would make width unknowable.
+
+### 3.3 Notation
+
+Mini-notation is a tagged template literal. It follows Strudel wherever Strudel
+has a form. Interpolation splices patterns, numbers, arrays, and signals:
+
+```js
+const hook = p`c4 [e4 g4] <a4 b4>`
+const line = p`${hook} ${hook.rev().add(12)} ~ ${hook.fast(2)}`
+```
 
 | Notation | Meaning | Desugars to |
 |---|---|---|
 | `c4 e4` | sequence within cycle | `fastcat(c4, e4)` |
-| `~` | rest | `silence` |
+| `~` | rest | a `rest` event |
 | `[a b]` | subdivide one step | `fastcat(a, b)` as one step |
-| `<a b>` | alternate per cycle | `slowcat(a, b)` |
-| `{a, b}` | stack (widens) | `stack(a, b)` |
-| `a*2` | repeat within step | `a.fast(2)` |
-| `a!2` | replicate (adds steps) | `fastcat(a, a)` |
-| `a@2` | hold across 2 steps | weight 2 |
-| `a _ b` / `a_b` | tie (legato) | duration extension |
-| `a?` `a?.75` | maybe | `a.degrade(0.5)` / `.degrade(0.25)` |
-| `a(3,8)` `a(3,8,2)` | euclidean | `a.euclid(3,8,2)` |
+| `[a, b]` | play together (chord) | `stack(a, b)` |
+| `<a b>` | alternate per cycle | `cat(a, b)` |
+| `{a b c, d e}` | polymeter, steps from first layer | `polymeter(...)` |
+| `a*2` `a/2` | faster / slower within step | `a.fast(2)` / `a.slow(2)` |
+| `a!2` | replicate (adds steps) | `a a` in the enclosing sequence |
+| `a@2` | weight 2 (one longer step) | `timecat([2, a], ...)` |
+| `a _` | tie (two steps, one note) | `a` then a `tie` event |
+| `a?` `a?0.7` | maybe | `a.degrade(0.5)` / `a.degrade(0.7)` |
+| `a(3,8,2)` | euclidean | `a.euclid(3, 8, 2)` |
 
-The desugaring table is normative: if a notation form has no combinator
-equivalent, the notation form is wrong. Parse errors are loud; there is no
-"parses but plays nothing."
+The table is normative: a notation form without a combinator is a bug. Parse
+errors are loud.
+
+`a@2` and `a _` sound the same when read by time. They differ when read by
+steps: `a@2` is one step, `a _` is two.
+
+### 3.4 Records
+
+A step can carry several values, like the rows of a hardware sequencer:
+
+```js
+const s = seq(p`c3 e3 g3 b3`.with({ vel: p`1 0.4 0.7`, cv2: p`0 1` }))
+s.saw().mul(s.vel)
+```
+
+`with` takes structure from the left pattern. Each field is sampled at the left
+pattern's onsets, so fields never drift out of step. `seq` exposes each field
+as an output.
+
+### 3.5 Voices
+
+`.voices(policy, n)` assigns events to `n` lanes. It is a pure function over the
+event stream, so it stays deterministic.
+
+- `"packed"` (default): stack order fills lanes from 0.
+- `"stable"`: a note that continues keeps its lane.
+- `"rr"`: round-robin, so release tails ring out in their own lane.
+
+For `packed` and `stable`, `n` defaults to the structural width. For `rr`, `n` is
+required: it is how many tails may ring, which structure cannot know.
 
 ---
 
 ## 4. The bridge
 
-### 4.1 Clock
+### 4.1 Read
 
-A clock is a module emitting a **phase ramp in beats** plus `gate`/`trig`. Tempo
-is an input — a signal — so tempo modulation (ritardando, swing-as-warp, LFO on
-tempo) is ordinary patching.
+`seq(pattern, position)` reads `pattern` at `position`. When `position` is
+omitted, it is the ambient clock's beat position.
 
-One clock is **ambient**: `clock(120)` at the top of a program sets it, and every
-beat-domain consumer (sequencers, beat-unit times) uses it unless handed another
-one explicitly. Multiple explicit clocks coexist; polymeter is two clocks. The
-ambient clock is the composition root, not a global mutable — it is bound at
-eval, per patch.
+Outputs:
 
-### 4.2 Sequencer
+- `out` (default) — the current event's value, held between events.
+- `gate` — high while the position is inside a `note` or one of its ties.
+  Between two touching notes, the gate dips for a fixed 1 ms so envelopes
+  retrigger. When the position comes from a clock, the dip falls before the
+  change, so gate and trig rise together. Otherwise it starts at the change.
+- `trig` — a single-sample pulse when the position enters a different note.
+  A tie belongs to its note: moving from a note into its own tie fires nothing;
+  jumping onto a tie from anywhere else enters that note and fires. Direction
+  and distance do not matter: a clock step, a reset, a backwards scan, and a
+  random jump all fire once.
+- one output per record field (§3.4).
 
-`seq(pattern)` is a module: phase in, signals out.
+This is how voltage-addressed sequencers have always worked: arriving at a new
+stage fires its pulse, however you got there.
 
-- `pitch` — semitones, sample-and-held per event
-- `gate` — high for the event's sounding duration (gap policy: fixed ~1 ms
-  pre-release for retrigger, never proportional)
-- `trig` — single-sample pulse at each non-tied onset
-- width — the pattern's maximum simultaneity, packed. `{c4,e4,g4}` is width 3.
-  `{a,b} {c,d,e}` is width 3, lanes packed, no silent lanes.
+### 4.2 Positions
 
-Because output is a pure function of (pattern, phase, seed), the sequencer is
-scrubbable: jump the phase anywhere, run it backwards, the output is defined and
-deterministic. Alternation is `cycle mod n`, never visit-counting.
+- `tempo(bpm)` sets the ambient clock and returns it. `clock(bpm)` makes another
+  clock for polytempo. A clock's outputs: `out` (beat position), `beat` (trig),
+  `bar` (trig per cycle). Tempo is an input, so tempo modulation is patching.
+- `counter(trig, { reset, length })` counts triggers. Its output is a step
+  position.
+- Any signal is a position: `seq(p.steps(), lfo(0.1, 0, 8))` scans eight steps.
 
-### 4.3 Patterns as signals
+Read by steps with `.steps()`: the nth event, rests and ties included, spans
+`[n, n+1)`. Stacks count per layer. `fast` and `slow` do nothing under steps;
+`rev`, `euclid`, `every`, `?`, and `<a b>` keep their meaning.
 
-A pattern used where a signal is expected lifts implicitly: it is queried at the
-governing clock's current position, sample-and-held. This is the uniformity
-invariant paying rent:
+### 4.3 Patterns as knobs
+
+A pattern used where a signal is expected is read at the ambient clock: it
+becomes `seq(pattern).out`. Before the first note it holds the value of the most
+recent earlier event, found by querying backwards. A rest holds the last value.
+A stack widens the module it feeds.
+
+A stepped value into a continuous control clicks at each edge. `slew` declicks
+it:
 
 ```js
-clock(120)
-
-const s = seq("c2 c2 c2 c2")
-const cutoff = slew({ in: p`400 800 [1600 200] <200 3200>`, rise: 5e-6, fall: 5e-6 })
-s.saw()
-  .lpf({ cutoff, res: 0.4 })                            // pattern-modulated cutoff
-  .mul(s.gate.adsr(0.005, 0.12, 0.5, 0.2))
-  .gain(0.3)
-  .out()
+lpf({ cutoff: slew(p`72 84 [96 60] <60 108>`, 0.01) })
 ```
 
-Any knob on any module is patternable with zero ceremony. Stepping a pattern into
-a continuous control (a filter cutoff) produces audible clicks at each step edge;
-the shipped idiom wraps the pattern in `slew` to declick, giving glide between
-values (shown in §10).
+### 4.4 Signals inside patterns
 
-### 4.4 The analog direction
+A pattern may carry signals as values. It becomes a switch that changes which
+cable is live:
 
-Patterns can also be advanced by **trigger, not phase** — analog step-sequencer
-semantics: `patstep(pattern, trigSignal)` emits the next event payload on each
-trigger, ignoring event durations. Feed it a euclidean gate, a comparator on an
-LFO, a manual button — this is where the modular half earns its keep, and no
-uzulang can express it. (Automatic pattern-as-signal lifting, §4.3, produces
-`patsig` nodes internally; `patstep` is the explicit trigger-domain stepper.)
+```js
+const env = s.gate.ad(0.01, 0.3)
+lpf({ cutoff: p`${lfo(0.3, 60, 96)} ${env.mul(36).add(60)} 80` })
+```
+
+This desugars to `mux(indexPattern, [palette])`. Rules:
+
+- Every signal in the palette runs all the time, like modules in a rack.
+- Combinators change **when** a signal is selected, never the signal itself:
+  `fast(2)` switches twice as often; it cannot speed up an LFO.
+- Only memoryless maps (`add`, `mul`, `clip`) apply to signal values, because
+  they commute with switching. A stateful map (`slew`) on a pattern of signals
+  is an error.
+- Palette members have structural identity, so adding a step does not reset
+  their state.
 
 ---
 
 ## 5. Modules
 
-A module is a Mealy machine. The entire contract:
+A module is a Mealy machine. The whole contract:
 
 ```js
-module("lpf", {
-  in:   { audio: sig(0), cutoff: hz(1000), res: unit(0.2) },
-  out:  { audio: sig() },
-  state: () => ({ ic1: 0, ic2: 0 }),
-  tick: (s, i, o, sr) => { /* pure: reads i and s, writes o and s */ },
+defmod({
+  name: "lpf",
+  ins:    { in: sig(0), cutoff: semis(84), res: unit(0.2) },
+  outs:   { out: sig() },
+  config: { mode: "lp" },
+  state:  (sr) => ({ ic1: 0, ic2: 0 }),
+  helpers: { tanh },
+  tick:   (s, i, o, c, sr) => { /* reads i, c; writes o and s */ },
 })
 ```
 
-- **`in`/`out`** declare names, defaults, and unit annotations. Annotations
-  (`hz`, `unit`, `semis`, `beats`, `secs`, `sig`) are *documentation with
-  behavior* — they drive UI, error messages, and beat-unit resolution — but they
-  are not a type system and never reject a number.
-- **`state`** is an explicit constructor. State is plain serializable data
-  (numbers, typed arrays). This single rule is what makes live re-eval state
-  migration, inspection, and time-travel debugging mechanical.
-- **`tick`** runs per sample per lane. Reducers/reshapers declare a lane policy
-  and receive lane arrays. Heavy DSP compiles to WASM behind the same contract.
-- The first parameter is the default input (chain target); the first output is
-  the default output. Everything else is explicit.
+- **`ins`/`outs`** declare names, defaults, and units with the same tags as
+  §2 (`hz`, `semis`, `secs`, `beats`), plus `unit` (0..1) and `sig` (no unit).
+  Units drive UI, errors, and conversion of tagged values.
+- **`state`** runs once at eval. State is plain data: numbers, fixed-shape
+  objects, typed arrays, fixed-size arrays of fixed-shape objects. This makes
+  live state migration, inspection, and snapshots mechanical.
+- **`tick`** runs per sample per lane. Reducers and reshapers declare a lane
+  policy and receive lane arrays.
+- **`helpers`** are named functions `tick` may call. They follow the same rules
+  as `tick`.
+- The first input is the default input (chain target). The first output is the
+  default output, named `out` everywhere. Semantic names (`gate`, `trig`)
+  appear only where they mean exactly that.
+- A stereo module (`pan`) has outputs `l` and `r` and no default output.
+  Chaining from it connects by name (§2); anything else is a loud error.
 
-One namespace, consistent port names: default output is `out` everywhere;
-semantic outputs (`pitch`, `gate`, `trig`) only where those words mean exactly
-that. No `cv`/`audio`/`signal`/`val` dialects.
+`defmod` is the only way to define a module. Built-in modules use it too. It is
+scope-aware: at root scope it registers into the library; inside a patch it
+registers for that patch only.
 
-Modules are defined by ONE function, `defmod(spec)`, regardless of where the
-definition lives — it is scope-aware. At root scope it registers into the
-bundle's registry; inside a patch eval it registers into that patch alone,
-scoped to the eval that defines it. Same contract either way.
+A module can instead be a **sub-patch**: `defmod({ name, ins, outs, patch:
+(i) => ({ out: ... }) })`. It gets the same ports, chaining, positional args,
+and identity as any module. This is saving a sub-patch as a module.
 
-Time-valued inputs accept both domains: a plain number means the declared unit;
-`beats(3/8)` and `secs(0.02)` convert explicitly.
+### 5.1 What `tick` may do
 
-### 5.1 The oscillator family
+Everything whose shape is fixed when the patch starts. `state()` runs before
+compiling, so the compiler sees the real shapes and needs no type guessing.
 
-`osc`/`sin`/`saw`/`tri`/`sqr` share one input surface:
+- Allowed: arithmetic, `Math.*` (bound to auxlang's own math, §7),
+  `if`/`switch`/loops, locals, fixed-shape state
+  objects and arrays, helpers (no recursion), config strings (resolved before
+  the patch runs).
+- Not allowed: creating objects or arrays, growing arrays or adding fields,
+  computed property names, runtime strings, closures over patch variables.
 
-- `pitch` — semitones, default 69 (A4). This is the **default input** — chaining
-  `s.saw()` off a sequencer's pitch tap plays it musically.
-- `freq` — Hz, optional. When connected it **wins** over `pitch`.
+A tick outside these rules is a loud error at eval, naming the line.
+
+**Randomness.** `Math.random()` inside a tick is a seeded generator. Each
+module instance and each lane gets its own stream from (seed, identity, lane).
+The generator's position is module state, so re-eval carries it. For a value
+that is the same every time a key comes back, use `hashRandom(key)`.
+
+**Lambdas** `(s, sr, t) => n` are stateless modules and follow the same rules.
+
+### 5.2 Modulation adds
+
+A knob on a rack is a base value; each CV input adds to it through its own
+depth. Auxlang ports work the same way:
+
+```js
+lpf({ cutoff: 60 })
+  .mod("cutoff", lfo(0.3), 12)              // ± 12 semitones
+  .mod("cutoff", s.gate.ad(0.01, 0.3), 36)  // + up to 36 semitones
+```
+
+Setting a port sets its base. Each `.mod(port, signal, depth = 1)` adds
+`signal × depth`. Modulo is `wrap(by)`, so `mod` means modulation.
+
+### 5.3 Knobs
+
+A plain number is baked into the compiled patch. `knob(800)` is a live value:
+the editor can drag it, and the new value goes straight into the running engine
+with no re-eval. `knob(800, "cut")` names it so its identity survives edits.
+
+### 5.4 The oscillator family
+
+`sin`/`saw`/`tri`/`sqr` share one input surface:
+
+- `pitch` — semitones, default 69 (A4). The default input.
+- `fm` — Hz, added to the frequency from `pitch` (linear FM).
 - `min`/`max` — output range, default −1/1.
 - `phase` — initial phase.
 
-Positional args are `[freq, min, max]`. So `sin(0.3, 100, 800)` is an LFO
-(0.3 Hz, ranged 100..800), while `saw()` chained from a seq's pitch tap plays a
-note. Footgun: `sin(0)` sets freq to 0 → silence; use `sin()` for the default A4,
-or `sin({ pitch: 60 })` to pitch it explicitly.
+Positional args are `[pitch, min, max]`. `sin()` is A4. `sin(0)` is pitch 0,
+about 8.18 Hz. An exact frequency is `sin(hz(440))`. Slow modulation uses
+`lfo(freq, min, max)` with `{ shape }` in config.
 
-### 5.2 Amplitude
+### 5.5 Amplitude and envelopes
 
-Amplitude is multiplication: `.mul(x)` multiplies two signals. `gain` and `vca`
-are aliases of `mul` — `.gain(0.3)` reads as a fixed level, `.mul(env)` reads as
-a VCA. Gain takes one factor (positional or `by`); there is no object form.
-
-### 5.3 Envelopes
-
-The envelope family is three modules, all gate-triggered:
-
-- `ad(attack, decay)` — rising-edge triggered; ignores gate length.
-- `ar(attack, release)` — attacks while the gate is high, releases on its drop.
-- `adsr(attack, decay, sustain, release)` — the full four-stage envelope.
+Amplitude is multiplication: `.mul(x)`. `gain` and `vca` are aliases. Envelopes
+are gate-driven: `ad(attack, decay)` fires on the gate's rising edge,
+`ar(attack, release)` follows the gate, `adsr(a, d, s, r)` is the full envelope.
+Times are seconds or `beats(x)`.
 
 ---
 
 ## 6. The patch
 
 A program is a JS expression. Module calls, chains, setters, and combinators
-construct **pure values** — nothing exists, costs, or sounds until it reaches an
-output.
+build **pure values**. Nothing exists, costs, or sounds until it reaches `out`.
 
 ```js
-clock(124)
+tempo(124)
 
-let s = seq(p`c3 [e3 g3] <a2 b2> ~`.every(4, q => q.rev()))
-s.pitch.saw()
-  .lpf({ cutoff: sin(0.2, 400, 2600), res: 0.3 })
+const s = seq(p`c3 [e3 g3] <a2 b2> ~`.every(4, q => q.rev()))
+s.saw()
+  .lpf({ cutoff: s.add(24), res: 0.3 })
+  .mod("cutoff", lfo(0.2), 12)
   .mul(s.gate.adsr(0.005, 0.1, 0.6, 0.2))
   .out()
 ```
 
-- **Value semantics, honestly.** `x.cutoff(800)` returns a new value; the old
-  one is unchanged *and unregistered*. A discarded chain is garbage, not a
-  zombie. Evaluation collects the roots (`out` calls), prunes everything
-  unreachable, compiles what remains.
-- **`out()` is the only effect.** It marks a root and returns nothing.
-- **Binding is `apply`** when a chain needs its own intermediate:
-  `clockDiv(4).apply(c => ...)`. With the ambient clock and pattern-lifting,
-  the need is rare.
-- **Loud failure.** Unknown parameter names, unconnected required inputs,
-  arity surprises: errors, at eval time, naming what was available. A live
-  language must never silently no-op.
+- **Value semantics.** `x.cutoff(800)` returns a new value. A discarded chain is
+  garbage. Eval collects the `out` roots, prunes the rest, and compiles.
+- **Effects.** `out()` marks a root. `tempo()` and `seed()` are **settings**.
+  Settings bind when eval finishes, so their place in the code does not matter.
+  Each setting appears at most once; a second one is an error. `defmod` inside
+  a patch registers for that patch.
+- **Binding** is `apply`: `clock(90).apply(c => ...)`. It is rarely needed.
+- **Loud failure.** Unknown ports, unconnected required inputs, too many
+  positional args, a tick outside §5.1, a dropped stereo channel: errors at
+  eval, naming what was available. A live language never silently no-ops.
 
 ### 6.1 Feedback
 
-Cycles are legal. A cycle must pass through one explicit unit delay, written as
-the `loop` combinator — the fed-back value arrives one sample late:
+Cycles are legal. A cycle passes through one explicit unit delay, written as
+`loop`. The fed-back value arrives one sample late:
 
 ```js
-// Karplus–Strong: a noise burst circulating in a short filtered delay
-clock(96)
+// Karplus–Strong: a noise burst circulating in a delay tuned to the note
+tempo(96)
 
 const s = seq("c3 g3 <c4 e4> g3")
-const exciter = noise().mul(s.gate.ad(0.001, 0.008)).mul(0.5)
+const exciter = noise().mul(s.gate.ad(0.001, 0.008))
 loop((fb) =>
-  exciter.add(fb.delay({ time: 0.006, feedback: 0, mix: 1 }).lpf({ cutoff: 2400 }).mul(0.96)),
-).gain(0.3).out()
+  exciter.add(fb.delay({ time: s.period(), mix: 1 }).lpf({ cutoff: 98 }).mul(0.99)),
+).gain(0.8).out()
 ```
 
-`loop(f)` is the fixpoint of the signal graph (ArrowLoop, for those keeping
-score); operationally it is a patch cable run from an output back to an input,
-which is all feedback ever was. Filter pinging, FM feedback, cross-modulation,
-send loops — first-class, not baked into individual effects. (Note: `mod` is the
-modulo module, distinct from `mul`; don't confuse the two in a feedback path.)
+`loop` can carry several wires as a record, for cross-coupled systems:
+
+```js
+loop({ a: 0, b: 0 }, (fb) => ({
+  a: sin(57).mod("pitch", fb.b, 12),
+  b: sin(64).mod("pitch", fb.a, 12),
+})).apply((v) => v.a.add(v.b).gain(0.2).out())
+```
+
+`loop` is the fixpoint of the signal graph (ArrowLoop). In a rack, it is a cable
+from an output back to an input.
 
 ### 6.2 Identity and live re-eval
 
-Re-evaluation is the core interaction, so its semantics are language-level:
+Re-eval is the core interaction, so its rules are part of the language:
 
-- The new graph is diffed against the running one **structurally**; matching
-  nodes keep their state (oscillator phase, delay lines, envelope position, seq
-  position). `x.id("bass")` pins identity explicitly when structure changes but
-  state should survive.
-- The master phase is continuous across evals; patterns pick up mid-cycle.
+- The new graph is matched to the running one **structurally**: by module, by
+  the identity of its inputs, and by order among duplicates. Matching nodes keep
+  their state. `.id("bass")` pins identity when the structure changes.
+- The clock position is continuous across evals. Patterns pick up mid-cycle.
 - The old and new graphs crossfade equal-power over a short window.
-- Because module state is data (§5), migration is clone-and-carry — including
-  WASM, which serializes through the same contract.
-- A patch-defined module's source participates in its structural identity:
-  redefining its tick is a different machine, so its state resets unless
-  pinned.
+- Module state is data (§5), so migration is copy-and-carry.
+- A patch-defined module's source is part of its identity. A changed tick is a
+  different machine, so its state resets unless pinned.
+- Knob moves (§5.3) are not re-evals. They change a value and nothing else.
 
 ---
 
 ## 7. Determinism
 
-One seed per performance (re-eval preserves it; a new seed is an explicit act).
-Every stochastic element — pattern `?`, `degrade`, noise sources, random LFOs —
-derives its stream from (seed, structural path). Consequences, all mandatory:
+A performance is a pure function of (timestamped code log, seed, input log).
 
-- Audio and visualization agree: the highlight never shows a note the audio
-  skipped.
-- A performance is replayable from (code history, seed).
-- Rendering offline equals rendering live, sample for sample.
+- **Seed.** `seed(42)` pins the patch seed. Without it, the runtime draws a seed
+  when play starts and keeps it across re-evals. The editor shows it, so a happy
+  accident can be pinned. `.seed(n)` on a pattern or module sets a local seed.
+- **Streams.** Every random element draws from (seed, identity, lane). Editing
+  code above a module can change its identity and so its randomness; `.id()` or
+  `.seed()` holds it.
+- **The log.** Each eval is logged with the sample at which it took effect.
+  MIDI and other live inputs are logged as they arrive.
+- **Math.** Auxlang ships its own `sin`, `exp`, `tanh`, and friends. Host math
+  differs between engines; ours does not.
+
+Consequences: audio and visuals agree; offline equals live, sample for sample;
+a set replays exactly from its log.
+
+**Seeking is not a language feature.** Patterns are pure functions of position,
+so a patch can move a position anywhere: a reset, a scan, a jump. That is patch
+logic. The whole patch is not seekable, because filters, delays, envelopes, and
+feedback carry history. Tools that want to seek in a recording load a state
+snapshot and render forward.
 
 ---
 
-## 8. Runtime obligations
+## 8. Compilation
 
-The spec constrains the implementation only where semantics leak through:
+Running a patch means compiling it. The design keeps everything static at eval
+so the compiler can turn the whole patch into one function:
 
-- **Sample-accurate, single-rate.** One tick per sample; gates and trigs land on
-  the exact sample. No event scheduler, no block-quantized control.
-- **The audio thread allocates nothing** in steady state. Pattern queries per
-  cycle are precomputed or allocation-free; module ticks write into
-  preallocated frames.
-- **Library code lives in the audio thread** (bundled), not serialized through
-  strings. Only user-written code — inline lambdas and patch-defined module
-  specs — crosses the boundary by value; such code must be closure-free, and
-  it travels inside the `Program`.
-- Mixing and spatialization at the boundary: reducers use equal-power laws;
-  `out` applies 1/√n lane mixdown, a DC guard, and a true-peak safety clip.
+- width, the `mux` palette, `loop` wires, and settings are fixed at eval;
+- module state shapes are known (§5.1);
+- built-in and user modules share one contract and one compiler, so a user
+  module is as fast as a built-in by construction.
+
+Runtime obligations:
+
+- **Sample-accurate, single-rate.** One tick per sample. Gates and trigs land on
+  the exact sample. The compiled function runs a block of samples in one loop,
+  with state in locals, without changing per-sample semantics.
+- **No allocation on the audio thread.** Clock reads use flat event tables
+  built one cycle ahead. A position with a known range (a counter's `length`,
+  an LFO's min/max) gets tables for that range. Any other position uses a query
+  path that does not allocate.
+- **Knobs are slots.** Plain numbers are baked in; `knob` values are read from a
+  slot the editor writes.
+- **Backends agree.** The JS backend is the reference. A WASM backend compiles
+  the same tick subset with the same math, and must match it bit for bit.
+- **Re-eval does not glitch.** A new program is compiled and warmed before the
+  swap.
+- **Mixing.** Reducers use equal-power laws. `out` applies 1/√n lane mixdown, a
+  DC guard, and a peak safety clip.
 
 ---
 
 ## 9. What is deliberately absent
 
-Absences are design decisions, listed so they are not mistaken for gaps:
-
-- **No unit type system.** Conventions and annotations, not a checker. The
-  patch that "makes no sense" and sounds great is the point of modular.
-- **No dynamic voice allocation.** Width is static; a fixed-width round-robin
-  allocator is a library module, not a language concept.
-- **No event/message layer.** If it changes over time, it is a signal; if it is
-  musical structure, it is a pattern. There is no third thing.
-- **No macro layer.** JS is the metaprogramming: functions that return patches,
-  arrays mapped into stacks, combinators written by users in userland.
-- **No inheritance.** Modules compose by patching; there is no module taxonomy.
-- **No MIDI-first design.** MIDI in/out are modules at the boundary
-  (`midiIn().pitch`, `midiIn().gate`), not an organizing principle.
-
-### 9.1 Backlog — vision not yet shipped
-
-Named so they are not mistaken for shipped API:
-
-- **`spread`** — a one-call stereo widener. Today stereo is explicit two-cable
-  patching into `out({ l, r })` (§2).
-- **Oscillator `fine` detune** — per-lane detune arrays on the oscillator family.
-- **`beats()` tempo-sync for physical times** — beat-domain delay/envelope times
-  that retune live with the clock. Today those times are in seconds; a synced
-  delay is not yet expressible.
+- **No unit type system.** The patch that "makes no sense" and sounds great is
+  the point of modular.
+- **No runtime voice allocation.** Lanes are assigned by `.voices()`, a pure
+  pattern function. Width is static.
+- **No event or message layer.** If it changes over time, it is a signal. If it
+  is musical structure, it is a pattern.
+- **No macro layer.** JS is the metaprogramming. Sub-patch modules (§5) give
+  reuse a module's shape.
+- **No inheritance.** Modules compose by patching.
+- **No MIDI-first design.** MIDI in/out are modules at the boundary.
+- **No whole-patch seeking** (§7).
+- **No host randomness.** `Math.random` is always the seeded stream.
 
 ---
 
-## 10. A closing patch
+## 10. The instrument surface
 
-Everything at once — ambient clock, pattern algebra, notation splicing,
-pattern-as-signal modulation, per-lane poly, explicit stereo patching,
-trigger-domain stepping, feedback:
+The editor is part of the instrument. It must:
+
+- let you drag any `knob` and hear it at once;
+- show the current seed, and reroll it on request;
+- show small meters on outputs and modulation sources, like a rack's LEDs;
+- highlight the event each `seq` is reading.
+
+---
+
+## 11. A closing patch
+
+Everything at once: ambient tempo, pattern algebra, records, voices, additive
+modulation, knobs, step reading, signals in patterns, stereo by name, feedback.
 
 ```js
-clock(126)
+const t = tempo(126)
+seed(7)
 
-// pads: width-3 stack, packed lanes, pattern-modulated cutoff, panned wide
-const padP = p`{c3,e3,g3} <{a2,c3,e3} {f2,a2,c3}>`.slow(2)
-const pad = seq(padP)
-pad.pitch.saw()
-  .lpf({ cutoff: p`400 <800 1600>`.slow(2), res: 0.2 })
+// pads: stable voices, cutoff keytracked and modulated, slow auto-pan
+const pad = seq(p`[c3,e3,g3] <[a2,c3,e3] [f2,a2,c3]>`.slow(2).voices("stable", 3))
+pad.saw()
+  .lpf({ cutoff: pad.add(24), res: 0.2 })
+  .mod("cutoff", lfo(0.1), 12)
   .mul(pad.gate.adsr(0.4, 0.3, 0.7, 1.2))
-  .pan(0.4)
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .pan(lfo(0.05, -0.6, 0.6))
+  .out()
 
-// acid line: transformed hook, feedback delay
+// acid line: transformed hook, live cutoff knob, envelope sweep, synced echo
 const hook = p`c2 [c2 eb2] g1 <bb1 c2>`
 const line = seq(hook.every(4, (q) => q.rev()).off(1 / 8, (q) => q.add(12).degrade(0.4)))
 loop((fb) =>
-  line.pitch.slew(0.03).saw()
-    .lpf({ cutoff: line.gate.adsr(0.001, 0.12, 0, 0).mul(3000).add(180), res: 0.85 })
+  line.slew(0.03).saw()
+    .lpf({ cutoff: knob(52, "acid"), res: 0.85 })
+    .mod("cutoff", line.gate.adsr(0.001, 0.12, 0, 0), 48)
     .mul(line.gate)
-    .add(fb.delay({ time: 0.35, mix: 1 }).mul(0.35)),
+    .add(fb.delay({ time: beats(3 / 4), mix: 1 }).mul(0.35)),
 ).gain(0.5).out()
 
-// drums: euclidean kick, backbeat snare, hat velocity stepped by a comparator
-seq(p`60(4,4)`).trig.kick().out()
-seq("~ 60 ~ 60").trig.snare().out()
-sin(9).gt(0.7).apply((tg) => tg.hihat().mul(patstep(p`1 0.6 0.8 0.5`, tg)).gain(0.8).out())
+// arp: the hook read by steps, advanced by a comparator, reset each bar
+const arp = seq(hook.add(24).steps(), counter(lfo(4).gt(0.8), { reset: t.bar }))
+arp.tri()
+  .lpf({ cutoff: p`${lfo(0.3, 72, 108)} 96` })
+  .mul(arp.gate.ad(0.001, 0.1))
+  .gain(0.2)
+  .out()
+
+// drums: euclidean kick, backbeat snare, hats with per-step velocity
+seq(p`60(4,8)`).trig.kick().out()
+seq(p`~ 60 ~ 60`).trig.snare().out()
+const hats = seq(p`60*16?0.3`.with({ vel: p`1 0.6 0.8 0.5` }))
+hats.trig.hihat().mul(hats.vel).gain(0.8).out()
 ```
 
 Every line is the same language: patterns are values, signals are values, and
-the bridge between them is just another cable.
+the bridge between them is a cable carrying a position.
