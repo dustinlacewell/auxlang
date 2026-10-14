@@ -2,11 +2,15 @@ import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { configDefaults } from "vitest/config";
 import { interactiveTestsPlugin } from "./src/tests/interactive/vite-plugin";
 import { patternTestsPlugin } from "./src/tests/patterns/vite-plugin";
 
 export default defineConfig(({ command }) => ({
 	plugins: [react(), tailwindcss(), interactiveTestsPlugin(), patternTestsPlugin()],
+	test: {
+		exclude: [...configDefaults.exclude, "**/.claude/worktrees/**"],
+	},
 	build: {
 		target: "esnext",
 		rollupOptions: {
