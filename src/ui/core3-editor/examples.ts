@@ -57,13 +57,13 @@ const karplus = `// loop() feedback: a plucked string is a noise burst in a dela
 clock(96)
 
 const s = seq("c3 g3 <c4 e4> g3")
-const exciter = noise().mul(s.gate.ad(0.001, 0.008)).mul(0.5)
+const exciter = noise().mul(s.gate.ad(0.001, 0.008))
 
 loop((fb) =>
   exciter.add(
-    fb.delay({ time: 0.006, feedback: 0, mix: 1 }).lpf({ cutoff: 2400 }).mul(0.96),
+    fb.delay({ time: 0.006, feedback: 0, mix: 1 }).lpf({ cutoff: 2400 }).mul(0.99),
   ),
-).mul(0.3).out()
+).mul(0.8).out()
 `;
 
 /** (e) Poly: a stacked chord pattern sequences all lanes at once. */
@@ -143,7 +143,7 @@ const stab = stabSeq.saw()
 // delay feedback stays 0: the loop IS the feedback path, so every repeat re-passes the lpf
 // a touch of reverb behind the echoes glues them into one room instead of discrete slaps
 loop((fb) =>
-  stab.add(fb.delay({ time: 0.369, feedback: 0, mix: 1 }).lpf({ cutoff: 1200 }).mul(0.55)),
+  stab.add(fb.delay({ time: 0.369, feedback: 0, mix: 1 }).lpf({ cutoff: 1200 }).mul(0.22)),
 )
   .reverb({ room: 0.6, damp: 0.6, mix: 0.15 })
   .mul(0.45)
@@ -265,9 +265,370 @@ mel.pitch.fm({ index: lfo(0.06, 0.4, 1.6), ratio: 1 })
   .apply((v) => out({ l: v.l, r: v.r }))
 `;
 
+/** (i) A mirror canon: one theme, flipped and reversed by pattern arithmetic. */
+const mirrorCanon = `// mirror canon — D dorian, 100 bpm
+//
+// The answer is the lead turned upside down around D, four bars late.
+// Dorian's steps (W H W W W H W) read the same both ways, so the flip
+// never leaves the key. The lead's second half is its first half played
+// backwards, so the theme, its reverse, its mirror and its reverse mirror
+// all sound — and the two voices only ever meet in thirds and sixths.
+clock(25) // one cycle = one bar
+
+const D2 = 38, D4 = 62, D5 = 74
+const mirror = (q, axis) => q.mul(-1).add(2 * axis)
+const eightBars = (q, turn) => p\`\${q} \${turn(q)}\`.slow(8)
+
+// ---- harmony: four chords climb, then their mirror image falls ----
+// Dm7 Em7 Fmaj7 G6 | Em7/D Dm7/C Cmaj7/B Dm7/A
+const chords = p\`{a3,c4,d4,f4} {g3,b3,d4,e4} {f3,a3,c4,e4} {g3,b3,d4,e4}\`
+const pad = seq(eightBars(chords, (q) => mirror(q, D4)))
+pad.tri()
+  .lpf(lfo(0.05, 500, 1100), 0.1)
+  .mul(pad.gate.adsr(0.3, 0.5, 0.7, 0.8))
+  .gain(0.2)
+  .out()
+
+// the bass climbs D E F G; its mirror walks down D C B A
+const bass = seq(eightBars(p\`d2 e2 f2 g2\`, (q) => mirror(q, D2)))
+const pulse = seq("[60@3 60@3 60@2]")
+bass.tri()
+  .lpf(400, 0.1)
+  .mul(pulse.gate.adsr(0.005, 0.2, 0.6, 0.1))
+  .gain(0.45)
+  .out()
+
+// ---- the canon ----
+const phrase = p\`[d5@2 a5@2 c6@2 b5 a5] [g5@3 e5 g5@2 b5@2] [a5@2 f5@2 a5 c6@3] [b5 a5 g5@2 b5@4]\`
+const theme = eightBars(phrase, (q) => q.rev())
+const lead = seq(theme)
+const answer = seq(mirror(theme, D5).late(4))
+
+// lead: a reedy FM voice (a 1:2 ratio keeps only odd harmonics), right
+lead.pitch.add(lfo(5, -0.08, 0.08))
+  .fm(1.2, 2)
+  .mul(lead.gate.adsr(0.03, 0.2, 0.7, 0.25))
+  .reverb({ room: 0.7, damp: 0.5, mix: 0.25 })
+  .gain(0.22)
+  .pan(0.35)
+  .apply((v) => out({ l: v.l, r: v.r }))
+
+// answer: a soft triangle, left; it waits four bars to enter
+const entry = slew({ in: p\`<0 1 1 1 1 1 1 1>\`.slow(4), rise: 0.02, fall: 0.02 })
+answer.tri()
+  .lpf(1800, 0.1)
+  .mul(answer.gate.adsr(0.04, 0.2, 0.7, 0.25))
+  .mul(entry)
+  .reverb({ room: 0.7, damp: 0.5, mix: 0.25 })
+  .gain(0.3)
+  .pan(-0.35)
+  .apply((v) => out({ l: v.l, r: v.r }))
+
+// ---- drums: in for the middle sixteen bars of every thirty-two ----
+const groove = slew({ in: p\`<0 1 1 0>\`.slow(8), rise: 0.02, fall: 0.02 })
+
+// the kick doubles the bass's 3+3+2 pulse
+seq("[60@3 60@3 ~@2]").trig
+  .kick({ pitch: 55, sweep: 4, decay: 0.3, click: 0.05 })
+  .mul(groove)
+  .gain(0.7)
+  .out()
+
+seq("~ 60 ~ 60").trig
+  .snare({ pitch: 190, tone: 0.3, decay: 0.12, snappy: 0.6 })
+  .mul(groove)
+  .gain(0.9)
+  .out()
+
+const hat = seq("60*8")
+hat.trig
+  .hihat({ decay: 0.03, tone: 0.7, metal: 0.6 })
+  .mul(patstep(p\`0.5 1\`, hat.trig))
+  .mul(groove)
+  .gain(2)
+  .out()
+`;
+
+/** (j) A chaconne: a composed form, grown by one glided energy curve. */
+const chaconne = `// chaconne — variations over a lament bass, D minor, 80 bpm
+//
+// A chaconne repeats one bass line and grows variations over it. This
+// ground falls by half steps, D C# C B Bb A, then cadences G A. Five
+// variations of eight bars:
+//   1 the ground alone          2 the theme
+//   3 the theme, with motion    4 the climax: the theme redrawn in eighths
+//   5 the theme stripped to one note a bar, back down to the ground
+// One energy curve, written as a pattern and glided, opens the filters,
+// brings the drums in and out, and fills in the harp note by note.
+clock(20) // one cycle = one 4/4 bar
+
+// one value per variation; slew turns each step into a ~10 s swell
+const energy = slew({ in: p\`<0.1 0.25 0.5 1 0.35>\`.slow(8), rise: 30, fall: 30 })
+
+// ---- the ground ----
+const ground = seq(p\`d2 c#2 c2 b1 bb1 a1 g1 a1\`.slow(8))
+ground.tri()
+  .lpf(300)
+  .mul(ground.gate.adsr(0.05, 0.3, 0.8, 0.4))
+  .gain(0.5)
+  .out()
+
+// strings, voiced so every voice moves by step:
+// Dm  A7/C#  Dm/C  G/B  Gm/Bb  A  Gm7  A7
+const strings = seq(p\`{a3,d4,f4} {g3,c#4,e4} {f3,d4,f4} {g3,d4,g4}
+  {g3,d4,g4} {a3,c#4,e4} {bb3,d4,f4} {a3,c#4,g4}\`.slow(8))
+strings.tri()
+  .lpf(energy.mul(1600).add(400))
+  .mul(strings.gate.adsr(0.6, 0.5, 0.8, 1))
+  .gain(0.18)
+  .out()
+
+// ---- harp: plays sixteenths, but only the steps the energy allows ----
+// steps open in metric order (bit-reversed index): downbeats, then quarters,
+// then eighths, then sixteenths. Each stage is a complete figure.
+const harmony = chord("<Dm A7 Dm7 G Gm A Gm7 A7>").mode("root:d3")
+const harp = seq(harmony.n(p\`0 1 2 3 4 3 2 1 0 1 2 3 4 3 2 1\`))
+const rank = p\`0 8 4 12 2 10 6 14 1 9 5 13 3 11 7 15\`
+harp.pitch
+  .fm(0.8, 1)
+  .mul(harp.gate.adsr(0.002, 0.25, 0, 0.1))
+  .mul(energy.mul(16).gt(rank))
+  .delay({ time: 0.5625, feedback: 0.3, mix: 0.2 })
+  .gain(0.2)
+  .pan(-0.25)
+  .apply((v) => out({ l: v.l, r: v.r }))
+
+// ---- the melody ----
+// the theme climbs D E F G against the falling bass, peaks on D6,
+// sighs down a half step to C#6, and lands on the leading tone
+const theme = p\`[d5@4 a4@2 d5@2] [e5@6 g5 e5] [f5@4 e5@2 f5@2] [g5@4 a5@2 b5@2]
+  [g5@2 bb5@2 d6@4] [c#6@6 b5 a5] [bb5@4 a5@2 g5@2] [a5@2 g5@2 e5@2 c#5@2]\`
+// the double: the same harmony in eighth notes, up to G6
+const double = p\`[d5 f5 a5 d6 c6 a5 f5 a5] [g5@2 e5 g5 c#6@2 bb5 g5]
+  [a5@2 f5 a5 c6@2 d6 e6] [d6@2 b5 d6 g6@4] [g6@2 f6 d6 bb5@2 c6 d6]
+  [c#6@4 e6@2 c#6 a5] [d6@2 bb5 g5 f5@2 g5 bb5] [a5@2 g5 e5 c#5@4]\`
+const melody = seq(p\`<~ \${theme} \${theme} \${double} \${theme.segment(8)}>\`.slow(8))
+melody.pitch.slew(0.01, 0.01).add(lfo(5, -0.1, 0.1))
+  .fm({ index: energy.mul(1.2).add(0.4), ratio: 1 })
+  .mul(melody.gate.adsr(0.08, 0.3, 0.8, 0.4))
+  .reverb({ room: 0.8, damp: 0.5, mix: 0.3 })
+  .gain(0.22)
+  .pan(0.15)
+  .apply((v) => out({ l: v.l, r: v.r }))
+
+// ---- drums: comparators on the energy decide when they play ----
+const pulse = energy.gt(0.45).slew(2, 2)
+const lift = energy.gt(0.8).slew(2, 2)
+
+seq("60 ~ 60 ~").trig
+  .kick({ pitch: 45, sweep: 3, decay: 0.45, click: 0.03 })
+  .mul(pulse)
+  .gain(0.5)
+  .out()
+
+seq("~ 60 ~ 60").trig
+  .clap({ decay: 0.25, tone: 0.5 })
+  .mul(lift)
+  .gain(0.5)
+  .out()
+
+seq("[~ 60]*4").trig
+  .hihat({ decay: 0.035, tone: 0.7, metal: 0.5 })
+  .mul(lift)
+  .gain(2)
+  .out()
+`;
+
+/** (k) A dance track: song-position effects, formant lead, a patch-defined crusher. */
+const pocketRocket = `// pocket rocket — future house in C, 128 bpm
+//
+// Form: intro 8 · build 8 · drop 8 · drop 8, then around again.
+// The chords run the "royal road" (IV V iii vi) and dodge the tonic until
+// the last two bars of every eight: Ab Bb C, the Mario cadence.
+// The sound effects are patches too: a riser and a tape-stop dive computed
+// from the song position, an impact, laser zaps, a lead that talks through
+// two formant filters, and a bitcrusher defined right here.
+const c = clock(32) // 32 bars a minute = 128 bpm; one cycle = one bar
+
+// ---- song position ----
+const bar = c.phase.mod(32) // where we are in the loop, in bars
+const rise = bar.add(-8).mul(1 / 8).clip(0, 1).mul(bar.lt(16)) // 0 → 1 across the build
+const dive = bar.add(-15.5).mul(-24).clip(-12, 0).mul(bar.lt(16)) // last half bar: down an octave
+
+// one value per 8-bar section: intro, build, drop, drop 2
+const sections = (a, b, d1, d2) => p\`<\${a} \${b} \${d1} \${d2}>\`.slow(8)
+const mask = (a, b, d1, d2) => slew({ in: sections(a, b, d1, d2), rise: 0.005, fall: 0.005 })
+const drops = mask(0, 0, 1, 1)
+
+// a bitcrusher: round to 2^bits levels, hold each value for \`hold\` samples
+defmod({
+  name: "crush",
+  category: "effects",
+  doc: "bit and sample-rate reduction",
+  ins: { in: sig(0), bits: sig(8), hold: sig(1) },
+  outs: { out: sig() },
+  defaultIn: "in",
+  defaultOut: "out",
+  positional: ["bits", "hold"],
+  state: () => ({ left: 0, held: 0 }),
+  tick: (s, i, o) => {
+    if (s.left <= 0) {
+      const levels = 2 ** i.bits
+      s.held = Math.round(i.in * levels) / levels
+      s.left = i.hold
+    }
+    s.left -= 1
+    o.out = s.held
+  },
+})
+
+// ---- harmony: Fmaj9 G9 Em7 Am9 | Fmaj9 G9 Abmaj7 Bb6 | Cadd9 ----
+const chords = seq(p\`<{a3,c4,e4,g4} {b3,d4,f4,a4} {b3,d4,e4,g4} {b3,c4,e4,g4}
+  {a3,c4,e4,g4} {b3,d4,f4,a4} [{ab3,c4,eb4,g4} {bb3,d4,f4,g4}] {c4,d4,e4,g4}>\`)
+const roots = p\`<f1 g1 e1 a1 f1 g1 [ab1 bb1] c2>\`
+
+// ---- drums ----
+const beat = seq("60*4")
+beat.trig
+  .kick({ pitch: 50, sweep: 4, decay: 0.35, click: 0.1 })
+  .mul(mask(1, p\`1 1 1 1 1 1 0 0\`, 1, 1))
+  .gain(0.8)
+  .out()
+const pump = beat.trig.ad(0.002, 0.25).sub(1) // sidechain: duck on every kick
+
+seq("~ 60 ~ 60").trig
+  .clap({ decay: 0.3, tone: 0.6 })
+  .mul(mask(1, p\`1 1 1 1 0 0 0 0\`, 1, 1))
+  .gain(0.7)
+  .out()
+
+const tick = seq("60*16")
+tick.trig
+  .hihat({ decay: 0.03, tone: 0.8, metal: 0.5 })
+  .mul(patstep(p\`0.35 0.5 1 0.5\`, tick.trig))
+  .mul(mask(1, p\`1 1 1 1 1 1 1 0\`, 1, 1))
+  .gain(2)
+  .pan(0.3)
+  .apply((v) => out({ l: v.l, r: v.r }))
+
+seq("[~ 60]*4").trig
+  .hihat({ decay: 0.18, tone: 0.6, metal: 0.8 })
+  .mul(drops)
+  .gain(1.5)
+  .pan(-0.3)
+  .apply((v) => out({ l: v.l, r: v.r }))
+
+// the build's snare roll doubles in speed every two bars, then stops dead
+const roll = seq(sections(p\`~\`, p\`[60*4]!2 [60*8]!2 [60*16]!2 60*32 ~\`, p\`~\`, p\`~\`))
+roll.trig
+  .snare({ pitch: rise.mul(200).add(180), tone: 0.4, decay: 0.1, snappy: 0.8 })
+  .mul(rise.add(0.3))
+  .gain(0.8)
+  .out()
+
+// ---- intro and build: a 3+3+2 pluck, its filter opening with the riser ----
+const stab = seq("[60@3 60@3 60@2]*2")
+chords.pitch.add(dive)
+  .sqr()
+  .mix()
+  .lpf(rise.mul(4000).add(900), 0.3)
+  .mul(stab.gate.adsr(0.002, 0.18, 0, 0.05))
+  .mul(mask(1, 1, 0, 0))
+  .delay({ time: 0.351, feedback: 0.35, mix: 0.25 })
+  .gain(0.15)
+  .out()
+
+// ---- sub: the roots, ducked by the kick; out for the back half of the build ----
+sin(roots)
+  .mul(pump)
+  .mul(mask(1, p\`1 1 1 1 0 0 0 0\`, 1, 1))
+  .gain(0.35)
+  .out()
+
+// ---- drop: supersaw chords, three detuned saws per voice, pumping ----
+chords.pitch.saw()
+  .add(chords.pitch.add(0.12).saw())
+  .add(chords.pitch.add(-0.12).saw())
+  .mix()
+  .lpf(lfo(0.1, 2500, 5000))
+  .mul(chords.gate.adsr(0.01, 0.3, 0.8, 0.2))
+  .mul(pump)
+  .mul(drops)
+  .gain(0.045)
+  .out()
+
+// offbeat bass: each note opens its filter; the 4th bar's back half crushes to 3 bits
+const offbeat = seq("[~ 60]*4")
+sqr(roots.add(12))
+  .lpf(offbeat.gate.adsr(0.002, 0.12, 0.1, 0.05).mul(2400).add(150), 0.5)
+  .mul(offbeat.gate.adsr(0.002, 0.15, 0.6, 0.05))
+  .crush(p\`<12 12 12 [12 3]>\`, 2)
+  .mul(pump)
+  .mul(drops)
+  .gain(0.3)
+  .out()
+
+// ---- the talking lead: a saw through two formant filters, one vowel per beat ----
+const hook = seq(p\`<[g4@2 a4@2 c5@2 a4 g4] [~@2 g4 a4 b4@2 d5@2] [e5@3 d5 b4@2 g4@2]
+  [a4@2 c5 b4 [a4 a4 a4 a4]@2 e4@2] [g4@2 a4@2 c5@2 a4 g4] [~@2 g4 a4 b4@2 d5@2]
+  [eb5@2 c5@2 d5@2 f5@2] [e5@3 d5 c5@4]>\`)
+const f1 = slew({ in: p\`800 300 500 550\`, rise: 1e-4, fall: 1e-4 }) // ah ee oh eh
+const f2 = slew({ in: p\`1200 2300 900 1800\`, rise: 1e-4, fall: 1e-4 })
+const mouth = hook.pitch.saw()
+mouth.bpf(f1, 0.4)
+  .add(mouth.bpf(f2, 0.4))
+  .mul(hook.gate.adsr(0.005, 0.1, 0.8, 0.1))
+  .shape(0.3)
+  .mul(drops)
+  .delay({ time: 0.351, feedback: 0.3, mix: 0.2 })
+  .reverb({ room: 0.6, damp: 0.5, mix: 0.2 })
+  .gain(0.3)
+  .out()
+
+// drop 2 doubles the hook an octave up
+hook.pitch.add(12)
+  .tri()
+  .mul(hook.gate.adsr(0.005, 0.1, 0.6, 0.1))
+  .mul(mask(0, 0, 0, 1))
+  .gain(0.12)
+  .out()
+
+// ---- effects ----
+// riser: noise through a band-pass sweeping up the build
+noise()
+  .bpf(rise.mul(rise).mul(8000).add(300), 0.3)
+  .mul(rise.mul(rise))
+  .gain(0.6)
+  .out()
+
+// impact on each drop: a noise slam closing down, plus a sub that dives two octaves
+const hit = seq(sections(p\`~\`, p\`~\`, p\`60 ~!7\`, p\`60 ~!7\`)).trig
+noise()
+  .lpf(hit.ad(0.001, 1.2).mul(8000).add(200))
+  .mul(hit.ad(0.001, 1.5))
+  .add(hit.ad(0.001, 0.6).mul(36).add(24).sin().mul(hit.ad(0.001, 1)))
+  .reverb({ room: 0.9, damp: 0.3, mix: 0.4 })
+  .gain(0.3)
+  .out()
+
+// laser zaps: a square whose pitch falls three octaves in a tenth of a second
+const zap = seq("60(5,16,2)")
+zap.trig.ad(0.001, 0.1).mul(36).add(60)
+  .sqr()
+  .mul(zap.trig.ad(0.001, 0.12))
+  .mul(mask(0, 0, 0.6, 1))
+  .delay({ time: 0.351, feedback: 0.4, mix: 0.3 })
+  .gain(0.08)
+  .pan(lfo(0.5, -0.8, 0.8))
+  .apply((v) => out({ l: v.l, r: v.r }))
+`;
+
 export const EXAMPLES: readonly Example[] = [
 	{ name: "smoke signal (a track)", source: smokeSignal },
 	{ name: "coastline (after eddyflux)", source: coastline },
+	{ name: "mirror canon (D dorian)", source: mirrorCanon },
+	{ name: "chaconne (evolving form)", source: chaconne },
+	{ name: "pocket rocket (dance)", source: pocketRocket },
 	{ name: "first sound", source: firstSound },
 	{ name: "patterns as values", source: patternsAsValues },
 	{ name: "pattern as signal", source: patternAsSignal },

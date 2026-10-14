@@ -7,6 +7,8 @@ import { hz, sig, unit } from "../types";
  * to emit.
  *
  * res→Q is a single shared mapping: Q = 0.5 + res*9.5 (res 0 → Q 0.5, res 1 → Q 10).
+ * res defaults to 0: no peak, so gain never exceeds unity unless asked. A peak
+ * above unity in a loop() feedback path makes the loop run away.
  * cutoff is clamped to 0.49*sr. Coefficients (g, k, a1, a2, a3) are recomputed
  * only when cutoff or res changed since the last sample (cached in state).
  */
@@ -18,7 +20,7 @@ function createSvf(name: string, mode: Mode, doc: string): void {
 		name,
 		category: "filters",
 		doc,
-		ins: { in: sig(0), cutoff: hz(1000), res: unit(0.2) },
+		ins: { in: sig(0), cutoff: hz(1000), res: unit(0) },
 		outs: { out: sig() },
 		defaultIn: "in",
 		defaultOut: "out",

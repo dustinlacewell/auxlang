@@ -83,10 +83,10 @@ s.pitch.saw()
 		code: `clock(96)
 
 const s = seq("c3 g3 <c4 e4> g3")
-const exciter = noise().mul(s.gate.ad(0.001, 0.008)).mul(0.5)
+const exciter = noise().mul(s.gate.ad(0.001, 0.008))
 loop((fb) =>
-  exciter.add(fb.delay({ time: 0.006, feedback: 0, mix: 1 }).lpf({ cutoff: 2400 }).mul(0.96)),
-).gain(0.3).out()`,
+  exciter.add(fb.delay({ time: 0.006, feedback: 0, mix: 1 }).lpf({ cutoff: 2400 }).mul(0.99)),
+).gain(0.8).out()`,
 	},
 	// §10 closing patch, real API: pads (packed poly) + acid line (feedback) +
 	// drums (euclid triggers, hat velocity stepped by a comparator), stereo pan.
