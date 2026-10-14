@@ -14,7 +14,7 @@
 import type { Pat, PatOp, SignalKind, WChild } from "./ast";
 import { bjorklund } from "./bjorklund";
 import type { Ev, Span } from "./event";
-import { isOnset } from "./event";
+import { isOnset, laneOf } from "./event";
 import { avalanche, hash01 } from "./random";
 import {
 	type R,
@@ -33,6 +33,7 @@ import {
 	rsub,
 	rtof,
 } from "./rational";
+import { width } from "./widths";
 
 export interface QueryCtx {
 	readonly seed: number;
@@ -70,7 +71,7 @@ function queryCycle(pat: Pat, span: Span, ctx: QueryCtx): Ev[] {
 		case "slowcat":
 			return querySlowcat(pat.children, span, ctx);
 		case "stack":
-			return pat.children.flatMap((child, i) => query(child, span, descend(ctx, "stack", i)));
+			return queryStack(pat.children, span, ctx);
 		case "fast":
 			return queryScaled(pat.factor, pat.child, span, descend(ctx, "fast", 0));
 		case "slow":
@@ -121,6 +122,8 @@ function queryCycle(pat: Pat, span: Span, ctx: QueryCtx): Ev[] {
 			return querySignal(pat.kind, span, ctx);
 		case "chordidx":
 			return queryChordIdx(pat.tables, pat.per, pat.child, span, ctx);
+		case "voices":
+			return queryVoices(pat.n, pat.child, span, ctx);
 	}
 }
 
@@ -156,6 +159,7 @@ const OP_CODE: Record<PatOp, number> = {
 	sometimesBy: 25,
 	signal: 26,
 	chordidx: 27,
+	voices: 28,
 };
 
 function descend(ctx: QueryCtx, op: PatOp, index: number): QueryCtx {
@@ -210,6 +214,39 @@ function queryShifted(amount: R, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
 function queryPure(value: number, span: Span): Ev[] {
 	const cycle = rfloor(span.begin);
 	return [{ whole: { begin: r(cycle), end: r(cycle + 1) }, part: span, value }];
+}
+
+/** Simultaneous children; each child's lanes sit above the lanes of the children before it. */
+function queryStack(children: readonly Pat[], span: Span, ctx: QueryCtx): Ev[] {
+	const out: Ev[] = [];
+	let offset = 0;
+	children.forEach((child, i) => {
+		out.push(...shiftLanes(query(child, span, descend(ctx, "stack", i)), offset));
+		offset += width(child);
+	});
+	return out;
+}
+
+function shiftLanes(evs: Ev[], offset: number): Ev[] {
+	return offset === 0 ? evs : evs.map((ev) => ({ ...ev, lane: laneOf(ev) + offset }));
+}
+
+/**
+ * Packed voices: lanes are already fixed by structure. The check is the
+ * width guard: an event past the last lane would have nowhere to sound, so it
+ * is a loud error, never a silent drop. No `descend`: voices adds no
+ * randomness, and seq wraps every pattern in it, so it must not move paths.
+ */
+function queryVoices(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
+	const evs = query(child, span, ctx);
+	for (const ev of evs) {
+		if (laneOf(ev) >= n) {
+			throw new Error(
+				`voices: an event landed in lane ${laneOf(ev)}, but there are only ${n} lanes`,
+			);
+		}
+	}
+	return evs;
 }
 
 /**
@@ -311,6 +348,7 @@ function queryPly(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
 				whole: { begin: wholeBegin, end: wholeEnd },
 				part: { begin: partBegin, end: partEnd },
 				value: ev.value,
+				...(ev.lane !== undefined ? { lane: ev.lane } : {}),
 				...(ev.tiePrev && i === 0 ? { tiePrev: true } : {}),
 				...(ev.tieNext && i === n - 1 ? { tieNext: true } : {}),
 			});
@@ -386,7 +424,12 @@ function queryStruct(bool: Pat, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
 		if (!isOnset(ev) || ev.value === 0 || ev.whole === null) continue;
 		const value = sampleAt(child, ev.part.begin, descend(ctx, "struct", 1));
 		if (value === null) continue;
-		out.push({ whole: ev.whole, part: ev.part, value });
+		out.push({
+			whole: ev.whole,
+			part: ev.part,
+			value,
+			...(ev.lane !== undefined ? { lane: ev.lane } : {}),
+		});
 	}
 	return out;
 }
@@ -427,8 +470,10 @@ function queryChunk(n: number, child: Pat, transformed: Pat, span: Span, ctx: Qu
 	const sliceEnd = radd(r(cycle), r(active + 1, n));
 	const inSlice = (t: R) => rlte(sliceBegin, t) && rlt(t, sliceEnd);
 	const base = query(child, span, descend(ctx, "chunk", 0)).filter((ev) => !inSlice(ev.part.begin));
-	const trans = query(transformed, span, descend(ctx, "chunk", 1)).filter((ev) =>
-		inSlice(ev.part.begin),
+	// Transformed lanes sit above the child's: a child event can ring on into the slice.
+	const trans = shiftLanes(
+		query(transformed, span, descend(ctx, "chunk", 1)).filter((ev) => inSlice(ev.part.begin)),
+		width(child),
 	);
 	return [...base, ...trans].sort((a, b) => rcmp(a.part.begin, b.part.begin));
 }

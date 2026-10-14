@@ -1,17 +1,18 @@
 import { defmod } from "../patch/defmod";
 import type { Pat } from "../pattern/ast";
+import { laneEvents } from "../pattern/lane-events";
 import { query } from "../pattern/query";
 import { r } from "../pattern/rational";
-import { packLanes } from "../pattern/widths";
 import { gatePort, phasePort, semis, trigPort } from "../types";
 import { advanceTrack, fillTrack, trackStateFields } from "./pattern-track";
 
 /**
- * seq — the pattern→signal bridge. ONE node of width maxWidth(pattern) (the
- * seq factory pins it); `config.pattern` is Pat DATA, `config.seed` the
- * program seed. Each cycle (= floor of the clock phase, in beats) the lane
- * queries the pattern, packs simultaneous events with packLanes, and caches
- * the events belonging to its engine-injected `state.__lane`.
+ * seq — the pattern→signal bridge. ONE node, one lane per voice (the seq
+ * factory wraps the pattern in `voices` and pins the width to its lane count);
+ * `config.pattern` is Pat DATA, `config.seed` the program seed. Each cycle
+ * (= floor of the clock phase, in beats) the lane queries the pattern and
+ * caches the events whose lane is its engine-injected `state.__lane`. Lanes
+ * come from pattern structure, so a held note keeps its lane across cycles.
  *
  * Outputs, all pure functions of (pattern, phase, seed) — scrub-safe:
  *   pitch  semitones, sample-and-held per event; holds the last value through rests
@@ -40,7 +41,7 @@ defmod({
 				{ seed: (cfg.seed as number) | 0, path: 0 },
 			);
 			const lane = (s.__lane as number | undefined) ?? 0;
-			fillTrack(s, packLanes(evs)[lane] ?? []);
+			fillTrack(s, laneEvents(evs, lane));
 			s.cycle = cycle;
 			s.primed = 1;
 		}

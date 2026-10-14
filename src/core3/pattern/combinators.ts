@@ -4,8 +4,9 @@
  * Validation is loud and happens here, at build time.
  */
 
-import type { Pat, SignalKind, WChild } from "./ast";
+import type { Pat, SignalKind, VoicePolicy, WChild } from "./ast";
 import { type R, R1, r } from "./rational";
+import { width } from "./widths";
 
 const asR = (x: number | R): R => (typeof x === "number" ? r(x) : x);
 
@@ -138,4 +139,26 @@ export function chordidx(
 	if (tables.length === 0) throw new Error("chordidx: needs at least one tone table");
 	if (tables.some((t) => t.length === 0)) throw new Error("chordidx: tone tables must be non-empty");
 	return { op: "chordidx", tables, per: positiveInt(per, "chordidx"), child };
+}
+
+const VOICE_POLICIES: readonly VoicePolicy[] = ["packed"];
+
+/**
+ * Assign events to `n` lanes (§3.5). `n` defaults to the structural width;
+ * an explicit `n` below it would leave events with no lane, so it is an error.
+ */
+export function voices(policy: string, n: number | undefined, child: Pat): Pat {
+	const known = VOICE_POLICIES.find((p) => p === policy);
+	if (!known) {
+		throw new Error(`voices: unknown policy '${policy}'; available: ${VOICE_POLICIES.join(", ")}`);
+	}
+	const needed = width(child);
+	if (n === undefined) return { op: "voices", policy: known, n: needed, child };
+	const lanes = positiveInt(n, "voices");
+	if (lanes < needed) {
+		throw new Error(
+			`voices("${policy}", ${n}): the pattern needs ${needed} lanes (its structural width); n must be at least ${needed}`,
+		);
+	}
+	return { op: "voices", policy: known, n: lanes, child };
 }

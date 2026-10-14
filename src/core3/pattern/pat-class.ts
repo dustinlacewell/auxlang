@@ -29,6 +29,7 @@ import {
 	sometimesBy,
 	stack,
 	struct,
+	voices,
 } from "./combinators";
 import type { R } from "./rational";
 
@@ -132,6 +133,11 @@ export class P {
 
 	always(f: (p: P) => P): P {
 		return this.someBy(1, f);
+	}
+
+	/** Assign events to `n` lanes under `policy`; `n` defaults to the structural width. */
+	voices(policy = "packed", n?: number): P {
+		return new P(voices(policy, n, this.ast));
 	}
 
 	/** Map a 0..1 signal pattern into [lo, hi]. */

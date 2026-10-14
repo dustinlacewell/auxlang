@@ -1,49 +1,72 @@
 /**
- * Simultaneity analysis for the seq bridge: how many lanes a pattern needs,
- * and how events pack into them.
+ * Static width (§3.2): how many lanes a pattern needs, computed from its
+ * structure — never by querying. `stack` sums, sequences take the max, `every`
+ * takes the max of both branches, `off` sums (it is a stack).
+ *
+ * The rules match how `query` numbers lanes: a stack offsets each child's lanes
+ * by the widths of the children before it, and every other op keeps its
+ * children's lanes. So every event's lane is below the width by construction,
+ * and two events in one lane never overlap in time.
+ *
+ * Pats are immutable data, so widths are memoized per node.
  */
 
 import type { Pat } from "./ast";
-import type { Ev } from "./event";
-import { period } from "./period";
-import { query } from "./query";
-import { r, rcmp, rlte } from "./rational";
 
-/**
- * Lane count for a seq: max simultaneous events over the pattern's full period,
- * floored at 1. Touching parts don't overlap. Querying the true period (not a
- * fixed window) guarantees a late-entering voice or a late chord is seen — a
- * fixed window undercounts both. A seq always needs at least one lane, even for
- * an all-rest pattern whose true simultaneity is zero.
- */
-export function maxWidth(pat: Pat): number {
-	const evs = query(pat, { begin: r(0), end: r(period(pat)) }, { seed: 0, path: 0 });
-	const marks = evs.flatMap((ev) => [
-		{ t: ev.part.begin, delta: 1 },
-		{ t: ev.part.end, delta: -1 },
-	]);
-	// Ends sort before begins at equal time, so back-to-back events don't stack.
-	marks.sort((a, b) => rcmp(a.t, b.t) || a.delta - b.delta);
-	let width = 0;
-	let current = 0;
-	for (const mark of marks) {
-		current += mark.delta;
-		if (current > width) width = current;
+const memo = new WeakMap<Pat, number>();
+
+/** Lanes `pat` needs. Silence needs 0; seq floors its node at 1. */
+export function width(pat: Pat): number {
+	let w = memo.get(pat);
+	if (w === undefined) {
+		w = structuralWidth(pat);
+		memo.set(pat, w);
 	}
-	return Math.max(1, width);
+	return w;
 }
 
-/** Greedy lane packing: by part.begin ascending, first lane whose last event has ended. */
-export function packLanes(evs: readonly Ev[]): Ev[][] {
-	const sorted = [...evs].sort((a, b) => rcmp(a.part.begin, b.part.begin));
-	const lanes: Ev[][] = [];
-	for (const ev of sorted) {
-		const lane = lanes.find((l) => {
-			const last = l[l.length - 1];
-			return last !== undefined && rlte(last.part.end, ev.part.begin);
-		});
-		if (lane) lane.push(ev);
-		else lanes.push([ev]);
+const sum = (pats: readonly Pat[]): number => pats.reduce((acc, p) => acc + width(p), 0);
+const max = (pats: readonly Pat[]): number => pats.reduce((acc, p) => Math.max(acc, width(p)), 0);
+
+function structuralWidth(pat: Pat): number {
+	switch (pat.op) {
+		case "silence":
+			return 0;
+		case "pure":
+		case "signal":
+		case "segment": // fresh events, one per step, all in lane 0
+			return 1;
+		case "stack":
+			return sum(pat.children);
+		case "fastcat":
+			return max(pat.children.map((wc) => wc.pat));
+		case "slowcat":
+			return max(pat.children);
+		case "every":
+			return max([pat.child, pat.transformed]);
+		case "chunk": // a child event can ring on into the transformed slice
+			return sum([pat.child, pat.transformed]);
+		case "struct": // events come from bool's onsets
+			return width(pat.bool);
+		case "voices":
+			return pat.n;
+		case "fast":
+		case "slow":
+		case "rev":
+		case "early":
+		case "late":
+		case "iter":
+		case "ply":
+		case "euclid":
+		case "degrade":
+		case "add":
+		case "mul":
+		case "tieNext":
+		case "tiePrev":
+		case "mask":
+		case "clip":
+		case "sometimesBy": // structure from child; transformed only lends values
+		case "chordidx":
+			return width(pat.child);
 	}
-	return lanes;
 }

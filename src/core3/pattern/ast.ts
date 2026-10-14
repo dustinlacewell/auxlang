@@ -77,9 +77,19 @@ export type Pat =
 			readonly tables: readonly (readonly number[])[];
 			readonly per: number;
 			readonly child: Pat;
+	  }
+	// Assign the child's events to n lanes under a voice policy (§3.5).
+	| {
+			readonly op: "voices";
+			readonly policy: VoicePolicy;
+			readonly n: number;
+			readonly child: Pat;
 	  };
 
 /** Continuous pattern generators, sampled wherever a value is needed. */
 export type SignalKind = "rand" | "perlin" | "sine" | "saw" | "tri" | "isaw";
+
+/** How `voices` assigns events to lanes. */
+export type VoicePolicy = "packed";
 
 export type PatOp = Pat["op"];

@@ -1,6 +1,7 @@
 /**
- * Poly packing: a stack widens seq to maxWidth lanes on ONE node, and
- * packLanes assigns events greedily so no lane is permanently silent.
+ * Poly lanes: a stack widens seq to its structural width on ONE node, and
+ * each stack layer fills lanes from 0 in stack order, so no lane is
+ * permanently silent.
  */
 
 import { clock, runProgram, seq } from "@/core3/api";

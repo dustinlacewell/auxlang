@@ -20,7 +20,11 @@ export interface Ev {
 	readonly tieNext?: boolean;
 	/** This event continues a previous one (no onset/trig). */
 	readonly tiePrev?: boolean;
+	/** Voice lane, fixed by pattern structure (absent = lane 0). See `laneOf`. */
+	readonly lane?: number;
 }
 
 export const isOnset = (e: Ev): boolean =>
 	e.whole !== null && req(e.whole.begin, e.part.begin) && !e.tiePrev;
+
+export const laneOf = (e: Ev): number => e.lane ?? 0;
