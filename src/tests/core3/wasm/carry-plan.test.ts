@@ -54,6 +54,7 @@ function side({
 			identities: keys.map((key) => ({ key }) as KeyedIdentity),
 			paired,
 			seeds: seeds ?? nodes.map(() => 1),
+			tables: nodes.map(() => null),
 			feedback,
 			outputs: {
 				size: 4,

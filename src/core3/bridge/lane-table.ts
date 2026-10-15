@@ -1,7 +1,9 @@
 /**
  * A pattern-reading lane's event table (module/tick-subset/table-intrinsics.ts),
  * kept in the lane's engine scratch: derived data, never carried across a
- * re-eval. The lane is born with an empty table (cycle NaN), so a tick reads
+ * re-eval as state (the WASM prefill continues a lane's fill when its table
+ * key is unchanged: table-key.ts). The lane is born with an empty table
+ * (cycle NaN), so a tick reads
  * `state.__scratch.table` directly; the tick refills it when the position
  * leaves the cycle it holds. Lane `l` reads pattern lane `l % config.lanes`.
  * Beside the table, the scratch holds the lane's LaneFill (what the next
@@ -43,13 +45,30 @@ export function laneTable(s: Record<string, unknown>): EventTable {
 	return (s.__scratch as TableScratch).table;
 }
 
-/** Refill the lane's table with the rows of `cycle`. */
+/**
+ * Refill the lane's table with the rows of `cycle`. It reads the config's
+ * pattern, seed and pattern lanes, and nothing else (table-key.ts).
+ */
 export function fillLaneTable(
 	s: Record<string, unknown>,
 	cfg: Record<string, unknown>,
 	cycle: number,
 ): void {
-	const lane = ((s.__lane as number) | 0) % ((cfg.lanes as number) | 0 || 1);
+	const lane = ((s.__lane as number) | 0) % patternLanes(cfg);
 	const { table, fill } = s.__scratch as TableScratch;
 	fillTable(cfg.pattern as Pat, (cfg.seed as number) | 0, lane, cycle, table, fill);
+}
+
+/** The pattern lanes a node's lanes read in turn (at least 1). */
+export function patternLanes(cfg: Record<string, unknown>): number {
+	return (cfg.lanes as number) | 0 || 1;
+}
+
+/**
+ * The lane's fill goes on from what lane `from`'s remembers: a lane of a
+ * node with the same table key (table-key.ts) and the same lane index, so
+ * all of it holds here.
+ */
+export function continueLaneFill(s: Record<string, unknown>, from: Record<string, unknown>): void {
+	(s.__scratch as TableScratch).fill.continueFrom((from.__scratch as TableScratch).fill);
 }

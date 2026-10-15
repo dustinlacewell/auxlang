@@ -7,8 +7,9 @@
  * 2. the engine (build/wasm-steps.ts): instantiate the posted Module, touch
  *    its memory, write the start values into it a lane at a time, make the
  *    engine over it, prefill each table lane for the cycle it starts in
- *    (wasm/host/prefill-cycles.ts), and bind the carry's views (copying
- *    once).
+ *    (wasm/host/prefill-cycles.ts; a lane whose table key is unchanged
+ *    copies the source lane's tables and fill state instead of filling),
+ *    and bind the carry's views (copying once).
  *
  * The swap runs the carry plan: copies only. It carries from the running
  * WASM program the plan was made against (wasm-prepared.ts serials); from
@@ -16,7 +17,7 @@
  */
 
 import type { Registry } from "../../types";
-import { tableSources } from "../../wasm/host/carry/table-sources";
+import type { TableCarry } from "../../wasm/host/carry/table-carry";
 import { initLane, initValues } from "../../wasm/host/init-memory";
 import { type LinkedInstance, linkInstance } from "../../wasm/host/link-instance";
 import { prefillCycles } from "../../wasm/host/prefill-cycles";
@@ -28,7 +29,7 @@ import { StepRunner } from "../build/step-runner";
 import { type WasmStep, wasmSteps } from "../build/wasm-steps";
 import type { EngineParts } from "../engine-parts";
 import type { PreparedProgram } from "../prepare/prepare-program";
-import type { WasmPrepared } from "../prepare/wasm-prepared";
+import type { WasmCarry, WasmPrepared } from "../prepare/wasm-prepared";
 import type { HostProgram } from "./host-program";
 
 export class WasmHostProgram implements HostProgram {
@@ -127,24 +128,39 @@ export class WasmHostProgram implements HostProgram {
 		this.live.handOver((this.source as WasmHostProgram).live.liveState());
 	}
 
-	/** Lane `k`; the first lane's step picks every lane's cycle, from the source as it plays now. */
+	/**
+	 * Lane `k`: from the source's tables when they are its own too
+	 * (carry/table-carry.ts), else filled. The first lane's step picks every
+	 * lane's cycle, from the source as it plays now.
+	 */
 	private prefill(k: number): void {
-		const cycles = this.cycles ?? this.pickCycles();
-		const cycle = cycles[k] as number;
-		if (Number.isFinite(cycle)) this.live.prefillLane(k, cycle);
+		const cycle = (this.cycles ?? this.pickCycles())[k] as number;
+		const tables = this.tableCarry;
+		const shared = tables?.shared[k] ?? -1;
+		const source = this.source?.live;
+		if (source !== undefined && shared >= 0)
+			this.live.prefillLaneFrom(k, cycle, source, shared, sourceLane(tables as TableCarry, k));
+		else if (Number.isFinite(cycle)) this.live.prefillLane(k, cycle);
+	}
+
+	/** The table carry from the source; null with no source to carry from. */
+	private get tableCarry(): TableCarry | null {
+		return this.source === null ? null : (this.wasm.carry as WasmCarry).tables;
 	}
 
 	private pickCycles(): Float64Array {
 		const source = this.source?.live ?? null;
-		const sources =
-			source === null
-				? null
-				: tableSources(source.side, { layout: this.wasm.layout, facts: this.wasm.facts });
+		const sources = this.tableCarry?.sources ?? null;
 		this.cycles = prefillCycles(this.live.tableLanes, sources, (node, lane) =>
 			(source as WasmEngine).tableCycle(node, lane),
 		);
 		return this.cycles;
 	}
+}
+
+/** The old lane table lane `k` takes over; -1 for none. */
+function sourceLane({ sources }: TableCarry, k: number): number {
+	return (sources[2 * k] as number) < 0 ? -1 : (sources[2 * k + 1] as number);
 }
 
 /** The running program to carry from: the one the plan was made against, still playing. */

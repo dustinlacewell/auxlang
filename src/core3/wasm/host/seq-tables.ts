@@ -10,13 +10,14 @@
  *   `next`, at most `budget` fills per call; the rest wait for the next
  *   block, taken in turn so no lane starves.
  * - `prefill`, `prefillLane`: a build step, `cur` and `next` for a start
- *   cycle (all lanes, or one).
+ *   cycle (all lanes, or one). `prefillLaneFrom` copies them instead from
+ *   an old engine's lane with the same table key, when it holds them.
  *
  * A table is a pure function of (pattern, seed, lane, cycle), so which kind
  * filled it changes timing only, never output.
  */
 
-import { fillLaneTable, laneTable } from "../../bridge/lane-table";
+import { continueLaneFill, fillLaneTable, laneTable } from "../../bridge/lane-table";
 import type { NodeRun } from "../../runtime/node-run";
 import { SLOT_CUR, SLOT_NEXT } from "../layout/table-format";
 import { tableLanes } from "../layout/table-lanes";
@@ -25,7 +26,8 @@ import type { TableHeap } from "./table-heap";
 
 interface TableLane {
 	readonly state: Record<string, unknown>;
-	readonly config: Record<string, unknown>;
+	/** The config fills read: the node's, or an old node's with the same table key. */
+	config: Record<string, unknown>;
 	readonly slot: number;
 }
 
@@ -103,6 +105,45 @@ export class SeqTables {
 		this.stage(lane, SLOT_CUR, cycle);
 		this.stage(lane, SLOT_NEXT, cycle + 1);
 		this.heap.keepReserve();
+	}
+
+	/**
+	 * As `prefillLane`, for table lane `k` taking over from lane (node, lane)
+	 * of `from`, whose tables are its own too (equal table keys,
+	 * carry/table-carry.ts). It fills through that node's config, so through
+	 * the same pattern object and its caches; it goes on from that lane's fill
+	 * state; and it copies the tables that lane holds for `cycle` and the one
+	 * after, filling only the others. `cycle` NaN: no tables. `lane` -1 (a
+	 * lane the old node lacked): the node's config alone.
+	 */
+	prefillLaneFrom(k: number, cycle: number, from: SeqTables, node: number, lane: number): void {
+		const own = this.lanes[k] as TableLane;
+		const peer = from.laneAt(node, Math.max(lane, 0));
+		const source = lane < 0 ? undefined : peer;
+		if (peer !== undefined) own.config = peer.config;
+		if (source !== undefined) continueLaneFill(own.state, source.state);
+		if (Number.isNaN(cycle)) return;
+		this.take(own, SLOT_CUR, cycle, from.heap, source);
+		this.take(own, SLOT_NEXT, cycle + 1, from.heap, source);
+		this.heap.keepReserve();
+	}
+
+	/** The `which` table of `own` gets `cycle`: a copy of `source`'s table holding it, else a fill. */
+	private take(
+		own: TableLane,
+		which: number,
+		cycle: number,
+		heap: TableHeap,
+		source: TableLane | undefined,
+	): void {
+		const at = source === undefined ? -1 : heap.holding(source.slot, cycle);
+		if (at < 0) this.stage(own, which, cycle);
+		else this.heap.copy(own.slot, which, heap, (source as TableLane).slot, at);
+	}
+
+	private laneAt(node: number, lane: number): TableLane | undefined {
+		const k = this.index[node]?.[lane] ?? -1;
+		return k < 0 ? undefined : this.lanes[k];
 	}
 
 	private stage(lane: TableLane, which: number, cycle: number): void {

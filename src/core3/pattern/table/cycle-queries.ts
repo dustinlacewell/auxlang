@@ -34,6 +34,15 @@ export class CycleQueries {
 		return evs;
 	}
 
+	/** Hold what `other` holds: it is a pure function of its pattern and seed. */
+	continueFrom(other: CycleQueries): void {
+		this.pat = other.pat;
+		this.seed = other.seed;
+		this.cycles.set(other.cycles);
+		for (let i = 0; i < CAPACITY; i++) this.results[i] = other.results[i] as readonly Ev[];
+		this.oldest = other.oldest;
+	}
+
 	private forget(pat: Pat, seed: number): void {
 		this.pat = pat;
 		this.seed = seed;

@@ -197,6 +197,15 @@ export class WasmEngine implements Engine {
 		this.syncViews();
 	}
 
+	/**
+	 * As `prefillLane`, taking over the tables of lane (node, lane) of
+	 * `source`, which are this lane's too (seq-tables.ts `prefillLaneFrom`).
+	 */
+	prefillLaneFrom(k: number, cycle: number, source: WasmEngine, node: number, lane: number): void {
+		this.tables.prefillLaneFrom(k, cycle, source.tables, node, lane);
+		this.syncViews();
+	}
+
 	/** The cycle the current table of (node, lane) holds; NaN when none. */
 	tableCycle(node: number, lane: number): number {
 		return this.tables.cycleOf(node, lane);

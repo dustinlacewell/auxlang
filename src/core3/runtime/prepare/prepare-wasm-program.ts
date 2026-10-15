@@ -3,8 +3,9 @@
  * the main thread: the re-eval match against the running program
  * (prepare-program.ts, no driver code), the program built and compiled to
  * bytes (wasm/host/prepare-wasm.ts), compiled to a Module, warmed on a
- * throwaway instance (warm-module.ts), and the hand-over's carry plan from
- * the running WASM program (wasm/host/carry-plan.ts).
+ * throwaway instance (warm-module.ts), and the hand-over's carry plan and
+ * table carry from the running WASM program (wasm/host/carry-plan.ts,
+ * carry/table-carry.ts).
  *
  * The worklet builds the same prepared program into the same start values
  * (worklet/wasm-host-program.ts), so the layout fits them. A running JS
@@ -12,12 +13,13 @@
  */
 
 import type { Program, Registry } from "../../types";
-import { planCarry } from "../../wasm/host/carry-plan";
+import { type CarrySide, planCarry } from "../../wasm/host/carry-plan";
+import { tableCarry } from "../../wasm/host/carry/table-carry";
 import { prepareWasmFrom } from "../../wasm/host/prepare-wasm";
 import type { DriverOptions } from "../driver";
 import { type PreparedProgram, prepareProgram } from "./prepare-program";
 import { warmModule } from "./warm-module";
-import type { WasmPrepared } from "./wasm-prepared";
+import type { WasmCarry, WasmPrepared } from "./wasm-prepared";
 
 let serials = 0;
 
@@ -41,7 +43,12 @@ export async function prepareWasmProgram(
 		module,
 		layout,
 		facts,
-		carry: from === null ? null : { plan: planCarry(from, { layout, facts }), from: from.serial },
+		carry: from === null ? null : carryFrom(from, { layout, facts }),
 	};
 	return { ...base, wasm };
+}
+
+/** The hand-over from the running program: its state copies and its tables. */
+function carryFrom(from: WasmPrepared, fresh: CarrySide): WasmCarry {
+	return { plan: planCarry(from, fresh), tables: tableCarry(from, fresh), from: from.serial };
 }

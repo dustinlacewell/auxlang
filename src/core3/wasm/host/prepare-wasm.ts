@@ -98,5 +98,6 @@ function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 		size: parts.layout.size,
 		sampleRate,
 	};
-	return { input, start: { runs: parts.runs, cur: parts.bufs.cur }, facts: engineFacts(parts) };
+	const facts = engineFacts(parts, input.readsPattern);
+	return { input, start: { runs: parts.runs, cur: parts.bufs.cur }, facts };
 }

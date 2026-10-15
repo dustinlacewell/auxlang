@@ -68,13 +68,7 @@ export class TableHeap {
 
 	/** Copy `t` into the slot's table at `which` (SLOT_CUR or SLOT_NEXT), moving it when full. */
 	write(slot: number, which: number, t: EventTable): void {
-		this.views();
-		let table = this.i32[(slot + which) / 4] as number;
-		const capacity = this.f64[(table + TABLE_CAPACITY) / 8] as number;
-		if (t.count > capacity) {
-			table = this.alloc(Math.max(t.count, 2 * capacity));
-			this.i32[(slot + which) / 4] = table;
-		}
+		const table = this.tableFor(slot, which, t.count);
 		const f64 = this.f64;
 		f64[(table + TABLE_CYCLE) / 8] = t.cycle;
 		f64[(table + TABLE_COUNT) / 8] = t.count;
@@ -87,6 +81,29 @@ export class TableHeap {
 			f64[w + SLIDE_FROM] = t.slideFrom[r] as number;
 			f64[w + DIP_BEFORE] = t.dipBefore[r] as number;
 		}
+	}
+
+	/**
+	 * Copy the table at `fromWhich` of slot `fromSlot` in `from` (another
+	 * instance's heap) into the slot's table at `which`, moving it when full:
+	 * its cycle, count and rows, bit for bit.
+	 */
+	copy(slot: number, which: number, from: TableHeap, fromSlot: number, fromWhich: number): void {
+		from.views();
+		const source = from.i32[(fromSlot + fromWhich) / 4] as number;
+		const count = from.f64[(source + TABLE_COUNT) / 8] as number;
+		const table = this.tableFor(slot, which, count);
+		this.f64[(table + TABLE_CYCLE) / 8] = from.f64[(source + TABLE_CYCLE) / 8] as number;
+		this.f64[(table + TABLE_COUNT) / 8] = count;
+		const rows = (source + TABLE_HEADER) / 8;
+		this.f64.set(from.f64.subarray(rows, rows + count * ROW_WORDS), (table + TABLE_HEADER) / 8);
+	}
+
+	/** Which of the slot's tables holds `cycle`: SLOT_CUR, SLOT_NEXT, or -1 for neither. */
+	holding(slot: number, cycle: number): number {
+		if (this.cycleAt(slot, SLOT_CUR) === cycle) return SLOT_CUR;
+		if (this.cycleAt(slot, SLOT_NEXT) === cycle) return SLOT_NEXT;
+		return -1;
 	}
 
 	/** The cycle the slot's table at `which` holds. */
@@ -110,6 +127,18 @@ export class TableHeap {
 	/** Grow now, between renders, so twice the largest table fits without growing. */
 	keepReserve(): void {
 		this.room(2 * this.largest);
+	}
+
+	/** The slot's table at `which`, moved to a bigger one when `rows` do not fit. */
+	private tableFor(slot: number, which: number, rows: number): number {
+		this.views();
+		let table = this.i32[(slot + which) / 4] as number;
+		const capacity = this.f64[(table + TABLE_CAPACITY) / 8] as number;
+		if (rows > capacity) {
+			table = this.alloc(Math.max(rows, 2 * capacity));
+			this.i32[(slot + which) / 4] = table;
+		}
+		return table;
 	}
 
 	/** A new table of `rows` rows at the top: its address, its capacity set. */

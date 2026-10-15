@@ -10,7 +10,8 @@
  * Any other fill (the first, a seek, a re-fill) looks back as before, and
  * lanes whose carry comes from a voices history always read it there.
  * Queries go through the node's CycleQueries. Derived data, kept in the
- * lane's scratch and never carried; a new pattern, seed or lane forgets it.
+ * lane's scratch; a new pattern, seed or lane forgets it. A lane that fills
+ * the same tables as another (bridge/table-key.ts) can continue from it.
  * Every remembered value is a pure function of (pattern, seed, lane, cycle),
  * so a fill gives the same table whichever path it takes.
  */
@@ -45,6 +46,22 @@ export class LaneFill {
 		this.readCycle = Number.NaN;
 		this.carryCycle = Number.NaN;
 		this.carry = null;
+	}
+
+	/**
+	 * Remember what `other` remembers, its queries too: `other` fills the same
+	 * (pattern, seed, lane), so all of it holds here. This fill then binds
+	 * `other`'s pattern object.
+	 */
+	continueFrom(other: LaneFill): void {
+		this.queries.continueFrom(other.queries);
+		this.pat = other.pat;
+		this.seed = other.seed;
+		this.lane = other.lane;
+		this.readCycle = other.readCycle;
+		this.read = other.read;
+		this.carryCycle = other.carryCycle;
+		this.carry = other.carry;
 	}
 
 	/** The lane's events in cycle `c`. */
