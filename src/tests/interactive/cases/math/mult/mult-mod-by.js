@@ -1,3 +1,3 @@
 // mult - modulated by
 // Tremolo with mult
-saw({ freq: 220 }).mult(lfo(4, 0.5, 1)).out()
+saw(hz(220)).mul(lfo(4, 0.5, 1)).out()

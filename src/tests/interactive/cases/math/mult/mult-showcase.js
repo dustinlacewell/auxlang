@@ -3,9 +3,9 @@
 clock(120)
   .seq("c3 e3 g3 c4")
   .apply(s =>
-    s.cv
+    s
       .saw()
-      .mult(sin({ freq: 200 }))
-      .lpf({ cutoff: 2000 })
-      .gain({ level: s.gate.adsr() })
+      .mul(sin(hz(200)))
+      .lpf(hz(2000))
+      .gain(s.gate.adsr())
       .out())
