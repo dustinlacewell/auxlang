@@ -1,0 +1,10 @@
+// tape - modulated mix
+// Mix varies 0.1 to 0.8 - dry to wet sweep
+clock(90)
+  .seq("c4 ~ ~ ~")
+  .apply(s =>
+    s.saw()
+      .lpf(hz(1200))
+      .gain(s.gate.ad(0.005, 0.15))
+      .tape({ time: 0.3, feedback: 0.45, mix: lfo(0.2, 0.1, 0.8) })
+      .out())
