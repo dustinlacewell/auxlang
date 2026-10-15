@@ -262,3 +262,61 @@ describe("identity: each instance is its own machine", () => {
 		expect(sawPlace(sub)).not.toBe(sawPlace(inline));
 	});
 });
+
+describe(".id() on an instance: inner places hang under the pin", () => {
+	/** One voice, either rooted directly or moved under an add; optionally pinned. */
+	const placed = (moved: boolean, pin?: string) =>
+		runProgram(() => {
+			const voice = defVoice()(57);
+			const v = pin === undefined ? voice : voice.id(pin);
+			if (moved) saw(30).mul(0).add(v).out();
+			else v.out();
+		});
+	const lpfIndex = (p: Program) => p.nodes.findIndex((n) => n.module === "lpf");
+
+	it("moving a pinned instance keeps its inner places, so its inner state is matched", () => {
+		const before = placed(false, "lead");
+		const after = placed(true, "lead");
+		expect(after.nodes[lpfIndex(after)]?.place).toBe(before.nodes[lpfIndex(before)]?.place);
+		const paired = match(
+			before.nodes.map((n, i) => ({ ...n, key: `k${i}` })),
+			after.nodes,
+		);
+		expect(paired.get(lpfIndex(after))).toBe(`k${lpfIndex(before)}`);
+	});
+
+	it("without the pin, moving the instance moves its inner places", () => {
+		const before = placed(false);
+		const after = placed(true);
+		expect(after.nodes[lpfIndex(after)]?.place).not.toBe(before.nodes[lpfIndex(before)]?.place);
+	});
+});
+
+describe(".seed() on an instance seeds every node inside", () => {
+	const defHiss = (inner?: number) =>
+		defmod({
+			name: "hiss",
+			ins: { amp: sig(0.3) },
+			outs: { out: sig() },
+			patch: (i) => ({ out: (inner === undefined ? noise() : noise().seed(inner)).mul(i.amp) }),
+		});
+	const noise = factory("noise");
+
+	it("renders like the inner node seeded inline", () => {
+		const sub = runProgram(() => {
+			defHiss()().seed(5).out();
+		});
+		const inline = runProgram(() => {
+			noise().seed(5).mul(0.3).out();
+		});
+		expect(sub.nodes.find((n) => n.module === "noise")?.seed).toBe(5);
+		expectSameSound(sub, inline);
+	});
+
+	it("a seed set inside wins over the instance's seed", () => {
+		const program = runProgram(() => {
+			defHiss(9)().seed(5).out();
+		});
+		expect(program.nodes.find((n) => n.module === "noise")?.seed).toBe(9);
+	});
+});

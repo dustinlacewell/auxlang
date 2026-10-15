@@ -7,7 +7,7 @@
 
 import { isPatternInput } from "../graph/input-kinds";
 import type { GNode, NodeRef } from "../graph/node";
-import { scoped } from "../graph/scope";
+import { inScope } from "../graph/scope";
 
 /** Replaces pattern inputs in place. Returns true if anything was expanded. */
 export function expandPatterns(nodes: readonly GNode[], clockNode: GNode | null): boolean {
@@ -34,6 +34,6 @@ function knobSeq(
 			`pattern input at ${consumer.module}.${port} needs an ambient clock — set one with tempo(bpm)`,
 		);
 	}
-	const seq: GNode = { module: "seq", inputs: {}, config: { pattern }, ...scoped(consumer.scope) };
+	const seq: GNode = { module: "seq", inputs: {}, config: { pattern }, ...inScope(consumer.scope) };
 	return { node: seq, port: "out" };
 }

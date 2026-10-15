@@ -4,8 +4,9 @@
  * carries the scope, so identity nests them under the instance), and the
  * returned record becomes the value each output port stands for.
  *
- * `.id()`, `.seed()` and `.width()` on an instance are loud errors: what they
- * mean for the inner nodes is not decided yet.
+ * The instance's `.id()` and `.seed()` go on its scope (graph/scope): the pin
+ * roots the inner places, the seed seeds every inner node. `.width()` is a
+ * loud error: a sub-patch has no lanes of its own to set.
  */
 
 import type { GNode, InputValue } from "../../graph/node";
@@ -38,21 +39,20 @@ function instanceScope(instance: GNode, spec: SubpatchSpec): Scope {
 	if (scopeChain(instance.scope).some((s) => s.module === spec.name)) {
 		throw new Error(`sub-patch '${spec.name}' contains itself. A sub-patch cannot recurse.`);
 	}
-	return { module: spec.name, ...(instance.scope ? { parent: instance.scope } : {}) };
+	return {
+		module: spec.name,
+		...(instance.scope ? { parent: instance.scope } : {}),
+		...(instance.pin !== undefined ? { pin: instance.pin } : {}),
+		...(instance.seed !== undefined ? { seed: instance.seed } : {}),
+	};
 }
 
 function assertPlainInstance(instance: GNode): void {
 	const where = `sub-patch '${instance.module}'`;
-	if (instance.pin !== undefined) {
-		throw new Error(`${where}: .id() on a sub-patch is not supported. Pin a module inside it.`);
-	}
-	if (instance.seed !== undefined) {
-		throw new Error(`${where}: .seed() on a sub-patch is not supported. Seed a module inside it.`);
-	}
 	const config = Object.keys(instance.config);
 	if (config.includes("__width")) {
 		throw new Error(
-			`${where}: .width() on a sub-patch is not supported. Set it on a module inside.`,
+			`${where}: .width() does not apply. A sub-patch has no lanes of its own: its width comes from its inputs. Set .width() on a module inside it.`,
 		);
 	}
 	if (config.length > 0) {

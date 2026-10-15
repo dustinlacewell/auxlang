@@ -128,14 +128,14 @@ describe("defmod({ patch }): loud errors at compile", () => {
 		).toThrow(/sub-patch 'forever' contains itself/);
 	});
 
-	it(".id() on an instance is not supported yet", () => {
+	it(".width() on an instance is refused, naming why", () => {
 		expect(() =>
 			runProgram(() => {
 				defmod(half as never)(saw(40))
-					.id("x")
+					.width(2)
 					.out();
 			}),
-		).toThrow(/\.id\(\) on a sub-patch is not supported/);
+		).toThrow(/\.width\(\) does not apply\. A sub-patch has no lanes of its own/);
 	});
 
 	it("an unused sub-patch never runs its patch", () => {

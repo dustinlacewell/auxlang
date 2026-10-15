@@ -9,7 +9,7 @@
  */
 
 import type { GNode, InputValue, ModTerm } from "../graph/node";
-import { type Scope, scoped } from "../graph/scope";
+import { type Scope, inScope } from "../graph/scope";
 import { type SpecTable, resolveSpec } from "../module/resolve";
 import type { PortAnn } from "../types";
 
@@ -64,5 +64,5 @@ function arithmetic(
 	inputs: Record<string, InputValue>,
 	scope: Scope | undefined,
 ): InputValue {
-	return { node: { module, inputs, config: {}, ...scoped(scope) }, port: "out" };
+	return { node: { module, inputs, config: {}, ...inScope(scope) }, port: "out" };
 }
