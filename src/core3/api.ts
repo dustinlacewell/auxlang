@@ -22,6 +22,7 @@ import { loop } from "./patch/loop";
 import { out } from "./patch/out";
 import { RESERVED_SCOPE_NAMES } from "./patch/scope-names";
 import { seed } from "./patch/seed";
+import { rootSubpatches } from "./patch/subpatch/registry";
 import { tempo } from "./patch/tempo";
 import { chord } from "./pattern/chord/chord";
 import { P } from "./pattern/pat-class";
@@ -102,6 +103,7 @@ export function buildUserScope(): Record<string, unknown> {
 		if (MODULE_OVERRIDES.has(name)) continue; // provided by RESERVED below
 		scope[name] = factory(name);
 	}
+	for (const spec of rootSubpatches().values()) scope[spec.name] = moduleFactory(spec);
 	for (const [name, value] of Object.entries(RESERVED)) {
 		if (!MODULE_OVERRIDES.has(name) && name in scope) {
 			throw new Error(

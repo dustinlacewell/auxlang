@@ -16,16 +16,21 @@
  *
  * Returns the module's factory in both scopes, so standalone/source-style use
  * works too: `const mysaw = defmod({...}); mysaw(220).out()`.
+ *
+ * A spec with `patch` instead of `tick` is a sub-patch module
+ * (patch/subpatch/define-subpatch): same ports, chaining and scopes; compile
+ * expands each instance into plain nodes.
  */
 
 import { type WrittenSpec, bindModule } from "../module/bind-module";
-import { hasModule, registerSpec, validateSpec } from "../module/define";
+import { registerSpec, validateSpec } from "../module/define";
 import type { Category, ModuleSpec, PortAnn } from "../types";
 import { currentSpecs, evalCtx } from "./context";
 import { moduleFactory } from "./factory";
-import { RESERVED_HANDLE_NAMES, assertNoReservedPorts } from "./handle";
+import { assertNoReservedPorts } from "./handle";
 import type { Handle } from "./handle-data";
-import { RESERVED_SCOPE_NAMES } from "./scope-names";
+import { assertEvalNameFree, assertRootNameFree } from "./name-free";
+import { defineSubpatch } from "./subpatch/define-subpatch";
 
 type Ins<I extends Record<string, PortAnn>> = { [K in keyof I]: number };
 type Outs<O extends Record<string, PortAnn>> = { [K in keyof O]: number };
@@ -75,9 +80,28 @@ export type DefmodSpec<
 	O extends Record<string, PortAnn> = Record<string, PortAnn>,
 > = DefmodMapSpec<I, O> | DefmodReduceSpec<I, O>;
 
+/** A sub-patch module (patch/subpatch/define-subpatch): ports plus the function that builds its graph. */
+export interface DefmodPatchSpec<I extends Record<string, PortAnn>, O extends Record<string, PortAnn>> {
+	readonly name: string;
+	readonly doc?: string;
+	/** Defaults to "utils". */
+	readonly category?: Category;
+	readonly ins: I;
+	readonly outs: O;
+	readonly patch: (i: { readonly [K in keyof I]: Handle }) => { readonly [K in keyof O]: unknown };
+}
+
 export function defmod<I extends Record<string, PortAnn>, O extends Record<string, PortAnn>>(
 	spec: DefmodSpec<I, O>,
-): (...args: unknown[]) => Handle {
+): (...args: unknown[]) => Handle;
+export function defmod<I extends Record<string, PortAnn>, O extends Record<string, PortAnn>>(
+	spec: DefmodPatchSpec<I, O>,
+): (...args: unknown[]) => Handle;
+export function defmod(spec: object): (...args: unknown[]) => Handle {
+	assertNamed(spec);
+	if ("patch" in spec) {
+		return moduleFactory(defineSubpatch(spec as unknown as Record<string, unknown>));
+	}
 	const written = spec as unknown as WrittenSpec;
 	assertWellFormed(written);
 	const bound = currentSpecs() === null ? registerRootSpec(written) : registerEvalSpec(written);
@@ -86,6 +110,7 @@ export function defmod<I extends Record<string, PortAnn>, O extends Record<strin
 
 /** Root-scope write: contract checks, then the tick check and build, then the realm registry. */
 function registerRootSpec(written: WrittenSpec): ModuleSpec {
+	assertRootNameFree(written.name);
 	validateSpec(written);
 	const bound = bindModule(written);
 	registerSpec(bound);
@@ -95,7 +120,7 @@ function registerRootSpec(written: WrittenSpec): ModuleSpec {
 /** Eval-scope write: full collision surface (registry, scope helpers, handle names, this eval), then the eval's table. */
 function registerEvalSpec(written: WrittenSpec): ModuleSpec {
 	const ctx = evalCtx("defmod()");
-	assertNameFree(written.name, ctx.specs);
+	assertEvalNameFree(written.name);
 	validateSpec(written);
 	assertNoReservedPorts(written);
 	assertJsonConfig(written.name, written.config);
@@ -104,14 +129,19 @@ function registerEvalSpec(written: WrittenSpec): ModuleSpec {
 	return bound;
 }
 
-/** Shape checks the type system can't enforce for eval'd patch source. */
-function assertWellFormed(spec: WrittenSpec): void {
+/** Every form: an object with a name. */
+function assertNamed(spec: unknown): void {
 	if (typeof spec !== "object" || spec === null) {
 		throw new Error("defmod(spec): spec must be a module spec object");
 	}
-	if (typeof spec.name !== "string" || spec.name.length === 0) {
+	const name = (spec as { name?: unknown }).name;
+	if (typeof name !== "string" || name.length === 0) {
 		throw new Error("defmod(spec): spec.name must be a non-empty string");
 	}
+}
+
+/** Shape checks the type system can't enforce for eval'd patch source. */
+function assertWellFormed(spec: WrittenSpec): void {
 	if (typeof spec.category !== "string" || spec.category.length === 0) {
 		throw new Error(`defmod('${spec.name}'): category is required`);
 	}
@@ -144,27 +174,6 @@ function assertHelpers(spec: WrittenSpec): void {
 		if (typeof fn !== "function") {
 			throw new Error(`defmod('${spec.name}'): helper '${name}' must be a function`);
 		}
-	}
-}
-
-function assertNameFree(name: string, defined: ReadonlyMap<string, ModuleSpec>): void {
-	if (hasModule(name)) {
-		throw new Error(`defmod('${name}'): '${name}' collides with a registered module`);
-	}
-	if (RESERVED_SCOPE_NAMES.has(name)) {
-		throw new Error(
-			`defmod('${name}'): '${name}' collides with a reserved patch-scope helper ` +
-				`(${[...RESERVED_SCOPE_NAMES].join(", ")})`,
-		);
-	}
-	if (RESERVED_HANDLE_NAMES.has(name)) {
-		throw new Error(
-			`defmod('${name}'): '${name}' collides with a reserved handle name ` +
-				`(${[...RESERVED_HANDLE_NAMES].join(", ")})`,
-		);
-	}
-	if (defined.has(name)) {
-		throw new Error(`defmod('${name}'): '${name}' is already defined in this patch`);
 	}
 }
 

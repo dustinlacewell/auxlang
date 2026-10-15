@@ -5,6 +5,8 @@
  * collection/compile time. A chain nobody roots is garbage, not a zombie.
  */
 
+import type { Scope } from "./scope";
+
 /** Reference to another node's output port (optionally a single lane of it). */
 export interface NodeRef {
 	readonly node: GNode;
@@ -52,4 +54,6 @@ export interface GNode {
 	 */
 	site?: number;
 	bindingSites?: Readonly<Record<string, number>>;
+	/** The sub-patch instance this node was built inside, if any (graph/scope). */
+	readonly scope?: Scope;
 }

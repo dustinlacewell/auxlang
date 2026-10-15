@@ -14,15 +14,17 @@ import { getRegistry } from "../module/define";
 import { checkSeed } from "../random/check-seed";
 import { currentCall } from "../source/active-source";
 import { argLiteralSite } from "../source/call-bindings";
-import type { ModuleSpec } from "../types";
+import type { ModulePorts } from "../types";
 import { bindInput } from "./bind-input";
 import { buildNode } from "./build-node";
 import { connectWhole } from "./connect";
-import { currentSpecs } from "./context";
+import { currentSpecs, currentSubpatches } from "./context";
 import { HANDLE, type Handle, type HandleData } from "./handle-data";
 import { withModTerm } from "./mod-terms";
+import { newNode } from "./new-node";
 import { rootFromHandle } from "./out";
 import { isPatchModule, resolvePatchModule } from "./resolve";
+import { rootSubpatches } from "./subpatch/registry";
 
 /** Names the handle claims for itself; module ports may not use them. */
 export const RESERVED_HANDLE_NAMES = new Set(["out", "apply", "lane", "id", "seed", "width", "mod"]);
@@ -89,7 +91,7 @@ export function wrap(node: GNode, port?: string, lane?: number): Handle {
 	}) as unknown as Handle;
 }
 
-function laneHandle(node: GNode, port: string | undefined, i: number, spec: ModuleSpec): Handle {
+function laneHandle(node: GNode, port: string | undefined, i: number, spec: ModulePorts): Handle {
 	if (!Number.isInteger(i) || i < 0) {
 		throw new Error(`${spec.name}.lane(${i}): lane must be a non-negative integer`);
 	}
@@ -122,7 +124,7 @@ function withWidth(
 	port: string | undefined,
 	lane: number | undefined,
 	n: number,
-	spec: ModuleSpec,
+	spec: ModulePorts,
 ): Handle {
 	if (!Number.isInteger(n) || n < 1) {
 		throw new Error(`${spec.name}.width(${n}): width must be a positive integer`);
@@ -136,7 +138,7 @@ function inputSetter(
 	node: GNode,
 	port: string | undefined,
 	lane: number | undefined,
-	spec: ModuleSpec,
+	spec: ModulePorts,
 	input: string,
 ): (value: unknown) => Handle {
 	return (value: unknown) => setInput(node, port, lane, spec, input, value);
@@ -147,7 +149,7 @@ function setInput(
 	node: GNode,
 	port: string | undefined,
 	lane: number | undefined,
-	spec: ModuleSpec,
+	spec: ModulePorts,
 	input: string,
 	value: unknown,
 ): Handle {
@@ -169,7 +171,7 @@ function modulated(
 	node: GNode,
 	port: string | undefined,
 	lane: number | undefined,
-	spec: ModuleSpec,
+	spec: ModulePorts,
 	input: unknown,
 	signal: unknown,
 	depth: unknown,
@@ -179,12 +181,13 @@ function modulated(
 	return wrap(copy, port, lane);
 }
 
-/** Shallow copy; `mods` records are never mutated, so they are shared. */
+/**
+ * Shallow copy; `mods` records are never mutated, so they are shared. A copy
+ * is a new node, so it takes the scope it is built in (patch/new-node).
+ */
 function copyNode(node: GNode): GNode {
 	return {
-		module: node.module,
-		inputs: { ...node.inputs },
-		config: { ...node.config },
+		...newNode(node.module, { ...node.inputs }, { ...node.config }),
 		...(node.pin !== undefined ? { pin: node.pin } : {}),
 		...(node.seed !== undefined ? { seed: node.seed } : {}),
 		...(node.mods !== undefined ? { mods: node.mods } : {}),
@@ -194,7 +197,7 @@ function copyNode(node: GNode): GNode {
 }
 
 /** Also enforced eagerly by defmod so a colliding port fails at the definition, not at wrap. */
-export function assertNoReservedPorts(spec: ModuleSpec): void {
+export function assertNoReservedPorts(spec: ModulePorts): void {
 	for (const name of Object.keys(spec.ins)) {
 		if (RESERVED_HANDLE_NAMES.has(name)) throw reservedPortError(spec, name, "input");
 	}
@@ -206,17 +209,20 @@ export function assertNoReservedPorts(spec: ModuleSpec): void {
 	}
 }
 
-function reservedPortError(spec: ModuleSpec, name: string, kind: string): Error {
+function reservedPortError(spec: ModulePorts, name: string, kind: string): Error {
 	return new Error(
 		`module '${spec.name}': ${kind} '${name}' collides with a reserved handle name ` +
 			`(${[...RESERVED_HANDLE_NAMES].join(", ")})`,
 	);
 }
 
-function unknownPropMessage(prop: string, spec: ModuleSpec): string {
-	const specs = currentSpecs();
-	const defined =
-		specs && specs.size > 0 ? ` Patch-defined modules: [${[...specs.keys()].join(", ")}]` : "";
+function unknownPropMessage(prop: string, spec: ModulePorts): string {
+	const names = [
+		...rootSubpatches().keys(),
+		...(currentSpecs()?.keys() ?? []),
+		...(currentSubpatches()?.keys() ?? []),
+	];
+	const defined = names.length > 0 ? ` Patch-defined modules: [${names.join(", ")}]` : "";
 	return (
 		`'${prop}' is not an input, output, or module for '${spec.name}'. ` +
 		`inputs: [${Object.keys(spec.ins).join(", ")}], outputs: [${Object.keys(spec.outs).join(", ")}]. ` +

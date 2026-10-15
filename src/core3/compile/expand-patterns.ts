@@ -7,6 +7,7 @@
 
 import { isPatternInput } from "../graph/input-kinds";
 import type { GNode, NodeRef } from "../graph/node";
+import { scoped } from "../graph/scope";
 
 /** Replaces pattern inputs in place. Returns true if anything was expanded. */
 export function expandPatterns(nodes: readonly GNode[], clockNode: GNode | null): boolean {
@@ -14,19 +15,25 @@ export function expandPatterns(nodes: readonly GNode[], clockNode: GNode | null)
 	for (const node of nodes) {
 		for (const [port, value] of Object.entries(node.inputs)) {
 			if (!isPatternInput(value)) continue;
-			node.inputs[port] = knobSeq(value.pattern, clockNode, `${node.module}.${port}`);
+			node.inputs[port] = knobSeq(value.pattern, clockNode, node, port);
 			expanded = true;
 		}
 	}
 	return expanded;
 }
 
-function knobSeq(pattern: unknown, clockNode: GNode | null, where: string): NodeRef {
+/** The knob's seq lives in its consumer's sub-patch scope, if any. */
+function knobSeq(
+	pattern: unknown,
+	clockNode: GNode | null,
+	consumer: GNode,
+	port: string,
+): NodeRef {
 	if (clockNode === null) {
 		throw new Error(
-			`pattern input at ${where} needs an ambient clock — set one with tempo(bpm)`,
+			`pattern input at ${consumer.module}.${port} needs an ambient clock — set one with tempo(bpm)`,
 		);
 	}
-	const seq: GNode = { module: "seq", inputs: {}, config: { pattern } };
+	const seq: GNode = { module: "seq", inputs: {}, config: { pattern }, ...scoped(consumer.scope) };
 	return { node: seq, port: "out" };
 }

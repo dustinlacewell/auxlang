@@ -7,7 +7,7 @@
  */
 
 import type { ModTerm } from "../graph/node";
-import type { ModuleSpec } from "../types";
+import type { ModulePorts } from "../types";
 import { bindInput } from "./bind-input";
 import { lift } from "./lift";
 
@@ -16,7 +16,7 @@ type Mods = Readonly<Record<string, readonly ModTerm[]>>;
 /** A new mods record with one more term on `port`; `mods` is not changed. */
 export function withModTerm(
 	mods: Mods | undefined,
-	spec: ModuleSpec,
+	spec: ModulePorts,
 	port: unknown,
 	signal: unknown,
 	depth: unknown,
@@ -29,7 +29,7 @@ export function withModTerm(
 	return { ...mods, [port]: [...(mods?.[port] ?? []), term] };
 }
 
-function assertInput(spec: ModuleSpec, port: unknown): asserts port is string {
+function assertInput(spec: ModulePorts, port: unknown): asserts port is string {
 	if (typeof port === "string" && port in spec.ins) return;
 	throw new Error(
 		`${spec.name}.mod(${JSON.stringify(port)}, ...): not an input of '${spec.name}'. ` +

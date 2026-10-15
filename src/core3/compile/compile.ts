@@ -2,6 +2,8 @@
  * Top-level compile entry: an `EvalResult` (roots + ambient clock + seed) in,
  * a serializable `Program` out. The pipeline, in order:
  *
+ *   subpatches   each sub-patch instance → its inner graph, spliced in as plain
+ *                nodes (compile/subpatch); the program never sees a sub-patch
  *   mods         `.mod` terms → base + Σ(signal × depth) as add/mul nodes
  *   collect      reachable nodes from the roots (object-identity graph walk)
  *   expand       pattern inputs → `seq(pattern).out` nodes (patterns as knobs)
@@ -41,6 +43,7 @@ import { expandPatterns } from "./expand-patterns";
 import { type Placement, identities } from "./identities";
 import { markClocked } from "./mark-clocked";
 import { prepareSeqs } from "./prepare-seqs";
+import { expandSubpatches } from "./subpatch/expand-subpatches";
 import { toposort } from "./toposort";
 import { resolveWidths } from "./widths";
 import { cutZ1Edges } from "./z1-edges";
@@ -56,6 +59,7 @@ interface Resolved {
 
 export function compile(evalResult: EvalResult): Program {
 	const specs = evalResult.specs;
+	expandSubpatches(evalResult);
 	expandMods(collect(evalResult.roots), specs);
 	const reachable = collect(evalResult.roots); // re-walk: the mod arithmetic nodes are new
 	expandPatterns(reachable, evalResult.clock);

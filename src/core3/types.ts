@@ -78,7 +78,12 @@ export type ReduceTickFn = (
 	width: number,
 ) => void;
 
-export interface ModuleSpec {
+/**
+ * A module's port surface: everything the patch layer reads to build, chain
+ * and connect a node. A tick module (ModuleSpec) and a sub-patch module
+ * (patch/subpatch) both have one.
+ */
+export interface ModulePorts {
 	readonly name: string;
 	/** One-line human description, rendered by the site's module cards/reference. */
 	readonly doc?: string;
@@ -97,6 +102,9 @@ export interface ModuleSpec {
 	 * is a loud error.
 	 */
 	readonly defaultOut?: string;
+}
+
+export interface ModuleSpec extends ModulePorts {
 	/** "map" (default): tick per lane. "reduce": one tick sees all lanes, width collapses to 1. */
 	readonly policy?: "map" | "reduce";
 	/**

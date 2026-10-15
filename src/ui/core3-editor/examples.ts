@@ -74,6 +74,23 @@ loop({ a: 0, b: 0 }, (fb) => ({
 })).apply((v) => v.a.add(v.b).gain(0.2).out())
 `;
 
+/** defmod with patch: a sub-patch saved as a module, used twice. */
+const subpatch = `// defmod with patch: save a sub-patch as a module, use it like any module
+tempo(110)
+
+defmod({
+  name: "pluck",
+  ins: { pitch: semis(48), bright: semis(91) },
+  outs: { out: sig() },
+  patch: (i) => ({ out: i.pitch.saw().lpf({ cutoff: i.bright, res: 0.4 }) }),
+})
+
+const lead = seq("c4 e4 g4 <b4 a4>")
+const bass = seq("c2 ~ g1 ~")
+lead.pluck({ bright: 96 }).mul(lead.gate.ad(0.005, 0.2)).gain(0.2).out()
+bass.pluck(79).mul(bass.gate.ad(0.005, 0.3)).gain(0.3).out()
+`;
+
 /** (e) Poly: a stacked chord pattern sequences all lanes at once. */
 const polyChords = `// polyphony: a [chord] widens the sequencer to one lane per voice
 tempo(90)
@@ -632,6 +649,7 @@ export const EXAMPLES: readonly Example[] = [
 	{ name: "pattern as signal", source: patternAsSignal },
 	{ name: "karplus pluck (loop)", source: karplus },
 	{ name: "cross FM (loop record)", source: crossFm },
+	{ name: "sub-patch module (defmod patch)", source: subpatch },
 	{ name: "poly chords", source: polyChords },
 	{ name: "drums + counter", source: drums },
 	{ name: "seeded chance", source: seededChance },

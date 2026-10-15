@@ -10,12 +10,12 @@
  * never written by them.)
  */
 
-import type { ModuleSpec } from "../types";
+import type { ModulePorts, ModuleSpec } from "../types";
 
 const registry = new Map<string, ModuleSpec>();
 
-/** Contract checks shared by both defmod scopes: defaults and positionals must name real ports. */
-export function validateSpec(spec: ModuleSpec): void {
+/** Contract checks shared by every defmod form: defaults and positionals must name real ports. */
+export function validateSpec(spec: ModulePorts): void {
 	if (!(spec.defaultIn in spec.ins)) {
 		throw new Error(`module '${spec.name}': defaultIn '${spec.defaultIn}' is not an input`);
 	}

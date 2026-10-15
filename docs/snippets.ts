@@ -88,6 +88,25 @@ loop((fb) =>
   exciter.add(fb.delay({ time: 0.006, feedback: 0, mix: 1 }).lpf({ cutoff: 98 }).mul(0.99)),
 ).gain(0.8).out()`,
 	},
+	// §5 a sub-patch saved as a module, chained from a seq like any module.
+	{
+		id: "manifesto-subpatch",
+		audible: true,
+		code: `tempo(120)
+
+defmod({
+  name: "voice",
+  ins: { pitch: semis(57), cutoff: semis(84) },
+  outs: { out: sig() },
+  patch: (i) => ({ out: i.pitch.saw().lpf({ cutoff: i.cutoff, res: 0.3 }) }),
+})
+
+const s = seq("c3 e3 g3 <b2 a2>")
+s.voice({ cutoff: 79 })
+  .mul(s.gate.adsr(0.005, 0.12, 0.5, 0.2))
+  .gain(0.3)
+  .out()`,
+	},
 	// §6.1 feedback: several wires as a record, cross-coupled FM.
 	{
 		id: "manifesto-loop-record",

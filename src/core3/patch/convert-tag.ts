@@ -6,11 +6,12 @@
  * both units.
  */
 
-import type { GNode, InputValue } from "../graph/node";
+import type { InputValue } from "../graph/node";
 import type { PortAnn } from "../types";
 import { conversionFor, convertibleTo } from "../units/conversions";
 import type { UnitTag } from "../units/tag";
 import { lift } from "./lift";
+import { newNode } from "./new-node";
 
 export function convertTag(tag: UnitTag, ann: PortAnn, where: string): InputValue {
 	const value = lift(tag.def, where);
@@ -19,8 +20,7 @@ export function convertTag(tag: UnitTag, ann: PortAnn, where: string): InputValu
 	if (conversion === null) throw noConversionError(tag, ann, where);
 	if (typeof value === "number" && conversion.fold)
 		return folded(conversion.fold(value), tag, where);
-	const node: GNode = { module: conversion.module, inputs: { in: value }, config: {} };
-	return { node, port: "out" };
+	return { node: newNode(conversion.module, { in: value }, {}), port: "out" };
 }
 
 function folded(value: number, tag: UnitTag, where: string): number {

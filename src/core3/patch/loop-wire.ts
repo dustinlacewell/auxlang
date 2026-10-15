@@ -7,9 +7,10 @@ import type { GNode } from "../graph/node";
 import { getModule } from "../module/define";
 import type { HandleData } from "./handle-data";
 import { refFromHandle } from "./lift";
+import { newNode } from "./new-node";
 
 export function feedbackPlaceholder(): GNode {
-	return { module: "z1", inputs: {}, config: {} };
+	return newNode("z1", {}, {});
 }
 
 /** Wire `source` back into `placeholder` as a z-edge. */

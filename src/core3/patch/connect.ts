@@ -7,14 +7,14 @@
  */
 
 import type { InputValue } from "../graph/node";
-import type { ModuleSpec } from "../types";
+import type { ModulePorts } from "../types";
 import type { HandleData } from "./handle-data";
 import { refFromHandle } from "./lift";
 import { resolvePatchModule } from "./resolve";
 import { STEREO_PORTS, droppedChannelError, isStereoSource, takesStereo } from "./stereo";
 
 /** The input bindings on `dest` for connecting the handle `data` to it whole. */
-export function connectWhole(data: HandleData, dest: ModuleSpec): Record<string, InputValue> {
+export function connectWhole(data: HandleData, dest: ModulePorts): Record<string, InputValue> {
 	if (!isWholeStereo(data)) {
 		return { [dest.defaultIn]: refFromHandle(data, dest.name) };
 	}
@@ -37,6 +37,6 @@ function byName(data: HandleData): Record<string, InputValue> {
 	return bindings;
 }
 
-function intoDescription(dest: ModuleSpec): string {
+function intoDescription(dest: ModulePorts): string {
 	return `connecting into '${dest.name}' (inputs: [${Object.keys(dest.ins).join(", ")}], no l/r pair)`;
 }

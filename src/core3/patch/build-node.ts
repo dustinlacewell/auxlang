@@ -17,15 +17,16 @@ import { isGNode } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
 import { currentCall } from "../source/active-source";
 import { argLiteralSite, propLiteralSite } from "../source/call-bindings";
-import type { ModuleSpec } from "../types";
+import type { ModulePorts } from "../types";
 import { isUnitTag } from "../units/tag";
 import { bindInput } from "./bind-input";
 import { connectWhole } from "./connect";
 import { evalCtx } from "./context";
 import { handleData, isHandle } from "./handle-data";
+import { newNode } from "./new-node";
 
 export function buildNode(
-	spec: ModuleSpec,
+	spec: ModulePorts,
 	args: readonly unknown[],
 	chained?: Record<string, InputValue>,
 ): GNode {
@@ -53,7 +54,7 @@ export function buildNode(
 
 	if (chained !== undefined) bindChain(spec, chained, inputs);
 
-	return { module: spec.name, inputs, config, ...sourceSites(args, positional) };
+	return { ...newNode(spec.name, inputs, config), ...sourceSites(args, positional) };
 }
 
 /** The making call's site, and the literal sites of the bindings (empty outside a located eval). */
@@ -82,7 +83,7 @@ function sourceSites(
 
 /** Positional names, skipping the default input and the chain-bound inputs when chaining. */
 function positionalSlots(
-	spec: ModuleSpec,
+	spec: ModulePorts,
 	chaining: boolean,
 	bound: ReadonlySet<string>,
 ): readonly string[] {
@@ -92,7 +93,7 @@ function positionalSlots(
 
 /** A handle into the default input is a whole-module connection; anything else assigns. */
 function assignPositional(
-	spec: ModuleSpec,
+	spec: ModulePorts,
 	name: string,
 	value: unknown,
 	inputs: Record<string, InputValue>,
@@ -106,7 +107,7 @@ function assignPositional(
 }
 
 function bindChain(
-	spec: ModuleSpec,
+	spec: ModulePorts,
 	chained: Record<string, InputValue>,
 	inputs: Record<string, InputValue>,
 ): void {
@@ -116,14 +117,14 @@ function bindChain(
 	}
 }
 
-function chainBoundError(spec: ModuleSpec, name: string): Error {
+function chainBoundError(spec: ModulePorts, name: string): Error {
 	return new Error(
 		`Cannot set '${name}' when chaining into '${spec.name}' — it is already bound from the chain source`,
 	);
 }
 
 function applyNamedArgs(
-	spec: ModuleSpec,
+	spec: ModulePorts,
 	named: Record<string, unknown>,
 	inputs: Record<string, InputValue>,
 	config: Record<string, unknown>,
@@ -142,7 +143,7 @@ function applyNamedArgs(
 }
 
 function assign(
-	spec: ModuleSpec,
+	spec: ModulePorts,
 	name: string,
 	value: unknown,
 	inputs: Record<string, InputValue>,
@@ -160,7 +161,7 @@ function assign(
 	config[name] = value;
 }
 
-function knownKey(spec: ModuleSpec, key: string): boolean {
+function knownKey(spec: ModulePorts, key: string): boolean {
 	return key in spec.ins || key in (spec.config ?? {}) || key.startsWith("__");
 }
 

@@ -5,12 +5,12 @@
  */
 
 import type { InputValue } from "../graph/node";
-import type { ModuleSpec, PortAnn } from "../types";
+import type { ModulePorts, PortAnn } from "../types";
 import { isUnitTag } from "../units/tag";
 import { convertTag } from "./convert-tag";
 import { lift } from "./lift";
 
-export function bindInput(spec: ModuleSpec, port: string, value: unknown): InputValue {
+export function bindInput(spec: ModulePorts, port: string, value: unknown): InputValue {
 	const where = `${spec.name}.${port}`;
 	if (isUnitTag(value)) return convertTag(value, spec.ins[port] as PortAnn, where);
 	return lift(value, where);
