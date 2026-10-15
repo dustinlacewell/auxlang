@@ -104,8 +104,10 @@ An event is `{ whole, part, value, kind }`.
 - `whole` is the event's full span; `part` is the slice inside the query.
   An onset is real only where `part` starts at `whole`'s start. This is what
   stops a note that crosses a cycle edge from restarting there.
-- `kind` is `note`, `rest`, or `tie`. A **rest is an event** with its gate off.
-  A **tie** continues the previous note: no trig, no gate dip.
+- `kind` is `note`, `rest`, `tie`, or `slide`. A **rest is an event** with its
+  gate off. A **tie** continues the previous note: same value, no trig, no gate
+  dip. A **slide** is a new note entered without a retrigger: new value, no
+  trig, no gate dip, like a 303 slide step.
 - `value` is a number (semitones for notes) or a record of named numbers (§3.4).
 
 Rests and ties are events so that every step exists, whether it sounds or not.
@@ -166,6 +168,7 @@ const line = p`${hook} ${hook.rev().add(12)} ~ ${hook.fast(2)}`
 | `a!2` | replicate (adds steps) | `a a` in the enclosing sequence |
 | `a@2` | weight 2 (one longer step) | `timecat([2, a], ...)` |
 | `a _` | tie (two steps, one note) | `a` then a `tie` event |
+| `a_b` | slide (b entered legato from a) | `a` then `b` as a `slide` event |
 | `a?` `a?0.7` | maybe | `a.degrade(0.5)` / `a.degrade(0.7)` |
 | `a(3,8,2)` | euclidean | `a.euclid(3, 8, 2)` |
 
@@ -212,15 +215,20 @@ omitted, it is the ambient clock's position in bars.
 Outputs:
 
 - `out` (default) — the current event's value, held between events.
-- `gate` — high while the position is inside a `note` or one of its ties.
-  Between two touching notes, the gate dips for a fixed 1 ms so envelopes
-  retrigger. When the position comes from a clock, the dip falls before the
-  change, so gate and trig rise together. Otherwise it starts at the change.
+- `gate` — high while the position is inside a `note`, a `slide`, or one of
+  their ties. Between two touching notes, the gate dips for a fixed 1 ms so
+  envelopes retrigger. When the position comes from a clock, the dip falls
+  before the change, so gate and trig rise together. Otherwise it starts at the
+  change.
 - `trig` — a single-sample pulse when the position enters a different note.
   A tie belongs to its note: moving from a note into its own tie fires nothing;
   jumping onto a tie from anywhere else enters that note and fires. Direction
   and distance do not matter: a clock step, a reset, a backwards scan, and a
   random jump all fire once.
+- `slide` — high while the position is inside a slide. Moving from the
+  previous note straight into its slide fires no trig and no gate dip; arriving
+  any other way fires like a note. Glide is patching:
+  `s.slew(s.slide.mul(0.06))` glides only on slides.
 - one output per record field (§3.4).
 
 This is how voltage-addressed sequencers have always worked: arriving at a new
