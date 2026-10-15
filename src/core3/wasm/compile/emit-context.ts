@@ -1,0 +1,68 @@
+/**
+ * What a function being compiled can reach beyond its own locals: the
+ * tick's parameter records (roles), the math call cache, the helpers and
+ * runtime functions it calls, bridge intrinsics, and how `return` leaves it.
+ */
+
+import type { AnyNode, Expression } from "acorn";
+import type { FnEmitter } from "./fn-emitter";
+import type { Kind, Lanes, StaticValue, Value } from "./values";
+
+/** A tick's parameter records for one node lane. */
+export interface TickRoles {
+	/** The f64 local holding state field `field`. */
+	state(field: string, at: AnyNode): number;
+	input(port: string, at: AnyNode): Value;
+	/** The f64 local holding output `port`. */
+	output(port: string, at: AnyNode): number;
+	config(field: string, at: AnyNode): StaticValue;
+}
+
+/**
+ * The math call cache (`__mc[slot]`, module/bind-math/cache-names.ts): a
+ * tick keeps its slots in locals and passes its lane's cache address to the
+ * helpers it calls; a helper reaches the cache in memory through that hidden
+ * i32 parameter (`base`, a local).
+ */
+export type CacheAccess =
+	| { readonly k: "locals"; readonly slot: (n: number) => number; readonly address: number }
+	| { readonly k: "memory"; readonly base: number };
+
+/** How `return` leaves: with a value (a helper), or by branching out of an inlined tick. */
+export type Return =
+	| { readonly k: "value"; readonly kind: Kind; readonly seen: Kind[] }
+	| { readonly k: "exit"; readonly depth: number };
+
+/** A helper argument's shape: run-time values are parameters, the rest specialise the helper. */
+export type ArgShape =
+	| { readonly k: "run"; readonly kind: "f64" | "bool" }
+	| { readonly k: "static"; readonly value: StaticValue }
+	| { readonly k: "lanes"; readonly lanes: Lanes };
+
+export interface FnRef {
+	readonly index: number;
+	/** Takes the lane's cache base as a hidden first parameter. */
+	readonly hidden: boolean;
+	readonly result: Kind;
+}
+
+export interface Calls {
+	hasHelper(name: string): boolean;
+	helper(name: string, shapes: readonly ArgShape[]): FnRef;
+	runtime(name: "toInt32" | "round" | "fmod" | "sign"): FnRef;
+}
+
+/** Bridge calls a module's own tick may make (the seq event table). */
+export interface Intrinsics {
+	/** Emits the call and returns its kind, "void", or null when `name` is not an intrinsic. */
+	call(e: FnEmitter, name: string, args: readonly Expression[], at: AnyNode): Kind | "void" | null;
+}
+
+export interface EmitContext {
+	readonly owner: string;
+	readonly roles: TickRoles | null;
+	readonly cache: CacheAccess | null;
+	readonly calls: Calls;
+	readonly intrinsics: Intrinsics | null;
+	readonly ret: Return;
+}
