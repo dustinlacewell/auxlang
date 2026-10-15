@@ -494,8 +494,11 @@ Re-eval is the core interaction, so its rules are part of the language:
 - The clock position is continuous across evals. Patterns pick up mid-cycle.
 - The old and new graphs crossfade equal-power over a short window.
 - Module state is data (§5), so migration is copy-and-carry.
-- A patch-defined module's source is part of its identity. A changed tick is a
-  different machine, so its state resets unless pinned.
+- A patch-defined module's tick source is part of its identity. A changed tick
+  is a different machine, so its state resets unless pinned. A sub-patch module
+  is a container, not a machine: its inner modules match by place under the
+  instance (or under its `.id()` pin), so editing its body keeps whatever still
+  matches.
 - Neither a constant's value nor the wiring is identity. Identity is module
   type, place, `.id()` pins, and state shape. Changing `lpf(800)` to
   `lpf(900)`, or adding `.mod("cutoff", lfo(0.3), 12)`, keeps state; a change
