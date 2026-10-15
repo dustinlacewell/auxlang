@@ -17,7 +17,7 @@ describe("NaN/Inf never reach the rendered output", () => {
 	it("a lambda returning NaN into osc.pitch stays out of l/r", () => {
 		const program = runProgram(() => {
 			sin()
-				.pitch((_s: unknown, _sr: number, t: number) => (t < 0.005 ? 60 : Number.NaN))
+				.pitch((_s: unknown, _sr: number, t: number) => (t < 0.005 ? 60 : 0 / 0))
 				.out();
 		});
 		const { l, r } = render(program, 0.05);
@@ -30,7 +30,7 @@ describe("NaN/Inf never reach the rendered output", () => {
 			saw(57)
 				.lpf({
 					cutoff: (_s: unknown, sr: number, t: number) =>
-						Math.round(t * sr) === 50 ? Number.NaN : 79,
+						Math.round(t * sr) === 50 ? 0 / 0 : 79,
 				})
 				.out();
 		});

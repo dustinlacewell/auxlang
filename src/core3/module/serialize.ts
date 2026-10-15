@@ -1,16 +1,21 @@
 /**
  * The string crossing for eval-defined modules. `serializeSpec` turns a
- * ModuleSpec into plain JSON with `tick`/`state` as source strings;
- * `hydrateSpec` compiles them back (same `new Function` idiom and error style
- * as runtime/lambda's hydrateLambda). `assertClosureFree` is the fence AT this
- * boundary: compile runs it on every spec it serializes into a Program, so a
- * closure-capturing tick fails loudly at compile instead of inside the audio
- * thread. Root-scope specs never cross, so they never pay the fence.
+ * ModuleSpec into plain JSON carrying its source text (`tick`, `helpers`,
+ * `state`); `hydrateSpec` rebuilds it on the other side through the same
+ * tick build every module uses (tick-build/build-tick). The tick and helpers
+ * were checked against the tick subset at eval; `assertClosureFree` fences the
+ * rest of the crossing (`state` runs on the other side too), so a closure
+ * there fails at compile instead of inside the audio thread.
  */
 
 import type { ModuleSpec, ReduceTickFn, SerializedModuleSpec, TickFn } from "../types";
+import { buildTick } from "./tick-build/build-tick";
 
 export function serializeSpec(spec: ModuleSpec): SerializedModuleSpec {
+	if (spec.source === undefined) {
+		throw new Error(`module '${spec.name}' has no source text and cannot cross to the engine`);
+	}
+	const helpers = spec.source.helpers;
 	return {
 		name: spec.name,
 		category: spec.category,
@@ -18,7 +23,8 @@ export function serializeSpec(spec: ModuleSpec): SerializedModuleSpec {
 		outs: spec.outs,
 		defaultIn: spec.defaultIn,
 		defaultOut: spec.defaultOut,
-		tick: spec.tick.toString(),
+		tick: spec.source.tick,
+		...(Object.keys(helpers).length > 0 ? { helpers } : {}),
 		...(spec.doc !== undefined ? { doc: spec.doc } : {}),
 		...(spec.config !== undefined ? { config: spec.config } : {}),
 		...(spec.positional !== undefined ? { positional: spec.positional } : {}),
@@ -28,24 +34,24 @@ export function serializeSpec(spec: ModuleSpec): SerializedModuleSpec {
 }
 
 export function hydrateSpec(s: SerializedModuleSpec): ModuleSpec {
-	const tick = hydrateFn(s.tick, "tick", `module '${s.name}' tick`) as TickFn | ReduceTickFn;
+	const source = { tick: s.tick, helpers: s.helpers ?? {} };
+	const tick = buildTick(source, `module '${s.name}'`);
 	const state =
 		s.state !== undefined
 			? (hydrateFn(s.state, "state", `module '${s.name}' state`) as (
 					sampleRate: number,
 				) => Record<string, unknown>)
 			: undefined;
-	const { tick: _t, state: _s, ...rest } = s;
-	return { ...rest, tick, ...(state !== undefined ? { state } : {}) };
+	const { tick: _t, state: _s, helpers: _h, ...rest } = s;
+	return { ...rest, tick, source, ...(state !== undefined ? { state } : {}) };
 }
 
 const TRIAL_SAMPLE_RATE = 48000;
 
 /**
  * The safety fence: run a serialized spec through the exact crossing the
- * worklet will perform (hydrate via `new Function` → construct state → one
- * tick). A tick or state closing over patch variables throws HERE, naming the
- * module and the closure-free rule.
+ * worklet will perform (hydrate → construct state → one tick). A state
+ * closing over patch variables throws HERE, naming the module.
  */
 export function assertClosureFree(s: SerializedModuleSpec): void {
 	const hydrated = hydrateSpec(s);
@@ -62,7 +68,7 @@ export function assertClosureFree(s: SerializedModuleSpec): void {
 		}
 	} catch (err) {
 		throw new Error(
-			`defmod('${s.name}'): tick failed a trial run. tick and state are serialized and rebuilt inside the audio engine, so they must be closure-free — no captured patch variables; only their parameters and globals like Math. Original error: ${String(err)}`,
+			`defmod('${s.name}'): failed a trial run. state is serialized and rebuilt inside the audio engine, so it must be closure-free — no captured patch variables; only its parameter and globals like Math. Original error: ${String(err)}`,
 		);
 	}
 }
@@ -70,7 +76,7 @@ export function assertClosureFree(s: SerializedModuleSpec): void {
 /**
  * Compile one function source. Tries the expression form first (arrows, named
  * function expressions); falls back to re-wrapping an object-method shorthand
- * (`tick(s, i, o) { ... }` stringifies without a `function` keyword).
+ * (`state(sr) { ... }` stringifies without a `function` keyword).
  */
 function hydrateFn(src: string, key: string, what: string): unknown {
 	let fn: unknown;

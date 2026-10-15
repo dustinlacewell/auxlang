@@ -1,18 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import "@/core3/modules/abs";
-import "@/core3/modules/add";
-import "@/core3/modules/clip";
-import "@/core3/modules/cmp";
-import "@/core3/modules/div";
-import "@/core3/modules/mul";
-import "@/core3/modules/pan";
-import "@/core3/modules/sah";
-import "@/core3/modules/scale";
-import "@/core3/modules/slew";
-import "@/core3/modules/sub";
-import "@/core3/modules/wrap";
-import "@/core3/modules/z1";
+import "@/core3/modules/all";
 import { getModule } from "@/core3/module/define";
 import { SR, driver } from "./helpers";
 

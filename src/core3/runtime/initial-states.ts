@@ -10,10 +10,11 @@
  * (MANIFESTO §6.2). A migrated lane keeps its `__rng`, so its random stream
  * continues.
  *
- * The engine injects two per-lane fields after construction, neither part of
- * the state's shape: `__lane` (the lane index) and `__scratch` (an empty
- * record a module may fill with data derived from config, such as event
- * tables). Scratch is never carried: every engine starts it empty.
+ * The engine injects three per-lane fields after construction, none part of
+ * the state's shape: `__lane` (the lane index), `__scratch` (an empty record
+ * a module may fill with data derived from config, such as event tables) and
+ * `__seed` (the patch seed, which `hashRandom(key)` in a tick reads). Scratch
+ * is never carried: every engine starts it empty.
  */
 
 import { streamSeed } from "../random/stream-seed";
@@ -48,6 +49,7 @@ export function buildLaneStates(
 			const state = carried !== undefined && stateFits(carried, fresh) ? deepClone(carried) : fresh;
 			state.__lane = lane;
 			state.__scratch = {};
+			state.__seed = seed;
 			return state;
 		});
 	});

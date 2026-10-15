@@ -1,7 +1,9 @@
 /**
- * Registration manifest: importing this file runs every module file's
- * root-scope `defmod` side-effect, populating the realm registry. This is the
- * ONE permitted side-effect import — it is NOT a barrel (no re-exports of
+ * Registration manifest: importing this file populates the realm registry.
+ * The module library (`lib/`) is plain `defmod` source, evaluated at root
+ * scope through the same path as a patch-defined module (load-lib.ts). The
+ * TypeScript imports below are the modules not yet in the library. This is
+ * the ONE permitted side-effect import — it is NOT a barrel (no re-exports of
  * internal helpers).
  */
 
@@ -13,7 +15,6 @@ import "./lfo";
 import "./fm";
 import "./svf";
 import "./env";
-import "./mul";
 import "./add";
 import "./sub";
 import "./div";
@@ -41,3 +42,7 @@ import "./drums/kick";
 import "./drums/snare";
 import "./drums/hihat";
 import "./drums/clap";
+import { libSources } from "./lib-sources";
+import { loadLib } from "./load-lib";
+
+loadLib(libSources());

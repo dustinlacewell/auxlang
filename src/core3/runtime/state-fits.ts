@@ -5,11 +5,11 @@
  * and the same array and typed-array lengths. State is fixed-shape (§5), so a
  * changed length means the module was resized (a config or sample-rate edit)
  * and must start fresh. A state that does not fit makes that one module start
- * fresh. The engine-injected `__lane` and `__scratch` are not part of the
- * shape.
+ * fresh. The engine-injected `__lane`, `__scratch` and `__seed` are not part
+ * of the shape.
  */
 
-const ENGINE_KEYS = new Set(["__lane", "__scratch"]);
+const ENGINE_KEYS = new Set(["__lane", "__scratch", "__seed"]);
 
 export function stateFits(carried: unknown, fresh: unknown): boolean {
 	if (ArrayBuffer.isView(fresh)) return typedArrayFits(carried, fresh);

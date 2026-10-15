@@ -28,7 +28,7 @@ defmod({
 	policy: "reduce",
 	tick: (_s, ins, o, _cfg, _sr, width) => {
 		const lanes = ins.in as Float32Array | number;
-		o.isArr = lanes instanceof Float32Array ? 1 : 0;
+		o.isArr = typeof lanes === "number" ? 0 : 1;
 		o.w = width as number;
 		let sum = 0;
 		for (let l = 0; l < (width as number); l++) {

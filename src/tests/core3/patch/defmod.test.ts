@@ -3,11 +3,11 @@
  * a spec chains like any built-in, compiles to ordinary nodes, ships inside
  * Program.specs (only when used), folds its tick source into structural
  * identity, is loud on every misuse, and never leaks between evals; at root
- * scope the same call registers into the realm registry. The closure-free
- * fence lives at the serialization crossing: a closure-capturing tick fails at
- * compile when a reachable node uses it, never in the audio thread — and never
- * at all if nothing crosses. Compositions need no registration: they are plain
- * JS functions used call-style or via `.apply`.
+ * scope the same call registers into the realm registry. A closure-capturing
+ * tick fails at its definition (the tick subset check); a closure-capturing
+ * state fails at compile when a reachable node uses it, never in the audio
+ * thread. Compositions need no registration: they are plain JS functions used
+ * call-style or via `.apply`.
  */
 
 import { defmod, factory, out, runEval, runProgram } from "@/core3/api";
@@ -122,8 +122,8 @@ describe("structural identity", () => {
 	});
 });
 
-describe("closure fence (at the serialization crossing)", () => {
-	it("a used tick capturing a patch variable fails loudly at compile", () => {
+describe("closure fence", () => {
+	it("a tick capturing a patch variable fails loudly at its definition, used or not", () => {
 		expect(() =>
 			runProgram(() => {
 				const gain = 0.5;
@@ -131,9 +131,8 @@ describe("closure fence (at the serialization crossing)", () => {
 					o.out = i.in * gain;
 				};
 				defmod({ ...boostSpec, tick });
-				out(factory("tosc")(220).boost(1));
 			}),
-		).toThrow(/closure-free.*gain/s);
+		).toThrow(/defmod\('boost'\): tick line 2: 'gain' is not defined here/);
 	});
 
 	it("a used state constructor capturing a patch variable fails the same way", () => {
@@ -149,13 +148,10 @@ describe("closure fence (at the serialization crossing)", () => {
 		).toThrow(/closure-free.*init/s);
 	});
 
-	it("an unused closure-capturing definition compiles fine — nothing crosses", () => {
+	it("an unused state closure compiles fine — nothing crosses", () => {
 		const program = runProgram(() => {
-			const gain = 0.5;
-			const tick: (typeof boostSpec)["tick"] = (_s, i, o) => {
-				o.out = i.in * gain;
-			};
-			defmod({ ...boostSpec, tick });
+			const init = 3;
+			defmod({ ...boostSpec, state: () => ({ v: init }) });
 			out(factory("tosc")(220));
 		});
 		expect(program.specs).toBeUndefined();

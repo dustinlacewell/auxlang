@@ -10,13 +10,16 @@
  * verifier. Anything that renders an example must go through THIS function so
  * headless-green implies browser-green.
  *
- * Errors are the language's loud errors — surfaced verbatim to the caller.
+ * Errors are the language's loud errors — surfaced verbatim to the caller. The
+ * source text is current while it runs, so a tick or lambda error names its
+ * patch line.
  */
 
 import "@/core3/modules/all";
 
 import { buildUserScope, compile, runEval } from "@/core3/api";
 import type { Program } from "@/core3/api";
+import { withSourceText } from "@/core3/module/source-text";
 
 const SCOPE = buildUserScope();
 const SCOPE_NAMES = Object.keys(SCOPE);
@@ -25,5 +28,7 @@ const SCOPE_VALUES = SCOPE_NAMES.map((name) => SCOPE[name]);
 export function evalPatch(source: string): Program {
 	const body = `${source}\n//# sourceURL=auxlang://core3-playground`;
 	const patch = new Function(...SCOPE_NAMES, body) as (...args: unknown[]) => void;
-	return compile(runEval(() => patch(...SCOPE_VALUES)));
+	return withSourceText({ file: "patch", text: source }, () =>
+		compile(runEval(() => patch(...SCOPE_VALUES))),
+	);
 }

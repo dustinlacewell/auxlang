@@ -130,19 +130,19 @@ s.saw()
 				const echo = defmod({
 					name: "echoport",
 					category: "effects",
-					ins: { [hostile]: sig(0) },
-					outs: { [hostile]: sig() },
+					ins: { in: sig(0), [hostile]: sig(0) },
+					outs: { out: sig(), [hostile]: sig() },
 					defaultIn: hostile,
-					defaultOut: hostile,
-					positional: [hostile],
-					// Closure-free (serialized across the boundary), so it cannot name `hostile`.
+					defaultOut: "out",
+					positional: [hostile, "in"],
+					// A tick cannot name a hostile port (string keys are outside the tick
+					// subset), but the ports still cross the generated driver as data.
 					tick: (_s, i, o) => {
-						const ins = i as Record<string, number>;
-						const outs = o as Record<string, number>;
-						for (const k of Object.keys(ins)) outs[k] = Math.sin((ins[k] as number) * 0.01);
+						o.out = Math.sin(i.in * 0.01);
 					},
 				});
-				out(echo((_s: unknown, _sr: number, t: number) => t * 4400).mul(0.3));
+				const ramp = (_s: unknown, _sr: number, t: number) => t * 4400;
+				out(echo(ramp, ramp).mul(0.3));
 			}),
 		);
 		const ref = expectIdentical(JSON.parse(JSON.stringify(program)) as Program);

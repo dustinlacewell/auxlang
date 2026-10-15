@@ -1,0 +1,90 @@
+/**
+ * `Math.random()` inside a patch-defined tick is the module's seeded stream
+ * (MANIFESTO §5.1): each instance and each lane gets its own, the same patch
+ * and seed reproduce it, and re-eval continues it.
+ */
+
+import { describe, expect, it } from "vitest";
+
+import "@/core3/modules/all";
+import { defmod, out, runProgram, seq, tempo } from "@/core3/api";
+import { getRegistry } from "@/core3/module/define";
+import { Core3Engine } from "@/core3/runtime/engine";
+import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
+import type { Program } from "@/core3/types";
+import { sig } from "@/core3/types";
+
+const SAMPLES = 1000;
+
+/** Two `jitter` instances; the first runs two lanes (a two-note chord feeds it). */
+function patch(seed: number): Program {
+	return runProgram(
+		() => {
+			const jitter = defmod({
+				name: "jitter",
+				category: "sources",
+				ins: { in: sig(0) },
+				outs: { out: sig() },
+				defaultIn: "in",
+				defaultOut: "out",
+				tick: (s, i, o) => {
+					o.out = i.in * 0 + Math.random();
+				},
+			});
+			tempo(120);
+			out(jitter({ in: seq("{c3,e3}") }));
+			out(jitter({ in: 0 }));
+		},
+		{ seed },
+	);
+}
+
+function engine(program: Program, prev?: ReturnType<Core3Engine["collectState"]>): Core3Engine {
+	return new Core3Engine(program, 48000, withProgramSpecs(getRegistry(), program), prev);
+}
+
+/** Each (node, lane) of `jitter`, sampled for `samples` ticks. */
+function taps(e: Core3Engine, program: Program, samples = SAMPLES): number[][] {
+	const sites = program.nodes.flatMap((n, i) =>
+		n.module === "jitter" ? n.lanes.map((_, lane) => [i, lane] as const) : [],
+	);
+	const series = sites.map(() => [] as number[]);
+	const frame = new Float32Array(2);
+	for (let k = 0; k < samples; k++) {
+		e.tick(frame);
+		sites.forEach(([node, lane], j) => series[j]?.push(e.peek(node, "out", lane)));
+	}
+	return series;
+}
+
+describe("Math.random() in a patch-defined tick", () => {
+	it("gives each instance and each lane its own stream", () => {
+		const program = patch(1);
+		const [lane0, lane1, other] = taps(engine(program), program);
+		expect(lane0).toHaveLength(SAMPLES);
+		expect(lane0).not.toEqual(lane1);
+		expect(lane0).not.toEqual(other);
+		expect(new Set(lane0).size).toBeGreaterThan(SAMPLES / 2);
+	});
+
+	it("reproduces with the same seed and changes with another", () => {
+		const run = (seed: number) => taps(engine(patch(seed)), patch(seed));
+		expect(run(42)).toEqual(run(42));
+		expect(run(42)).not.toEqual(run(43));
+	});
+
+	it("continues across re-eval instead of restarting", () => {
+		const program = patch(1);
+		const reference = engine(program);
+		const fromStart = taps(reference, program);
+		const continued = taps(reference, program);
+
+		const before = engine(program);
+		taps(before, program);
+		const after = engine(patch(1), before.collectState());
+		const swapped = taps(after, program);
+
+		expect(swapped).toEqual(continued);
+		expect(swapped).not.toEqual(fromStart);
+	});
+});

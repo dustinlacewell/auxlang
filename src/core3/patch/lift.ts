@@ -1,12 +1,13 @@
 /**
  * Signal lifting — every value a user can pass as an input becomes an
  * InputValue. Accepted: number, Handle, raw GNode, function (per-sample
- * lambda), or a P-like pattern (duck-typed: has an `.ast` object with a
+ * lambda, held to the tick subset), or a P-like pattern (duck-typed: has an `.ast` object with a
  * string `op`). Anything else fails loudly.
  */
 
 import { isGNode } from "../graph/input-kinds";
 import type { InputValue, NodeRef } from "../graph/node";
+import { checkLambda } from "../module/tick-subset/check-lambda";
 import { isUnitTag } from "../units/tag";
 import { type HandleData, handleData, isHandle } from "./handle-data";
 import { resolvePatchModule } from "./resolve";
@@ -20,6 +21,7 @@ export function lift(value: unknown, where: string): InputValue {
 	if (isHandle(value)) return refFromHandle(handleData(value), where);
 	if (isGNode(value)) return refFromHandle({ node: value }, where);
 	if (typeof value === "function") {
+		checkLambda(value.toString());
 		return { lambda: value as (...args: unknown[]) => number };
 	}
 	if (isPatternLike(value)) {

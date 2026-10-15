@@ -96,16 +96,30 @@ export interface ModuleSpec {
 	 * Fresh state per lane. MUST return plain serializable data (numbers, typed
 	 * arrays, nested plain objects). After construction (or migration) the engine
 	 * injects `state.__lane = laneIndex`, so per-lane modules (seq) know which
-	 * packed lane they render without any extra contract surface, and
+	 * packed lane they render without any extra contract surface,
 	 * `state.__scratch = {}`, a per-lane record for data derived from config
-	 * (seq's event tables); scratch is never carried across a re-eval. A fresh
+	 * (seq's event tables), never carried across a re-eval, and
+	 * `state.__seed`, the patch seed `hashRandom(key)` in a tick uses. A fresh
 	 * lane also gets `state.__rng`, its own random stream position seeded from
-	 * (patch seed, identity, lane); draw from it with random/next-random.ts.
+	 * (patch seed, identity, lane), which `Math.random()` in the tick draws.
 	 * State is fixed-shape: a re-eval keeps it whenever its shape still fits,
 	 * whatever the config, so state must not cache values derived from config.
 	 */
 	readonly state?: (sampleRate: number) => Record<string, unknown>;
+	/** The tick as the engine runs it: rebuilt from `source` with the tick names bound (module/tick-build). */
 	readonly tick: TickFn | ReduceTickFn;
+	/**
+	 * The authoritative text of `tick` and its helpers, as written. Absent only
+	 * for the modules exempt from the tick subset (module/tick-subset/exempt.ts),
+	 * whose `tick` is the host closure itself.
+	 */
+	readonly source?: ModuleSource;
+}
+
+/** A module's tick and named helpers as source text (MANIFESTO §5.1). */
+export interface ModuleSource {
+	readonly tick: string;
+	readonly helpers: Readonly<Record<string, string>>;
 }
 
 export type Registry = ReadonlyMap<string, ModuleSpec>;
@@ -128,6 +142,8 @@ export interface SerializedModuleSpec {
 	readonly policy?: "map" | "reduce";
 	readonly state?: string;
 	readonly tick: string;
+	/** Helper name → function source. Present only when the module declares helpers. */
+	readonly helpers?: Readonly<Record<string, string>>;
 }
 
 // ---------------------------------------------------------------------------
