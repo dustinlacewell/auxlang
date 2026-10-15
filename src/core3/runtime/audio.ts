@@ -2,12 +2,13 @@
  * Main-thread audio host: owns the AudioContext + AudioWorkletNode pair and
  * the worklet's message port. `play(program)` posts a swap (the worklet
  * crossfades and migrates state); `stop()` silences it. The worklet bundle is
- * loaded via Vite's `?url` import, which resolves to a real module URL in
- * both dev and build.
+ * loaded via Vite's `?worker&url` import: Vite bundles it as a separate ES
+ * module (worker.format) and returns its URL, in both dev and build. A bare
+ * `?url` would ship the raw .ts source as an unbundled asset.
  */
 
 import type { Program } from "../types";
-import workletUrl from "./worklet/index.ts?url";
+import workletUrl from "./worklet/index.ts?worker&url";
 import type { PerfOverrun, PerfReport, WorkletMessage, WorkletReply } from "./worklet/messages";
 
 /** A perf window with beat positions resolved main-thread, for UI/scraping. */
