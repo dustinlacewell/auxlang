@@ -89,7 +89,7 @@ n.saw().wavefold(0.7)
 const s = seq("c2(4,8)")
 s.tri()
   .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
-  .mul(counter(s.trig).seq("<0.3 0.1 0.25 0.15>"))
+  .mul(counter(s.trig).seq(p\`0.3 0.1 0.25 0.15\`.steps()))
   .gain(0.9)
   .out()`,
 } as const;

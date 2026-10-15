@@ -117,7 +117,7 @@ loop((fb) =>
 // drums: euclidean kick, backbeat snare, hats fired by a comparator, accents stepped by a counter
 seq(p\`60(4,4)\`).trig.kick().out()
 seq("~ 60 ~ 60").trig.snare().out()
-lfo(9).gt(0.7).apply((tg) => tg.hihat().mul(counter(tg).seq("<1 0.6 0.8 0.5>")).gain(0.8).out())`,
+lfo(9).gt(0.7).apply((tg) => tg.hihat().mul(counter(tg).seq(p\`1 0.6 0.8 0.5\`.steps())).gain(0.8).out())`,
 	},
 
 	// -- USER GUIDE -----------------------------------------------------------
@@ -249,7 +249,7 @@ seq(p\`60(3,8)\`).trig.kick().gain(0.9).out()
 seq("~ 60 ~ 60").trig.snare().gain(0.7).out()
 seq("60*8").trig.hihat({ decay: 0.04 }).gain(0.4).out()`,
 	},
-	// counter: step a pattern one cycle per trigger, ignoring its own timing.
+	// counter: step a pattern one step per trigger, ignoring its own timing.
 	{
 		id: "guide-counter",
 		audible: true,
@@ -257,7 +257,7 @@ seq("60*8").trig.hihat({ decay: 0.04 }).gain(0.4).out()`,
 const s = seq("c2(4,8)")
 s.tri()
   .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
-  .mul(counter(s.trig).seq("<0.3 0.1 0.25 0.15>"))
+  .mul(counter(s.trig).seq(p\`0.3 0.1 0.25 0.15\`.steps()))
   .gain(0.9)
   .out()`,
 	},

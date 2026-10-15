@@ -49,7 +49,7 @@ function build() {
 			.apply((tg: Handle) =>
 				tg
 					.hihat()
-					.mul(counter(tg).seq("<1 0.6 0.8 0.5>"))
+					.mul(counter(tg).seq(p`1 0.6 0.8 0.5`.steps()))
 					.mul(0.8)
 					.out(),
 			);

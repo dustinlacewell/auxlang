@@ -66,7 +66,7 @@ The module families:
 
 - `tempo(bpm)` sets the ambient clock. `clock(bpm)` makes an extra clock with outputs `out` (position in bars), `beat` and `bar` (triggers).
 - `seq(pattern, position)` reads a pattern at a position. With no position it reads the ambient clock. A pattern handed to a knob becomes a `seq` automatically.
-- `counter(trig, { reset, length })` counts triggers into a position, one cycle per trigger.
+- `counter(trig, { reset, length })` counts triggers into a step position, one step per trigger.
 
 ### Drums (trigger-driven, default input `trig`)
 
@@ -143,25 +143,30 @@ A pattern is either a mini-notation string passed to `seq("...")`, or a `` p`...
 | Notation | Meaning |
 |---|---|
 | `c3 e3` | sequence (fastcat) |
-| `~` | rest |
+| `~` | rest: a step with the gate low |
 | `[a b]` | subdivide one step |
 | `[a, b]` | chord: stack (polyphony; widens) |
 | `<a b>` | alternate per cycle |
 | `{a b c, d e}` | polymeter, steps from the first layer |
 | `a*2` / `a/2` | faster / slower within a step |
 | `a!2` | replicate (adds steps) |
-| `a@2` | weight (timecat) |
-| `a _ b` | tie / legato |
-| `a?` / `a?0.7` | maybe: drop with chance 0.5 / 0.7 |
+| `a@2` | weight (timecat): one longer step |
+| `a _` | tie: two steps, one note |
+| `a_b` | slide: `b` entered legato from `a`, no trig |
+| `a?` / `a?0.7` | maybe: a rest with chance 0.5 / 0.7 |
 | `a(3,8)` / `a(3,8,2)` | euclid (with rotation) |
 
 Notes are MIDI: `c4` = 60, `c3` = 48, accidentals `#` and `b`. Bare numbers are MIDI semitones.
+
+Rests and ties are events, so every step exists whether it sounds or not. `?`, `.degrade()`, and the empty slots of a euclid keep their step as a rest. `a@2` and `a _` sound the same; they differ when read by steps.
 
 ### Combinators
 
 Methods on a `P` value (from `` p`...` ``):
 
-`.fast(n)`, `.slow(n)`, `.rev()`, `.early(a)`, `.late(a)`, `.every(n, q => ...)`, `.iter(n)`, `.ply(n)`, `.euclid(k, steps, rot)`, `.degrade(p)`, `.add(semis)`, `.mul(f)`, `.off(amt, q => ...)`.
+`.fast(n)`, `.slow(n)`, `.rev()`, `.early(a)`, `.late(a)`, `.every(n, q => ...)`, `.iter(n)`, `.ply(n)`, `.euclid(k, steps, rot)`, `.degrade(p)`, `.add(semis)`, `.mul(f)`, `.off(amt, q => ...)`, `.steps()`, `.compact()`.
+
+`.steps()` re-times by steps: the nth event, rests and ties included, spans step n. A top-level stack counts each layer on its own; a chord inside a sequence is one step. `.compact()` drops rests.
 
 Statics: `P.stack`, `P.cat`, `P.fastcat`, `P.timecat([2, p], [1, q])`, `P.polymeter`.
 
@@ -194,13 +199,14 @@ That is the recommended shape.
 
 ---
 
-## 7. seq, gate, and trig
+## 7. seq, gate, trig, and slide
 
-`seq(pattern)` is a node. It has three outputs:
+`seq(pattern)` is a node. It has four outputs:
 
 - `out` — the default output: the value itself. MIDI semitones, sample-and-held, holds the last value through rests. Use the seq directly; `out` is not a tap name.
-- `.gate` — `1` while an event sounds, minus a fixed pre-release gap of about 1 ms (unless the event is tied).
-- `.trig` — a single-sample pulse at each non-tied onset.
+- `.gate` — `1` inside a note, a slide, or their ties, minus a fixed pre-release gap of about 1 ms before the next note.
+- `.trig` — a single-sample pulse when the position enters a different note. A tie and a slide entered from the note before them fire nothing.
+- `.slide` — `1` inside a slide. `s.slew(s.slide.mul(0.03), s.slide.mul(0.03))` glides only on slides.
 
 Chaining `seq(...)` directly chains from the value: `seq(...).tri()` plays its pitch.
 
@@ -331,14 +337,14 @@ A bare `.out()` off a stereo source (such as `pan`) is a loud error — it would
 
 ## 12. counter (stepping by trigger)
 
-`seq` reads a pattern at any position, not only the clock's. `counter(trig)` counts triggers into a position, one cycle per trigger. So `counter(trig).seq("<a b c>")` steps to the next value on each trigger. This is analog step-sequencer behavior: one step per trigger, nothing to do with the pattern's own timing. Any trigger works — a seq's `.trig`, or a comparator on an LFO. The first trigger holds step 0. `reset` returns the count to the start; `length` wraps it.
+`seq` reads a pattern at any position, not only the clock's. `counter(trig)` counts triggers into a step position, and `.steps()` makes each event of a pattern one step. So `` counter(trig).seq(p`a b ~ c`.steps()) `` moves one step on each trigger, rests and ties included. This is analog step-sequencer behavior: one step per trigger, nothing to do with the pattern's own timing. Any trigger works — a seq's `.trig`, or a comparator on an LFO. The first trigger holds step 0. `reset` returns the count to the start; `length` wraps it.
 
 ```js
 tempo(110)
 const s = seq("c2(4,8)")
 s.tri()
   .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
-  .mul(counter(s.trig).seq("<0.3 0.1 0.25 0.15>"))
+  .mul(counter(s.trig).seq(p`0.3 0.1 0.25 0.15`.steps()))
   .gain(0.9)
   .out()
 ```

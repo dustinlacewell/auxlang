@@ -15,7 +15,7 @@ import { GUIDE_EXAMPLES } from "./examples";
 
 const NOTATION_ROWS = [
 	["c3 e3", "sequence"],
-	["~", "rest"],
+	["~", "rest (a step with the gate low)"],
 	["[a b]", "subdivide one step"],
 	["[a, b]", "chord (polyphony)"],
 	["<a b>", "alternate per cycle"],
@@ -23,8 +23,9 @@ const NOTATION_ROWS = [
 	["a*2 / a/2", "faster / slower within a step"],
 	["a!2", "replicate (adds steps)"],
 	["a@2", "weight (one longer step)"],
-	["a _ b", "tie / legato"],
-	["a? / a?0.7", "maybe: seeded drop, chance 0.5 / 0.7"],
+	["a _", "tie (two steps, one note)"],
+	["a_b", "slide (b legato from a, no trig)"],
+	["a? / a?0.7", "maybe: seeded rest, chance 0.5 / 0.7"],
 	["a(3,8) / a(3,8,2)", "euclid, with rotation"],
 ] as const;
 
@@ -216,9 +217,10 @@ export function GuideApp() {
 			<Section title="Stepping by trigger">
 				<P>
 					<C>seq</C> reads a pattern at any position, not only the clock's. <C>counter(trig)</C>{" "}
-					counts triggers into a position, one cycle per trigger, so{" "}
-					<C>{'counter(trig).seq("<a b c>")'}</C> steps to the next value on each trigger — an
-					analog step sequencer. Any trigger works: a seq's <C>.trig</C>, a comparator on an LFO.
+					counts triggers into a step position, and <C>.steps()</C> makes each event one step, so{" "}
+					<C>{"counter(trig).seq(p`a b ~ c`.steps())"}</C> moves one step on each trigger, rests
+					included — an analog step sequencer. Any trigger works: a seq's <C>.trig</C>, a
+					comparator on an LFO.
 				</P>
 				{ex("counter")}
 			</Section>

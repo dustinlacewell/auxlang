@@ -6,7 +6,7 @@
  * binds it; the old trigger-domain API is gone from the user scope.
  */
 
-import { buildUserScope, clock, factory, runProgram, seq, tempo } from "@/core3/api";
+import { buildUserScope, clock, factory, p, runProgram, seq, tempo } from "@/core3/api";
 import { renderTap } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { SR, countOnes, nodeIndex } from "./helpers";
@@ -79,11 +79,11 @@ describe("seq at a position signal", () => {
 	});
 
 	it("driven by a counter, seq steps one event per trig", () => {
-		// The counter counts the clock's beats; `<...>` holds one note per cycle,
-		// so each step position reads the next note. The first beat holds step 0.
+		// The counter counts the clock's beats; `.steps()` makes each note one
+		// step, so each step position reads the next note. The first beat holds step 0.
 		const { out, trig } = taps(() => {
 			const steps = counter(clock(480).beat);
-			seq("<c4 e4 g4 b4>", steps).tri().out();
+			seq(p`c4 e4 g4 b4`.steps(), steps).tri().out();
 		}, SR - 10);
 		expect(countOnes(trig)).toBe(8);
 		expect(onesAt(trig).map((i) => out[i])).toEqual([60, 64, 67, 71, 60, 64, 67, 71]);

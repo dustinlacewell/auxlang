@@ -83,9 +83,9 @@ s.tri()
 	// -- Rest ----------------------------------------------------------------
 	{
 		section: "Rest",
-		title: "~ is silence",
+		title: "~ is a rest step",
 		description:
-			"A tilde is a rest: the gate stays low, so you hear notes on beats 1 and 3 with holes on 2 and 4.",
+			"A tilde is a rest: a step with its gate low, so you hear notes on beats 1 and 3 with holes on 2 and 4.",
 		code: `tempo(120)
 const s = seq("c3 ~ g3 ~")
 s.tri()
@@ -304,12 +304,29 @@ s.tri()
   .out()`,
 	},
 
+	// -- Slides --------------------------------------------------------------
+	{
+		section: "Slides",
+		title: "slide into the next note",
+		description:
+			"An underscore between two notes slides: e3 and g3 arrive with no new attack, and .slide opens a glide only there. Three attacks per bar.",
+		code: `tempo(110)
+const s = seq("c3_e3 g3_c4 a2 e3")
+const glide = s.slide.mul(0.04)
+s.slew(glide, glide)
+  .saw()
+  .lpf(84, 0.3)
+  .mul(s.gate.adsr(0.005, 0.2, 0.6, 0.1))
+  .gain(0.25)
+  .out()`,
+	},
+
 	// -- ?probability --------------------------------------------------------
 	{
 		section: "?probability",
 		title: "maybe (50%)",
 		description:
-			"A question mark drops the note with 50% probability, seeded — the pattern thins out, but the same every run.",
+			"A question mark turns the note into a rest with 50% probability, seeded — the pattern thins out, but the same every run.",
 		code: `tempo(120)
 const s = seq("c3? e3? g3? b3?")
 s.tri()
@@ -319,9 +336,9 @@ s.tri()
 	},
 	{
 		section: "?probability",
-		title: "maybe (drop 25%)",
+		title: "maybe (rest 25%)",
 		description:
-			"A probability suffix sets the drop chance: c3?0.25 survives most cycles, the run stays denser than plain ?.",
+			"A probability suffix sets the rest chance: c3?0.25 sounds in most cycles, the run stays denser than plain ?.",
 		code: `tempo(120)
 const s = seq("c3?0.25 e3?0.25 g3?0.25 b3?0.25")
 s.tri()
@@ -481,7 +498,7 @@ s.tri()
 		section: "Combinators",
 		title: "degrade",
 		description:
-			".degrade(0.4) drops events with 40% probability, seeded — a busy line thins out to a stumbling groove, identically every run.",
+			".degrade(0.4) turns notes into rests with 40% probability, seeded — a busy line thins out to a stumbling groove, identically every run.",
 		code: `tempo(120)
 const s = seq(p\`c3 e3 g3 b3 c4 b3 g3 e3\`.degrade(0.4))
 s.saw()
@@ -552,10 +569,10 @@ s.saw()
 		section: "Bridge: trigger domain",
 		title: "step by trigger",
 		description:
-			"counter turns each TRIGGER into one cycle of position, so seq reads the next value of an alternation per hit, ignoring durations — driven by the seq's trig, the accent walks 0.3, 0.1, 0.25, 0.15.",
+			"counter turns each TRIGGER into one step of position, and .steps() makes each event one step, so seq reads the next value per hit, ignoring durations — driven by the seq's trig, the accent walks 0.3, 0.1, 0.25, 0.15.",
 		code: `tempo(110)
 const s = seq("c2(4,8)")
-const amp = counter(s.trig).seq("<0.3 0.1 0.25 0.15>")
+const amp = counter(s.trig).seq(p\`0.3 0.1 0.25 0.15\`.steps())
 s.tri()
   .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
   .mul(amp)
@@ -568,7 +585,7 @@ s.tri()
 		description:
 			"Any trigger works: an LFO through .gt(0.7) fires a steady pulse, and the counter walks the value list on each — no clock involved.",
 		code: `const trg = lfo(6).gt(0.7)
-tri(counter(trg).seq("<48 52 55 60>"))
+tri(counter(trg).seq(p\`48 52 55 60\`.steps()))
   .mul(trg.ar(0.002, 0.12))
   .gain(0.3)
   .out()`,

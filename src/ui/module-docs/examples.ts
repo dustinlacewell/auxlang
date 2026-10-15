@@ -1372,10 +1372,10 @@ saw(45)
 		section: "Bridge",
 		title: "counter — default",
 		description:
-			"counter counts trigs into a position, one cycle per trig. A seq reading it steps one value of the alternation per beat — an analog step sequencer.",
+			"counter counts trigs into a step position. A seq reading a .steps() pattern moves one step per beat — an analog step sequencer.",
 		code: `const c = tempo(150)
 sin()
-  .pitch(counter(c.beat).seq("<48 55 60 67>"))
+  .pitch(counter(c.beat).seq(p\`48 55 60 67\`.steps()))
   .mul(c.beat.ad(0.005, 0.15))
   .gain(0.35)
   .out()`,
@@ -1387,7 +1387,7 @@ sin()
 			"length 3 wraps the count, and the bar trig resets it — each four-beat bar plays 48 55 60 48, then starts again.",
 		code: `const c = tempo(150)
 sin()
-  .pitch(counter(c.beat, { reset: c.bar, length: 3 }).seq("<48 55 60 67>"))
+  .pitch(counter(c.beat, { reset: c.bar, length: 3 }).seq(p\`48 55 60 67\`.steps()))
   .mul(c.beat.ad(0.005, 0.15))
   .gain(0.35)
   .out()`,
@@ -1401,7 +1401,7 @@ sin()
 const s = seq("c2(4,8)")
 s.tri()
   .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
-  .mul(counter(s.trig).seq("<0.3 0.1 0.25 0.15>"))
+  .mul(counter(s.trig).seq(p\`0.3 0.1 0.25 0.15\`.steps()))
   .gain(0.9)
   .out()`,
 	},

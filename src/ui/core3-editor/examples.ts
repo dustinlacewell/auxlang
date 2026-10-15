@@ -87,7 +87,7 @@ tempo(120)
 seq(p\`60(4,4)\`).trig.kick().mul(0.9).out()
 seq("~ 60 ~ 60").trig.snare().mul(0.7).out()
 seq("60*8").trig.apply((t) =>
-  t.hihat({ decay: 0.04 }).mul(counter(t).seq("<1 0.5 0.7 0.4>")).mul(0.5).out(),
+  t.hihat({ decay: 0.04 }).mul(counter(t).seq(p\`1 0.5 0.7 0.4\`.steps())).mul(0.5).out(),
 )
 `;
 
@@ -343,7 +343,7 @@ seq("~ 60 ~ 60").trig
 const hat = seq("60*8")
 hat.trig
   .hihat({ decay: 0.03, tone: 0.7, metal: 0.6 })
-  .mul(counter(hat.trig).seq("<0.5 1>"))
+  .mul(counter(hat.trig).seq(p\`0.5 1\`.steps()))
   .mul(groove)
   .gain(2)
   .out()
@@ -484,7 +484,7 @@ seq("~ 60 ~ 60").trig
 const tick = seq("60*16")
 tick.trig
   .hihat({ decay: 0.03, tone: 0.8, metal: 0.5 })
-  .mul(counter(tick.trig).seq("<0.35 0.5 1 0.5>"))
+  .mul(counter(tick.trig).seq(p\`0.35 0.5 1 0.5\`.steps()))
   .mul(sections(1, p\`1!7 0\`, 1, 1))
   .gain(2)
   .out()
