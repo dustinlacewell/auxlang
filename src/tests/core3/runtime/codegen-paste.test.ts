@@ -95,7 +95,7 @@ const edgy = defmod({
     o.hits = o.hits + 1
   },
 })
-const e = seq("{c3,e4} <g3 a4>").edgy()
+const e = seq("[c3,e4] <g3 a4>").edgy()
 e.add(e.hits).mul(0.001).out()`;
 
 const RANDOM_AND_SHAPES = `tempo(120)
@@ -120,7 +120,7 @@ const rnd = defmod({
     o.out = cfg.mode === "a" ? r * 0.5 + s.b[0] * 0.1 + i.in * 0 : h
   },
 })
-seq("{c3,e3,g3}").rnd().mul(0.1).out()`;
+seq("[c3,e3,g3]").rnd().mul(0.1).out()`;
 
 const REDUCER = `tempo(120)
 const sum2 = defmod({
@@ -141,7 +141,7 @@ const sum2 = defmod({
     o.out = (acc * i.k) / width
   },
 })
-seq("{c3,e3,g3}").sin().sum2().mul(0.3).out()`;
+seq("[c3,e3,g3]").sin().sum2().mul(0.3).out()`;
 
 const BARE_STATE = `tempo(120)
 const peeker = defmod({
