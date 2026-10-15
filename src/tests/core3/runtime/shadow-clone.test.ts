@@ -4,7 +4,7 @@
  * instances are shared; one cloner keeps aliasing across the whole set.
  */
 
-import { shadowCloner } from "@/core3/runtime/tier/shadow-clone";
+import { shadowCloner } from "@/core3/runtime/build/shadow-clone";
 import { describe, expect, it } from "vitest";
 
 describe("shadowCloner", () => {

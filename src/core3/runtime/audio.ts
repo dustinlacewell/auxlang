@@ -1,13 +1,21 @@
 /**
  * Main-thread audio host: owns the AudioContext + AudioWorkletNode pair and
- * the worklet's message port. `play(program)` posts a swap (the worklet
- * crossfades and migrates state); `stop()` silences it. The worklet bundle is
+ * the worklet's message port. `play(program)` prepares the program here
+ * (prepare/prepare-program.ts: the re-eval match against the last program
+ * played, and the generated driver code) and posts it as a swap; the
+ * worklet builds it while the old engine plays, then swaps and crossfades.
+ * `stop()` silences it and ends the session: the next play starts fresh.
+ * The worklet bundle is
  * loaded via Vite's `?worker&url` import: Vite bundles it as a separate ES
  * module (worker.format) and returns its URL, in both dev and build. A bare
  * `?url` would ship the raw .ts source as an unbundled asset.
  */
 
-import type { Program } from "../types";
+import { getRegistry } from "../module/define";
+import type { KeyedIdentity, Program } from "../types";
+import type { DriverOptions } from "./driver";
+import { withProgramSpecs } from "./hydrate-specs";
+import { prepareProgram } from "./prepare/prepare-program";
 import { type SeedSession, createSeedSession } from "./seed-session";
 import workletUrl from "./worklet/index.ts?worker&url";
 import type { PerfOverrun, PerfReport, WorkletMessage, WorkletReply } from "./worklet/messages";
@@ -31,6 +39,12 @@ interface AudioHost {
 let host: AudioHost | null = null;
 // Beats/sec used to place overruns on the musical grid; set by enablePerf().
 let perfBps = 0;
+// The last program played, as identities: the next one matches against them.
+let running: readonly KeyedIdentity[] | undefined;
+
+// The worklet runs the generated per-program driver; its build falls back to
+// the interpreter (logged) if the host forbids `new Function`.
+const WORKLET_OPTIONS: DriverOptions = { codegen: true };
 
 async function ensureHost(): Promise<AudioHost> {
 	if (host) return host;
@@ -63,7 +77,10 @@ export async function play(program: Program): Promise<void> {
 	// still wins (perfBps is only overwritten here when we find a constant).
 	const bpm = constantBpm(program);
 	if (bpm > 0) perfBps = bpm / 60;
-	const message: WorkletMessage = { type: "swap", program };
+	const registry = withProgramSpecs(getRegistry(), program);
+	const prepared = prepareProgram(program, registry, context.sampleRate, running, WORKLET_OPTIONS);
+	running = prepared.identities;
+	const message: WorkletMessage = { type: "swap", prepared };
 	node.port.postMessage(message);
 }
 
@@ -76,6 +93,7 @@ export const playSeed: SeedSession = createSeedSession();
 
 export function stop(): void {
 	playSeed.end();
+	running = undefined;
 	if (!host) return;
 	const message: WorkletMessage = { type: "stop" };
 	host.node.port.postMessage(message);

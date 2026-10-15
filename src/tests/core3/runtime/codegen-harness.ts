@@ -24,9 +24,9 @@ export const INTERPRETER: EngineOptions = {};
 
 /**
  * The generated drivers under test: phase 1 (call sites), phase 2 (grouped,
- * pasted), and tier-up switching from phase 1 to phase 2 mid-render. In the
- * BLOCKS cycle its shadow runs slices 1, 2, 4, 2, 16, 32, 43 (100 samples)
- * beside blocks 1 to 7 (from 0), and phase 2 takes over at sample 829.
+ * pasted), and tier-up switching from phase 1 to phase 2 mid-render. Its
+ * budget runs about one phase-2 build step per block, so the switch comes
+ * after a few dozen blocks (more for programs with many groups).
  */
 export const GENERATED: readonly { readonly label: string; readonly options: EngineOptions }[] = [
 	{ label: "phase 1", options: { codegen: true } },
@@ -36,7 +36,7 @@ export const GENERATED: readonly { readonly label: string; readonly options: Eng
 		options: {
 			codegen: true,
 			tierUp: true,
-			tier: { startAfter: 1, fraction: 1 / 2, warmSamples: 100 },
+			tier: { startAfter: 1, budget: 1, rounds: [1, 3] },
 		},
 	},
 ];

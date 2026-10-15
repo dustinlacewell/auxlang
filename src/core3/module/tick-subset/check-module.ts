@@ -47,7 +47,7 @@ function sharedCheck(
 
 /**
  * The state a tick sees: the module's own fresh state plus the fields the
- * engine injects into every lane (runtime/initial-states.ts).
+ * engine injects into every lane (runtime/fresh-node-states.ts).
  */
 function freshState(spec: ModuleSpec): Record<string, unknown> {
 	const own = spec.state?.(SHAPE_SAMPLE_RATE) ?? {};

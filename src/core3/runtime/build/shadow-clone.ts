@@ -8,20 +8,24 @@
  * Code optimized on the shadow fits the real values only if both have the
  * same hidden classes. A copy has its source's hidden class only when the
  * source is itself a copy made this way (a spread or a literal source gives
- * a different one). So a tier-up engine first copies its own values with a
- * cloner (engine.ts), and the shadow copies those.
+ * a different one). So a generated engine first copies its own values with
+ * a cloner (engine-build.ts), and the shadow copies those.
  */
 
 interface TypedArrayLike {
 	readonly constructor: new (src: TypedArrayLike) => TypedArrayLike;
 }
 
-export function shadowCloner(): (value: unknown) => unknown {
+/** `shared` objects are kept, not copied (lane scratch: derived data both sides may fill). */
+export function shadowCloner(
+	shared: (value: object) => boolean = () => false,
+): (value: unknown) => unknown {
 	const copies = new Map<object, unknown>();
 	const clone = (value: unknown): unknown => {
 		if (value === null || typeof value !== "object") return value;
 		const seen = copies.get(value);
 		if (seen !== undefined) return seen;
+		if (shared(value)) return value;
 		if (ArrayBuffer.isView(value)) {
 			const ta = value as unknown as TypedArrayLike;
 			const copy = new ta.constructor(ta);

@@ -8,6 +8,7 @@
  * what the per-sample walk leaves.
  */
 
+import type { BuildConfig } from "./build/build-config";
 import type { NodeRun } from "./node-run";
 import type { TierConfig } from "./tier/tier-config";
 
@@ -21,19 +22,21 @@ export interface DriverOptions {
 	/** Run a generated per-program driver instead of the interpreter. Default off. */
 	readonly codegen?: boolean;
 	/**
-	 * With codegen: phase 2 — the grouped driver with module ticks pasted
-	 * inline (codegen/compile-grouped.ts). Default off: phase 1, every node at
-	 * a call site in one function.
+	 * With codegen: phase 2, module ticks pasted inline in the grouped
+	 * functions (codegen/emit-grouped-code.ts). Default off: phase 1, the same
+	 * groups with every node at a call site.
 	 */
 	readonly paste?: boolean;
-	/** With paste or tierUp: the group size budget (codegen/group/group-budget.ts is the default). */
+	/** With codegen: the group size budget (codegen/group/group-budget.ts is the default). */
 	readonly groupBudget?: number;
+	/** With codegen: the per-block build budget and warm rounds (build/build-config.ts is the default). */
+	readonly build?: BuildConfig;
 	/**
-	 * With codegen: start on phase 1, warm phase 2 on a shadow copy of the
-	 * state, then switch to it (tier/). Default off.
+	 * With codegen: start on phase 1, build and warm phase 2 on the shadow
+	 * after the swap, then switch to it (tier/). Default off.
 	 */
 	readonly tierUp?: boolean;
-	/** With tierUp: the shadow slice and warm point (tier/tier-config.ts is the default). */
+	/** With tierUp: when and how fast phase 2 builds (tier/tier-config.ts is the default). */
 	readonly tier?: TierConfig;
 }
 

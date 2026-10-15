@@ -1,14 +1,14 @@
 /**
- * One group's function: the block loop over its nodes (pasted where the
- * group's size cap allows, call sites otherwise), reading other groups'
- * slots from their block regions and writing its own crossing slots to
- * theirs — the value before the block once, then each sample's value.
- * Signature: `(bufs, n, count, sr)`, with `n` at most BLOCK_MAX.
+ * One group's function body: the block loop over its nodes (pasted where
+ * chosen and possible, call sites otherwise), reading other groups' slots
+ * from their block regions and writing its own crossing slots to theirs —
+ * the value before the block once, then each sample's value. Signature:
+ * `(bufs, n, count, sr)`, with `n` at most BLOCK_MAX.
  */
 
 import type { NodeRun } from "../../node-run";
+import { returnFunction } from "../code-unit";
 import type { DriverScope } from "../driver-scope";
-import { eagerFunction } from "../eager-function";
 import { emitBlockLoop } from "../emit-block-loop";
 import { emitCallNode } from "../emit-call-node";
 import { slotLocal } from "../name-table";
@@ -32,7 +32,7 @@ export function emitGroup(
 	members: readonly number[],
 	pasted: ReadonlySet<number>,
 	env: GroupEnv,
-): string[] {
+): string {
 	const runs = members.map((i) => env.runs[i] as NodeRun);
 	const slots = valueSlots(runs);
 	const access = groupAccess(new Set(slots.all), env.block, env.buffer);
@@ -43,7 +43,7 @@ export function emitGroup(
 	);
 	const crossing = slots.all.filter((s) => env.block.base.has(s));
 	const region = (s: number) => env.block.base.get(s) as number;
-	return eagerFunction(
+	return returnFunction(
 		name,
 		"bufs, n, count, sr",
 		emitBlockLoop(

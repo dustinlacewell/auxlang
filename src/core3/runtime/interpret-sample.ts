@@ -1,9 +1,9 @@
 /**
  * The reference node walk for one sample: an interpreted pass over the built
  * runs. Every node ticks from the same call site, dispatching on
- * binding/gather kinds per port. The generated driver (codegen/compile-driver)
- * must match this bit for bit; interpret-block.ts turns it into the fallback
- * driver.
+ * binding/gather kinds per port. The generated driver
+ * (codegen/emit-grouped-code.ts) must match this bit for bit;
+ * interpret-block.ts turns it into the reference and fallback driver.
  */
 
 import type { ReduceTickFn, TickFn } from "../types";

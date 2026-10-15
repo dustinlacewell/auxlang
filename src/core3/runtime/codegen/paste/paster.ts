@@ -4,12 +4,13 @@
  * bridge ones), no other lane shares its state objects, and its tick and
  * helpers print (anything the printer refuses keeps the node at its call
  * site, with every scope binding the attempt made rolled back). Helpers
- * paste once per module into the driver's shared code (driver-scope.ts).
+ * paste once per module into one helpers unit (`helperUnit`).
  */
 
 import { hashRandom } from "../../../random/hash-random";
 import type { ModuleSource } from "../../../types";
 import type { NodeRun } from "../../node-run";
+import type { CodeUnit } from "../code-unit";
 import type { DriverScope } from "../driver-scope";
 import type { NameTable } from "../name-table";
 import type { NodeCode } from "../node-code";
@@ -51,9 +52,21 @@ export class Paster {
 		}
 	}
 
-	/** The pasted helper functions. They use no bound value, so every driver instance shares them. */
-	helperSource(): string {
-		return this.helperLines.join("\n");
+	/** The names of the pasted helper functions, in the order `helperUnit` returns them. */
+	helperNames(): string[] {
+		return [...this.helpers.values()].flatMap((h) =>
+			h instanceof NotPasteable ? [] : [...h.names.values()],
+		);
+	}
+
+	/**
+	 * The pasted helper functions as one unit returning them in `helperNames`
+	 * order. They use no bound value, so one instance serves the driver and
+	 * its shadow twin alike.
+	 */
+	helperUnit(name: string): CodeUnit {
+		const body = [...this.helperLines, `return [${this.helperNames().join(", ")}];`].join("\n");
+		return { name, params: [], body };
 	}
 
 	private tickOf(source: ModuleSource): PasteTick {

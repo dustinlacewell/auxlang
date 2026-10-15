@@ -11,33 +11,18 @@
 import "@/core3/modules/all";
 
 import { getRegistry } from "@/core3/module/define";
-import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
+import { prepareProgram } from "@/core3/runtime/prepare/prepare-program";
 import type { Program } from "@/core3/types";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { describe, expect, it } from "vitest";
 import { SR, expectIdentical } from "./codegen-harness";
 
-/** The generated driver's source, captured from its one `new Function` call. */
+/** The phase-2 driver's source: every unit's body. */
 function driverSource(program: Program): string {
-	const Real = globalThis.Function;
-	let source = "";
-	globalThis.Function = new Proxy(Real, {
-		construct(target, args: string[]) {
-			const last = args[args.length - 1] as string;
-			if (last.includes("function driver")) source = last;
-			return Reflect.construct(target, args);
-		},
-	});
-	try {
-		new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program), undefined, {
-			codegen: true,
-			paste: true,
-		});
-	} finally {
-		globalThis.Function = Real;
-	}
-	return source;
+	const registry = withProgramSpecs(getRegistry(), program);
+	const prepared = prepareProgram(program, registry, SR, undefined, { codegen: true, paste: true });
+	return (prepared.primary?.units ?? []).map((u) => u.body).join("\n");
 }
 
 /** Module names whose nodes were pasted. */

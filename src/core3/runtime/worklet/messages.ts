@@ -1,16 +1,17 @@
 /**
- * Worklet message protocol. Programs are plain data; library module code is
- * bundled into the worklet. Only user-written code crosses this boundary as
- * strings, riding inside the Program: inline lambdas (PortSrc "l" entries)
- * and patch-defined module specs (Program.specs, hydrated per engine by
- * runtime/hydrate-specs).
+ * Worklet message protocol. A swap carries a prepared program
+ * (prepare/prepare-program.ts): plain data, made on the main thread. Library
+ * module code is bundled into the worklet. Code crosses this boundary only
+ * as strings: user-written code riding inside the Program (inline lambdas,
+ * PortSrc "l" entries; patch-defined module specs, Program.specs, hydrated
+ * per engine by runtime/hydrate-specs) and the generated driver units.
  */
 
-import type { Program } from "../../types";
+import type { PreparedProgram } from "../prepare/prepare-program";
 
 /** Main thread -> worklet. */
 export type WorkletMessage =
-	| { readonly type: "swap"; readonly program: Program }
+	| { readonly type: "swap"; readonly prepared: PreparedProgram }
 	| { readonly type: "stop" }
 	| { readonly type: "perf"; readonly enabled: boolean };
 
