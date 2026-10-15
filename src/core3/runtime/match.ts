@@ -4,13 +4,17 @@
  * rewiring resets nothing. Each pass pairs only nodes the earlier passes left
  * over:
  *
- *   1. pin    — `.id(name)` pins pair by name.
- *   2. place  — same kind at the same place (path from an `out` root).
- *   3. kind   — the rest by kind.
+ *   1. pin             — `.id(name)` pins pair by name.
+ *   2. place+upstream  — same place and same upstream signature: breaks ties
+ *                        among nodes sharing a place, so swapped parallel
+ *                        chains keep their own state.
+ *   3. place           — same kind at the same place (path from an `out` root).
+ *   4. kind            — the rest by kind.
  *
  * Within a pass, the k-th new node with a value pairs with the k-th old node
- * with that value, both in program order. A node no pass pairs is new and
- * starts fresh.
+ * with that value, both in program order. Pass 2 never steals a unique place
+ * match: a place with one old and one new node pairs them in pass 2 or 3
+ * alike. A node no pass pairs is new and starts fresh.
  */
 
 import type { Identity, KeyedIdentity } from "../types";
@@ -18,7 +22,12 @@ import type { Identity, KeyedIdentity } from "../types";
 /** A pass's matching value; undefined takes no part in that pass. */
 type Facet = (node: Identity) => string | undefined;
 
-const PASSES: readonly Facet[] = [(n) => n.pin, (n) => n.place, (n) => n.kind];
+const PASSES: readonly Facet[] = [
+	(n) => n.pin,
+	(n) => `${n.place}|${n.upstream}`,
+	(n) => n.place,
+	(n) => n.kind,
+];
 
 /** New node index → the old node's migration key. */
 export function match(

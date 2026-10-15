@@ -1,6 +1,7 @@
 /**
- * The re-eval matcher (MANIFESTO §6.2): pins first, then place, then kind,
- * each pass pairing in program order among what the earlier passes left.
+ * The re-eval matcher (MANIFESTO §6.2): pins first, then place (ties broken
+ * by upstream signature), then kind, each pass pairing in program order among
+ * what the earlier passes left.
  */
 
 import { describe, expect, it } from "vitest";
@@ -8,11 +9,48 @@ import { describe, expect, it } from "vitest";
 import { match } from "@/core3/runtime/match";
 import type { Identity, KeyedIdentity } from "@/core3/types";
 
-const node = (kind: string, place: string, pin?: string): Identity =>
-	pin === undefined ? { kind, place } : { kind, place, pin };
-const old = (key: string, kind: string, place: string, pin?: string): KeyedIdentity => ({
-	...node(kind, place, pin),
-	key,
+const node = (kind: string, place: string, pin?: string, upstream = "u"): Identity =>
+	pin === undefined ? { kind, place, upstream } : { kind, place, upstream, pin };
+const old = (
+	key: string,
+	kind: string,
+	place: string,
+	pin?: string,
+	upstream?: string,
+): KeyedIdentity => ({ ...node(kind, place, pin, upstream), key });
+
+describe("match: ties at one place", () => {
+	it("break by upstream signature before code order", () => {
+		const paired = match(
+			[old("A", "lpf", "p1", undefined, "saw"), old("B", "lpf", "p1", undefined, "sin")],
+			[node("lpf", "p1", undefined, "sin"), node("lpf", "p1", undefined, "saw")],
+		);
+		expect([paired.get(0), paired.get(1)]).toEqual(["B", "A"]);
+	});
+
+	it("fall back to code order when the signatures are identical", () => {
+		const paired = match(
+			[old("A", "lpf", "p1", undefined, "saw"), old("B", "lpf", "p1", undefined, "saw")],
+			[node("lpf", "p1", undefined, "saw"), node("lpf", "p1", undefined, "saw")],
+		);
+		expect([paired.get(0), paired.get(1)]).toEqual(["A", "B"]);
+	});
+
+	it("never steal a unique place match", () => {
+		const paired = match(
+			[old("A", "lpf", "p1", undefined, "saw"), old("B", "lpf", "p2", undefined, "sin")],
+			[node("lpf", "p1", undefined, "sin"), node("lpf", "p2", undefined, "saw")],
+		);
+		expect([paired.get(0), paired.get(1)]).toEqual(["A", "B"]);
+	});
+
+	it("never override a pin", () => {
+		const paired = match(
+			[old("bass", "lpf", "p1", "bass", "saw"), old("B", "lpf", "p1", undefined, "sin")],
+			[node("lpf", "p1", undefined, "saw"), node("lpf", "p1", "bass", "sin")],
+		);
+		expect([paired.get(0), paired.get(1)]).toEqual(["B", "bass"]);
+	});
 });
 
 describe("match", () => {

@@ -162,6 +162,8 @@ export interface Identity {
 	readonly kind: string;
 	/** Hash of the kind and the first path of (port, module) hops from an `out` root. */
 	readonly place: string;
+	/** Hash of the module types and ports feeding the node, recursively; breaks ties among nodes sharing a place. */
+	readonly upstream: string;
 	/** User-pinned identity (`.id(name)`), matched first. */
 	readonly pin?: string;
 }

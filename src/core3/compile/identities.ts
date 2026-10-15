@@ -1,7 +1,8 @@
 /**
  * Each node's identity for re-eval matching (MANIFESTO §6.2, runtime/match.ts):
- * its kind, and its place — a hash of the kind and its first path from an
- * `out` root. Wiring and constants are not identity, so adding a `.mod` or a
+ * its kind; its place — a hash of the kind and its first path from an `out`
+ * root; and its upstream signature, which breaks ties among nodes sharing a
+ * place. Wiring and constants are not identity, so adding a `.mod` or a
  * module upstream leaves a node's place alone. The pin is carried at emit.
  */
 
@@ -11,23 +12,31 @@ import type { SpecTable } from "../module/resolve";
 import type { Identity } from "../types";
 import { firstPaths } from "./first-paths";
 import { kindOf } from "./kind";
+import { upstreamSignatures } from "./upstream-signatures";
 
-export type Placement = Pick<Identity, "kind" | "place">;
+export type Placement = Omit<Identity, "pin">;
 
+/** `order` must be topologically sorted (z-edges cut). */
 export function identities(
 	roots: readonly GNode[],
-	nodes: readonly GNode[],
+	order: readonly GNode[],
 	specs: SpecTable,
 ): Map<GNode, Placement> {
 	const paths = firstPaths(roots);
+	const kinds = new Map(order.map((node) => [node, kindOf(node, specs)]));
+	const upstream = upstreamSignatures(order, kinds);
 	const result = new Map<GNode, Placement>();
-	for (const node of nodes) {
+	for (const node of order) {
 		const path = paths.get(node);
 		if (path === undefined) {
 			throw new Error(`'${node.module}' is not reachable from an out root (internal error)`);
 		}
-		const kind = kindOf(node, specs);
-		result.set(node, { kind, place: `p${fnv1aHex(`${kind}@${path}`)}` });
+		const kind = kinds.get(node) as string;
+		result.set(node, {
+			kind,
+			place: `p${fnv1aHex(`${kind}@${path}`)}`,
+			upstream: upstream.get(node) as string,
+		});
 	}
 	return result;
 }

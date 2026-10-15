@@ -9,7 +9,9 @@ import { migrationKeys } from "@/core3/runtime/state-keys";
 import type { Identity } from "@/core3/types";
 
 const node = (place: string, pin?: string): Identity =>
-	pin === undefined ? { kind: "k", place } : { kind: "k", place, pin };
+	pin === undefined
+		? { kind: "k", place, upstream: "u" }
+		: { kind: "k", place, upstream: "u", pin };
 
 describe("migrationKeys", () => {
 	it("a fresh patch keys by place, duplicates suffixed in order", () => {

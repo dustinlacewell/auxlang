@@ -164,34 +164,82 @@ describe("rewiring resets nothing (§6.2)", () => {
 		expect(lanesOf(carried, after, "saw")?.[0]?.phase).not.toBe(0);
 	});
 
-	it("swapping the order of two parallel chains keeps each chain's state", () => {
-		const chainA = () => factory("saw")(48).lpf(800).delay(DELAY).out();
-		const chainB = () => factory("sin")(60).lpf(1200).out();
+	/** Programs running `first` then `second`, and the same chains in swapped code order. */
+	function swappedChains(first: () => void, second: () => void) {
 		const before = runProgram(() => {
-			chainA();
-			chainB();
+			first();
+			second();
 		});
 		const after = runProgram(() => {
-			chainB();
-			chainA();
+			second();
+			first();
 		});
+		return { before, after };
+	}
+
+	/** The `module` nodes of a program, in program order, by index. */
+	const nodesOf = (program: Program, module: string) =>
+		program.nodes.flatMap((n, i) => (n.module === module ? [{ node: n, i }] : []));
+
+	/**
+	 * Each `module` node in `after` carries the state of the `before` node of
+	 * its own chain (same place and upstream), and the chains' states differ.
+	 */
+	function expectOwnChainState(before: Program, after: Program, module: string) {
 		const { state, swapped } = swap(before, after);
 		const carried = swapped.collectState();
-		const filters = (program: Program) =>
-			program.nodes.flatMap((n, i) => (n.module === "lpf" ? [{ place: n.place, i }] : []));
-		const [first, second] = filters(after);
-		expect(filters(before).map((f) => f.place)).toEqual([second?.place, first?.place]);
-		for (const filter of filters(after)) {
-			const old = filters(before).find((f) => f.place === filter.place);
-			expect(lanesAt(state, old?.i as number)).toBeDefined();
-			expect(lanesAt(carried, filter.i)).toEqual(lanesAt(state, old?.i as number));
+		const chainOf = (n: Program["nodes"][number]) => `${n.place}|${n.upstream}`;
+		const olds = nodesOf(before, module);
+		const news = nodesOf(after, module);
+		expect(news.map((n) => chainOf(n.node)), module).not.toEqual(olds.map((o) => chainOf(o.node)));
+		expect(lanesAt(state, olds[0]?.i as number), module).not.toEqual(
+			lanesAt(state, olds[1]?.i as number),
+		);
+		for (const { node, i } of news) {
+			const old = olds.find((o) => chainOf(o.node) === chainOf(node));
+			expect(lanesAt(state, old?.i as number), module).toBeDefined();
+			expect(lanesAt(carried, i), module).toEqual(lanesAt(state, old?.i as number));
 		}
-		const [oldA, oldB] = filters(before).map((f) => lanesAt(state, f.i));
-		expect(oldA).not.toEqual(oldB);
+	}
+
+	it("swapping two parallel chains keeps each chain's state", () => {
+		const { before, after } = swappedChains(
+			() => factory("saw")(48).lpf(800).delay(DELAY).out(),
+			() => factory("sin")(60).lpf(1200).out(),
+		);
+		for (const module of ["lpf", "out"]) expectOwnChainState(before, after, module);
+		const { state, swapped } = swap(before, after);
+		const carried = swapped.collectState();
 		for (const module of ["saw", "sin", "delay"]) {
 			expect(lanesOf(state, before, module), module).toBeDefined();
 			expect(lanesOf(carried, after, module), module).toEqual(lanesOf(state, before, module));
 		}
+	});
+
+	it("swapping saw→lpf→out and sin→lpf→out keeps each lpf and out with its chain", () => {
+		const { before, after } = swappedChains(
+			() => factory("saw")(48).lpf(800).out(),
+			() => factory("sin")(60).lpf(1200).out(),
+		);
+		expect(nodesOf(after, "lpf").map((n) => n.node.place)).toEqual(
+			nodesOf(before, "lpf").map((n) => n.node.place),
+		); // one shared place: only the upstream signature tells them apart
+		for (const module of ["lpf", "out"]) expectOwnChainState(before, after, module);
+	});
+
+	it("two identical chains pair by code order", () => {
+		const { before, after } = swappedChains(
+			() => factory("saw")(48).lpf(800).out(),
+			() => factory("saw")(55).lpf(1200).out(),
+		);
+		const { state, swapped } = swap(before, after);
+		const carried = swapped.collectState();
+		const olds = nodesOf(before, "lpf");
+		const news = nodesOf(after, "lpf");
+		expect(lanesAt(state, olds[0]?.i as number)).not.toEqual(lanesAt(state, olds[1]?.i as number));
+		news.forEach(({ i }, k) => {
+			expect(lanesAt(carried, i)).toEqual(lanesAt(state, olds[k]?.i as number));
+		});
 	});
 
 	it("noise keeps its stream across a rewire", () => {
