@@ -6,7 +6,6 @@
 
 import { describe, expect, it } from "vitest";
 
-import { prepareWasm } from "@/core3/wasm/host/prepare-wasm";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { compareBlocks } from "./block-differential";
 
@@ -45,9 +44,4 @@ describe("WASM signal lambdas", () => {
 			expect(result.peak).toBeGreaterThan(0);
 		});
 	}
-
-	it("a lambda that returns a boolean is a loud compile error", () => {
-		const program = evalPatch("sin((s, sr, t) => t > 1).gain(0.1).out()");
-		expect(() => prepareWasm(program, 48000)).toThrow(/returns a boolean/);
-	});
 });

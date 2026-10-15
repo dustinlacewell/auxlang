@@ -1,16 +1,22 @@
 /**
- * Arrays in module state are typed arrays. A typed array has one element
- * type and a fixed length, so every backend can hold it the same way (WASM
- * keeps it in linear memory in that type). A plain array of numbers has
- * neither, and is a loud error naming the field. An array of records stays
+ * Module state holds numbers, typed arrays, records and arrays of records.
+ * A typed array has one element type and a fixed length, so every backend
+ * can hold it the same way (WASM keeps it in linear memory in that type). A
+ * plain array of numbers has neither, and is a loud error naming the field.
+ * A boolean field is one too: JS keeps `true`, which `=== 1` is not, while a
+ * backend's number slot cannot tell them apart. An array of records stays
  * allowed; its records' fields are checked the same way.
  */
 
-export function checkStateArrays(state: Record<string, unknown>, owner: string): void {
+export function checkStateValues(state: Record<string, unknown>, owner: string): void {
 	for (const [name, value] of Object.entries(state)) checkValue(value, name, owner);
 }
 
 function checkValue(value: unknown, path: string, owner: string): void {
+	if (typeof value === "boolean")
+		throw new Error(
+			`${owner}: state field '${path}' is a boolean — keep it as a number (0 or 1) in state()`,
+		);
 	if (Array.isArray(value)) {
 		if (value.length === 0 || !value.every(isRecord))
 			throw new Error(

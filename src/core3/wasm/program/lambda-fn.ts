@@ -36,10 +36,9 @@ export function compileLambda(
 	const params = parseFunction(text, owner).node.params.length;
 	const shapes = lambdaShapes(sampleRate).slice(0, params);
 	const fn = compileHelper(set, "lambda", shapes, fns.calls(set));
+	// The checker (tick-subset/kinds/) already refuses a lambda that returns a boolean.
 	if (fn.result !== "f64")
-		throw new Error(
-			`wasm: ${owner}: it returns a boolean — JS passes true/false to the input, WASM cannot; return \`cond ? 1 : 0\``,
-		);
+		throw new Error(`wasm: ${owner}: internal: a boolean lambda passed the checker`);
 	const type = table.typeIndex(fn.params, [F64]);
 	return {
 		index: table.add({ type, locals: fn.locals, body: fn.body }),

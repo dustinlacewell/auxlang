@@ -1,13 +1,15 @@
 /**
  * A signal lambda `(s, sr, t) => n` is a stateless module (MANIFESTO §5.1):
  * the same subset as a tick, with no helpers, no state fields and no random
- * stream. A closure over a patch variable is a loud error here, at eval.
+ * stream, and it returns a number (kinds/check-kinds.ts). A closure over a
+ * patch variable is a loud error here, at eval.
  */
 
 import { checkFunction } from "./check-function";
+import { checkLambdaKinds } from "./kinds/check-kinds";
 
 export function checkLambda(src: string): void {
-	checkFunction({
+	const lambda = checkFunction({
 		kind: "lambda",
 		src,
 		owner: "lambda",
@@ -18,4 +20,5 @@ export function checkLambda(src: string): void {
 		state: {},
 		tables: false,
 	});
+	checkLambdaKinds(lambda);
 }

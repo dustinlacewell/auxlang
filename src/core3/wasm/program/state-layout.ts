@@ -1,8 +1,8 @@
 /**
  * The memory shapes of a lane's built state (layout/state-shape.ts). A value
- * with no memory form (a string, a boolean, which an f64 would turn into a
- * number (compile/one-type.ts), a BigInt array, records of differing shapes)
- * gets no shape; a tick that reads it fails to compile, naming the field.
+ * with no memory form (a string, a BigInt array, records of differing
+ * shapes; the checker already refuses booleans and plain arrays) gets no
+ * shape; a tick that reads it fails to compile, naming the field.
  */
 
 import { ELEMENT_BYTES, elementTypeOf } from "../layout/element-type";

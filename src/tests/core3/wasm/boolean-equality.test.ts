@@ -1,11 +1,9 @@
 /**
  * Booleans and numbers on WASM, as JS: strict equality between a boolean
  * and a number is false (`!==` true), also in a `switch`, and both sides
- * still run; in a test (`if`, `!`, `?:`) `&&`/`||` may mix the two. Each
- * place where JS would keep a boolean that WASM must hold as a number is a
- * loud compile error instead: a stored boolean, a value that is a boolean on
- * one path and a number on another, a helper returning both, a boolean
- * state field.
+ * still run. Every boolean use the shared checker allows (tick-subset/kinds/)
+ * compiles and matches: booleans in their own variables, in typed arrays,
+ * from helpers, and mixed with numbers where only truthiness counts.
  */
 
 import { describe, expect, it } from "vitest";
@@ -13,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { defmod, factory, runProgram } from "@/core3/api";
 import type { Program } from "@/core3/types";
 import { sig } from "@/core3/types";
-import { prepareWasm } from "@/core3/wasm/host/prepare-wasm";
+import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { firstSlotDifference, interpreterSeries } from "./slot-differential";
 
 const SAMPLES = 200;
@@ -70,29 +68,35 @@ function equality(): Program {
 	});
 }
 
-let failures = 0;
-
-function failing(tick: string, extra: { state?: object; helper?: string } = {}): Program {
-	return runProgram(() => {
-		const m = defmod({
-			name: `be.fail${failures++}`,
-			category: "utils",
-			ins: { in: sig(0) },
-			outs: { out: sig() },
-			defaultIn: "in",
-			defaultOut: "out",
-			state: new Function(
-				`return () => (${JSON.stringify({ n: 0, ...extra.state })})`,
-			)() as () => Record<string, unknown>,
-			helpers:
-				extra.helper === undefined
-					? {}
-					: { h: new Function(`return ${extra.helper}`)() as (x: number) => number },
-			tick: new Function(`return ${tick}`)() as never,
-		});
-		m({ in: factory("lfo")(3000) }).out();
-	});
+/** A module whose tick holds `body`, fed a fast lfo, through the patch path. */
+function allowed(body: string): Program {
+	return evalPatch(`const b = defmod({
+  name: "be.ok",
+  category: "utils",
+  ins: { in: sig(0) },
+  outs: { out: sig() },
+  defaultIn: "in",
+  defaultOut: "out",
+  state: () => ({ n: 0, buf: new Float32Array(2) }),
+  helpers: { pos: (x) => x > 0 },
+  tick: (s, i, o) => {
+    ${body}
+    s.n = (s.n + 1) % 7;
+  },
+})
+b({ in: lfo(3000) }).out()`);
 }
+
+/** Booleans the checker allows (tick-subset/kinds/): each compiles and matches. */
+const ALLOWED: readonly [string, string][] = [
+	["a boolean let given booleans", "let on = false; on = i.in > 0; o.out = on ? 1 : 0;"],
+	["a mix in an if", "o.out = 0; if (s.n && i.in > 0) o.out = 1;"],
+	["a mix in a ?: test", "o.out = (s.n || i.in > 0) ? 1 : 2;"],
+	["a mix under !", "o.out = !(s.n && i.in > 0) ? 1 : 0;"],
+	["a mix in a loop test", "let k = 0; while (k < 3 && (s.n || i.in > 0)) k++; o.out = k;"],
+	["a boolean stored in a typed array", "s.buf[0] = i.in > 0; o.out = s.buf[0];"],
+	["a helper returning booleans", "o.out = pos(i.in) ? 1 : 0;"],
+];
 
 describe("WASM booleans and numbers", () => {
 	it("compares a boolean with a number as JS does", () => {
@@ -105,38 +109,8 @@ describe("WASM booleans and numbers", () => {
 		expect(interpreterSeries(program, node, "effects", 3)).toEqual([1, 2, 3]);
 	});
 
-	const LOUD: readonly [string, Program, RegExp][] = [
-		["a boolean stored in an output", failing("(s, i, o) => { o.out = i.in > 0; }"), /stored/],
-		[
-			"a boolean stored in a number local",
-			failing("(s, i, o) => { let v = 0; v = i.in > 0; o.out = v ? 1 : 0; }"),
-			/stored/,
-		],
-		[
-			"a value that is a boolean or a number",
-			failing("(s, i, o) => { const v = i.in > 0 ? 1 : false; o.out = v ? 1 : 0; }"),
-			/boolean on one path/,
-		],
-		[
-			"&& mixing the two as a value",
-			failing("(s, i, o) => { const v = s.n && i.in > 0; o.out = v ? 1 : 0; }"),
-			/boolean on one path/,
-		],
-		[
-			"a helper returning both",
-			failing("(s, i, o) => { o.out = h(i.in) ? 1 : 0; }", {
-				helper: "(x) => { if (x > 0) return true; return 0; }",
-			}),
-			/returns booleans and numbers/,
-		],
-		[
-			"a boolean state field",
-			failing("(s, i, o) => { o.out = s.on ? 1 : 0; }", { state: { on: false } }),
-			/no memory form/,
-		],
-	];
-	for (const [what, program, error] of LOUD)
-		it(`${what} is a loud compile error`, () => {
-			expect(() => prepareWasm(program, 48000)).toThrow(error);
+	for (const [what, body] of ALLOWED)
+		it(`${what}: compiles and matches the interpreter`, () => {
+			expect(firstSlotDifference(allowed(body), SAMPLES)).toBeNull();
 		});
 });

@@ -1,8 +1,8 @@
 /**
  * One helper specialised on its argument shapes, as a function body. The
  * result kind is found by compiling: first with an f64 result; when every
- * `return` gave a boolean, again with a boolean result. Booleans mixed with
- * numbers are a loud error (one-type.ts).
+ * `return` gave a boolean, again with a boolean result. The checker
+ * (tick-subset/kinds/) rejects a helper that returns both.
  */
 
 import type { AnyNode, Expression, ReturnStatement } from "acorn";
@@ -13,9 +13,6 @@ import { emitStatement, emitStatements } from "./emit-statement";
 import { FnEmitter, valueType } from "./fn-emitter";
 import type { HelperSet } from "./helper-set";
 import { type Kind, fixed, inMemory, local } from "./values";
-
-const MIXED_RETURNS =
-	"JS keeps the boolean (`true === 1` is false), WASM cannot; return `cond ? 1 : 0` for a number";
 
 export interface CompiledHelper {
 	readonly params: readonly number[];
@@ -36,8 +33,6 @@ export function compileHelper(
 	const owner = `${set.owner} helper '${name}'`;
 	const first = build(fn, shapes, calls, set.cached, owner, "f64");
 	const bools = first.seen.length > 0 && first.seen.every((k) => k === "bool");
-	if (!bools && first.seen.includes("bool"))
-		throw new Error(`wasm: ${owner}: it returns booleans and numbers — ${MIXED_RETURNS}`);
 	return bools ? build(fn, shapes, calls, set.cached, owner, "bool") : first;
 }
 

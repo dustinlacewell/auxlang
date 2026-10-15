@@ -35,6 +35,7 @@ export interface FunctionCheck {
 }
 
 export interface CheckedFunction {
+	readonly node: FunctionNode;
 	readonly calls: SubsetContext["calls"];
 	readonly fail: SubsetContext["fail"];
 }
@@ -60,7 +61,7 @@ export function checkFunction(check: FunctionCheck): CheckedFunction {
 		calls: [],
 	};
 	walk(fn.body, (node, parent, key) => visit(node, parent, key, ctx));
-	return { calls: ctx.calls, fail };
+	return { node: fn, calls: ctx.calls, fail };
 }
 
 function visit(
@@ -70,6 +71,11 @@ function visit(
 	ctx: SubsetContext,
 ): void {
 	checkForm(node, ctx);
+	if (node.type === "VariableDeclarator" && (node.init === null || node.init === undefined))
+		ctx.fail(
+			node,
+			"every variable needs an initial value (`let x = 0`) — an unset one is `undefined`, which a WASM local cannot hold",
+		);
 	if (node.type === "Identifier") checkName(node, parent, key, ctx);
 	else if (node.type === "Literal") checkStringLiteral(node, parent, key, ctx);
 	else if (node.type === "CallExpression") checkCall(node, ctx);

@@ -56,7 +56,7 @@ const edgy = defmod({
     }
     {
       const total = s.n * 2
-      let k
+      let k = 0
       k = total + 1
       s.acc += k
     }

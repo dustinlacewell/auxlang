@@ -16,7 +16,6 @@ import { emitLoad, emitStore } from "./element-io";
 import { emitExpr, emitValue } from "./emit-expression";
 import type { FnEmitter } from "./fn-emitter";
 import { type Index, type Span, emitIndex, guarded } from "./index-access";
-import { assertOneType } from "./one-type";
 import { placeOf } from "./place";
 import { staticOf } from "./static-value";
 import type { Address, Kind } from "./values";
@@ -49,7 +48,8 @@ export function emitMemberRead(e: FnEmitter, node: MemberExpression): Kind {
  */
 export function emitNullish(e: FnEmitter, node: AnyNode, orElse: () => Kind): Kind {
 	const known = staticOf(e, node);
-	if (known !== null) return known.v === undefined || known.v === null ? orElse() : emitExpr(e, node);
+	if (known !== null)
+		return known.v === undefined || known.v === null ? orElse() : emitExpr(e, node);
 	if (node.type === "MemberExpression") return emitMemberReadOr(e, node, orElse);
 	if (node.type === "LogicalExpression" && node.operator === "??")
 		return emitNullish(e, node.left, () => emitNullish(e, node.right, orElse));
@@ -122,15 +122,7 @@ function emitMemberReadOr(e: FnEmitter, node: MemberExpression, orElse: (() => K
 	const cache = cacheTarget(e, node);
 	if (cache !== null) return readTarget(e, cache);
 	const array = arrayOf(e, node.object);
-	const other =
-		orElse === null
-			? null
-			: () => {
-					const kind = orElse();
-					assertOneType(e, "f64", kind, node);
-					return kind;
-				};
-	readElement(e, array.shape, array.at, emitIndex(e, node.property), other);
+	readElement(e, array.shape, array.at, emitIndex(e, node.property), orElse);
 	return "f64";
 }
 

@@ -2,14 +2,16 @@
  * The tick subset check for one module (MANIFESTO §5.1), run at eval for
  * every module, built-in and patch-defined: the tick and each helper are
  * checked against the module's real ports and real fresh state (whose
- * arrays must be typed, check-state.ts), then the helpers' call graph is
- * checked for recursion.
+ * arrays must be typed and fields numbers, check-state.ts), then the
+ * helpers' call graph is checked for recursion and the whole for booleans
+ * kept as numbers (kinds/check-kinds.ts).
  */
 
 import type { ModuleSource, ModuleSpec } from "../../types";
 import { type CheckedFunction, type FunctionCheck, checkFunction } from "./check-function";
-import { checkStateArrays } from "./check-state";
+import { checkStateValues } from "./check-state";
 import { assertNoRecursion } from "./helper-cycles";
+import { checkModuleKinds } from "./kinds/check-kinds";
 
 /** Names a helper may not take: they are the tick's own bindings. */
 const RESERVED_HELPER_NAMES = new Set(["Math", "hashRandom", "undefined", "NaN", "Infinity"]);
@@ -20,12 +22,13 @@ const SHAPE_SAMPLE_RATE = 48000;
 export function checkModule(spec: ModuleSpec, source: ModuleSource): void {
 	const owner = `defmod('${spec.name}')`;
 	const shared = sharedCheck(spec, source, owner);
-	checkFunction({ ...shared, kind: "tick", src: source.tick, part: "tick" });
+	const tick = checkFunction({ ...shared, kind: "tick", src: source.tick, part: "tick" });
 	const helpers = new Map<string, CheckedFunction>();
 	for (const [name, src] of Object.entries(source.helpers)) {
 		helpers.set(name, checkFunction({ ...shared, kind: "helper", src, part: `helper '${name}'` }));
 	}
 	assertNoRecursion(helpers);
+	checkModuleKinds({ tick, helpers, state: shared.state, config: spec.config ?? {} });
 }
 
 function sharedCheck(
@@ -39,7 +42,7 @@ function sharedCheck(
 			throw new Error(`${owner}: helper '${name}' would hide the tick's own '${name}'`);
 	}
 	const own = spec.state?.(SHAPE_SAMPLE_RATE) ?? {};
-	checkStateArrays(own, owner);
+	checkStateValues(own, owner);
 	return {
 		owner,
 		helpers,

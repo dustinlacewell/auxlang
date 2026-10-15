@@ -19,7 +19,7 @@ defmod({
 			s.started = 1;
 		}
 		const current = s.current;
-		let next;
+		let next = 0;
 		if (i.in > current) {
 			next = i.rise <= 0 ? i.in : Math.min(i.in, current + 1 / (i.rise * sr));
 		} else {
