@@ -216,7 +216,7 @@ const stab = stabSeq.saw()
 // delay feedback stays 0: the loop IS the feedback path, so every repeat re-passes the lpf
 // a touch of reverb behind the echoes glues them into one room instead of discrete slaps
 loop((fb) =>
-  stab.add(fb.delay({ time: 0.369, feedback: 0, mix: 1 }).lpf({ cutoff: 86 }).mul(0.22)),
+  stab.add(fb.delay({ time: 0.369, feedback: 0, mix: 1 }).lpf({ cutoff: 86, res: 0.2 }).mul(0.22)),
 )
   .reverb({ room: 0.6, damp: 0.6, mix: 0.15 })
   .mul(0.45)
