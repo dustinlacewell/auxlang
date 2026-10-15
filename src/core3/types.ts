@@ -16,7 +16,7 @@ export type Unit =
 	| "secs"
 	| "gate" // 0/1, threshold 0.5
 	| "trig" // single-sample 1
-	| "phase"; // unbounded beat ramp
+	| "phase"; // a position: unbounded, in cycles (a clock's bars, a counter's steps)
 
 /** Module family — drives docs grouping and node coloring (see src/theme/colors.ts). */
 export type Category =

@@ -6,46 +6,39 @@ import { SR, driver } from "./helpers";
 
 const clock = getModule("clock");
 
+const onesAt = (xs: number[]) => xs.map((x, k) => (x > 0.5 ? k : -1)).filter((k) => k >= 0);
+const last = (xs: number[]) => xs[xs.length - 1] as number;
+
 describe("clock", () => {
-	it("phase ramps by bpm/60/sr per sample", () => {
+	it("position in bars ramps by bpm/60/sr/beatsPerBar per sample", () => {
 		const bpm = 120;
 		const d = driver(clock);
-		const inc = bpm / 60 / SR;
-		const p1 = d.step({ bpm }).phase!;
-		const p2 = d.step({ bpm }).phase!;
-		expect(p1).toBeCloseTo(inc, 9);
-		expect(p2 - p1).toBeCloseTo(inc, 9);
+		const inc = bpm / 60 / SR / 4;
+		const p1 = d.step({ bpm }).out as number;
+		const p2 = d.step({ bpm }).out as number;
+		expect(p1).toBeCloseTo(inc, 12);
+		expect(p2 - p1).toBeCloseTo(inc, 12);
 	});
 
-	it("reaches 1 full beat after sr*60/bpm samples", () => {
-		const bpm = 120; // 2 beats/sec → 1 beat every sr/2 samples
+	it("reaches one bar after four beats of 60/bpm seconds", () => {
 		const d = driver(clock);
-		const samplesPerBeat = (60 / bpm) * SR;
-		const xs = d.trace(Math.round(samplesPerBeat) + 1, "phase", { bpm });
-		expect(xs[xs.length - 1]!).toBeCloseTo(1, 2);
+		expect(last(d.trace(4 * (SR / 2) + 1, "out", { bpm: 120 }))).toBeCloseTo(1, 4);
 	});
 
-	it("trig is a single sample at each beat boundary", () => {
-		const bpm = 120;
-		const d = driver(clock);
-		const samplesPerBeat = Math.round((60 / bpm) * SR);
-		// trace just short of the 3rd beat's onset: trigs at beat 0,1,2 = 3.
-		const trigs = d.trace(samplesPerBeat * 3 - 2, "trig", { bpm });
-		const fireIdx = trigs.map((t, k) => (t > 0.5 ? k : -1)).filter((k) => k >= 0);
-		// one trig per beat onset (first at sample 0)
-		expect(fireIdx.length).toBe(3);
-		// each trig is exactly one sample wide
-		for (const k of fireIdx) {
-			if (k + 1 < trigs.length) expect(trigs[k + 1]!).toBe(0);
-		}
+	it("beatsPerBar sets the meter: a 3/4 bar is three beats", () => {
+		const d = driver(clock, { beatsPerBar: 3 });
+		expect(last(d.trace(3 * (SR / 2) + 1, "out", { bpm: 120 }))).toBeCloseTo(1, 4);
 	});
 
-	it("gate is 50% duty over a beat", () => {
-		const bpm = 120;
-		const d = driver(clock);
-		const samplesPerBeat = Math.round((60 / bpm) * SR);
-		const gates = d.trace(samplesPerBeat * 2, "gate", { bpm });
-		const high = gates.filter((g) => g > 0.5).length;
-		expect(high / gates.length).toBeCloseTo(0.5, 2);
+	it("beat is a single-sample trig at each beat, bar at each bar", () => {
+		const samplesPerBeat = SR / 2; // 120 bpm
+		// just short of beat 9: beats 0..8 and bars 0..2
+		const n = samplesPerBeat * 9 - 2;
+		const beats = onesAt(driver(clock).trace(n, "beat", { bpm: 120 }));
+		const bars = onesAt(driver(clock).trace(n, "bar", { bpm: 120 }));
+		expect(beats.length).toBe(9);
+		expect(bars.length).toBe(3);
+		for (const k of bars) expect(beats).toContain(k);
+		expect(bars[0]).toBe(0);
 	});
 });

@@ -11,8 +11,8 @@ import { allFinite, nodeIndex } from "./helpers";
 
 describe("bridge feedback", () => {
 	const program = runProgram(() => {
-		const c = clock(30); // one trig at sample 0, next 2 s later
-		loop((fb) => c.trig.add(fb.mul(0.6))).out();
+		const c = clock(30); // one beat trig at sample 0, next 2 s later
+		loop((fb) => c.beat.add(fb.mul(0.6))).out();
 	});
 	const ai = nodeIndex(program, "add");
 	const tap = renderTap(program, ai, "out", 0, 4800);
@@ -30,7 +30,7 @@ describe("bridge feedback", () => {
 	it("a chained .z1() is exactly one sample of delay", () => {
 		const program2 = runProgram(() => {
 			const c = clock(30);
-			c.trig.z1().out();
+			c.beat.z1().out();
 		});
 		const zi = nodeIndex(program2, "z1");
 		const tap2 = renderTap(program2, zi, "out", 0, 4);

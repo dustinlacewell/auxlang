@@ -1,19 +1,15 @@
 /**
- * `clock(bpm)` — creates a clock node and binds it as the eval's AMBIENT
- * clock if none is bound yet (first call wins). Consumers that want a
- * different clock connect one explicitly; everyone else gets the ambient one
- * (compile wires every unconnected seq position to it).
+ * `clock(bpm)` — the clock factory for host code (the user scope gets the
+ * registry's own `clock` factory; this is the same thing, named for import).
+ * It makes a clock and nothing else: the ambient clock is set only by
+ * `tempo(bpm)` (patch/tempo.ts). Extra clocks are for polytempo.
  */
 
 import { getModule } from "../module/define";
 import { buildNode } from "./build-node";
-import { evalCtx } from "./context";
 import { wrap } from "./handle";
 import type { Handle } from "./handle-data";
 
 export function clock(...args: unknown[]): Handle {
-	const ctx = evalCtx("clock()");
-	const node = buildNode(getModule("clock"), args);
-	if (ctx.clock === null) ctx.clock = node;
-	return wrap(node);
+	return wrap(buildNode(getModule("clock"), args));
 }

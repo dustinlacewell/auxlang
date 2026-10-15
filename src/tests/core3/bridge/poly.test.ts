@@ -4,16 +4,16 @@
  * permanently silent.
  */
 
-import { clock, runProgram, seq } from "@/core3/api";
+import { runProgram, seq, tempo } from "@/core3/api";
 import { renderTap } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { nodeIndex } from "./helpers";
 
-const CYCLE = 24000; // one beat at 120 bpm, 48 kHz
+const CYCLE = 24000; // one bar at 480 bpm, 48 kHz
 
 function build(pattern: string) {
 	const program = runProgram(() => {
-		clock(120);
+		tempo(480);
 		seq(pattern).tri().out();
 	});
 	return { program, seq: nodeIndex(program, "seq") };

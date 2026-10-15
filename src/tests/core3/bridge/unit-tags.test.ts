@@ -6,7 +6,7 @@
 
 import "@/core3/modules/all";
 
-import { clock, defmod, factory, runProgram } from "@/core3/api";
+import { defmod, factory, runProgram, tempo } from "@/core3/api";
 import { render, renderTap } from "@/core3/runtime/render";
 import { sig, unit } from "@/core3/types";
 import { hzToSemis } from "@/core3/units/pitch";
@@ -146,9 +146,9 @@ describe("unit tags convert at the port", () => {
 
 describe("beats(x) into a seconds port", () => {
 	/** The beats2secs converter's output after `n` samples at `bpm`. */
-	function beatsAsSecs(bpm: number, x: number, n = 480): number {
+	function beatsAsSecs(bpm: number, x: number, n = 480, beatsPerBar = 4): number {
 		const program = runProgram(() => {
-			clock(bpm);
+			tempo({ bpm, beatsPerBar });
 			saw(45)
 				.delay({ time: beats(x) })
 				.out();
@@ -163,6 +163,10 @@ describe("beats(x) into a seconds port", () => {
 
 	it("follows the clock's tempo: beats(3/4) at 90 BPM is 0.5 s", () => {
 		expect(beatsAsSecs(90, 3 / 4)).toBeCloseTo(0.5, 6);
+	});
+
+	it("counts beats, not bars: beats(1) at 120 BPM in 3/4 is still 0.5 s", () => {
+		expect(beatsAsSecs(120, 1, 480, 3)).toBeCloseTo(0.5, 6);
 	});
 
 	it("with no clock it is a loud error", () => {

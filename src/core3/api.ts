@@ -14,7 +14,6 @@
 
 import { compile } from "./compile/compile";
 import { getModule, getRegistry } from "./module/define";
-import { clock } from "./patch/clock";
 import { runEval } from "./patch/context";
 import { defmod } from "./patch/defmod";
 import { moduleFactory } from "./patch/factory";
@@ -22,6 +21,7 @@ import type { Handle } from "./patch/handle-data";
 import { loop } from "./patch/loop";
 import { out } from "./patch/out";
 import { RESERVED_SCOPE_NAMES } from "./patch/scope-names";
+import { tempo } from "./patch/tempo";
 import { chord } from "./pattern/chord/chord";
 import { P } from "./pattern/pat-class";
 import { p } from "./pattern/notation/template";
@@ -35,6 +35,7 @@ export { defmod } from "./patch/defmod";
 export { loop } from "./patch/loop";
 export { out } from "./patch/out";
 export { seq } from "./patch/seq";
+export { tempo } from "./patch/tempo";
 export { compile } from "./compile/compile";
 export { p } from "./pattern/notation/template";
 export { hashRandom } from "./random/hash-random";
@@ -49,8 +50,8 @@ export function factory(name: string): (...args: unknown[]) => Handle {
 
 /**
  * Reserved user-scope bindings that are NOT plain module factories. Two kinds:
- * special patch-builders that override a same-named module with richer
- * semantics (ambient-clock binding, root registration, pattern parsing), and
+ * patch-builders and settings (`out` overrides the same-named module with
+ * root registration; `tempo` sets the ambient clock), and
  * pure helpers with no module of the same name — including the PortAnn
  * helpers, exposed so `defmod` specs can annotate their ports in patch code.
  * `buildUserScope` layers these over the generated factories; a future module
@@ -59,7 +60,7 @@ export function factory(name: string): (...args: unknown[]) => Handle {
  * buildUserScope asserts the two never drift.
  */
 const RESERVED = {
-	clock,
+	tempo,
 	out,
 	loop,
 	p,
@@ -80,7 +81,7 @@ const RESERVED = {
 } as const;
 
 /** Reserved names that intentionally override a same-named registered module. */
-const MODULE_OVERRIDES = new Set(["clock", "out"]);
+const MODULE_OVERRIDES = new Set(["out"]);
 
 /**
  * The complete user scope, generated from the registry: every registered module

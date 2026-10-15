@@ -103,7 +103,7 @@ describe("codegen driver is bit-identical to the interpreter", () => {
 
 	it("a re-eval swap with migrated state (seq, lpf cutoff edit, delay)", () => {
 		const patch = (cutoff: number) =>
-			evalPatch(`clock(120)
+			evalPatch(`tempo(120)
 const s = seq("c3 e3 g3 b3")
 s.saw()
   .lpf(${cutoff})

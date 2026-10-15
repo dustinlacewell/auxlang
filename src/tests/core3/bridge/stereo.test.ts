@@ -7,7 +7,7 @@
  * by name (l→l, r→r), and that any connection dropping a channel is a loud error.
  */
 
-import { clock, factory, loop, out, runProgram, seq } from "@/core3/api";
+import { factory, loop, out, runProgram, seq, tempo } from "@/core3/api";
 import { render } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { rms } from "./helpers";
@@ -92,7 +92,7 @@ describe("stereo routing pan → out", () => {
 		// pitch (60/64/67 → scaled to [-1,1]): lane 0 ≈ hard left, lane 2 ≈ hard
 		// right. The pan is width-3; out's l/r jacks gather all three lanes.
 		const program = runProgram(() => {
-			clock(120);
+			tempo(120);
 			const chord = seq("{c4,e4,g4}");
 			const pos = chord.scale(-1, 1, 60, 67); // per-lane pitch → per-lane pos
 			chord
@@ -111,7 +111,7 @@ describe("stereo routing pan → out", () => {
 		// Isolate a single lane's placement: pan a 3-lane chord where only lane 0
 		// is hard-left and lane 2 hard-right, tap the out node's channels.
 		const leftHeavy = runProgram(() => {
-			clock(120);
+			tempo(120);
 			const chord = seq("{c4,e4,g4}");
 			// pos: lane0=-1, lane1=-1, lane2=-1 → all left. Compare against all-right.
 			chord
@@ -120,7 +120,7 @@ describe("stereo routing pan → out", () => {
 				.apply((p: Stereo) => out({ l: p.l, r: p.r }));
 		});
 		const rightHeavy = runProgram(() => {
-			clock(120);
+			tempo(120);
 			const chord = seq("{c4,e4,g4}");
 			chord
 				.tri()
@@ -138,7 +138,7 @@ describe("stereo routing pan → out", () => {
 		// summed power equal to one lane's. Level kept well below the safety clip.
 		const power = (chord: string) => {
 			const program = runProgram(() => {
-				clock(120);
+				tempo(120);
 				seq(chord)
 					.sin()
 					.mul(0.3)

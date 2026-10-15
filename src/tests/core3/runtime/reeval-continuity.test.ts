@@ -8,13 +8,13 @@
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
-import { clock, factory, p, runProgram, seq } from "@/core3/api";
+import { factory, p, runProgram, seq, tempo } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
 import { Core3Engine } from "@/core3/runtime/engine";
 import type { EngineState, Program } from "@/core3/types";
 
 const SR = 48000;
-/** 2.6 beats at 120 bpm: mid-cycle, inside the third quarter of a 4-step cycle. */
+/** 2.6 bars at 480 bpm: mid-cycle, inside the third quarter of a 4-step cycle. */
 const MID = Math.round(2.6 * (SR / 2));
 
 function run(engine: Core3Engine, samples: number): number[] {
@@ -46,27 +46,27 @@ const keyOf = (program: Program, module: string): string => {
 const lanesOf = (state: EngineState, program: Program, module: string) =>
 	state.nodes[keyOf(program, module)];
 
-const tempo = (bpm: number) =>
+const atTempo = (bpm: number) =>
 	runProgram(() => {
-		clock(bpm);
+		tempo(bpm);
 		seq("c3 e3 g3 b3").tri().out();
 	});
 
 describe("tempo edit keeps the clock position", () => {
-	it("clock(120) → clock(130) mid-cycle: the phase continues", () => {
-		const before = tempo(120);
-		const after = tempo(130);
+	it("tempo(480) → tempo(520) mid-cycle: the position continues", () => {
+		const before = atTempo(480);
+		const after = atTempo(520);
 		const { old, swapped } = swap(before, after);
-		const oldPhase = old.peek(indexOf(before, "clock"), "phase", 0);
+		const oldPos = old.peek(indexOf(before, "clock"), "out", 0);
 		run(swapped, 1);
-		const newPhase = swapped.peek(indexOf(after, "clock"), "phase", 0);
-		expect(oldPhase).toBeCloseTo(2.6, 3);
-		expect(newPhase).toBeCloseTo(oldPhase + 130 / 60 / SR, 9);
+		const newPos = swapped.peek(indexOf(after, "clock"), "out", 0);
+		expect(oldPos).toBeCloseTo(2.6, 3);
+		expect(newPos).toBeCloseTo(oldPos + 520 / 60 / 4 / SR, 9);
 	});
 
 	it("a seq under that clock keeps reading mid-cycle", () => {
-		const after = tempo(130);
-		const { swapped } = swap(tempo(120), after);
+		const after = atTempo(520);
+		const { swapped } = swap(atTempo(480), after);
 		run(swapped, 1);
 		expect(swapped.peek(indexOf(after, "seq"), "out", 0)).toBe(55); // g3, not c3
 	});
@@ -144,7 +144,7 @@ describe("sample-rate change", () => {
 describe("re-eval of an unchanged patch", () => {
 	const patch = () =>
 		runProgram(() => {
-			clock(120);
+			tempo(480);
 			const s = seq("c3 ~ e3 g3");
 			s.tri().mul(s.gate.adsr(0.005, 0.1, 0.5, 0.2)).out();
 			factory("sin")(p`60 67 ~ 72`).mul(0.01).out();
@@ -162,7 +162,7 @@ describe("re-eval of an unchanged patch", () => {
 describe("pattern edit", () => {
 	const melody = (pattern: string) =>
 		runProgram(() => {
-			clock(120);
+			tempo(480);
 			seq(pattern).tri().out();
 		});
 
@@ -173,7 +173,7 @@ describe("pattern edit", () => {
 		expect(swapped.peek(indexOf(after, "seq"), "out", 0)).toBe(57); // a3
 	});
 
-	// MID is 2.6 beats: inside g3's step [2.5, 2.75). 3000 samples stay inside it.
+	// MID is 2.6 bars: inside g3's step [2.5, 2.75). 3000 samples stay inside it.
 	const REST_OF_NOTE = 3000;
 
 	it("leaving the note under the position unchanged gives no trig and no gate dip", () => {

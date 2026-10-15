@@ -3,20 +3,22 @@
  * (no spread / per-lane fine detune; hihat velocity applied by vca instead of
  * a value-driven drum input). Everything at once: ambient clock, pattern
  * algebra, notation, pattern-as-signal modulation, packed poly lanes,
- * comparator-triggered hats, tempo-free feedback delay, seeded degrade.
+ * comparator-triggered hats with accents stepped by a counter, tempo-free
+ * feedback delay, seeded degrade.
  * Renders 4 s: non-silent throughout, bounded, finite, deterministic.
  */
 
-import { type Handle, clock, factory, loop, p, runProgram, seq } from "@/core3/api";
+import { type Handle, factory, loop, p, runProgram, seq, tempo } from "@/core3/api";
 import { render } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { SR, allFinite, maxAbs, rms } from "./helpers";
 
 const lfo = factory("lfo");
+const counter = factory("counter");
 
 function build() {
 	return runProgram(() => {
-		clock(126);
+		tempo(126);
 
 		// --- pads: width-3 stack, packed lanes, pattern-modulated cutoff
 		const padP = p`{c3,e3,g3} <{a2,c3,e3} {f2,a2,c3}>`.slow(2);
@@ -39,12 +41,18 @@ function build() {
 				.add(fb.delay({ time: 0.35, mix: 1 }).mul(0.35)),
 		).out();
 
-		// --- drums: euclidean kick, backbeat snare, hat stepped by a comparator
+		// --- drums: four-on-the-floor kick, backbeat snare, hat fired by a comparator
 		seq(p`60(4,4)`).trig.kick().out();
 		seq(p`~ 60 ~ 60`).trig.snare().out();
 		lfo(9)
 			.gt(0.7)
-			.apply((tg: Handle) => tg.hihat().mul(p`1 0.6 0.8 0.5`).mul(0.8).out());
+			.apply((tg: Handle) =>
+				tg
+					.hihat()
+					.mul(counter(tg).seq("<1 0.6 0.8 0.5>"))
+					.mul(0.8)
+					.out(),
+			);
 	});
 }
 

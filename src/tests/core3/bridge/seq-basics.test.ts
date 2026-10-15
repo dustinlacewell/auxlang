@@ -1,21 +1,21 @@
 /**
- * seq end-to-end: clock(120) drives seq("c4 e4 g4 b4") — one pattern cycle per
- * beat (cycle = floor(phase)). At 48 kHz that is 24000 samples per cycle,
- * 6000 per note. pitch sample-and-holds semitones, gate opens per event with a
- * fixed 1 ms (48-sample) pre-release gap, trig is single-sample per onset.
+ * seq end-to-end: tempo(120) drives seq("c4 e4 g4 b4") — one pattern cycle per
+ * bar of four beats. At 48 kHz that is 96000 samples per cycle, 24000 per
+ * note. out sample-and-holds semitones, gate opens per event with a fixed
+ * 1 ms (48-sample) pre-release gap, trig is single-sample per onset.
  */
 
-import { clock, runProgram, seq } from "@/core3/api";
+import { runProgram, seq, tempo } from "@/core3/api";
 import { renderTap } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { countOnes, nodeIndex } from "./helpers";
 
-const CYCLE = 24000; // one beat at 120 bpm, 48 kHz
+const CYCLE = 96000; // one bar at 120 bpm, 48 kHz
 const NOTE = CYCLE / 4;
 
 function build(pattern: string) {
 	const program = runProgram(() => {
-		clock(120);
+		tempo(120);
 		seq(pattern).tri().out();
 	});
 	return { program, seq: nodeIndex(program, "seq") };
@@ -52,7 +52,7 @@ describe("seq basics", () => {
 	});
 
 	it("trig fires single-sample onsets: 4 per cycle", () => {
-		// The clock integrates before emitting, so beat k lands at sample k*NOTE*4 - 1;
+		// The clock integrates before emitting, so bar k lands at sample k*CYCLE - 1;
 		// count in windows nudged 10 samples early to keep whole cycles together.
 		const trig = renderTap(program, si, "trig", 0, 2 * CYCLE);
 		expect(countOnes(trig, 0, CYCLE - 10)).toBe(4);

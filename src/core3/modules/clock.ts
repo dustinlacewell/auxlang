@@ -1,27 +1,39 @@
 import { defmod } from "../patch/defmod";
-import { gatePort, phasePort, sig, trigPort } from "../types";
+import { phasePort, sig, trigPort } from "../types";
 
 /**
- * Clock: integrates a beat phase ramp at `bpm`, plus a 50%-duty gate and a
- * single-sample trig at each beat boundary. Tempo is an input (modulatable).
+ * Clock (MANIFESTO §4.2): integrates a position in bars (cycles) from `bpm`
+ * beats per minute and `config.beatsPerBar` beats per bar. Tempo is an input,
+ * so tempo modulation is patching. Outputs:
+ *
+ *   out   position in bars, unbounded — what seq reads
+ *   beat  single-sample trig at each beat
+ *   bar   single-sample trig at each bar
+ *
+ * Both trigs fire on the first sample. The meter is read every tick, never
+ * cached in state.
  */
 defmod({
 	name: "clock",
 	category: "timing",
-	doc: "Sets the tempo; outputs beat phase, gate, and trig.",
+	doc: "A position in bars at a tempo; outputs position, beat trig, and bar trig.",
 	ins: { bpm: sig(120) },
-	outs: { phase: phasePort(), gate: gatePort(), trig: trigPort() },
+	outs: { out: phasePort(), beat: trigPort(), bar: trigPort() },
 	defaultIn: "bpm",
-	defaultOut: "phase",
+	defaultOut: "out",
 	positional: ["bpm"],
-	state: () => ({ phase: 0, lastBeat: -1 }),
-	tick: (s, i, o, _cfg, sr) => {
-		const phase = (s.phase as number) + i.bpm / 60 / sr;
-		const beat = Math.floor(phase);
-		o.phase = phase;
-		o.gate = phase - beat < 0.5 ? 1 : 0;
-		o.trig = beat !== (s.lastBeat as number) ? 1 : 0;
-		s.phase = phase;
+	config: { beatsPerBar: 4 },
+	state: () => ({ pos: 0, lastBeat: -1, lastBar: -1 }),
+	tick: (s, i, o, cfg, sr) => {
+		const beatsPerBar = cfg.beatsPerBar as number;
+		const pos = (s.pos as number) + i.bpm / 60 / sr / beatsPerBar;
+		const bar = Math.floor(pos);
+		const beat = Math.floor(pos * beatsPerBar);
+		o.out = pos;
+		o.beat = beat !== (s.lastBeat as number) ? 1 : 0;
+		o.bar = bar !== (s.lastBar as number) ? 1 : 0;
+		s.pos = pos;
 		s.lastBeat = beat;
+		s.lastBar = bar;
 	},
 });

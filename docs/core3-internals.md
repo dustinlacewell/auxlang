@@ -18,14 +18,14 @@ Two hosts run the same Engine. An offline renderer runs it headless and is what 
 
 ## 2. The pipeline: runEval → collect → expand → compile → Program → engine
 
-`runEval(fn)` binds an eval context `{ roots, clock, seed }`. Inside, module factories, `clock`, `loop`, and `p` construct pure nodes shaped `{ module, inputs, config, width, pin? }`. A node's `inputs` reference other node objects directly — **object identity is node identity**, so sharing a variable across two consumers is fan-out, not duplication. `out()` pushes a root onto `roots`. Node IDs are assigned at collection, not construction.
+`runEval(fn)` binds an eval context `{ roots, clock, seed }`. Inside, module factories, `loop`, and `p` construct pure nodes, `tempo(bpm)` records the ambient clock, shaped `{ module, inputs, config, width, pin? }`. A node's `inputs` reference other node objects directly — **object identity is node identity**, so sharing a variable across two consumers is fan-out, not duplication. `out()` pushes a root onto `roots`. Node IDs are assigned at collection, not construction.
 
 `compile(evalResult)` then runs, in order:
 
 1. **`collect`** — walk the object-identity graph from roots to find reachable nodes. Cycles are fine at this stage.
 2. **`expandPatterns`** — pattern-valued inputs become `seq(pattern).out` nodes with no position (patterns as knobs); re-collect.
 3. **`prepareSeqs`** — each seq's pattern config becomes voiced Pat data with its lane count, a `__minWidth` hint, and the program seed.
-4. **`resolveAmbientClocks`** — unconnected phase-unit inputs (a seq's `position`, a tempo converter's `clk`) bind to the ambient clock's position output. **`markClocked`** then sets `clocked` on seqs read straight from a clock.
+4. **`resolveAmbientClocks`** — unconnected phase-unit inputs (a seq's `position`, a tempo converter's `clk`) bind to the ambient clock's position output (in bars; the ambient clock is the eval's one `tempo(bpm)` setting). **`markClocked`** then sets `clocked` on seqs read straight from a clock, and **`copyMeter`** copies the clock's `beatsPerBar` into the beats↔secs converters that read it.
 5. **re-collect** — the ambient clock may be new; collect again.
 6. **`cutZ1Edges`** — connections into `z1` nodes become z-edges (the unit-delay marker).
 7. **`toposort`** — z-edges are cut first; a cycle with no z1 in it is a loud error.

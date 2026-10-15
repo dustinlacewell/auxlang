@@ -6,7 +6,7 @@
  * A stack widens the module it feeds.
  */
 
-import { clock, factory, p, runProgram } from "@/core3/api";
+import { factory, p, runProgram, tempo } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { renderTap } from "@/core3/runtime/render";
@@ -14,12 +14,12 @@ import { describe, expect, it } from "vitest";
 import { SR, nodeIndex } from "./helpers";
 
 const sin = factory("sin");
-const CYCLE = 48000; // one beat at 60 bpm, 48 kHz
+const CYCLE = 48000; // one bar at 240 bpm, 48 kHz
 
 describe("pattern as a knob", () => {
 	it("lifts to a seq that steps at pattern boundaries (with alternation)", () => {
 		const program = runProgram(() => {
-			clock(60);
+			tempo(240);
 			sin({ fm: p`110 220 <330 440>` }).out();
 		});
 		const knob = nodeIndex(program, "seq");
@@ -36,7 +36,7 @@ describe("pattern as a knob", () => {
 
 	it("reads the last earlier event before its first one: `~ 800 ~ 400` is 400 at the start", () => {
 		const program = runProgram(() => {
-			clock(60);
+			tempo(240);
 			sin({ fm: p`~ 800 ~ 400` }).out();
 		});
 		const tap = renderTap(program, nodeIndex(program, "seq"), "out", 0, CYCLE);
@@ -49,16 +49,16 @@ describe("pattern as a knob", () => {
 
 	it("a knob added mid-rest by a re-eval holds the previous event's value", () => {
 		const bare = runProgram(() => {
-			clock(60);
+			tempo(240);
 			sin({ fm: 0 }).out();
 		});
 		const knobbed = runProgram(() => {
-			clock(60);
+			tempo(240);
 			sin({ fm: p`300 ~ ~ ~` }).out();
 		});
 		const old = new Core3Engine(bare, SR, getRegistry());
 		const frame = new Float32Array(2);
-		for (let k = 0; k < Math.floor(CYCLE * 2.6); k++) old.tick(frame); // 2.6 beats: mid-rest
+		for (let k = 0; k < Math.floor(CYCLE * 2.6); k++) old.tick(frame); // 2.6 bars: mid-rest
 		const swapped = new Core3Engine(knobbed, SR, getRegistry(), old.collectState());
 		swapped.tick(frame);
 		expect(swapped.peek(nodeIndex(knobbed, "seq"), "out", 0)).toBe(300);
@@ -66,7 +66,7 @@ describe("pattern as a knob", () => {
 
 	it("a stack widens the module it feeds", () => {
 		const program = runProgram(() => {
-			clock(60);
+			tempo(240);
 			sin({ fm: p`[100, 200]` }).out();
 		});
 		expect(program.nodes[nodeIndex(program, "sin")]?.width).toBe(2);

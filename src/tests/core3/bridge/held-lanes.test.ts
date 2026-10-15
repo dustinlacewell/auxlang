@@ -6,14 +6,14 @@
  * trig and gate rise.
  */
 
-import { clock, p, runProgram, seq } from "@/core3/api";
+import { p, runProgram, seq, tempo } from "@/core3/api";
 import { laneOf } from "@/core3/pattern/event";
 import { renderTap } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { queryCycles } from "../pattern/helpers";
 import { countOnes, nodeIndex } from "./helpers";
 
-const CYCLE = 24000; // one beat at 120 bpm, 48 kHz
+const CYCLE = 24000; // one bar at 480 bpm, 48 kHz
 // Two cycles, minus the last samples where c4's next onset (cycle 2) fires.
 const SPAN = 2 * CYCLE - 4;
 
@@ -27,7 +27,7 @@ function rises(gate: Float32Array): number[] {
 
 describe("held notes keep their lane", () => {
 	const program = runProgram(() => {
-		clock(120);
+		tempo(480);
 		seq(held()).tri().out();
 	});
 	const si = nodeIndex(program, "seq");

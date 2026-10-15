@@ -24,7 +24,7 @@ export function expandPatterns(nodes: readonly GNode[], clockNode: GNode | null)
 function knobSeq(pattern: unknown, clockNode: GNode | null, where: string): NodeRef {
 	if (clockNode === null) {
 		throw new Error(
-			`pattern input at ${where} needs an ambient clock — call clock(bpm) in the eval first`,
+			`pattern input at ${where} needs an ambient clock — set one with tempo(bpm)`,
 		);
 	}
 	const seq: GNode = { module: "seq", inputs: {}, config: { pattern } };

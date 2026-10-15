@@ -6,7 +6,7 @@
 
 import "@/core3/modules/all";
 
-import { clock, factory, p, runProgram } from "@/core3/api";
+import { factory, p, runProgram, tempo } from "@/core3/api";
 import { render } from "@/core3/runtime/render";
 import { hz } from "@/core3/units/tag";
 import { describe, expect, it } from "vitest";
@@ -25,7 +25,7 @@ describe("osc pitch-first positional", () => {
 
 	it("sin(p`a4`) equals sin(hz(440))", () => {
 		const a = renderOf(() => {
-			clock(120);
+			tempo(120);
 			sin(p`a4`).out();
 		});
 		const b = renderOf(() => sin(hz(440)).out());

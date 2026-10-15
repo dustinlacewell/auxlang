@@ -8,6 +8,7 @@
  *   seqs         seq pattern config → voiced Pat data, lane count, seed
  *   clocks       unconnected phase-unit inputs → the ambient clock's position
  *   clocked      seqs read straight from a clock are marked clocked
+ *   meter        beat-counting clock readers copy their clock's beatsPerBar
  *   z1           connections into z1 nodes become z-edges (the unit delay)
  *   widths       max-input-width fixpoint (reduce collapses to 1)
  *   toposort     z-edges cut; a z-less cycle is a loud error
@@ -33,6 +34,7 @@ import type { EvalResult } from "../patch/context";
 import type { ModuleSpec, PNode, PortAnn, PortSrc, Program, SerializedModuleSpec } from "../types";
 import { resolveAmbientClocks } from "./ambient-clock";
 import { collect } from "./collect";
+import { copyMeter } from "./copy-meter";
 import { expandMods } from "./expand-mods";
 import { expandPatterns } from "./expand-patterns";
 import { markClocked } from "./mark-clocked";
@@ -60,6 +62,7 @@ export function compile(evalResult: EvalResult): Program {
 	prepareSeqs(lifted, evalResult.seed);
 	resolveAmbientClocks(lifted, evalResult.clock, specs);
 	markClocked(lifted);
+	copyMeter(lifted, specs);
 	const nodes = collect(evalResult.roots); // re-walk: the ambient clock may be new
 	cutZ1Edges(nodes);
 

@@ -1,7 +1,7 @@
 /**
  * Eval context — the ONLY mutable state in the patch layer, and it exists
  * only for the duration of one `runEval` call. `out()` pushes roots,
- * `clock()` binds the ambient clock, factories construct nodes; all of them
+ * `tempo()` sets the ambient clock, factories construct nodes; all of them
  * fail loudly outside runEval. `defmod()` is the one scope-aware citizen: a
  * live context routes its registrations into this eval's spec table; outside
  * one it falls through to the realm registry (module/define).
@@ -14,7 +14,7 @@ import type { ModuleSpec } from "../types";
 export interface EvalResult {
 	/** The `out` nodes, in call order. Compile walks reachability from these. */
 	readonly roots: GNode[];
-	/** Ambient clock: first clock(bpm) call inside the eval. */
+	/** Ambient clock: the eval's one tempo(bpm) setting, read when eval has finished. */
 	readonly clock: GNode | null;
 	readonly seed: number;
 	/** Patch-defined module specs (defmod), scoped to this eval only. */

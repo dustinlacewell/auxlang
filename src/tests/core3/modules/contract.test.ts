@@ -11,7 +11,6 @@ const RESERVED_PORTS = ["apply", "lane", "id", "width", "mod"];
 
 /** Modules whose default output is legitimately NOT "out". */
 const NON_OUT_DEFAULTS: Record<string, string> = {
-	clock: "phase",
 	pan: "l",
 	out: "l",
 };

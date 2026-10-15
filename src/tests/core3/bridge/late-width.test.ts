@@ -6,13 +6,13 @@
  * (else its extra voices are silently dropped).
  */
 
-import { clock, p, runProgram, seq } from "@/core3/api";
+import { p, runProgram, seq, tempo } from "@/core3/api";
 import { describe, expect, it } from "vitest";
 import { nodeIndex } from "./helpers";
 
 function widthOf(pattern: unknown): number {
 	const program = runProgram(() => {
-		clock(120);
+		tempo(120);
 		seq(pattern).tri().out();
 	});
 	return program.nodes[nodeIndex(program, "seq")]?.width ?? -1;

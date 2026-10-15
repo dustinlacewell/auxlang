@@ -3,7 +3,7 @@
  * bit-identically run-to-run for one seed, and differently for another seed.
  */
 
-import { clock, runProgram, seq } from "@/core3/api";
+import { runProgram, seq, tempo } from "@/core3/api";
 import { render, renderTap } from "@/core3/runtime/render";
 import { describe, expect, it } from "vitest";
 import { nodeIndex } from "./helpers";
@@ -11,7 +11,7 @@ import { nodeIndex } from "./helpers";
 const build = (seed: number) =>
 	runProgram(
 		() => {
-			clock(120);
+			tempo(120);
 			const s = seq("c4? d4? e4? f4? g4? a4? b4? c5?");
 			s.tri().mul(s.gate).out();
 		},

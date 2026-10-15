@@ -25,7 +25,7 @@ export function resolveAmbientClocks(
 function ambientPosition(clockNode: GNode | null, module: string, port: string) {
 	if (clockNode === null) {
 		throw new Error(
-			`${module} has no clock — call clock(bpm) in the eval first or connect '${port}' explicitly`,
+			`${module} has no clock — set one with tempo(bpm) or connect '${port}' explicitly`,
 		);
 	}
 	return { node: clockNode, port: getModule(clockNode.module).defaultOut };

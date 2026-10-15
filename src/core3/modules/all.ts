@@ -6,6 +6,7 @@
  */
 
 import "./clock";
+import "./counter";
 import "./seq";
 import "./osc";
 import "./lfo";
