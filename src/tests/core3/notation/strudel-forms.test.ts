@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 
 import { p } from "@/core3/pattern/notation/template";
+import { r } from "@/core3/pattern/rational";
 import { onsetKeys, onsets, queryCycles } from "../pattern/helpers";
 
 describe("{a b c, d e}: polymeter, steps from the first layer", () => {
@@ -31,6 +32,21 @@ describe("a?0.7: drops with probability 0.7", () => {
 		const kept = onsets(queryCycles(p`c4?`.ast, 0, 1000, 7)).length;
 		expect(kept).toBeGreaterThan(450);
 		expect(kept).toBeLessThan(550);
+	});
+});
+
+describe("<a@2 b>: a weight inside alternation counts cycles", () => {
+	it("a plays for 2 cycles, then b for 1", () => {
+		const evs = onsets(queryCycles(p`<0@2 1>`.ast, 0, 6));
+		expect(evs.map((ev) => ev.value)).toEqual([0, 1, 0, 1]);
+		expect(onsetKeys(evs)).toEqual(["0/1", "2/1", "3/1", "5/1"]);
+		expect(evs.map((ev) => ev.whole?.end)).toEqual([r(2), r(3), r(5), r(6)]);
+	});
+
+	it("unweighted steps still change every cycle", () => {
+		const evs = onsets(queryCycles(p`<0 [1 2]@2 3>`.ast, 0, 4));
+		expect(evs.map((ev) => ev.value)).toEqual([0, 1, 2, 3]);
+		expect(onsetKeys(evs)).toEqual(["0/1", "1/1", "2/1", "3/1"]);
 	});
 });
 

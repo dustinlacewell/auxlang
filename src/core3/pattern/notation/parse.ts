@@ -40,6 +40,7 @@ import {
 import { isP } from "../pat-class";
 import type { R } from "../rational";
 import { r } from "../rational";
+import { tactus } from "../tactus";
 import { atomValue, isNumber } from "./note";
 import { type Token, tokenize } from "./tokenize";
 
@@ -407,10 +408,14 @@ function foldLayer(steps: readonly WStep[], pos: number): Pat {
 	return timecat(steps.map((s) => [s.weight, s.pat] as const));
 }
 
-/** A `<...>` segment is itself a sequence; slowcat over its steps. */
+/**
+ * A `<...>` segment is itself a sequence; one step per cycle. A weight there
+ * counts cycles, as in Strudel: `<a@2 b>` is `timecat([2, a], [1, b]).slow(3)`,
+ * so a holds for 2 cycles, then b for 1.
+ */
 function slowcatFromSequence(seq: Pat): Pat {
 	if (seq.op === "fastcat") return slowcat(seq.children);
-	if (seq.op === "timecat") return slowcat(seq.children.map((c) => c.pat));
+	if (seq.op === "timecat") return slow(tactus(seq), seq);
 	return slowcat([seq]);
 }
 
