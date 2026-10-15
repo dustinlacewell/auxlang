@@ -5,13 +5,14 @@
  */
 
 import type { AnyNode, Expression } from "acorn";
+import type { Aggregate } from "../layout/state-shape";
 import type { FnEmitter } from "./fn-emitter";
-import type { Kind, Lanes, StaticValue, Value } from "./values";
+import type { Kind, StaticValue, Value } from "./values";
 
 /** A tick's parameter records for one node lane. */
 export interface TickRoles {
-	/** The f64 local holding state field `field`. */
-	state(field: string, at: AnyNode): number;
+	/** State field `field`: the f64 local mirroring a number, or an array or record in memory. */
+	state(field: string, at: AnyNode): Value;
 	input(port: string, at: AnyNode): Value;
 	/** The f64 local holding output `port`. */
 	output(port: string, at: AnyNode): number;
@@ -33,11 +34,21 @@ export type Return =
 	| { readonly k: "value"; readonly kind: Kind; readonly seen: Kind[] }
 	| { readonly k: "exit"; readonly depth: number };
 
-/** A helper argument's shape: run-time values are parameters, the rest specialise the helper. */
+/**
+ * A helper argument's shape: run-time values are parameters, the rest
+ * specialise the helper. An array or record in memory specialises it on its
+ * shape and offset; a `dynamic` one (inside an array of records at a
+ * run-time index) passes its base address as an i32 parameter.
+ */
 export type ArgShape =
 	| { readonly k: "run"; readonly kind: "f64" | "bool" }
 	| { readonly k: "static"; readonly value: StaticValue }
-	| { readonly k: "lanes"; readonly lanes: Lanes };
+	| {
+			readonly k: "memory";
+			readonly shape: Aggregate;
+			readonly offset: number;
+			readonly dynamic: boolean;
+	  };
 
 export interface FnRef {
 	readonly index: number;

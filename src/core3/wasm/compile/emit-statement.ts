@@ -1,6 +1,6 @@
 /**
  * Statements. A known `if` test emits only its live branch. Blocks open a
- * scope; `const` names bound to a known value or a lane array stay
+ * scope; `const` names bound to a known value, an array or a record stay
  * compile-time aliases, everything else gets a fresh local.
  */
 
@@ -19,7 +19,7 @@ import { emitDiscard, emitExpr } from "./emit-expression";
 import { emitLoop } from "./emit-loop";
 import { emitSwitch } from "./emit-switch";
 import type { FnEmitter } from "./fn-emitter";
-import { resolve } from "./resolve";
+import { placeOf } from "./place";
 import { staticOf } from "./static-value";
 import { fixed, local } from "./values";
 
@@ -92,15 +92,20 @@ function declare(e: FnEmitter, d: VariableDeclarator, constant: boolean): void {
 	e.scope.declare(name, local(index, kind));
 }
 
-/** A `const` of a known value or a lane array names it directly; no local. */
+/**
+ * A `const` of a known value, an array or a record names it directly; no
+ * local. A record at a run-time index keeps the code that finds its address.
+ */
 function declareAlias(e: FnEmitter, name: string, init: AnyNode): boolean {
 	const folded = staticOf(e, init);
 	if (folded !== null) {
 		e.scope.declare(name, fixed(folded.v));
 		return true;
 	}
-	const value = resolve(e, init);
-	if (value?.k !== "lanes") return false;
+	const placed = e.capture(() => placeOf(e, init));
+	const value = placed.value;
+	if (value?.k !== "memory" || value.shape.k === "number") return false;
+	e.code.append(placed.bytes);
 	e.scope.declare(name, value);
 	return true;
 }

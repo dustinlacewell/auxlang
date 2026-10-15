@@ -1,18 +1,19 @@
 /**
  * Calls: exact `Math.*`, bridge intrinsics, and helpers. A helper is
  * specialised on the arguments known while compiling (config strings,
- * booleans, lane arrays); run-time arguments are its parameters. Arguments
+ * booleans, arrays and records); run-time arguments are its parameters. Arguments
  * are evaluated in order. A helper that uses the math cache takes its lane's
  * cache address first.
  */
 
 import type { CallExpression, Expression } from "acorn";
+import { isAggregate } from "../layout/state-shape";
 import { toF64 } from "./coerce";
 import type { ArgShape, FnRef } from "./emit-context";
 import { emitExpr } from "./emit-expression";
 import { emitMathCall } from "./exact-math";
 import type { FnEmitter } from "./fn-emitter";
-import { resolve } from "./resolve";
+import { placeOf } from "./place";
 import { staticOf } from "./static-value";
 import type { Kind } from "./values";
 
@@ -42,9 +43,10 @@ function emitHelperCall(e: FnEmitter, name: string, args: readonly Expression[])
 	const shapes: ArgShape[] = [];
 	const values: number[][] = [];
 	for (const arg of args) {
-		const shape = knownShape(e, arg);
-		if (shape !== null) {
-			shapes.push(shape);
+		const known = knownShape(e, arg);
+		if (known !== null) {
+			shapes.push(known.shape);
+			if (known.bytes !== null) values.push(known.bytes);
 			continue;
 		}
 		const run = e.capture(() => runArg(e, arg));
@@ -58,13 +60,28 @@ function emitHelperCall(e: FnEmitter, name: string, args: readonly Expression[])
 	return fn.result;
 }
 
-/** A string, boolean, undefined or lane array argument specialises the helper. */
-function knownShape(e: FnEmitter, arg: Expression): ArgShape | null {
+/**
+ * A string, boolean, undefined, array or record argument specialises the
+ * helper. An array or record at a run-time address passes that address:
+ * `bytes` compute it.
+ */
+function knownShape(e: FnEmitter, arg: Expression): KnownArg | null {
 	const folded = staticOf(e, arg);
-	if (folded !== null && typeof folded.v !== "number") return { k: "static", value: folded.v };
-	const value = resolve(e, arg);
-	if (value?.k === "lanes") return { k: "lanes", lanes: value.lanes };
-	return null;
+	if (folded !== null && typeof folded.v !== "number")
+		return { shape: { k: "static", value: folded.v }, bytes: null };
+	const placed = e.capture(() => placeOf(e, arg));
+	const value = placed.value;
+	if (value?.k !== "memory" || !isAggregate(value.shape)) return null;
+	const { base, offset } = value.at;
+	const shape: ArgShape = { k: "memory", shape: value.shape, offset, dynamic: base !== null };
+	if (base === null) return { shape, bytes: null };
+	return { shape, bytes: [...placed.bytes, ...e.capture(() => e.code.get(base)).bytes] };
+}
+
+interface KnownArg {
+	readonly shape: ArgShape;
+	/** The code that passes it, when it is passed at run time. */
+	readonly bytes: number[] | null;
 }
 
 /** A run-time argument: an int is passed as the number it is. */

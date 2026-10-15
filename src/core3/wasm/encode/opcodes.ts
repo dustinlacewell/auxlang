@@ -20,16 +20,25 @@ export const OP = {
 	localGet: 0x20,
 	localSet: 0x21,
 	localTee: 0x22,
+	i32Load: 0x28,
 	f32Load: 0x2a,
 	f64Load: 0x2b,
+	i32Load8S: 0x2c,
+	i32Load8U: 0x2d,
+	i32Load16S: 0x2e,
+	i32Load16U: 0x2f,
+	i32Store: 0x36,
 	f32Store: 0x38,
 	f64Store: 0x39,
+	i32Store8: 0x3a,
+	i32Store16: 0x3b,
 	i32Const: 0x41,
 	f64Const: 0x44,
 	i32Eqz: 0x45,
 	i32Eq: 0x46,
 	i32Ne: 0x47,
 	i32LtS: 0x48,
+	i32LtU: 0x49,
 	i32GtS: 0x4a,
 	i32LeS: 0x4c,
 	i32GeS: 0x4e,
@@ -53,6 +62,7 @@ export const OP = {
 	f64Ceil: 0x9b,
 	f64Floor: 0x9c,
 	f64Trunc: 0x9d,
+	f64Nearest: 0x9e,
 	f64Sqrt: 0x9f,
 	f64Add: 0xa0,
 	f64Sub: 0xa1,
@@ -72,6 +82,7 @@ export const OP = {
 } as const;
 
 export const TRUNC_SAT_F64_S = 2;
+export const TRUNC_SAT_F64_U = 3;
 
 /** Value types. */
 export const I32 = 0x7f;

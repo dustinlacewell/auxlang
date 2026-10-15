@@ -3,14 +3,17 @@
  * built (MANIFESTO §5.1): the two output blocks (f32), the value buffer
  * (f64 per slot, as the engine's `cur`), then per node its outputs record,
  * the f64 lane views its reducer inputs are gathered into, and per lane its
- * numeric state fields, its math call cache and (a module that reads a
- * pattern) its event table. Everything is f64 except the f32 output blocks,
- * which the JS engine also holds as Float32Arrays.
+ * numeric state fields, its typed arrays and records (state-layout.ts), its
+ * math call cache and (a module that reads a pattern) its event table.
+ * Everything is f64 except the f32 output blocks, which the JS engine also
+ * holds as Float32Arrays, and typed arrays, which keep their element type.
  */
 
 import { TABLE_ROW_FIELDS } from "../../module/tick-subset/table-intrinsics";
 import type { NodeRun } from "../../runtime/node-run";
 import type { ModuleSource } from "../../types";
+import type { Field } from "../layout/state-shape";
+import { planAggregates } from "./state-layout";
 
 /** Samples per render call at most (the AudioWorklet quantum). */
 export const BLOCK_MAX = 128;
@@ -24,6 +27,8 @@ export const TABLE_HEADER = 16;
 export interface LaneMemory {
 	/** Numeric state field → address. */
 	readonly state: Readonly<Record<string, number>>;
+	/** Typed array, record and array-of-records state fields, at absolute addresses. */
+	readonly aggregates: Readonly<Record<string, Field>>;
 	readonly cache: number;
 	readonly cacheSlots: number;
 	/** The lane's event table when its module reads a pattern, else null. */
@@ -70,6 +75,7 @@ export function planMemory(
 		const slots = cacheSlots(sources[i] as ModuleSource);
 		const lanes = run.states.map((state) => ({
 			state: Object.fromEntries(numericFields(state).map((f) => [f, take(8)])),
+			aggregates: planAggregates(state, take),
 			cache: take(8 * slots),
 			cacheSlots: slots,
 			table: readsPattern[i]

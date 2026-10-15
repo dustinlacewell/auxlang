@@ -11,7 +11,7 @@ import type { ArgShape, Calls } from "./emit-context";
 import { emitStatement, emitStatements } from "./emit-statement";
 import { FnEmitter, valueType } from "./fn-emitter";
 import type { HelperSet } from "./helper-set";
-import { type Kind, fixed, local } from "./values";
+import { type Kind, fixed, inMemory, local } from "./values";
 
 export interface CompiledHelper {
 	readonly params: readonly number[];
@@ -48,8 +48,10 @@ function build(
 			`wasm: ${owner}: called with ${shapes.length} arguments for ${fn.params.length}`,
 		);
 	const params: number[] = hidden ? [I32] : [];
-	const runShapes = shapes.filter((s) => s.k === "run");
-	for (const s of runShapes) params.push(valueType(s.kind));
+	for (const s of shapes) {
+		if (s.k === "run") params.push(valueType(s.kind));
+		else if (s.k === "memory" && s.dynamic) params.push(I32);
+	}
 	const seen: Kind[] = [];
 	const e = new FnEmitter(params, {
 		owner,
@@ -79,7 +81,10 @@ function bindParams(
 		const shape: ArgShape = shapes[k] ?? { k: "static", value: undefined };
 		if (shape.k === "run") e.scope.declare(param.name, local(next++, shape.kind));
 		else if (shape.k === "static") e.scope.declare(param.name, fixed(shape.value));
-		else e.scope.declare(param.name, { k: "lanes", lanes: shape.lanes });
+		else {
+			const base = shape.dynamic ? next++ : null;
+			e.scope.declare(param.name, inMemory(shape.shape, { base, offset: shape.offset }));
+		}
 	});
 }
 

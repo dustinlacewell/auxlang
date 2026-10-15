@@ -1,7 +1,7 @@
 /**
  * Constant folding: the value of an expression when it is known while
  * compiling (literals, config, constant inputs, `const` names bound to
- * constants, lane counts, `typeof`). Folding runs the same IEEE operations
+ * constants, array lengths, `typeof`). Folding runs the same IEEE operations
  * the JS backend runs at sample time, so a folded value has the same bits.
  * Expressions with effects (calls other than exact Math, assignments) never
  * fold. `**` never folds: it is auxlang's pow, not the host's.
@@ -10,6 +10,7 @@
 import type { AnyNode, BinaryExpression, CallExpression, LogicalExpression } from "acorn";
 import { EXACT_HOST_MATH } from "../../math/exact-host-math";
 import type { FnEmitter } from "./fn-emitter";
+import { validIndex } from "./index-access";
 import { resolve } from "./resolve";
 import type { StaticValue } from "./values";
 
@@ -62,19 +63,19 @@ export function typeofOf(e: FnEmitter, node: AnyNode): string | null {
 	if (folded !== null) return typeof folded.v;
 	const value = resolve(e, node);
 	if (value === null) return null;
-	if (value.k === "lanes") return "object";
+	if (value.k === "memory") return value.shape.k === "number" ? "number" : "object";
 	if (value.k === "local") return value.kind === "bool" ? "boolean" : "number";
 	return null;
 }
 
-/** A lane array read at a constant index past its end is `undefined`. */
+/** An array read at a constant index that is not valid (index-access.ts) is `undefined`. */
 function staticIndex(e: FnEmitter, object: AnyNode, property: AnyNode): Folded | null {
 	const owner = resolve(e, object);
-	if (owner?.k !== "lanes") return null;
+	if (owner?.k !== "memory" || owner.shape.k === "number" || owner.shape.k === "record")
+		return null;
 	const index = staticOf(e, property);
 	if (index === null || typeof index.v !== "number") return null;
-	const inRange = Number.isInteger(index.v) && index.v >= 0 && index.v < owner.lanes.length;
-	return inRange ? null : { v: undefined };
+	return validIndex(index.v, owner.shape.length) ? null : { v: undefined };
 }
 
 function unary(e: FnEmitter, operator: string, argument: AnyNode): Folded | null {

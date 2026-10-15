@@ -89,6 +89,6 @@ export class Functions {
 
 function shapeKey(s: ArgShape): string {
 	if (s.k === "run") return s.kind === "f64" ? "f" : "b";
-	if (s.k === "lanes") return `l${s.lanes.addr}:${s.lanes.length}`;
+	if (s.k === "memory") return `m${s.dynamic ? "d" : ""}${s.offset}:${JSON.stringify(s.shape)}`;
 	return `s${s.value === undefined ? "u" : JSON.stringify(s.value)}`;
 }

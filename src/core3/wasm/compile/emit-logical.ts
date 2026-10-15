@@ -11,6 +11,7 @@ import { OP } from "../encode/opcodes";
 import { toBool, toF64 } from "./coerce";
 import type { Operand } from "./emit-binary";
 import { emitExpr, emitStatic } from "./emit-expression";
+import { emitNullish } from "./emit-member";
 import type { FnEmitter } from "./fn-emitter";
 import { staticOf } from "./static-value";
 import type { Kind } from "./values";
@@ -23,8 +24,8 @@ export function emitLogical(e: FnEmitter, node: LogicalExpression): Kind {
 			node.operator === "&&" ? !v : node.operator === "||" ? !!v : v !== undefined && v !== null;
 		return takeLeft ? emitStatic(e, v, node.left) : emitExpr(e, node.right);
 	}
-	// A run-time value is a number or a boolean: never null or undefined.
-	if (node.operator === "??") return emitExpr(e, node.left);
+	// Only an array element at an invalid index is nullish at run time.
+	if (node.operator === "??") return emitNullish(e, node.left, () => emitExpr(e, node.right));
 	const left = e.capture(() => emitExpr(e, node.left));
 	const right = e.capture(() => emitExpr(e, node.right));
 	if (left.value === "bool" && right.value === "bool")

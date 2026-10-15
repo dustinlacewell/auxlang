@@ -1,45 +1,72 @@
 /**
- * Field and index reads, and the places a write can go. A tick's state
- * fields, outputs and cache slots are locals; a helper's cache slots are in
- * memory at its hidden base; a reducer's lanes are an f64 view in memory,
- * as the engine's Float64Array.
+ * Field and index reads, and the places a write can go. A tick's numeric
+ * state fields, outputs and cache slots are locals; a helper's cache slots
+ * are in memory at its hidden base; typed arrays, records and a reducer's
+ * lanes are in memory (layout/state-shape.ts). An array element follows the
+ * JS typed-array rules (index-access.ts, element-io.ts): a read at an invalid
+ * index is `undefined` (NaN, or the right side of `??`), a write there does
+ * nothing.
  */
 
 import type { AnyNode, MemberExpression } from "acorn";
-import { OP } from "../encode/opcodes";
+import { ELEMENT_BYTES } from "../layout/element-type";
+import type { ArrayShape } from "../layout/state-shape";
+import { toF64 } from "./coerce";
+import { emitLoad, emitStore } from "./element-io";
 import { emitExpr, emitValue } from "./emit-expression";
 import type { FnEmitter } from "./fn-emitter";
-import { resolve } from "./resolve";
+import { type Index, type Span, emitIndex, guarded } from "./index-access";
+import { placeOf } from "./place";
 import { staticOf } from "./static-value";
-import type { Kind, Lanes } from "./values";
+import type { Address, Kind } from "./values";
 
 /** The name of the math call cache array in bound text (module/bind-math/cache-names.ts). */
 const CACHE_ARRAY = "__mc";
 
-/** Where a write goes: a local, or an f64 in memory at a base local (null: address 0) plus an offset. */
+/**
+ * Where a write goes: a local; an f64 in memory at a base local (null:
+ * address 0) plus an offset; or an array element at an index evaluated once.
+ */
 export type Target =
 	| { readonly k: "local"; readonly index: number; readonly kind: Kind }
-	| { readonly k: "memory"; readonly base: number | null; readonly offset: number };
+	| { readonly k: "memory"; readonly base: number | null; readonly offset: number }
+	| {
+			readonly k: "element";
+			readonly shape: ArrayShape;
+			readonly at: Address;
+			readonly index: Index;
+	  };
 
 export function emitMemberRead(e: FnEmitter, node: MemberExpression): Kind {
-	if (!node.computed) return emitValue(e, resolve(e, node), node);
-	const cache = cacheTarget(e, node);
-	if (cache !== null) return readTarget(e, cache);
-	const owner = resolve(e, node.object);
-	if (owner?.k !== "lanes") return e.fail(node, "only lane arrays and the math cache are indexed");
-	readLane(e, owner.lanes, node.property);
-	return "f64";
+	return emitMemberReadOr(e, node, null);
 }
 
-/** The place `node` names for a write. */
+/**
+ * `node ?? orElse`: an array element at an invalid index is `undefined`, so
+ * `orElse` runs; any other run-time value is a number or a boolean, never
+ * nullish. A chain `a ?? b ?? c` is `a ?? (b ?? c)`.
+ */
+export function emitNullish(e: FnEmitter, node: AnyNode, orElse: () => Kind): Kind {
+	const known = staticOf(e, node);
+	if (known !== null) return known.v === undefined || known.v === null ? orElse() : emitExpr(e, node);
+	if (node.type === "MemberExpression") return emitMemberReadOr(e, node, orElse);
+	if (node.type === "LogicalExpression" && node.operator === "??")
+		return emitNullish(e, node.left, () => emitNullish(e, node.right, orElse));
+	return emitExpr(e, node);
+}
+
+/** The place `node` names for a write. Emits what JS evaluates first: the array, then the index. */
 export function targetOf(e: FnEmitter, node: AnyNode): Target {
 	if (node.type === "MemberExpression" && node.computed) {
 		const cache = cacheTarget(e, node);
 		if (cache !== null) return cache;
-		return e.fail(node, "only the math cache is written by index");
+		const array = arrayOf(e, node.object);
+		return { k: "element", shape: array.shape, at: array.at, index: emitIndex(e, node.property) };
 	}
-	const value = resolve(e, node);
+	const value = placeOf(e, node);
 	if (value?.k === "local") return { k: "local", index: value.index, kind: value.kind };
+	if (value?.k === "memory" && value.shape.k === "number")
+		return { k: "memory", base: value.at.base, offset: value.at.offset };
 	return e.fail(node, "this cannot be assigned");
 }
 
@@ -48,21 +75,33 @@ export function readTarget(e: FnEmitter, t: Target): Kind {
 		e.code.get(t.index);
 		return t.kind;
 	}
-	pushBase(e, t);
+	if (t.k === "element") {
+		readElement(e, t.shape, t.at, t.index, null);
+		return "f64";
+	}
+	pushBase(e, t.base);
 	e.code.loadF64(t.offset);
 	return "f64";
 }
 
 /** Before the value: a memory write needs its address on the stack first. */
 export function beginWrite(e: FnEmitter, t: Target): void {
-	if (t.k === "memory") pushBase(e, t);
+	if (t.k === "memory") pushBase(e, t.base);
 }
 
-/** After the value (already of the target's kind): store it, leaving it on the stack when `keep`. */
+/**
+ * After the value (already of the target's kind): store it, leaving it on
+ * the stack when `keep`. An element store is skipped at an invalid index,
+ * and the expression's value is the number assigned, not the stored one.
+ */
 export function endWrite(e: FnEmitter, t: Target, keep: boolean): void {
 	if (t.k === "local") {
 		if (keep) e.code.tee(t.index);
 		else e.code.set(t.index);
+		return;
+	}
+	if (t.k === "element") {
+		writeElement(e, t, keep);
 		return;
 	}
 	if (!keep) {
@@ -77,9 +116,67 @@ export function kindOfTarget(t: Target): Kind {
 	return t.k === "local" ? t.kind : "f64";
 }
 
-function pushBase(e: FnEmitter, t: Target & { k: "memory" }): void {
-	if (t.base === null) e.code.i32Const(0);
-	else e.code.get(t.base);
+function emitMemberReadOr(e: FnEmitter, node: MemberExpression, orElse: (() => Kind) | null): Kind {
+	if (!node.computed) return emitValue(e, placeOf(e, node), node);
+	const cache = cacheTarget(e, node);
+	if (cache !== null) return readTarget(e, cache);
+	const array = arrayOf(e, node.object);
+	readElement(e, array.shape, array.at, emitIndex(e, node.property), orElse);
+	return "f64";
+}
+
+/** The typed array (or reducer lane array) `node` names. */
+function arrayOf(e: FnEmitter, node: AnyNode): { shape: ArrayShape; at: Address } {
+	const owner = placeOf(e, node);
+	if (owner?.k === "memory" && owner.shape.k === "array")
+		return { shape: owner.shape, at: owner.at };
+	return e.fail(node, "only typed arrays, lane arrays and the math cache are indexed");
+}
+
+function spanOf(shape: ArrayShape, at: Address): Span {
+	return { at, length: shape.length, size: ELEMENT_BYTES[shape.type] };
+}
+
+function readElement(
+	e: FnEmitter,
+	shape: ArrayShape,
+	at: Address,
+	index: Index,
+	orElse: (() => Kind) | null,
+): void {
+	guarded(
+		e,
+		spanOf(shape, at),
+		index,
+		"f64",
+		(offset) => emitLoad(e, shape.type, offset),
+		() => {
+			if (orElse === null) e.code.f64Const(Number.NaN);
+			else toF64(e, orElse());
+		},
+	);
+}
+
+function writeElement(e: FnEmitter, t: Target & { k: "element" }, keep: boolean): void {
+	const value = e.local("f64");
+	e.code.set(value);
+	guarded(
+		e,
+		spanOf(t.shape, t.at),
+		t.index,
+		null,
+		(offset) => {
+			e.code.get(value);
+			emitStore(e, t.shape.type, offset);
+		},
+		() => {},
+	);
+	if (keep) e.code.get(value);
+}
+
+function pushBase(e: FnEmitter, base: number | null): void {
+	if (base === null) e.code.i32Const(0);
+	else e.code.get(base);
 }
 
 /** `__mc[slot]`: a local in a tick, memory in a helper. */
@@ -96,30 +193,4 @@ function cacheTarget(e: FnEmitter, node: MemberExpression): Target | null {
 	if (cache === null) return e.fail(node, "this function has no math cache");
 	if (cache.k === "locals") return { k: "local", index: cache.slot(slot.v), kind: "f64" };
 	return { k: "memory", base: cache.base, offset: slot.v * 8 };
-}
-
-/**
- * `lanes[i]`: the f64 lane. An index that is not an integer
- * in range reads `undefined`, which is NaN as a number.
- */
-function readLane(e: FnEmitter, lanes: Lanes, property: AnyNode): void {
-	const index = staticOf(e, property);
-	if (index !== null && typeof index.v === "number") {
-		e.code.i32Const(0).loadF64(lanes.addr + 8 * index.v);
-		return;
-	}
-	const kind = emitExpr(e, property);
-	if (kind !== "f64") e.code.op(kind === "int" ? OP.f64ConvertI32S : OP.f64ConvertI32U);
-	const t = e.local("f64");
-	e.code.set(t);
-	// t >= 0 && t < length && trunc(t) === t
-	e.code.get(t).f64Const(0).op(OP.f64Ge);
-	e.code.get(t).f64Const(lanes.length).op(OP.f64Lt).op(OP.i32And);
-	e.code.get(t).op(OP.f64Trunc).get(t).op(OP.f64Eq).op(OP.i32And);
-	e.enter(OP.if, "f64");
-	e.code.get(t).op(OP.i32TruncF64U).i32Const(3).op(OP.i32Shl);
-	e.code.loadF64(lanes.addr);
-	e.else();
-	e.code.f64Const(Number.NaN);
-	e.exit();
 }

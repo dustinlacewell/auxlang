@@ -1,6 +1,7 @@
 /**
  * A tick's parameter records for one node lane, resolved to the render
- * function's locals: state fields and outputs are memory mirrors, inputs are
+ * function's locals: numeric state fields and outputs are memory mirrors,
+ * typed arrays and records stay in memory, inputs are
  * what the engine's bindings say (a constant, the value slot of an upstream
  * output this sample, or of any output last sample) and, for a reducer, the
  * f64 view its lanes are gathered into.
@@ -12,8 +13,8 @@ import { GATHER_CONST, GATHER_CUR, GATHER_PREV } from "../../runtime/gathers";
 import type { NodeRun } from "../../runtime/node-run";
 import type { TickRoles } from "../compile/emit-context";
 import type { FnEmitter } from "../compile/fn-emitter";
-import { type StaticValue, type Value, fixed, local } from "../compile/values";
-import type { NodeMemory } from "./memory-layout";
+import { type StaticValue, type Value, fixed, inMemory, local } from "../compile/values";
+import type { LaneMemory, NodeMemory } from "./memory-layout";
 import type { ValueSlots } from "./value-slots";
 
 export function laneRoles(
@@ -27,7 +28,7 @@ export function laneRoles(
 	const laneMemory = memory.lanes[lane];
 	if (laneMemory === undefined) throw new Error(`wasm: no memory for lane ${lane}`);
 	return {
-		state: (field, at) => mirror(known(e, laneMemory.state, field, "state field", at)),
+		state: (field, at) => stateField(e, laneMemory, field, mirror, at),
 		output: (port, at) => mirror(known(e, memory.outs, port, "output", at)),
 		input: (port, at) =>
 			run.bindings === null
@@ -35,6 +36,25 @@ export function laneRoles(
 				: bound(e, run.bindings[lane], port, slots, at),
 		config: (field, at) => configValue(e, run.config[field], field, at),
 	};
+}
+
+/** A number is a local mirror; an array or record is in memory at its absolute address. */
+function stateField(
+	e: FnEmitter,
+	lane: LaneMemory,
+	field: string,
+	mirror: (addr: number) => number,
+	at: AnyNode,
+): Value {
+	const addr = lane.state[field];
+	if (addr !== undefined) return local(mirror(addr), "f64");
+	const aggregate = lane.aggregates[field];
+	if (aggregate !== undefined)
+		return inMemory(aggregate.shape, { base: null, offset: aggregate.offset });
+	return e.fail(
+		at,
+		`state field '${field}' is unknown or has no memory form (a string, a plain array of numbers, records of differing shapes)`,
+	);
 }
 
 function bound(
@@ -65,7 +85,10 @@ function gathered(
 	if (p === undefined) return e.fail(at, `unknown input '${port}'`);
 	if (p.kind === GATHER_CONST) return fixed(p.constValue);
 	if (p.kind === GATHER_CUR || p.kind === GATHER_PREV)
-		return { k: "lanes", lanes: { addr: memory.views[port] as number, length: p.srcLanes } };
+		return inMemory(
+			{ k: "array", type: "f64", length: p.srcLanes },
+			{ base: null, offset: memory.views[port] as number },
+		);
 	return e.fail(at, "signal lambdas are not supported by the WASM spike");
 }
 

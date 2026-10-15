@@ -85,8 +85,12 @@ export function emitValue(e: FnEmitter, value: Value | undefined | null, at: Any
 			return value.kind;
 		case "static":
 			return emitStatic(e, value.value, at);
-		case "lanes":
-			return e.fail(at, "a lane array is not a number");
+		case "memory":
+			if (value.shape.k !== "number") return e.fail(at, `a ${value.shape.k} is not a number`);
+			if (value.at.base === null) e.code.i32Const(0);
+			else e.code.get(value.at.base);
+			e.code.loadF64(value.at.offset);
+			return "f64";
 		case "role":
 			return e.fail(at, `the ${value.role} record is not a number`);
 	}

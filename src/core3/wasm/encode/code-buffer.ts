@@ -6,7 +6,7 @@
  */
 
 import { signedLeb, unsignedLeb } from "./leb128";
-import { OP, TRUNC_SAT_F64_S, VOID_BLOCK } from "./opcodes";
+import { OP, TRUNC_SAT_F64_S, TRUNC_SAT_F64_U, VOID_BLOCK } from "./opcodes";
 
 const F64_BYTES = new DataView(new ArrayBuffer(8));
 
@@ -74,8 +74,17 @@ export class CodeBuffer {
 		return this.op(OP.f32Store).u32(2).u32(offset);
 	}
 
+	/** Any load or store: `align` is log2 of the access width in bytes. */
+	memory(op: number, align: number, offset: number): this {
+		return this.op(op).u32(align).u32(offset);
+	}
+
 	truncSatF64S(): this {
 		return this.op(OP.prefixFC).u32(TRUNC_SAT_F64_S);
+	}
+
+	truncSatF64U(): this {
+		return this.op(OP.prefixFC).u32(TRUNC_SAT_F64_U);
 	}
 
 	append(bytes: readonly number[]): this {
