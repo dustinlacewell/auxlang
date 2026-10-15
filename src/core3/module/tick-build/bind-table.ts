@@ -1,13 +1,14 @@
 /**
  * Bind a tick's table intrinsics (tick-subset/table-intrinsics.ts) to the
- * lane's scratch table (bridge/lane-table.ts), through the tick's state and
- * config parameters:
+ * lane's scratch table (bridge/lane-table.ts: a pattern-reading lane is born
+ * with one), through the tick's state and config parameters:
  *
  *   __tableFill(c)        →  __auxTableFill(s, cfg, c)
- *   __tableCycle()        →  __auxTable(s).cycle
- *   __tableCount()        →  __auxTable(s).count
- *   __tableRow("f", r)    →  __auxTable(s).f[r]
+ *   __tableCycle()        →  s.__scratch.table.cycle
+ *   __tableCount()        →  s.__scratch.table.count
+ *   __tableRow("f", r)    →  s.__scratch.table.f[r]
  *
+ * Reads are plain field loads, as fast as the TypeScript tick they replace.
  * Arguments keep their text, so intrinsics and draws inside them are still
  * rewritten. The subset check has made sure the parameters are named.
  */
@@ -18,8 +19,7 @@ import { TABLE_INTRINSICS } from "../tick-subset/table-intrinsics";
 import { walk } from "../tick-subset/walk";
 import type { TextEdit } from "./text-edits";
 
-/** The bound names of the lane's table and its fill (bridge/lane-table.ts) inside a built tick. */
-export const TABLE_OF = "__auxTable";
+/** The bound name of the lane's table fill (bridge/lane-table.ts) inside a built tick. */
 export const TABLE_FILL = "__auxTableFill";
 
 export function bindTable(tick: ParsedFunction): TextEdit[] {
@@ -35,7 +35,7 @@ export function bindTable(tick: ParsedFunction): TextEdit[] {
 function callEdits(call: CallExpression, state: string, config: string): TextEdit[] {
 	if (call.callee.type !== "Identifier" || !TABLE_INTRINSICS.has(call.callee.name)) return [];
 	const [first, second] = call.arguments;
-	const table = `${TABLE_OF}(${state})`;
+	const table = `${state}.__scratch.table`;
 	switch (call.callee.name) {
 		case "__tableFill":
 			return first === undefined

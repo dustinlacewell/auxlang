@@ -14,11 +14,11 @@
  * generated driver can give each lane its own.
  */
 
-import { fillLaneTable, laneTable } from "../../bridge/lane-table";
+import { fillLaneTable } from "../../bridge/lane-table";
 import type { ModuleSource, ReduceTickFn, TickFn } from "../../types";
 import { CACHE_ARRAY, cacheArray, cacheSize } from "../bind-math/cache-names";
 import { parseFunction } from "../tick-subset/parse-function";
-import { TABLE_FILL, TABLE_OF, bindTable } from "./bind-table";
+import { TABLE_FILL, bindTable } from "./bind-table";
 import { applyEdits } from "./text-edits";
 import { registerTickFactory } from "./tick-factories";
 
@@ -39,7 +39,7 @@ export function buildTick(source: ModuleSource, what: string): Tick {
 	let factory: () => Tick;
 	let first: Tick;
 	try {
-		factory = new Function(TABLE_OF, TABLE_FILL, body)(laneTable, fillLaneTable);
+		factory = new Function(TABLE_FILL, body)(fillLaneTable);
 		first = factory();
 	} catch (err) {
 		throw new Error(`${what}: tick failed to build: ${String(err)}`);

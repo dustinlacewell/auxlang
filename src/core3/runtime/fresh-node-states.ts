@@ -3,8 +3,8 @@
  * stream seeded from (patch seed, migration key, lane), or from (local seed,
  * lane) for a node with its own `.seed(n)`. The engine injects three
  * per-lane fields, none part of the state's shape: `__lane` (the lane
- * index), `__scratch` (an empty record a module may fill with data derived
- * from config, such as event tables; never carried) and `__seed` (the patch
+ * index), `__scratch` (a record for data derived from config, such as the
+ * event table of a module that reads a pattern; never carried) and `__seed` (the patch
  * seed or the node's local seed, which `hashRandom(key)` in a tick reads).
  * A re-eval then carries old values into these states
  * (hand-over/carry-states.ts).

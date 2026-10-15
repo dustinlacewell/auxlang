@@ -119,8 +119,9 @@ export interface ModuleSpec extends ModulePorts {
 	 * arrays, nested plain objects). After construction (or migration) the engine
 	 * injects `state.__lane = laneIndex`, so per-lane modules (seq) know which
 	 * packed lane they render without any extra contract surface,
-	 * `state.__scratch = {}`, a per-lane record for data derived from config
-	 * (seq's event tables), never carried across a re-eval, and
+	 * `state.__scratch`, a per-lane record for data derived from config (the
+	 * event table of a module that reads a pattern), never carried across a
+	 * re-eval, and
 	 * `state.__seed`, the patch seed `hashRandom(key)` in a tick uses. A fresh
 	 * lane also gets `state.__rng`, its own random stream position seeded from
 	 * (patch seed, identity, lane), which `Math.random()` in the tick draws.
