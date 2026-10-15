@@ -6,6 +6,7 @@ import {
 	gateOf,
 	heldNoteId,
 	inDipWindow,
+	slideOf,
 	trigOf,
 } from "../bridge/read-step";
 import { defmod } from "../patch/defmod";
@@ -21,9 +22,12 @@ import { semis } from "../units/tag";
  * a clock (set at compile). An unconnected position is the ambient clock.
  * Each lane reads its event table (lane-table.ts) at the position:
  *
- *   out   the value under the position, held through rests
- *   gate  high in a note and its ties; a 1 ms dip between touching notes
- *   trig  one sample when the position enters a different note
+ *   out    the value under the position, held through rests
+ *   gate   high in a note, a slide, and their ties; a 1 ms dip between
+ *          touching notes
+ *   trig   one sample when the position enters a different note; a slide
+ *          entered from the note before it fires nothing
+ *   slide  high inside a slide
  *
  * State is fixed-shape: the reader's row, note id, gate, dip countdown, last
  * position, and whether it has ticked. The tables are scratch, rebuilt, never
@@ -33,9 +37,9 @@ import { semis } from "../units/tag";
 defmod({
 	name: "seq",
 	category: "timing",
-	doc: "Reads a pattern at a position (default: the clock); outputs value, gate, and trig.",
+	doc: "Reads a pattern at a position (default: the clock); outputs value, gate, trig, and slide.",
 	ins: { position: phasePort(0) },
-	outs: { out: semis(0), gate: gatePort(), trig: trigPort() },
+	outs: { out: semis(0), gate: gatePort(), trig: trigPort(), slide: gatePort() },
 	defaultIn: "position",
 	defaultOut: "out",
 	positional: ["pattern", "position"],
@@ -46,7 +50,12 @@ defmod({
 		const t = laneTable(s, cfg, pos);
 		const row = locate(t, pos, s.row as number);
 		const kind = t.kind[row] as number;
-		const trig = trigOf(kind, t.noteId[row] as number, s.noteId as number);
+		const trig = trigOf(
+			kind,
+			t.noteId[row] as number,
+			t.slideFrom[row] as number,
+			s.noteId as number,
+		);
 		const clocked = cfg.clocked === 1;
 		const dipLeft = clocked
 			? 0
@@ -64,6 +73,7 @@ defmod({
 		o.out = t.value[row] as number;
 		o.gate = gate;
 		o.trig = trig;
+		o.slide = slideOf(kind);
 		s.row = row;
 		s.noteId = heldNoteId(kind, t.noteId[row] as number);
 		s.gate = gate;

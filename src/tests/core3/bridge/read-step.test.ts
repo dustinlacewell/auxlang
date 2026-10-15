@@ -1,6 +1,7 @@
 /**
- * read-step: gate and trig on plain numbers. trig fires on entering a
- * different note (ties belong to their note; rests forget the note); the
+ * read-step: gate, trig, and slide on plain numbers. trig fires on entering a
+ * different note (ties belong to their note; rests forget the note; a slide
+ * entered from the note it slides from is quiet); the
  * unclocked dip runs from a trig into a high gate; the clocked dip is the
  * window before a marked row ends.
  */
@@ -12,31 +13,58 @@ import {
 	gateOf,
 	heldNoteId,
 	inDipWindow,
+	slideOf,
 	trigOf,
 } from "@/core3/bridge/read-step";
-import { KIND_NOTE, KIND_REST, KIND_TIE, NO_NOTE } from "@/core3/pattern/table/event-table";
+import {
+	KIND_NOTE,
+	KIND_REST,
+	KIND_SLIDE,
+	KIND_TIE,
+	NO_NOTE,
+} from "@/core3/pattern/table/event-table";
 import { describe, expect, it } from "vitest";
 
 describe("trigOf", () => {
+	const none = NO_NOTE;
+
 	it("fires on a note different from the one before, in any direction", () => {
-		expect(trigOf(KIND_NOTE, 0.5, 0.25)).toBe(1);
-		expect(trigOf(KIND_NOTE, 0.25, 0.5)).toBe(1);
-		expect(trigOf(KIND_NOTE, 7, NO_NOTE)).toBe(1);
+		expect(trigOf(KIND_NOTE, 0.5, none, 0.25)).toBe(1);
+		expect(trigOf(KIND_NOTE, 0.25, none, 0.5)).toBe(1);
+		expect(trigOf(KIND_NOTE, 7, none, NO_NOTE)).toBe(1);
 	});
 
 	it("stays quiet inside the same note, its tie, and rests", () => {
-		expect(trigOf(KIND_NOTE, 0.5, 0.5)).toBe(0);
-		expect(trigOf(KIND_TIE, 0.5, 0.5)).toBe(0);
-		expect(trigOf(KIND_REST, NO_NOTE, 0.5)).toBe(0);
+		expect(trigOf(KIND_NOTE, 0.5, none, 0.5)).toBe(0);
+		expect(trigOf(KIND_TIE, 0.5, none, 0.5)).toBe(0);
+		expect(trigOf(KIND_REST, NO_NOTE, none, 0.5)).toBe(0);
 	});
 
 	it("fires when a tie is entered from outside its note", () => {
-		expect(trigOf(KIND_TIE, 0.5, 2)).toBe(1);
+		expect(trigOf(KIND_TIE, 0.5, none, 2)).toBe(1);
 	});
 
 	it("re-fires a note entered again after a rest", () => {
 		const inRest = heldNoteId(KIND_REST, NO_NOTE);
-		expect(trigOf(KIND_NOTE, 0.5, inRest)).toBe(1);
+		expect(trigOf(KIND_NOTE, 0.5, none, inRest)).toBe(1);
+	});
+
+	it("stays quiet entering a slide from the note it slides from", () => {
+		expect(trigOf(KIND_SLIDE, 0.5, 0.25, 0.25)).toBe(0);
+	});
+
+	it("fires entering a slide any other way", () => {
+		expect(trigOf(KIND_SLIDE, 0.5, 0.25, 0.75)).toBe(1);
+		expect(trigOf(KIND_SLIDE, 0.5, 0.25, NO_NOTE)).toBe(1);
+	});
+});
+
+describe("slideOf", () => {
+	it("is high only inside a slide", () => {
+		expect(slideOf(KIND_SLIDE)).toBe(1);
+		expect(slideOf(KIND_NOTE)).toBe(0);
+		expect(slideOf(KIND_TIE)).toBe(0);
+		expect(slideOf(KIND_REST)).toBe(0);
 	});
 });
 

@@ -60,23 +60,50 @@ describe("seq basics", () => {
 	});
 });
 
-describe("seq ties", () => {
+describe("seq slides", () => {
 	const { program, seq: si } = build("c4_e4 g4 b4");
 	const STEP = CYCLE / 3;
 
-	it("a tie is legato: continuous gate across the pitch change, one trig", () => {
+	it("a slide is legato: continuous gate across the pitch change, one trig", () => {
 		const gate = renderTap(program, si, "gate", 0, CYCLE);
 		const pitch = renderTap(program, si, "out", 0, CYCLE);
 		const trig = renderTap(program, si, "trig", 0, CYCLE);
-		// pitch still changes 60 -> 64 halfway through the tied step
+		// pitch still changes 60 -> 64 halfway through the slide step
 		expect(pitch[Math.floor(STEP * 0.25)]).toBe(60);
 		expect(pitch[Math.floor(STEP * 0.75)]).toBe(64);
-		// gate holds straight through the tie boundary
+		// gate holds straight through the slide boundary
 		for (let i = Math.floor(STEP / 2) - 60; i < Math.floor(STEP / 2) + 60; i++) {
 			expect(gate[i]).toBe(1);
 		}
-		// three steps, but the tied continuation does not retrigger
+		// three steps, but the slide does not retrigger
 		// (window nudged early: the next cycle's first onset lands at CYCLE - 1)
 		expect(countOnes(trig, 0, CYCLE - 10)).toBe(3);
+	});
+
+	it("the slide output is high only inside the slide", () => {
+		const slide = renderTap(program, si, "slide", 0, CYCLE);
+		expect(slide[Math.floor(STEP * 0.25)]).toBe(0);
+		expect(slide[Math.floor(STEP * 0.75)]).toBe(1);
+		expect(slide[Math.floor(STEP * 1.5)]).toBe(0);
+	});
+});
+
+describe("seq ties", () => {
+	const tied = build("c4 _ e4 g4");
+	const held = build("c4@2 e4 g4");
+
+	it("a _ has one trig and no gate dip across the tie", () => {
+		const gate = renderTap(tied.program, tied.seq, "gate", 0, CYCLE);
+		const trig = renderTap(tied.program, tied.seq, "trig", 0, CYCLE);
+		for (let i = NOTE - 100; i < NOTE + 100; i++) expect(gate[i]).toBe(1);
+		expect(countOnes(trig, 0, 2 * NOTE - 10)).toBe(1);
+	});
+
+	it("a _ and a@2 render the same by time", () => {
+		for (const tap of ["out", "gate", "trig"]) {
+			const a = renderTap(tied.program, tied.seq, tap, 0, CYCLE);
+			const b = renderTap(held.program, held.seq, tap, 0, CYCLE);
+			expect(a).toEqual(b);
+		}
 	});
 });
