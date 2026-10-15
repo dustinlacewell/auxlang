@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import "@/core3/modules/svf";
+import "@/core3/modules/all";
 import { getModule } from "@/core3/module/define";
 import { hzToSemis } from "@/core3/units/pitch";
 import { SR, driver, rms } from "./helpers";

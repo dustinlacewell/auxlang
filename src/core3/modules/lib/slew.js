@@ -1,0 +1,31 @@
+/**
+ * Slew limiter / lag. `rise`/`fall` are the seconds to traverse one full unit;
+ * the per-sample step is 1/(time*sr), so it is unit-linear (correct portamento
+ * on semitone pitch: gliding an octave takes the same time regardless of range).
+ */
+defmod({
+	name: "slew",
+	category: "utils",
+	doc: "Limits how fast a signal can change — glide and declicking.",
+	ins: { in: sig(0), rise: secs(0.1), fall: secs(0.1) },
+	outs: { out: sig() },
+	defaultIn: "in",
+	defaultOut: "out",
+	positional: ["rise", "fall"],
+	state: () => ({ current: 0, started: 0 }),
+	tick: (s, i, o, _cfg, sr) => {
+		if (s.started === 0) {
+			s.current = i.in;
+			s.started = 1;
+		}
+		const current = s.current;
+		let next;
+		if (i.in > current) {
+			next = i.rise <= 0 ? i.in : Math.min(i.in, current + 1 / (i.rise * sr));
+		} else {
+			next = i.fall <= 0 ? i.in : Math.max(i.in, current - 1 / (i.fall * sr));
+		}
+		s.current = next;
+		o.out = next;
+	},
+});

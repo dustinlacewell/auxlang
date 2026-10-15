@@ -1,0 +1,20 @@
+/** Sample & hold — latches `in` when `trig` crosses 0.5, holds otherwise. */
+defmod({
+	name: "sah",
+	category: "utils",
+	doc: "Sample and hold: freezes the input on each trigger.",
+	ins: { in: sig(0), trig: trigPort() },
+	outs: { out: sig() },
+	defaultIn: "in",
+	defaultOut: "out",
+	positional: ["trig"],
+	state: () => ({ held: 0, started: 0 }),
+	tick: (s, i, o) => {
+		if (s.started === 0) {
+			s.held = i.in;
+			s.started = 1;
+		}
+		if (i.trig > 0.5) s.held = i.in;
+		o.out = s.held;
+	},
+});

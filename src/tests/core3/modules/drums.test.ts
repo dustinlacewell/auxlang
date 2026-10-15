@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import "@/core3/modules/drums/clap";
-import "@/core3/modules/drums/hihat";
-import "@/core3/modules/drums/kick";
-import "@/core3/modules/drums/snare";
+import "@/core3/modules/all";
 import { getModule } from "@/core3/module/define";
 import type { ModuleSpec } from "@/core3/types";
 import { SR, driver, maxAbs } from "./helpers";
