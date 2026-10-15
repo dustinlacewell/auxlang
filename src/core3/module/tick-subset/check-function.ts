@@ -32,26 +32,38 @@ export interface FunctionCheck {
 	readonly state: Record<string, unknown>;
 	/** The module declares `reads: "pattern"` (table-intrinsics.ts). */
 	readonly tables: boolean;
+	/** A helper's parameter that receives the tick's state record (helper-state-params.ts). */
+	readonly stateParam?: string;
+	/** The function already parsed, with its located failure. */
+	readonly parsed?: ParsedPart;
 }
 
-export interface CheckedFunction {
+export interface ParsedPart {
 	readonly node: FunctionNode;
-	readonly calls: SubsetContext["calls"];
 	readonly fail: SubsetContext["fail"];
 }
 
-export function checkFunction(check: FunctionCheck): CheckedFunction {
+export interface CheckedFunction extends ParsedPart {
+	readonly calls: SubsetContext["calls"];
+}
+
+/** Parse one function, with a failure that names its module, part and line. */
+export function parsePart(check: Pick<FunctionCheck, "src" | "owner" | "part">): ParsedPart {
 	const site = { owner: check.owner, part: check.part, origin: locateInSource(check.src) };
 	const fail = (node: AcornNode, message: string): never => {
 		throw violation(site, node.loc?.start.line ?? 1, message);
 	};
-	const fn = parseFunction(check.src, `${check.owner} ${check.part}`).node;
+	return { node: parseFunction(check.src, `${check.owner} ${check.part}`).node, fail };
+}
+
+export function checkFunction(check: FunctionCheck): CheckedFunction {
+	const { node: fn, fail } = check.parsed ?? parsePart(check);
 	const params = paramNames(fn, fail);
 	const ctx: SubsetContext = {
 		kind: check.kind,
 		params: new Set(params),
 		locals: localNames(fn),
-		roles: rolesOf(check.kind, params),
+		roles: rolesOf(check.kind, params, check.stateParam),
 		helpers: check.helpers,
 		ins: check.ins,
 		outs: check.outs,
@@ -111,10 +123,14 @@ function localNames(fn: FunctionNode): Set<string> {
 	return names;
 }
 
-/** Tick parameters are (state, ins, outs, config, sampleRate[, width]); a lambda's are (state, sampleRate, time). */
-function rolesOf(kind: FunctionKind, params: readonly string[]): ParamRoles {
+/**
+ * Tick parameters are (state, ins, outs, config, sampleRate[, width]); a
+ * lambda's are (state, sampleRate, time); a helper's are plain values, but
+ * for the one that receives the tick's state record.
+ */
+function rolesOf(kind: FunctionKind, params: readonly string[], stateParam?: string): ParamRoles {
 	const [first, second, third, fourth] = params;
-	if (kind === "helper") return {};
+	if (kind === "helper") return stateParam === undefined ? {} : { state: stateParam };
 	if (kind === "lambda") return first === undefined ? {} : { state: first };
 	return {
 		...(first !== undefined ? { state: first } : {}),

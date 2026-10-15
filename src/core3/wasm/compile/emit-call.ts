@@ -3,13 +3,13 @@
  * specialised on the arguments known while compiling (config strings,
  * booleans, arrays and records); run-time arguments are its parameters. Arguments
  * are evaluated in order. A helper that uses the math cache takes its lane's
- * cache address first.
+ * cache address first. A tick's state record passes as its address.
  */
 
 import type { CallExpression, Expression } from "acorn";
 import { isAggregate } from "../layout/state-shape";
 import { toF64 } from "./coerce";
-import type { ArgShape, FnRef } from "./emit-context";
+import type { ArgShape, FnRef, StateRecord } from "./emit-context";
 import { emitExpr } from "./emit-expression";
 import { emitMathCall } from "./exact-math";
 import type { FnEmitter } from "./fn-emitter";
@@ -42,7 +42,15 @@ export function emitCall(e: FnEmitter, node: CallExpression): Kind | "void" {
 function emitHelperCall(e: FnEmitter, name: string, args: readonly Expression[]): Kind {
 	const shapes: ArgShape[] = [];
 	const values: number[][] = [];
+	let state: StateRecord | null = null;
 	for (const arg of args) {
+		const record = stateArg(e, arg);
+		if (record !== null) {
+			shapes.push({ k: "memory", shape: record.shape, offset: 0, dynamic: true });
+			values.push(e.capture(() => e.code.i32Const(record.address)).bytes);
+			state = record;
+			continue;
+		}
 		const known = knownShape(e, arg);
 		if (known !== null) {
 			shapes.push(known.shape);
@@ -56,8 +64,18 @@ function emitHelperCall(e: FnEmitter, name: string, args: readonly Expression[])
 	const fn = e.ctx.calls.helper(name, shapes);
 	pushHidden(e, fn);
 	for (const bytes of values) e.code.append(bytes);
+	state?.flush();
 	e.code.call(fn.index);
+	state?.reload();
 	return fn.result;
+}
+
+/** A tick's own state record as an argument: the helper reads and writes it in memory. */
+function stateArg(e: FnEmitter, arg: Expression): StateRecord | null {
+	if (arg.type !== "Identifier") return null;
+	const value = e.scope.lookup(arg.name);
+	if (value?.k !== "role" || value.role !== "state" || e.ctx.roles === null) return null;
+	return e.ctx.roles.stateRecord(arg);
 }
 
 /**

@@ -5,12 +5,13 @@
  */
 
 import type { FunctionNode } from "../../module/tick-subset/parse-function";
+import { writes } from "../compile/assigned-names";
 import type { CacheAccess, Calls, Intrinsics, TickRoles } from "../compile/emit-context";
 import { emitDiscard } from "../compile/emit-expression";
 import { emitStatements } from "../compile/emit-statement";
 import type { FnEmitter } from "../compile/fn-emitter";
 import { Scope } from "../compile/scope";
-import { type Role, type Value, fixed } from "../compile/values";
+import { type Role, type Value, fixed, local } from "../compile/values";
 import { OP } from "../encode/opcodes";
 
 export interface TickSite {
@@ -44,14 +45,25 @@ export function emitTick(e: FnEmitter, site: TickSite): void {
 	e.exit();
 }
 
+/** The sample rate and width are constants, or f64 locals when the tick reassigns them. */
 function paramScope(e: FnEmitter, site: TickSite): Scope {
 	const scope = new Scope();
 	site.fn.params.forEach((param, k) => {
 		if (param.type !== "Identifier") return e.fail(param, "tick parameters must be plain names");
 		const role = ROLES[k];
-		const value: Value =
-			role !== undefined ? { k: "role", role } : fixed(k === 4 ? site.sampleRate : site.width);
-		scope.declare(param.name, value);
+		if (role !== undefined) {
+			scope.declare(param.name, { k: "role", role });
+			return;
+		}
+		const value = k === 4 ? site.sampleRate : site.width;
+		const written = writes([site.fn.body], param.name);
+		scope.declare(param.name, written ? numberLocal(e, value) : fixed(value));
 	});
 	return scope;
+}
+
+function numberLocal(e: FnEmitter, value: number): Value {
+	const index = e.local("f64");
+	e.code.f64Const(value).set(index);
+	return local(index, "f64");
 }

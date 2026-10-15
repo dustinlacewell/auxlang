@@ -5,7 +5,7 @@
  */
 
 import type { AnyNode, Expression } from "acorn";
-import type { Aggregate } from "../layout/state-shape";
+import type { Aggregate, RecordShape } from "../layout/state-shape";
 import type { FnEmitter } from "./fn-emitter";
 import type { Kind, StaticValue, Value } from "./values";
 
@@ -17,6 +17,20 @@ export interface TickRoles {
 	/** The f64 local holding output `port`. */
 	output(port: string, at: AnyNode): number;
 	config(field: string, at: AnyNode): StaticValue;
+	/** The whole state record, passed to a helper. */
+	stateRecord(at: AnyNode): StateRecord;
+}
+
+/**
+ * The lane's state as one record in memory at `address`. A tick keeps its
+ * numeric fields in local mirrors; around a helper call that takes the
+ * record, `flush` stores the mirrors to memory and `reload` loads them back.
+ */
+export interface StateRecord {
+	readonly shape: RecordShape;
+	readonly address: number;
+	flush(): void;
+	reload(): void;
 }
 
 /**
@@ -38,7 +52,8 @@ export type Return =
  * A helper argument's shape: run-time values are parameters, the rest
  * specialise the helper. An array or record in memory specialises it on its
  * shape and offset; a `dynamic` one (inside an array of records at a
- * run-time index) passes its base address as an i32 parameter.
+ * run-time index, or a tick's whole state record) passes its base address
+ * as an i32 parameter.
  */
 export type ArgShape =
 	| { readonly k: "run"; readonly kind: "f64" | "bool" }

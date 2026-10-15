@@ -2,12 +2,11 @@
  * Patch-defined ticks on WASM in forms the library does not exercise: early
  * returns, labels, shadowed locals, outputs read back or left unwritten (the
  * outs record is shared by the lanes), state field updates, typed-array and
- * array-of-object state, `Math.random()` and `hashRandom`, and a
- * patch-defined reducer. Each matches the interpreter bit for bit.
- *
- * The todos are forms the interpreter runs and WASM refuses at compile
- * (a WASM-only refusal; the checker should refuse them on both, or WASM
- * should run them).
+ * array-of-object state, `Math.random()` and `hashRandom`, a
+ * patch-defined reducer, reassigned parameters, and the state record
+ * passed to helpers. Each matches the interpreter bit for bit. Forms
+ * neither backend can run alike the shared checker refuses at eval, for
+ * both.
  */
 
 import "@/core3/modules/all";
@@ -110,6 +109,66 @@ const sum2 = defmod({
 })
 seq("[c3,e3,g3]").sin().sum2().mul(0.3).out()`;
 
+const REASSIGNED_PARAMS = `tempo(120)
+const srmod = defmod({
+  name: "srmod",
+  category: "utils",
+  ins: { in: sig(0) },
+  outs: { out: sig() },
+  defaultIn: "in",
+  defaultOut: "out",
+  state: () => ({ ph: 0 }),
+  helpers: { bump: (x, flag) => { x = x * 2; flag = !flag; return flag ? x : x + 1 } },
+  tick: (s, i, o, cfg, sr) => {
+    sr = sr + 1
+    sr *= 2
+    s.ph = (s.ph + (i.in * 4) / sr) % 1
+    o.out = bump(s.ph, true) - 1
+  },
+})
+seq("c3 <e3 g3>").srmod().mul(0.2).out()`;
+
+const STATE_TO_HELPER = `tempo(120)
+const stepper = defmod({
+  name: "stepper",
+  category: "utils",
+  ins: { in: sig(0) },
+  outs: { out: sig() },
+  defaultIn: "in",
+  defaultOut: "out",
+  state: () => ({ n: 0, acc: 0, buf: new Float64Array(3), v: { x: 0 } }),
+  helpers: {
+    step: (st, x) => {
+      st.n++
+      st.buf[st.n % 3] = x
+      st.v.x += x * 0.001
+      return inner(st) * 0.5
+    },
+    inner: (r) => r.buf[0] - r.buf[1] + r.buf[2] * 0.5 + r.n * 0.001 + r.acc * 0,
+  },
+  tick: (s, i, o) => {
+    s.acc = s.acc * 0.9 + step(s, i.in)
+    o.out = s.acc * 0.01 + (s.v.x % 1) + (s.n % 5) * 0.01
+  },
+})
+seq("[c3,e3] <g3 a3>").stepper().mul(0.1).out()`;
+
+const STATE_PARAM_MOVES = `tempo(120)
+const moves = defmod({
+  name: "moves",
+  category: "utils",
+  ins: { in: sig(0) },
+  outs: { out: sig() },
+  defaultIn: "in",
+  defaultOut: "out",
+  state: () => ({ n: 0 }),
+  helpers: { f: (a, b) => a.n + b },
+  tick: (s, i, o) => {
+    o.out = f(s, 1) + f(2, s)
+  },
+})
+seq("c3").moves().out()`;
+
 describe("patch-defined ticks on WASM match the interpreter", () => {
 	it("control flow, shadowing, outputs read back or left unwritten", () => {
 		const ref = expectIdentical(evalPatch(CONTROL_FLOW), SR / 4);
@@ -125,7 +184,24 @@ describe("patch-defined ticks on WASM match the interpreter", () => {
 		expectIdentical(evalPatch(REDUCER), SR / 4);
 	});
 
-	it.todo("`sr = sr + 1` in a tick (WASM: 'this cannot be assigned')");
+	it("reassigned parameters: the tick's sample rate, a helper's known argument", () => {
+		const ref = expectIdentical(evalPatch(REASSIGNED_PARAMS), SR / 4);
+		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.01);
+	});
+
+	it("a tick passing its state record to helpers that read and write it", () => {
+		const ref = expectIdentical(evalPatch(STATE_TO_HELPER), SR / 4);
+		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.01);
+	});
+
 	it.todo("swapped typed-array state references, `s.a = s.b` (WASM: 'this cannot be assigned')");
-	it.todo("a tick passing its state record to a helper (WASM: 'the state record is not a number')");
+});
+
+describe("tick forms the checker refuses on every backend", () => {
+	// The checker runs at eval, before either backend sees the program.
+	it("a helper that takes the state record in different places", () => {
+		expect(() => evalPatch(STATE_PARAM_MOVES)).toThrow(
+			/helper 'f' takes the state record as argument 1 — pass the state record there, once, at every call/,
+		);
+	});
 });

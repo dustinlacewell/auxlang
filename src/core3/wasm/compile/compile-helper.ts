@@ -5,10 +5,12 @@
  * (tick-subset/kinds/) rejects a helper that returns both.
  */
 
-import type { AnyNode, Expression, ReturnStatement } from "acorn";
-import { parseFunction } from "../../module/tick-subset/parse-function";
+import type { Expression, ReturnStatement } from "acorn";
+import { type FunctionNode, parseFunction } from "../../module/tick-subset/parse-function";
 import { I32 } from "../encode/opcodes";
+import { writes } from "./assigned-names";
 import type { ArgShape, Calls } from "./emit-context";
+import { emitStatic } from "./emit-expression";
 import { emitStatement, emitStatements } from "./emit-statement";
 import { FnEmitter, valueType } from "./fn-emitter";
 import type { HelperSet } from "./helper-set";
@@ -62,7 +64,7 @@ function build(
 		intrinsics: null,
 		ret: { k: "value", kind: result, seen },
 	});
-	bindParams(e, fn.params, shapes, hidden ? 1 : 0);
+	bindParams(e, fn, shapes, hidden ? 1 : 0);
 	if (fn.body.type === "BlockStatement") emitStatements(e, fn.body.body);
 	else emitStatement(e, returnOf(fn.body));
 	if (result === "f64") e.code.f64Const(Number.NaN);
@@ -70,18 +72,24 @@ function build(
 	return { params, locals: e.locals, body: e.code.bytes, result, seen };
 }
 
+/** A known argument the helper reassigns becomes a local holding it. */
 function bindParams(
 	e: FnEmitter,
-	params: readonly AnyNode[],
+	fn: FunctionNode,
 	shapes: readonly ArgShape[],
 	first: number,
 ): void {
 	let next = first;
-	params.forEach((param, k) => {
+	fn.params.forEach((param, k) => {
 		if (param.type !== "Identifier") return e.fail(param, "parameters must be plain names");
 		const shape: ArgShape = shapes[k] ?? { k: "static", value: undefined };
 		if (shape.k === "run") e.scope.declare(param.name, local(next++, shape.kind));
-		else if (shape.k === "static") e.scope.declare(param.name, fixed(shape.value));
+		else if (shape.k === "static" && writes([fn.body], param.name)) {
+			const kind = emitStatic(e, shape.value, param);
+			const index = e.local(kind);
+			e.code.set(index);
+			e.scope.declare(param.name, local(index, kind));
+		} else if (shape.k === "static") e.scope.declare(param.name, fixed(shape.value));
 		else {
 			const base = shape.dynamic ? next++ : null;
 			e.scope.declare(param.name, inMemory(shape.shape, { base, offset: shape.offset }));

@@ -4,7 +4,8 @@
  * typed arrays and records stay in memory, inputs are
  * what the engine's bindings say (a constant, the value slot of an upstream
  * output this sample, or of any output last sample, or a lambda's value this
- * sample) and, for a reducer, the f64 view its lanes are gathered into.
+ * sample) and, for a reducer, the f64 view its lanes are gathered into. The
+ * whole state record, passed to a helper, is state-record.ts.
  */
 
 import type { AnyNode } from "acorn";
@@ -15,6 +16,7 @@ import type { TickRoles } from "../compile/emit-context";
 import type { FnEmitter } from "../compile/fn-emitter";
 import { type StaticValue, type Value, fixed, inMemory, local } from "../compile/values";
 import type { LaneMemory, NodeMemory } from "./memory-layout";
+import { stateRecord } from "./state-record";
 import type { ValueSlots } from "./value-slots";
 
 export function laneRoles(
@@ -36,6 +38,7 @@ export function laneRoles(
 				? gathered(e, run, memory, port, lambdas, at)
 				: bound(e, run.bindings[lane], port, slots, lambdas, at),
 		config: (field, at) => configValue(e, run.config[field], field, at),
+		stateRecord: () => stateRecord(e, laneMemory, mirror),
 	};
 }
 
