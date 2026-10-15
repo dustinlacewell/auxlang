@@ -115,13 +115,15 @@ class Parser {
 
 		let pat = this.parseModified();
 		let weight = r(1);
+		let count = 1;
 
 		// Tie chain: a_b(_c)...  -> fastcat of tie-flagged pieces as ONE step.
 		if (this.peek()?.kind === "tie") {
 			pat = this.parseTieChain(pat);
 		}
 
-		// Postfix @weight and !count operate on the (possibly tied) step.
+		// Postfix modifiers on the (possibly tied) step compose in any order, as in
+		// Strudel: `a!2@3` = `a@3!2`. `@` sets the weight, `!` the copy count.
 		while (true) {
 			const p = this.peek();
 			if (p?.kind === "at") {
@@ -131,14 +133,15 @@ class Parser {
 			}
 			if (p?.kind === "bang") {
 				this.next();
-				const n = this.parseCount(p.pos);
-				for (let k = 0; k < n; k++) steps.push({ pat, weight });
-				return;
+				count *= this.parseCount(p.pos);
+				continue;
 			}
-			break;
+			const modified = this.parsePatternModifier(pat);
+			if (!modified) break;
+			pat = modified;
 		}
 
-		steps.push({ pat, weight });
+		for (let k = 0; k < count; k++) steps.push({ pat, weight });
 	}
 
 	/** Build a tie chain starting from an already-parsed first term. */
@@ -164,29 +167,30 @@ class Parser {
 	private parseModified(): Pat {
 		let pat = this.parseTerm();
 		while (true) {
-			const t = this.peek();
-			if (t?.kind === "star") {
-				this.next();
-				pat = fast(this.parseFactor(), pat);
-				continue;
-			}
-			if (t?.kind === "slash") {
-				this.next();
-				pat = slow(this.parseFactor(), pat);
-				continue;
-			}
-			if (t?.kind === "question") {
-				this.next();
-				pat = degrade(this.parseDropProb(t.pos), pat);
-				continue;
-			}
-			if (t?.kind === "lparen") {
-				pat = this.parseEuclid(pat);
-				continue;
-			}
-			break;
+			const modified = this.parsePatternModifier(pat);
+			if (!modified) return pat;
+			pat = modified;
 		}
-		return pat;
+	}
+
+	/** One `*` / `/` / `?` / `(k,s,rot)` modifier applied to `pat`, or null if none follows. */
+	private parsePatternModifier(pat: Pat): Pat | null {
+		const t = this.peek();
+		switch (t?.kind) {
+			case "star":
+				this.next();
+				return fast(this.parseFactor(), pat);
+			case "slash":
+				this.next();
+				return slow(this.parseFactor(), pat);
+			case "question":
+				this.next();
+				return degrade(this.parseDropProb(t.pos), pat);
+			case "lparen":
+				return this.parseEuclid(pat);
+			default:
+				return null;
+		}
 	}
 
 	/** A primary term: atom, rest, subgroup, alternation, or stack. */

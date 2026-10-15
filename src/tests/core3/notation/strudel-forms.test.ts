@@ -2,9 +2,10 @@
 
 import { describe, expect, it } from "vitest";
 
+import { parse } from "@/core3/pattern/notation/parse";
 import { p } from "@/core3/pattern/notation/template";
 import { r } from "@/core3/pattern/rational";
-import { onsetKeys, onsets, queryCycles } from "../pattern/helpers";
+import { evSet, onsetKeys, onsets, queryCycles } from "../pattern/helpers";
 
 describe("{a b c, d e}: polymeter, steps from the first layer", () => {
 	const evs = queryCycles(p`{0 1 2, 10 11}`.ast, 0, 2);
@@ -47,6 +48,23 @@ describe("<a@2 b>: a weight inside alternation counts cycles", () => {
 		const evs = onsets(queryCycles(p`<0 [1 2]@2 3>`.ast, 0, 4));
 		expect(evs.map((ev) => ev.value)).toEqual([0, 1, 2, 3]);
 		expect(onsetKeys(evs)).toEqual(["0/1", "1/1", "2/1", "3/1"]);
+	});
+});
+
+describe("postfix modifiers compose in any order", () => {
+	const same = (a: string, b: string) =>
+		expect(evSet(queryCycles(parse(a), 0, 4, 3))).toEqual(evSet(queryCycles(parse(b), 0, 4, 3)));
+
+	it("a!2@3 b and a@3!2 b give the same events", () => {
+		same("c4!2@3 e4", "c4@3!2 e4");
+		expect(onsetKeys(queryCycles(parse("c4!2@3 e4"), 0, 1))).toEqual(["0/1", "3/7", "6/7"]);
+	});
+
+	it("weight, count and pattern modifiers mix in any order", () => {
+		same("c4*2@3 e4", "c4@3*2 e4");
+		same("c4!2*2 e4", "c4*2!2 e4");
+		same("c4(3,8)@2 e4", "c4@2(3,8) e4");
+		same("c4?0.3!2 e4", "c4!2?0.3 e4");
 	});
 });
 
