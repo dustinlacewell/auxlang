@@ -64,7 +64,9 @@ The module families:
 
 ### Timing and bridge
 
-- `clock`, `seq`, `patstep`, `patsig`. `patsig` is created automatically by pattern-lifting; you rarely name it.
+- `tempo(bpm)` sets the ambient clock. `clock(bpm)` makes an extra clock with outputs `out` (position in bars), `beat` and `bar` (triggers).
+- `seq(pattern, position)` reads a pattern at a position. With no position it reads the ambient clock. A pattern handed to a knob becomes a `seq` automatically.
+- `counter(trig, { reset, length })` counts triggers into a position, one cycle per trigger.
 
 ### Drums (trigger-driven, default input `trig`)
 
@@ -84,19 +86,19 @@ Each port has a native unit: pitch and cutoff are semitones (69 = 440 Hz); `fm` 
 
 `.method()` continues the chain from the previous value's default output. `s.tri()` chains a triangle from `s`'s default output.
 
-**Signal-uniformity rule (gotcha).** Setting the default input while chaining is an error, because the chain already bound it. `seq.pitch.saw({ pitch: 60 })` errors — `.saw()` chained off `seq.pitch` already wired the oscillator's default input (`pitch`), and the object arg tries to set that same port. To set another value on a chained module, use a non-default port, or a positional that is not the default port.
+**Signal-uniformity rule (gotcha).** Setting the default input while chaining is an error, because the chain already bound it. `s.saw({ pitch: 60 })` errors — `.saw()` chained off the seq `s` already wired the oscillator's default input (`pitch`), and the object arg tries to set that same port. To set another value on a chained module, use a non-default port, or a positional that is not the default port.
 
 ```js
-clock(120)
+tempo(120)
 const s = seq("c3 e3 g3 e3")
-s.pitch.saw()
+s.saw()
   .lpf({ cutoff: 89, res: 0.3 })
   .mul(s.gate.adsr(0.005, 0.08, 0.4, 0.1))
   .gain(0.3)
   .out()
 ```
 
-Here `s.pitch.saw()` chains an oscillator off the pitch tap without re-setting its default input, so pitch flows in cleanly. The envelope is taken from `s.gate` as a separate tap and multiplied in.
+Here `s.saw()` chains an oscillator off the seq's default output without re-setting its default input, so pitch flows in cleanly. The envelope is taken from `s.gate` as a separate tap and multiplied in.
 
 ---
 
@@ -117,10 +119,10 @@ Only `bright.gain(0.3).out()` produces sound. `base` is untouched and the dead `
 
 ## 5. The ambient clock
 
-`clock(120)` at the top of a patch sets the ambient tempo in BPM. Every `seq` and every beat-domain consumer uses it with no explicit wiring. The first `clock()` wins as the ambient clock; you can pass an explicit clock to a particular `seq` to override it locally.
+`tempo(120)` sets the ambient tempo in BPM. Every `seq` and every beat-domain consumer uses it with no explicit wiring. One pattern cycle is one bar of four beats. `tempo()` is a setting: it may appear once per patch. To give one `seq` another position, pass it as the second argument, for example `seq("c3 e3", clock(90))`.
 
 ```js
-clock(110)
+tempo(110)
 seq("c3 e3 g3")
   .tri()
   .mul(seq("c3 e3 g3").gate.adsr(0.005, 0.1, 0.5, 0.15))
@@ -167,7 +169,7 @@ Statics: `P.stack`, `P.cat`, `P.fastcat`.
 A `` p`...` `` template interpolates P values, numbers, and arrays: `` p`${hook} ${hook.rev()}` ``.
 
 ```js
-clock(110)
+tempo(110)
 const hook = p`c3 [e3 g3] a3 ~`
 seq(hook.rev().every(2, (q) => q.add(7)))
   .tri()
@@ -193,18 +195,18 @@ That is the recommended shape.
 
 ## 7. seq, gate, and trig
 
-`seq(pattern)` is a node. It exposes three taps:
+`seq(pattern)` is a node. It has three outputs:
 
-- `.pitch` — the default output. MIDI semitones, sample-and-held, holds the last value through rests.
+- `out` — the default output: the value itself. MIDI semitones, sample-and-held, holds the last value through rests. Use the seq directly; `out` is not a tap name.
 - `.gate` — `1` while an event sounds, minus a fixed pre-release gap of about 1 ms (unless the event is tied).
 - `.trig` — a single-sample pulse at each non-tied onset.
 
-Chaining `seq(...)` directly chains from pitch: `seq(...).tri()` reads `.pitch`.
+Chaining `seq(...)` directly chains from the value: `seq(...).tri()` plays its pitch.
 
 Drums are driven by `.trig`:
 
 ```js
-clock(120)
+tempo(120)
 seq(p`60(3,8)`).trig.kick().gain(0.9).out()
 seq("~ 60 ~ 60").trig.snare().gain(0.7).out()
 seq("60*8").trig.hihat({ decay: 0.04 }).gain(0.4).out()
@@ -219,7 +221,7 @@ Each drum module takes a trigger at its default input and fires on the pulse.
 A `{a,b,c}` stack widens the seq into one packed lane per voice. Chaining forwards per-lane — each lane becomes its own synth voice — and `out` mixes the lanes with `1/√n` scaling to keep level sane. Width is static: it is fixed at compile time.
 
 ```js
-clock(90)
+tempo(90)
 const pad = seq("{c3,e3,g3}")
 pad.tri()
   .lpf({ cutoff: 89, res: 0.2 })
@@ -249,10 +251,10 @@ Setting a port replaces its value. To add modulation on top of a value, use `.mo
 
 ### Pattern-as-signal
 
-A `` p`...` `` handed to any knob lifts automatically. It is queried at the ambient clock's phase and sample-and-held, so a pattern can drive pitch directly with no `seq`:
+A `` p`...` `` handed to any knob lifts automatically into a `seq`. It is read at the ambient clock's position and sample-and-held, so a pattern can drive pitch directly:
 
 ```js
-clock(100)
+tempo(100)
 tri(p`48 55 60 63`)
   .lpf({ cutoff: 86, res: 0.2 })
   .mul(lfo(0.5, 0.2, 0.5))
@@ -265,7 +267,7 @@ tri(p`48 55 60 63`)
 A lifted pattern steps discontinuously. Driving a filter cutoff with raw steps clicks. Wrap the pattern in `slew({ in: ..., rise, fall })` with tiny rise/fall to glide the steps:
 
 ```js
-clock(100)
+tempo(100)
 const s = seq("c2 c2 c2 c2")
 const cutoff = slew({ in: p`67 79 [91 62] <55 103>`, rise: 5e-6, fall: 5e-6 })
 s.saw()
@@ -312,7 +314,7 @@ The dry signal plus a delayed, attenuated copy of the loop's own output forms th
 There is no automatic stereo spread. A mono `x.out()` auto-centers. For placement, `pan` produces `l` and `r` outputs; patch both into the master's `l`/`r` jacks:
 
 ```js
-clock(120)
+tempo(120)
 const s = seq("c3 e3 g3 e3")
 s.tri()
   .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.15))
@@ -326,16 +328,16 @@ A bare `.out()` off a stereo source (such as `pan`) is a loud error — it would
 
 ---
 
-## 12. patstep (trigger domain)
+## 12. counter (stepping by trigger)
 
-`patstep(pattern, trigSignal)` advances through the pattern's onset values on each rising trigger edge, ignoring durations. This is analog step-sequencer behavior: one step per trigger, nothing to do with the pattern's own timing. Any trigger works — a seq's `.trig`, or a comparator on an LFO.
+`seq` reads a pattern at any position, not only the clock's. `counter(trig)` counts triggers into a position, one cycle per trigger. So `counter(trig).seq("<a b c>")` steps to the next value on each trigger. This is analog step-sequencer behavior: one step per trigger, nothing to do with the pattern's own timing. Any trigger works — a seq's `.trig`, or a comparator on an LFO. The first trigger holds step 0. `reset` returns the count to the start; `length` wraps it.
 
 ```js
-clock(110)
+tempo(110)
 const s = seq("c2(4,8)")
 s.tri()
   .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
-  .mul(patstep(p`0.3 0.1 0.25 0.15`, s.trig))
+  .mul(counter(s.trig).seq("<0.3 0.1 0.25 0.15>"))
   .gain(0.9)
   .out()
 ```
@@ -357,6 +359,6 @@ The language never silently no-ops. At eval time it throws — naming what was a
 ### Common footguns
 
 - **`sin(0)` sets PITCH to 0** (≈8.18 Hz), not silence — pitch is the positional default. For a default A4 use `sin()`; for an exact Hz value use `sin(hz(...))`.
-- **Forgetting `clock(...)`** leaves seqs unclocked.
+- **Forgetting `tempo(...)`** leaves seqs without a clock.
 - **`.mod` is modulation**, not modulo: `.mod(port, signal, depth)` adds `signal × depth` to a port. Modulo is `wrap`. And `factory()` is the module-lookup helper, not a musical term.
 - **A pattern into a filter cutoff clicks** without a `slew` — see the slew-declick idiom.

@@ -1,7 +1,7 @@
 /**
  * Turn patch source text into a compiled Program. The source is the BODY of a
  * function whose parameters are the core3 user scope (module factories +
- * reserved builders), run inside `runEval` so `out()`/`clock()` see a live
+ * reserved builders), run inside `runEval` so `out()`/`tempo()` see a live
  * context; `compile` then walks the collected roots.
  *
  * The scope is `buildUserScope()` — generated from the module registry (which

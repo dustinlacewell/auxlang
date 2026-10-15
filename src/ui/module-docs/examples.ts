@@ -207,10 +207,9 @@ sin(hz(220.5)).gain(0.2).out()`,
 		title: "fm — showcase",
 		description:
 			"A plucky FM bell sequence, index driven by each note's envelope so the brightness snaps down with the pluck.",
-		code: `clock(90)
+		code: `tempo(90)
 const s = seq("c4 e4 g4 c5")
-s.pitch
-  .fm({ index: s.gate.ad(0.005, 0.3).mul(5), ratio: 1.5 })
+s.fm({ index: s.gate.ad(0.005, 0.3).mul(5), ratio: 1.5 })
   .gain(s.gate.ad(0.005, 0.3))
   .out()`,
 	},
@@ -263,7 +262,7 @@ s.pitch
 		title: "lpf — additive .mod (showcase)",
 		description:
 			"Cutoff base 60, plus a slow LFO ±12 semitones, plus an envelope adding up to 36 on each note — a wobbling filter that also blips open on every hit.",
-		code: `clock(120)
+		code: `tempo(120)
 const s = seq("c2 c2 eb2 g1")
 s.saw()
   .lpf({ cutoff: 60, res: 0.4 })
@@ -342,9 +341,9 @@ s.saw()
 		title: "ad — default",
 		description:
 			"A tone pinged by an attack-decay envelope on every clock beat — a short pluck, silent between hits.",
-		code: `const c = clock(120)
+		code: `const c = tempo(120)
 tri(57)
-  .mul(c.gate.ad())
+  .mul(c.beat.ad())
   .gain(0.35)
   .out()`,
 	},
@@ -353,9 +352,9 @@ tri(57)
 		title: "ad — all params",
 		description:
 			"Slow 50 ms attack, long 400 ms decay — each beat swells in and rings out, more bell than pluck.",
-		code: `const c = clock(120)
+		code: `const c = tempo(120)
 tri(57)
-  .mul(c.gate.ad(0.05, 0.4))
+  .mul(c.beat.ad(0.05, 0.4))
   .gain(0.35)
   .out()`,
 	},
@@ -364,9 +363,9 @@ tri(57)
 		title: "ad — decay modulated",
 		description:
 			"An LFO stretches the decay 0.05→0.6 s over time — plucks that grow longer and shorter as it breathes.",
-		code: `const c = clock(120)
+		code: `const c = tempo(120)
 tri(57)
-  .mul(c.gate.ad(0.005, lfo(0.2, 0.05, 0.6)))
+  .mul(c.beat.ad(0.005, lfo(0.2, 0.05, 0.6)))
   .gain(0.35)
   .out()`,
 	},
@@ -374,10 +373,9 @@ tri(57)
 		section: "Envelopes",
 		title: "ar — default",
 		description:
-			"An attack-release envelope tracks the clock gate — the tone holds while the gate is high, then releases.",
-		code: `const c = clock(120)
-tri(57)
-  .mul(c.gate.ar())
+			"An attack-release envelope tracks a square gate (an LFO through gt) — the tone holds while the gate is high, then releases.",
+		code: `tri(57)
+  .mul(lfo(2).gt(0).ar())
   .gain(0.35)
   .out()`,
 	},
@@ -386,9 +384,8 @@ tri(57)
 		title: "ar — all params",
 		description:
 			"Soft 80 ms attack, long 300 ms release — each gated note fades in and trails off, a pad-like swell.",
-		code: `const c = clock(90)
-tri(57)
-  .mul(c.gate.ar(0.08, 0.3))
+		code: `tri(57)
+  .mul(lfo(1.5).gt(0).ar(0.08, 0.3))
   .gain(0.35)
   .out()`,
 	},
@@ -397,9 +394,8 @@ tri(57)
 		title: "ar — release modulated",
 		description:
 			"An LFO drags the release 0.05→0.6 s — the tail on each note grows and shrinks as the sweep moves.",
-		code: `const c = clock(120)
-tri(57)
-  .mul(c.gate.ar(0.01, lfo(0.2, 0.05, 0.6)))
+		code: `tri(57)
+  .mul(lfo(2).gt(0).ar(0.01, lfo(0.2, 0.05, 0.6)))
   .gain(0.35)
   .out()`,
 	},
@@ -407,10 +403,9 @@ tri(57)
 		section: "Envelopes",
 		title: "adsr — default",
 		description:
-			"The full envelope on each clock beat — attack, decay to a held sustain, then release. A rounded organ-ish note.",
-		code: `const c = clock(90)
-tri(57)
-  .mul(c.gate.adsr())
+			"The full envelope on each pulse of a square gate — attack, decay to a held sustain, then release. A rounded organ-ish note.",
+		code: `tri(57)
+  .mul(lfo(1.5).gt(0).adsr())
   .gain(0.35)
   .out()`,
 	},
@@ -419,9 +414,8 @@ tri(57)
 		title: "adsr — all params",
 		description:
 			"Every stage set: snappy attack, quick decay to a low 0.3 sustain, long release — a plucky note with a tail.",
-		code: `const c = clock(90)
-tri(57)
-  .mul(c.gate.adsr(0.01, 0.12, 0.3, 0.35))
+		code: `tri(57)
+  .mul(lfo(1.5).gt(0).adsr(0.01, 0.12, 0.3, 0.35))
   .gain(0.35)
   .out()`,
 	},
@@ -430,9 +424,8 @@ tri(57)
 		title: "adsr — sustain modulated",
 		description:
 			"An LFO moves the sustain level 0.1→0.9 — the held middle of each note rises and falls between beats.",
-		code: `const c = clock(90)
-tri(57)
-  .mul(c.gate.adsr(0.01, 0.1, lfo(0.2, 0.1, 0.9), 0.2))
+		code: `tri(57)
+  .mul(lfo(1.5).gt(0).adsr(0.01, 0.1, lfo(0.2, 0.1, 0.9), 0.2))
   .gain(0.35)
   .out()`,
 	},
@@ -441,9 +434,8 @@ tri(57)
 		title: "adsr — attack modulated",
 		description:
 			"An LFO stretches the attack 0.002→0.3 s — notes shift from sharp plucks to slow swells and back.",
-		code: `const c = clock(90)
-tri(57)
-  .mul(c.gate.adsr(lfo(0.2, 0.002, 0.3), 0.1, 0.5, 0.2))
+		code: `tri(57)
+  .mul(lfo(1.5).gt(0).adsr(lfo(0.2, 0.002, 0.3), 0.1, 0.5, 0.2))
   .gain(0.35)
   .out()`,
 	},
@@ -452,7 +444,7 @@ tri(57)
 		title: "adsr — showcase",
 		description:
 			"A sequenced bass, each note shaped by a plucky ADSR and rounded by a lowpass — a bouncing, musical line.",
-		code: `clock(120)
+		code: `tempo(120)
 const s = seq("c2 g2 c3 eb2 g2 c3 f2 g2")
 s.tri()
   .lpf(86, 0.3)
@@ -469,9 +461,9 @@ s.tri()
 		title: "delay — default",
 		description:
 			"A plucked tone through the default 0.25 s delay — one clear echo trailing each note at 50% wet.",
-		code: `const c = clock(90)
+		code: `const c = tempo(90)
 sin(69)
-  .mul(c.gate.ad(0.005, 0.1))
+  .mul(c.beat.ad(0.005, 0.1))
   .delay()
   .gain(1)
   .out()`,
@@ -481,9 +473,9 @@ sin(69)
 		title: "delay — all params",
 		description:
 			"Short 150 ms time, high 0.6 feedback, 0.4 mix — plucks smear into a repeating, decaying trail.",
-		code: `const c = clock(90)
+		code: `const c = tempo(90)
 sin(69)
-  .mul(c.gate.ad(0.005, 0.08))
+  .mul(c.beat.ad(0.005, 0.08))
   .delay({ time: 0.15, feedback: 0.6, mix: 0.4 })
   .gain(1)
   .out()`,
@@ -493,9 +485,9 @@ sin(69)
 		title: "delay — time modulated",
 		description:
 			"An LFO slides the delay time 0.05→0.4 s — the echo spacing stretches and squeezes, a tape-warble pitch bend.",
-		code: `const c = clock(90)
+		code: `const c = tempo(90)
 tri(hz(330))
-  .mul(c.gate.ad(0.005, 0.1))
+  .mul(c.beat.ad(0.005, 0.1))
   .delay(lfo(0.2, 0.05, 0.4), 0.5, 0.4)
   .gain(1)
   .out()`,
@@ -505,9 +497,9 @@ tri(hz(330))
 		title: "delay — feedback modulated",
 		description:
 			"An LFO opens feedback 0.1→0.85 — the echo tail lengthens from a single slap to a long repeating wash.",
-		code: `const c = clock(90)
+		code: `const c = tempo(90)
 tri(hz(330))
-  .mul(c.gate.ad(0.005, 0.1))
+  .mul(c.beat.ad(0.005, 0.1))
   .delay(0.2, lfo(0.2, 0.1, 0.85), 0.4)
   .gain(1)
   .out()`,
@@ -517,9 +509,9 @@ tri(hz(330))
 		title: "delay — mix modulated",
 		description:
 			"An LFO crossfades mix 0→0.8 — the effect fades between dry plucks and drowning echoes.",
-		code: `const c = clock(90)
+		code: `const c = tempo(90)
 tri(hz(330))
-  .mul(c.gate.ad(0.005, 0.1))
+  .mul(c.beat.ad(0.005, 0.1))
   .delay(0.18, 0.5, lfo(0.2, 0, 0.8))
   .gain(1)
   .out()`,
@@ -529,9 +521,9 @@ tri(hz(330))
 		title: "reverb — default",
 		description:
 			"A plucked tone into the default reverb (room 0.5, mix 0.33) — a short, natural room tail behind each note.",
-		code: `const c = clock(70)
+		code: `const c = tempo(70)
 sin(69)
-  .mul(c.gate.ad(0.005, 0.08))
+  .mul(c.beat.ad(0.005, 0.08))
   .reverb()
   .gain(0.7)
   .out()`,
@@ -541,9 +533,9 @@ sin(69)
 		title: "reverb — all params",
 		description:
 			"Every port: a big 0.9 room, dark 0.7 damp, fully wet — the pluck dissolves into a long, dim cathedral wash.",
-		code: `const c = clock(70)
+		code: `const c = tempo(70)
 sin(69)
-  .mul(c.gate.ad(0.005, 0.08))
+  .mul(c.beat.ad(0.005, 0.08))
   .reverb({ room: 0.9, damp: 0.7, mix: 1 })
   .gain(0.6)
   .out()`,
@@ -553,9 +545,9 @@ sin(69)
 		title: "reverb — room modulated",
 		description:
 			"An LFO sweeps room 0.2→0.95 — the tail grows from a tight closet slap to a huge decaying hall.",
-		code: `const c = clock(70)
+		code: `const c = tempo(70)
 sin(69)
-  .mul(c.gate.ad(0.005, 0.08))
+  .mul(c.beat.ad(0.005, 0.08))
   .reverb(lfo(0.15, 0.2, 0.95), 0.5, 0.7)
   .gain(0.6)
   .out()`,
@@ -565,9 +557,9 @@ sin(69)
 		title: "reverb — damp modulated",
 		description:
 			"An LFO opens damp 0→0.9 — the tail's top end darkens and brightens, from a bright glassy ring to a muffled thud.",
-		code: `const c = clock(70)
+		code: `const c = tempo(70)
 sin(69)
-  .mul(c.gate.ad(0.005, 0.08))
+  .mul(c.beat.ad(0.005, 0.08))
   .reverb(0.8, lfo(0.15, 0, 0.9), 0.7)
   .gain(0.6)
   .out()`,
@@ -577,9 +569,9 @@ sin(69)
 		title: "reverb — mix modulated (showcase)",
 		description:
 			"An LFO crossfades mix 0→1 over a sparse pattern — plucks swing between bone-dry and fully drowned in tail.",
-		code: `const c = clock(70)
+		code: `const c = tempo(70)
 sin(69)
-  .mul(c.gate.ad(0.005, 0.08))
+  .mul(c.beat.ad(0.005, 0.08))
   .reverb(0.85, 0.4, lfo(0.1, 0, 1))
   .gain(0.6)
   .out()`,
@@ -737,9 +729,8 @@ sin(69)
 		title: "vca — the canonical patch",
 		description:
 			"Same module as mul and gain, named for the patch: audio in, envelope on the other input. Every note in these docs is this.",
-		code: `const c = clock(120)
-sin(hz(330))
-  .vca(c.gate.adsr(0.01, 0.1, 0.6, 0.15))
+		code: `sin(hz(330))
+  .vca(lfo(2).gt(0).adsr(0.01, 0.1, 0.6, 0.15))
   .gain(0.4)
   .out()`,
 	},
@@ -748,12 +739,12 @@ sin(hz(330))
 		title: "vca — sidechain duck (showcase)",
 		description:
 			"The kick's envelope inverted (1 − env) drives the saw's vca — it ducks on every hit. The pump.",
-		code: `const c = clock(120)
-c.trig.kick().gain(0.7).out()
+		code: `const c = tempo(120)
+c.beat.kick().gain(0.7).out()
 saw(57)
   .lpf(89, 0.2)
   .gain(0.25)
-  .vca(c.trig.ad(0.005, 0.3).sub(1))
+  .vca(c.beat.ad(0.005, 0.3).sub(1))
   .out()`,
 	},
 	{
@@ -761,9 +752,9 @@ saw(57)
 		title: "slew — default",
 		description:
 			"A stepped LFO (sample-and-held) fed through slew — the jumps are rounded into glides. Portamento on pitch.",
-		code: `const c = clock(240)
+		code: `const c = tempo(240)
 sin()
-  .pitch(lfo(0.4, 40, 70).sah(c.trig).slew(0.08, 0.08))
+  .pitch(lfo(0.4, 40, 70).sah(c.beat).slew(0.08, 0.08))
   .gain(0.3)
   .out()`,
 	},
@@ -772,10 +763,10 @@ sin()
 		title: "slew — rate modulated",
 		description:
 			"The same stepped pitch, but an LFO stretches the glide time 0.01→0.3 s — slides from instant jumps to lazy swoops.",
-		code: `const c = clock(240)
+		code: `const c = tempo(240)
 const g = lfo(0.2, 0.01, 0.3)
 sin()
-  .pitch(lfo(0.4, 40, 70).sah(c.trig).slew(g, g))
+  .pitch(lfo(0.4, 40, 70).sah(c.beat).slew(g, g))
   .gain(0.3)
   .out()`,
 	},
@@ -784,9 +775,9 @@ sin()
 		title: "sah — default",
 		description:
 			"White noise sampled and held on each clock trig — a staircase of random pitches, a classic random-note generator.",
-		code: `const c = clock(300)
+		code: `const c = tempo(300)
 sin()
-  .pitch(noise().scale({ min: 40, max: 76 }).sah(c.trig))
+  .pitch(noise().scale({ min: 40, max: 76 }).sah(c.beat))
   .gain(0.3)
   .out()`,
 	},
@@ -795,11 +786,11 @@ sin()
 		title: "sah — showcase (random arp)",
 		description:
 			"Sampled noise quantized to a pentatonic scale on every trig — a tuneful random melody instead of atonal jumps.",
-		code: `const c = clock(360)
-const notes = noise().scale({ min: 48, max: 84 }).sah(c.trig)
+		code: `const c = tempo(360)
+const notes = noise().scale({ min: 48, max: 84 }).sah(c.beat)
 sin()
   .pitch(notes.quantize({ scaleName: "minor pentatonic", root: 0, octave: 4, range: 3 }))
-  .mul(c.gate.ad(0.005, 0.12))
+  .mul(c.beat.ad(0.005, 0.12))
   .gain(0.4)
   .out()`,
 	},
@@ -827,10 +818,10 @@ sin()
 		title: "quantize — default",
 		description:
 			"A smooth LFO pitch snapped to the major scale — the continuous glide becomes a staircase of in-key notes.",
-		code: `const c = clock(240)
+		code: `const c = tempo(240)
 sin()
   .pitch(lfo(0.3, 48, 72).quantize({ scaleName: "major", root: 0, octave: 4, range: 2 }))
-  .mul(c.gate.ad(0.005, 0.12))
+  .mul(c.beat.ad(0.005, 0.12))
   .gain(0.5)
   .out()`,
 	},
@@ -839,10 +830,10 @@ sin()
 		title: "quantize — scale modulated (showcase)",
 		description:
 			"An LFO-swept pitch snapped to a blues scale, root walking with another LFO — a wandering but always in-key line.",
-		code: `const c = clock(300)
+		code: `const c = tempo(300)
 sin()
   .pitch(lfo(0.2, 40, 76).quantize({ scaleName: "pentatonic blues", root: lfo(0.07, 0, 11), octave: 4, range: 3 }))
-  .mul(c.gate.ad(0.004, 0.1))
+  .mul(c.beat.ad(0.004, 0.1))
   .gain(0.5)
   .out()`,
 	},
@@ -851,7 +842,7 @@ sin()
 		title: "mix — poly lanes to mono",
 		description:
 			"A stacked chord {c,e,g} is three poly lanes; mix sums them to one lane with 1/√3 scaling — the chord, folded down without clipping.",
-		code: `clock(90)
+		code: `tempo(90)
 const s = seq("{c3,e3,g3}")
 s.tri()
   .mix()
@@ -863,7 +854,7 @@ s.tri()
 		title: "mix — showcase (chord to filter)",
 		description:
 			"A five-note stack mixed to mono, then a resonant lowpass sweep — mix is the summing point that lets one filter shape a whole chord.",
-		code: `clock(80)
+		code: `tempo(80)
 const s = seq("{c3,e3,g3,b3,d4}")
 s.tri()
   .mix()
@@ -897,9 +888,9 @@ n.z1().sub(n)
 		title: "period — tuned delay (showcase)",
 		description:
 			"A short noise burst excites a delay tuned to C3 (period(48)) with heavy feedback — Karplus-Strong: the loop rings at the pitch instead of echoing as separate repeats.",
-		code: `const c = clock(100)
+		code: `const c = tempo(100)
 noise()
-  .mul(c.trig.ad(0.001, 0.02))
+  .mul(c.beat.ad(0.001, 0.02))
   .delay({ time: period(48), feedback: 0.95, mix: 1 })
   .gain(0.5)
   .out()`,
@@ -909,9 +900,9 @@ noise()
 		title: "period — pitch modulated",
 		description:
 			"The same plucked string, but an LFO walks the tuning 48→60 semitones (C3→C4) — the ringing pitch glides up and down between hits.",
-		code: `const c = clock(100)
+		code: `const c = tempo(100)
 noise()
-  .mul(c.trig.ad(0.001, 0.02))
+  .mul(c.beat.ad(0.001, 0.02))
   .delay({ time: period(lfo(0.2, 48, 60)), feedback: 0.95, mix: 1 })
   .gain(0.5)
   .out()`,
@@ -930,7 +921,7 @@ noise()
 		title: "out — poly auto-spread (showcase)",
 		description:
 			"Poly lanes fan across the stereo field at constant power — a four-voice chord gets width with no pan in sight.",
-		code: `clock(90)
+		code: `tempo(90)
 const s = seq("{c2,g2,e3,b3}")
 s.tri()
   .mul(s.gate.adsr(0.02, 0.1, 0.6, 0.2))
@@ -973,10 +964,9 @@ s.tri()
 	{
 		section: "Math",
 		title: "sub — inverted gate (off-beats)",
-		description: "1 − gate flips a gate: the note sounds where the clock is silent — the off-beats.",
-		code: `const c = clock(120)
-tri(57)
-  .mul(c.gate.sub(1).ar(0.01, 0.08))
+		description: "1 − gate flips a gate: the note sounds where the square gate is low — the off-beats.",
+		code: `tri(57)
+  .mul(lfo(2).gt(0).sub(1).ar(0.01, 0.08))
   .gain(0.35)
   .out()`,
 	},
@@ -1032,9 +1022,9 @@ saw(hz(f.div(2))).gain(0.18).out()`,
 		title: "lt — coin flip per beat (showcase)",
 		description:
 			"Sampled noise below zero opens the gate — a seeded coin flip per beat, a random rhythm that repeats every run.",
-		code: `const c = clock(240)
+		code: `const c = tempo(240)
 tri(hz(330))
-  .mul(noise().sah(c.trig).lt(0).ar(0.01, 0.1))
+  .mul(noise().sah(c.beat).lt(0).ar(0.01, 0.1))
   .gain(0.35)
   .out()`,
 	},
@@ -1043,7 +1033,7 @@ tri(hz(330))
 		title: "eq — select a step",
 		description:
 			"eq gates while two signals match: a step pattern against 2 — one pluck on that step, each cycle.",
-		code: `clock(120)
+		code: `tempo(120)
 sin(hz(330))
   .mul(eq({ in: p\`0 1 2 3\`, than: 2 }).ad(0.005, 0.2))
   .gain(0.4)
@@ -1054,7 +1044,7 @@ sin(hz(330))
 		title: "eq — one row, three voices (showcase)",
 		description:
 			"A single number row demultiplexed by three comparators — each digit is an instrument. A whole kit from one pattern.",
-		code: `clock(120)
+		code: `tempo(120)
 const row = p\`0 2 1 2 0 2 1 2\`
 eq({ in: row, than: 0 }).kick().gain(0.7).out()
 eq({ in: row, than: 1 }).snare().gain(0.5).out()
@@ -1125,29 +1115,27 @@ sin(hz(150))
 	},
 
 	// ======================================================================
-	// Timing — clock, seq
+	// Timing — clock, seq, counter
 	// ======================================================================
 	{
 		section: "Timing",
-		title: "clock — gate",
+		title: "clock — default",
 		description:
-			"The clock's gate is high for the first half of every beat — here it chops a tone into steady on/off pulses.",
-		code: `const c = clock(120)
+			"A clock at the default 120 bpm. Its beat output is a single-sample trig each beat — here it fires an AD envelope, a clean pluck twice a second.",
+		code: `const c = clock()
 sin(hz(330))
-  .mul(c.gate)
-  .gain(0.3)
+  .mul(c.beat.ad(0.005, 0.12))
+  .gain(0.35)
   .out()`,
 	},
 	{
 		section: "Timing",
-		title: "clock — trig envelope",
+		title: "clock — all params",
 		description:
-			"The clock's trig is a single-sample spike each beat — it fires an AD envelope, turning the pulse into a clean pluck.",
-		code: `const c = clock(120)
-sin(hz(330))
-  .mul(c.trig.ad(0.005, 0.12))
-  .gain(0.35)
-  .out()`,
+			"90 bpm, three beats per bar — a high pluck on every beat and a low one on each downbeat (the bar trig). A waltz pulse.",
+		code: `const c = clock({ bpm: 90, beatsPerBar: 3 })
+sin(hz(660)).mul(c.beat.ad(0.005, 0.08)).gain(0.25).out()
+tri(45).mul(c.bar.ad(0.005, 0.3)).gain(0.4).out()`,
 	},
 	{
 		section: "Timing",
@@ -1156,16 +1144,27 @@ sin(hz(330))
 			"An LFO drags the tempo 60→240 bpm — the pluck pattern accelerates and slows, a rubato pulse.",
 		code: `const c = clock(lfo(0.15, 60, 240))
 tri(57)
-  .mul(c.trig.ad(0.005, 0.1))
+  .mul(c.beat.ad(0.005, 0.1))
   .gain(0.35)
   .out()`,
 	},
 	{
 		section: "Timing",
+		title: "clock — a second tempo",
+		description:
+			"A clock's default output is its position in bars. Hand it to seq and that seq runs at its own tempo — four notes a bar at 120 against three a bar at 90.",
+		code: `tempo(120)
+const a = seq("c3 e3 g3 e3")
+a.tri().mul(a.gate.ad(0.005, 0.2)).gain(0.25).out()
+const b = seq("c5 g4 e4", clock(90))
+b.sin().mul(b.gate.ad(0.005, 0.2)).gain(0.25).out()`,
+	},
+	{
+		section: "Timing",
 		title: "seq — a melody",
 		description:
-			"seq turns a mini-notation string into pitch/gate/trig, clocked by the ambient clock. Here a four-note tune, once per cycle.",
-		code: `clock(120)
+			"seq reads a pattern at a position and outputs its value, gate and trig. With no position it reads the ambient clock, one cycle per bar. Here a four-note tune, one note per beat.",
+		code: `tempo(120)
 const s = seq("c3 e3 g3 e3")
 s.tri()
   .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.15))
@@ -1174,10 +1173,10 @@ s.tri()
 	},
 	{
 		section: "Timing",
-		title: "seq — gate and pitch",
+		title: "seq — gate and value",
 		description:
-			"The same sequence, filtered and enveloped — seq.gate shapes each note while seq.pitch (the default) drives the oscillator.",
-		code: `clock(110)
+			"A bass line, filtered and enveloped — s.gate shapes each note while the seq itself (its default output, the value) drives the oscillator.",
+		code: `tempo(110)
 const s = seq("c2 g2 c3 g2 eb2 g2 c3 d3")
 s.tri()
   .lpf(81, 0.2)
@@ -1190,7 +1189,7 @@ s.tri()
 		title: "seq — pattern language",
 		description:
 			"The mini-notation is a whole language of its own — rests, groups, chords, euclids and more. See the patterns page (patterns.html) for the full tour; here a taste with a rest and a subdivided beat.",
-		code: `clock(120)
+		code: `tempo(120)
 const s = seq("c3 [e3 g3] ~ c4")
 s.tri()
   .mul(s.gate.adsr(0.005, 0.08, 0.4, 0.1))
@@ -1206,8 +1205,8 @@ s.tri()
 		title: "kick — default",
 		description:
 			"An 808-style kick fired on each clock beat — a pitched sine thump with a click transient. The trig chains in as the default input.",
-		code: `const c = clock(120)
-c.trig.kick()
+		code: `const c = tempo(120)
+c.beat.kick()
   .gain(0.6)
   .out()`,
 	},
@@ -1216,8 +1215,8 @@ c.trig.kick()
 		title: "kick — all params",
 		description:
 			"Every port: higher 60 Hz body, big pitch sweep, longer 0.4 s decay, softer click — a boomier, rounder kick.",
-		code: `const c = clock(120)
-kick({ trig: c.trig, pitch: 60, sweep: 6, decay: 0.4, click: 0.15 })
+		code: `const c = tempo(120)
+kick({ trig: c.beat, pitch: 60, sweep: 6, decay: 0.4, click: 0.15 })
   .gain(0.6)
   .out()`,
 	},
@@ -1226,8 +1225,8 @@ kick({ trig: c.trig, pitch: 60, sweep: 6, decay: 0.4, click: 0.15 })
 		title: "kick — pitch modulated",
 		description:
 			"An LFO walks the kick's base pitch 40→90 Hz — the thump rises and falls in tuning between hits.",
-		code: `const c = clock(120)
-c.trig.kick()
+		code: `const c = tempo(120)
+c.beat.kick()
   .pitch(lfo(0.2, 40, 90))
   .gain(0.6)
   .out()`,
@@ -1237,8 +1236,8 @@ c.trig.kick()
 		title: "snare — default",
 		description:
 			"A snare on each beat — a short tonal body plus a burst of filtered noise for the wires. Crisp and snappy.",
-		code: `const c = clock(120)
-c.trig.snare()
+		code: `const c = tempo(120)
+c.beat.snare()
   .gain(2)
   .out()`,
 	},
@@ -1247,8 +1246,8 @@ c.trig.snare()
 		title: "snare — all params",
 		description:
 			"Every port: lower tone (more noise than body), longer decay, full snappy — a fatter, hissier snare.",
-		code: `const c = clock(120)
-snare({ trig: c.trig, pitch: 180, tone: 0.25, decay: 0.25, snappy: 1 })
+		code: `const c = tempo(120)
+snare({ trig: c.beat, pitch: 180, tone: 0.25, decay: 0.25, snappy: 1 })
   .gain(1.5)
   .out()`,
 	},
@@ -1257,8 +1256,8 @@ snare({ trig: c.trig, pitch: 180, tone: 0.25, decay: 0.25, snappy: 1 })
 		title: "snare — snappy modulated",
 		description:
 			"An LFO opens the snappy control 0→1 — the noise wires brighten and dull, from a tight tick to a splashy crack.",
-		code: `const c = clock(120)
-c.trig.snare()
+		code: `const c = tempo(120)
+c.beat.snare()
   .snappy(lfo(0.2, 0, 1))
   .gain(2)
   .out()`,
@@ -1268,8 +1267,8 @@ c.trig.snare()
 		title: "hihat — default",
 		description:
 			"A steady stream of hi-hats — metallic square partials plus noise, high-passed to a bright tick. Short and shimmery.",
-		code: `clock(240)
-seq("c1*4").trig.hihat()
+		code: `tempo(240)
+seq("c1*16").trig.hihat()
   .gain(4.5)
   .out()`,
 	},
@@ -1278,8 +1277,8 @@ seq("c1*4").trig.hihat()
 		title: "hihat — all params",
 		description:
 			"Every port: longer 0.12 s decay (an open hat), brighter tone, full metal — a sustained, ringing shimmer.",
-		code: `clock(240)
-const t = seq("c1*8").trig
+		code: `tempo(240)
+const t = seq("c1*32").trig
 hihat({ trig: t, decay: 0.12, tone: 0.9, metal: 1 })
   .gain(7)
   .out()`,
@@ -1289,8 +1288,8 @@ hihat({ trig: t, decay: 0.12, tone: 0.9, metal: 1 })
 		title: "hihat — decay modulated",
 		description:
 			"An LFO stretches the decay 0.02→0.2 s — the hat breathes between a closed tick and an open, ringing splash.",
-		code: `clock(240)
-seq("c1*4").trig.hihat()
+		code: `tempo(240)
+seq("c1*16").trig.hihat()
   .decay(lfo(0.2, 0.02, 0.2))
   .gain(3.5)
   .out()`,
@@ -1300,8 +1299,8 @@ seq("c1*4").trig.hihat()
 		title: "clap — default",
 		description:
 			"A hand clap on each beat — four quick noise bursts and a decay tail through a bandpass. That reverby snap.",
-		code: `const c = clock(120)
-c.trig.clap()
+		code: `const c = tempo(120)
+c.beat.clap()
   .gain(1.3)
   .out()`,
 	},
@@ -1310,8 +1309,8 @@ c.trig.clap()
 		title: "clap — all params",
 		description:
 			"Every port: longer 0.35 s decay and brighter tone — a wetter, more open clap with a longer tail.",
-		code: `const c = clock(120)
-clap({ trig: c.trig, decay: 0.35, tone: 0.8 })
+		code: `const c = tempo(120)
+clap({ trig: c.beat, decay: 0.35, tone: 0.8 })
   .gain(0.9)
   .out()`,
 	},
@@ -1320,21 +1319,21 @@ clap({ trig: c.trig, decay: 0.35, tone: 0.8 })
 		title: "kick — showcase (a backbeat)",
 		description:
 			"Kick four-on-the-floor, snare on 2 and 4, hats on the eighths — three seqs, one voice each; the outputs auto-mix.",
-		code: `clock(120)
+		code: `tempo(120)
 seq("c1 ~ c1 ~ c1 ~ c1 ~").trig.kick().gain(0.7).out()
 seq("~ ~ c1 ~ ~ ~ c1 ~").trig.snare().gain(0.5).out()
 seq("c1*8").trig.hihat().gain(0.3).out()`,
 	},
 
 	// ======================================================================
-	// Bridge — patsig, patstep
+	// Bridge — patterns on knobs, counter
 	// ======================================================================
 	{
 		section: "Bridge",
-		title: "patsig — default",
+		title: "seq — a pattern on a knob",
 		description:
-			"A pattern fed straight into a knob becomes a patsig: queried at the clock's phase, sample-and-held. Four pitches step the oscillator — no seq.",
-		code: `clock(150)
+			"A pattern fed straight into a knob becomes a seq: read at the ambient clock's position, sample-and-held. Four pitches step the oscillator, one per beat.",
+		code: `tempo(150)
 sin()
   .pitch(p\`48 55 60 63\`)
   .gain(0.3)
@@ -1342,10 +1341,10 @@ sin()
 	},
 	{
 		section: "Bridge",
-		title: "patsig — stepped cutoff (showcase)",
+		title: "seq — stepped cutoff (showcase)",
 		description:
-			"The same lifting works on any port: a pattern clicks the cutoff between four values each cycle. slew it to glide.",
-		code: `clock(150)
+			"The same lifting works on any port: a pattern clicks the cutoff between four values each bar. slew it to glide.",
+		code: `tempo(150)
 saw(45)
   .lpf(p\`67 91 79 98\`, 0.3)
   .gain(0.3)
@@ -1353,26 +1352,38 @@ saw(45)
 	},
 	{
 		section: "Bridge",
-		title: "patstep — default",
+		title: "counter — default",
 		description:
-			"One value per trigger, the pattern's own timing ignored — an analog step sequencer clocked by trig.",
-		code: `const c = clock(150)
+			"counter counts trigs into a position, one cycle per trig. A seq reading it steps one value of the alternation per beat — an analog step sequencer.",
+		code: `const c = tempo(150)
 sin()
-  .pitch(patstep(p\`48 55 60 67\`, c.trig))
-  .mul(c.trig.ad(0.005, 0.15))
+  .pitch(counter(c.beat).seq("<48 55 60 67>"))
+  .mul(c.beat.ad(0.005, 0.15))
   .gain(0.35)
   .out()`,
 	},
 	{
 		section: "Bridge",
-		title: "patstep — accents (showcase)",
+		title: "counter — all params",
+		description:
+			"length 3 wraps the count, and the bar trig resets it — each four-beat bar plays 48 55 60 48, then starts again.",
+		code: `const c = tempo(150)
+sin()
+  .pitch(counter(c.beat, { reset: c.bar, length: 3 }).seq("<48 55 60 67>"))
+  .mul(c.beat.ad(0.005, 0.15))
+  .gain(0.35)
+  .out()`,
+	},
+	{
+		section: "Bridge",
+		title: "counter — accents (showcase)",
 		description:
 			"Timing from one pattern, dynamics from another: a euclidean line whose accent levels step forward on each onset.",
-		code: `clock(110)
+		code: `tempo(110)
 const s = seq("c2(4,8)")
 s.tri()
   .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
-  .mul(patstep(p\`0.3 0.1 0.25 0.15\`, s.trig))
+  .mul(counter(s.trig).seq("<0.3 0.1 0.25 0.15>"))
   .gain(0.9)
   .out()`,
 	},

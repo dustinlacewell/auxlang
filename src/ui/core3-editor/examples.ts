@@ -13,12 +13,12 @@ export interface Example {
 	readonly source: string;
 }
 
-/** (a) First sound: clock + seq + saw → filter → envelope. */
+/** (a) First sound: tempo + seq + saw → filter → envelope. */
 const firstSound = `// a first sound: sequence a saw through a filter and envelope
-clock(120)
+tempo(120)
 
 const s = seq("c3 e3 g3 <b2 a2>")
-s.pitch.saw()
+s.saw()
   .lpf({ cutoff: 81, res: 0.3 })
   .mul(s.gate.adsr(0.005, 0.12, 0.5, 0.2))
   .mul(0.35)
@@ -27,12 +27,12 @@ s.pitch.saw()
 
 /** (b) Patterns are values: build a hook, transform it before sequencing. */
 const patternsAsValues = `// patterns are values: transform a hook before it ever sequences
-clock(120)
+tempo(120)
 
 const hook = p\`c3 [e3 g3] a3 ~\`
 const line = seq(hook.rev().every(2, (q) => q.add(7)).off(1 / 8, (q) => q.add(12)))
 
-line.pitch.tri()
+line.tri()
   .lpf({ cutoff: 91, res: 0.2 })
   .mul(line.gate.adsr(0.005, 0.1, 0.4, 0.15))
   .mul(0.3)
@@ -41,11 +41,11 @@ line.pitch.tri()
 
 /** (c) Pattern-as-signal: a pattern patched straight into a filter cutoff. */
 const patternAsSignal = `// a pattern is just a signal: patch it into any knob
-clock(120)
+tempo(120)
 
 const s = seq("c2 c2 c2 c2")
 const cutoff = slew({ in: p\`62 86 [98 74] <67 93>\`, rise: 5e-6, fall: 5e-6 })
-s.pitch.saw()
+s.saw()
   .lpf({ cutoff, res: 0.4 })
   .mul(s.gate.adsr(0.005, 0.15, 0.3, 0.1))
   .mul(0.3)
@@ -54,7 +54,7 @@ s.pitch.saw()
 
 /** (d) loop() feedback: a Karplus-Strong pluck from a noise burst. */
 const karplus = `// loop() feedback: a plucked string is a noise burst in a delay
-clock(96)
+tempo(96)
 
 const s = seq("c3 g3 <c4 e4> g3")
 const exciter = noise().mul(s.gate.ad(0.001, 0.008))
@@ -68,36 +68,36 @@ loop((fb) =>
 
 /** (e) Poly: a stacked chord pattern sequences all lanes at once. */
 const polyChords = `// polyphony: a {stack} widens the sequencer to one lane per voice
-clock(90)
+tempo(90)
 
 const pad = seq("{c3,e3,g3} <{a2,c3,e3} {f2,a2,c3}>")
 const amp = pad.gate.adsr(0.05, 0.1, 1, 0.3).slew(0.015, 0.015)
-pad.pitch.tri()
+pad.tri()
   .lpf({ cutoff: p\`74 <81 89>\`, res: 0.2 })
   .mul(amp)
   .mul(0.3)
   .out()
 `;
 
-/** (f) Drums + patstep: euclidean gates, a hat velocity stepped per trigger. */
-const drums = `// drums: euclidean triggers, hat velocity stepped by patstep
-clock(120)
+/** (f) Drums + counter: euclidean gates, a hat velocity stepped per trigger. */
+const drums = `// drums: a euclidean kick, a backbeat snare, eighth-note hats
+// whose velocity a counter steps one value per hit
+tempo(120)
 
-const c = clock(120)
 seq(p\`60(4,4)\`).trig.kick().mul(0.9).out()
 seq("~ 60 ~ 60").trig.snare().mul(0.7).out()
 seq("60*8").trig.apply((t) =>
-  t.hihat({ decay: 0.04 }).mul(patstep("1 0.5 0.7 0.4", t)).mul(0.5).out(),
+  t.hihat({ decay: 0.04 }).mul(counter(t).seq("<1 0.5 0.7 0.4>")).mul(0.5).out(),
 )
 `;
 
 /** (g) A whole track: dub techno with a 16-bar form, mixed and tuned. */
-const smokeSignal = `// smoke signal — dub techno in F minor, 122 bpm
-clock(122)
+const smokeSignal = `// smoke signal — dub techno in F minor, 122 bpm; one cycle = one bar
+tempo(122)
 
 // ---- kick: four on the floor, tuned to the tonic; bar 16 breaks ----
 // drums fire on trigs; the 60s are just onsets
-const kicks = seq(p\`<[60 60 60 60]!15 [60 ~ ~ ~]>\`.slow(4))
+const kicks = seq(p\`<[60 60 60 60]!15 [60 ~ ~ ~]>\`)
 kicks.trig.kick({ pitch: 43.65, sweep: 5, decay: 0.2, click: 0.05 })
   .mul(0.8)
   .out()
@@ -108,7 +108,7 @@ const bass = seq(p\`<
   [[~ f1] [~ f1] [~ f1] [~ [f1 ab1]]]
   [[~ db1] [~ db1] [~ db1] [~ db1]]
   [[~ eb1] [~ eb1] [~ eb1] [eb1 [eb1 f1]]]
->\`.slow(4))
+>\`)
 bass.tri()
   .lpf({ cutoff: 63, res: 0.15 })
   .mul(bass.gate.adsr(0.008, 0.1, 0.7, 0.03))
@@ -116,27 +116,27 @@ bass.tri()
   .out()
 
 // ---- hats: offbeat eighths; the bar's last one opens, wider every 4th bar ----
-const hat = seq("~ 60")
-hat.trig.hihat({ decay: p\`0.025 0.025 0.025 <0.09 0.09 0.09 0.16>\`.slow(4), tone: 0.8, metal: 0.7 })
+const hat = seq("[~ 60]*4")
+hat.trig.hihat({ decay: p\`0.025 0.025 0.025 <0.09 0.09 0.09 0.16>\`, tone: 0.8, metal: 0.7 })
   .mul(2.6)
   .pan(0.1)
   .out()
 
-// ghost sixteenths — degrade reseeds every cycle (a beat here); a flurry each 4th bar
-const ghost = seq(p\`<60*4 60*4 60*4 60*8>\`.degrade(0.65))
+// ghost sixteenths — degrade reseeds every bar; a flurry on each bar's last beat
+const ghost = seq(p\`60*4 60*4 60*4 60*8\`.degrade(0.65))
 ghost.trig.hihat({ decay: 0.014, tone: 0.9, metal: 0.5 })
   .mul(1.6)
   .pan(-0.35)
   .out()
 
 // ---- clap on two and four ----
-const back = seq(p\`~ 60 ~ 60\`.slow(4))
+const back = seq(p\`~ 60 ~ 60\`)
 back.trig.clap({ decay: 0.22, tone: 0.55 })
   .mul(0.9)
   .out()
 
 // ---- dub stab on the and-of-2: Fm7 · Fm7 · Dbmaj7 · Eb9 ----
-const stabSeq = seq(p\`[~ [~ <{f2,ab2,c3,eb3} {f2,ab2,c3,eb3} {f2,ab2,c3,db3} {f2,g2,bb2,db3}>] ~ ~]\`.slow(4))
+const stabSeq = seq(p\`[~ [~ <{f2,ab2,c3,eb3} {f2,ab2,c3,eb3} {f2,ab2,c3,db3} {f2,g2,bb2,db3}>] ~ ~]\`)
 const stab = stabSeq.saw()
   .bpf({ cutoff: lfo(0.045, 78, 88), res: 0.35 })
   .mul(stabSeq.gate.adsr(0.004, 0.16, 0, 0.1))
@@ -162,7 +162,7 @@ const lead = seq(p\`<
   [~ ~ ~ ~]
   [ab4 ~ [g4 f4] ~]
   [~ ~ ~ ~]!4
->\`.slow(4))
+>\`)
 lead.tri()
   .lpf({ cutoff: 97, res: 0.2 })
   .mul(lead.gate.adsr(0.006, 0.12, 0.35, 0.15))
@@ -174,8 +174,8 @@ lead.tri()
 
 /** (h) A port: eddyflux's strudel piece "coastline", now with the real vocabulary. */
 const coastline = `// coastline — after eddyflux's strudel piece; lofi half-time in F minor
-// one cycle = one bar; cps 0.75 -> 45 bars/min
-clock(45)
+// one cycle = one bar; cps 0.75 -> 45 bars/min = 180 bpm in 4/4
+tempo(180)
 
 // chords: Bbm9 four bars, Fm9 four bars
 const chords = chord("<Bbm9 Fm9>/4")
@@ -252,7 +252,7 @@ const arp = chords.anchor("D5").n(
 // a soft round FM tone: low index (gentle color, not a bell), warm ratio,
 // mellow non-resonant filter, and a slower attack so it breathes rather than pings
 const mel = seq(arp)
-mel.pitch.fm({ index: lfo(0.06, 0.4, 1.6), ratio: 1 })
+mel.fm({ index: lfo(0.06, 0.4, 1.6), ratio: 1 })
   .lpf({ cutoff: lfo(0.06, 66, 80), res: 0.12 })
   .mul(mel.gate.adsr(0.02, 0.25, 0, 0.16))
   .shape(0.1)
@@ -273,7 +273,7 @@ const mirrorCanon = `// mirror canon — D dorian, 100 bpm
 // never leaves the key. The lead's second half is its first half played
 // backwards, so the theme, its reverse, its mirror and its reverse mirror
 // all sound — and the two voices only ever meet in thirds and sixths.
-clock(25) // one cycle = one bar
+tempo(100) // one cycle = one bar
 
 const D2 = 38, D4 = 62, D5 = 74
 const mirror = (q, axis) => q.mul(-1).add(2 * axis)
@@ -305,7 +305,7 @@ const lead = seq(theme)
 const answer = seq(mirror(theme, D5).late(4))
 
 // lead: a reedy FM voice (a 1:2 ratio keeps only odd harmonics), right
-lead.pitch.add(lfo(5, -0.08, 0.08))
+lead.add(lfo(5, -0.08, 0.08))
   .fm(1.2, 2)
   .mul(lead.gate.adsr(0.03, 0.2, 0.7, 0.25))
   .reverb({ room: 0.7, damp: 0.5, mix: 0.25 })
@@ -343,7 +343,7 @@ seq("~ 60 ~ 60").trig
 const hat = seq("60*8")
 hat.trig
   .hihat({ decay: 0.03, tone: 0.7, metal: 0.6 })
-  .mul(patstep(p\`0.5 1\`, hat.trig))
+  .mul(counter(hat.trig).seq("<0.5 1>"))
   .mul(groove)
   .gain(2)
   .out()
@@ -360,7 +360,7 @@ const chaconne = `// chaconne — variations over a lament bass, D minor, 80 bpm
 //   5 the theme stripped to one note a bar, back down to the ground
 // One energy curve, written as a pattern and glided, opens the filters,
 // brings the drums in and out, and fills in the harp note by note.
-clock(20) // one cycle = one 4/4 bar
+tempo(80) // one cycle = one 4/4 bar
 
 // one value per variation; slew turns each step into a ~10 s swell
 const energy = slew({ in: p\`<0.1 0.25 0.5 1 0.35>\`.slow(8), rise: 30, fall: 30 })
@@ -389,7 +389,7 @@ strings.tri()
 const harmony = chord("<Dm A7 Dm7 G Gm A Gm7 A7>").mode("root:d3")
 const harp = seq(harmony.n(p\`0 1 2 3 4 3 2 1 0 1 2 3 4 3 2 1\`))
 const rank = p\`0 8 4 12 2 10 6 14 1 9 5 13 3 11 7 15\`
-harp.pitch
+harp
   .fm(0.8, 1)
   .mul(harp.gate.adsr(0.002, 0.25, 0, 0.1))
   .mul(energy.mul(16).gt(rank))
@@ -408,7 +408,7 @@ const double = p\`[d5 f5 a5 d6 c6 a5 f5 a5] [g5@2 e5 g5 c#6@2 bb5 g5]
   [a5@2 f5 a5 c6@2 d6 e6] [d6@2 b5 d6 g6@4] [g6@2 f6 d6 bb5@2 c6 d6]
   [c#6@4 e6@2 c#6 a5] [d6@2 bb5 g5 f5@2 g5 bb5] [a5@2 g5 e5 c#5@4]\`
 const melody = seq(p\`<~ \${theme} \${theme} \${double} \${theme.segment(8)}>\`.slow(8))
-melody.pitch.slew(0.01, 0.01).add(lfo(5, -0.1, 0.1))
+melody.slew(0.01, 0.01).add(lfo(5, -0.1, 0.1))
   .fm({ index: energy.mul(1.2).add(0.4), ratio: 1 })
   .mul(melody.gate.adsr(0.08, 0.3, 0.8, 0.4))
   .reverb({ room: 0.8, damp: 0.5, mix: 0.3 })
@@ -448,7 +448,7 @@ const pocketRocket = `// pocket rocket — future house in C, 128 bpm
 // The sound effects are patches too: a riser and a tape-stop dive glided
 // out of section patterns, an impact, laser zaps, and a lead that talks
 // through two formant filters.
-clock(32) // 32 bars a minute = 128 bpm; one cycle = one bar
+tempo(128) // one cycle = one bar
 
 // one value per 8-bar section: intro, build, drop, drop 2
 const sections = (a, b, d1, d2) => p\`<\${a} \${b} \${d1} \${d2}>\`.slow(8)
@@ -484,7 +484,7 @@ seq("~ 60 ~ 60").trig
 const tick = seq("60*16")
 tick.trig
   .hihat({ decay: 0.03, tone: 0.8, metal: 0.5 })
-  .mul(patstep(p\`0.35 0.5 1 0.5\`, tick.trig))
+  .mul(counter(tick.trig).seq("<0.35 0.5 1 0.5>"))
   .mul(sections(1, p\`1!7 0\`, 1, 1))
   .gain(2)
   .out()
@@ -505,7 +505,7 @@ roll.trig
 
 // ---- intro and build: a 3+3+2 pluck, its filter opening with the riser ----
 const stab = seq("[60@3 60@3 60@2]*2")
-chords.pitch.add(dive)
+chords.add(dive)
   .sqr()
   .mix()
   .lpf(hz(rise.mul(4000).add(900)), 0.3)
@@ -523,8 +523,8 @@ bass.sin()
   .out()
 
 // ---- drop: supersaw chords, two saws a fifth of a semitone apart, pumping ----
-chords.pitch.add(0.1).saw()
-  .add(chords.pitch.add(-0.1).saw())
+chords.add(0.1).saw()
+  .add(chords.add(-0.1).saw())
   .mix()
   .lpf(lfo(0.1, 99, 111))
   .mul(chords.gate.adsr(0.01, 0.3, 0.8, 0.2))
@@ -535,7 +535,7 @@ chords.pitch.add(0.1).saw()
 
 // offbeat bass: each note opens its filter; every 4th bar ends in a 16th-note fill
 const offbeat = seq("<[~ 60]*4 [~ 60]*4 [~ 60]*4 [[~ 60]*2 60*8]>")
-bass.pitch.add(12)
+bass.add(12)
   .sqr()
   .lpf(hz(offbeat.gate.adsr(0.002, 0.12, 0.1, 0.05).mul(2400).add(150)), 0.5)
   .mul(offbeat.gate.adsr(0.002, 0.15, 0.6, 0.05))
@@ -550,7 +550,7 @@ const hook = seq(p\`<[g4@2 a4@2 c5@2 a4 g4] [~@2 g4 a4 b4@2 d5@2] [e5@3 d5 b4@2 
   [eb5@2 c5@2 d5@2 f5@2] [e5@3 d5 c5@4]>\`)
 const f1 = slew({ in: p\`79 62 71 73\`, rise: 1e-4, fall: 1e-4 }) // ah ee oh eh
 const f2 = slew({ in: p\`86 98 81 93\`, rise: 1e-4, fall: 1e-4 })
-const mouth = hook.pitch.saw()
+const mouth = hook.saw()
 mouth.bpf(f1, 0.4)
   .add(mouth.bpf(f2, 0.4))
   .mul(hook.gate.adsr(0.005, 0.1, 0.8, 0.1))
@@ -604,7 +604,7 @@ export const EXAMPLES: readonly Example[] = [
 	{ name: "pattern as signal", source: patternAsSignal },
 	{ name: "karplus pluck (loop)", source: karplus },
 	{ name: "poly chords", source: polyChords },
-	{ name: "drums + patstep", source: drums },
+	{ name: "drums + counter", source: drums },
 ];
 
 /** The patch shown when the editor first loads. */

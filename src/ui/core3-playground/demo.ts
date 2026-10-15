@@ -4,7 +4,7 @@
  * the EXACT same program text through the same api-in-scope mechanism.
  */
 
-export const DEMO_PATCH = `clock(120)
+export const DEMO_PATCH = `tempo(120)
 const s = seq("c3 [e3 g3] <a2 b2> ~")
 s.saw()
   .lpf({ cutoff: 86, res: 0.3 })

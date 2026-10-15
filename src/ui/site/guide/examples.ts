@@ -16,7 +16,7 @@ export const GUIDE_EXAMPLES = {
   .gain(0.3)
   .out()`,
 
-	sequencing: `clock(120)
+	sequencing: `tempo(120)
 const s = seq("c3 e3 g3 e3")
 s.tri()
   .lpf({ cutoff: 89, res: 0.3 })
@@ -24,7 +24,7 @@ s.tri()
   .gain(0.3)
   .out()`,
 
-	patterns: `clock(110)
+	patterns: `tempo(110)
 const hook = p\`c3 [e3 g3] a3 ~\`
 const line = seq(hook.rev().every(2, (q) => q.add(7)))
 line.tri()
@@ -32,7 +32,7 @@ line.tri()
   .gain(0.3)
   .out()`,
 
-	patternModulation: `clock(100)
+	patternModulation: `tempo(100)
 const s = seq("c2 c2 c2 c2")
 const cutoff = slew({ in: p\`67 79 [91 62] <55 103>\`, rise: 5e-6, fall: 5e-6 })
 s.saw()
@@ -41,12 +41,12 @@ s.saw()
   .gain(0.25)
   .out()`,
 
-	drums: `clock(120)
+	drums: `tempo(120)
 seq(p\`60(3,8)\`).trig.kick().gain(0.9).out()
 seq("~ 60 ~ 60").trig.snare().gain(0.7).out()
 seq("60*8").trig.hihat({ decay: 0.04 }).gain(0.4).out()`,
 
-	polyphony: `clock(90)
+	polyphony: `tempo(90)
 const pad = seq("{c3,e3,g3}")
 pad.tri()
   .lpf({ cutoff: 89, res: 0.2 })
@@ -54,7 +54,7 @@ pad.tri()
   .gain(0.25)
   .out()`,
 
-	stereo: `clock(120)
+	stereo: `tempo(120)
 const s = seq("c3 e3 g3 e3")
 s.tri()
   .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.15))
@@ -67,7 +67,7 @@ s.tri()
   .gain(0.3)
   .out()`,
 
-	customModules: `clock(120)
+	customModules: `tempo(120)
 defmod({
   name: "wavefold",
   category: "effects",
@@ -80,16 +80,16 @@ defmod({
   tick: (s, i, o) => { o.out = Math.sin(i.in * (1 + i.amount * 6)) },
 })
 const n = seq("c2 e2 g2 c3")
-n.pitch.saw().wavefold(0.7)
+n.saw().wavefold(0.7)
   .mul(n.gate.adsr(0.005, 0.15, 0.4, 0.2))
   .mul(0.25)
   .out()`,
 
-	patstep: `clock(110)
+	counter: `tempo(110)
 const s = seq("c2(4,8)")
 s.tri()
   .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
-  .mul(patstep(p\`0.3 0.1 0.25 0.15\`, s.trig))
+  .mul(counter(s.trig).seq("<0.3 0.1 0.25 0.15>"))
   .gain(0.9)
   .out()`,
 } as const;

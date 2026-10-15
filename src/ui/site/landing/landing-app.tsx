@@ -8,7 +8,7 @@ import { useSharedAudio } from "@/ui/docs-kit/use-shared-audio";
 import { RunBlock } from "@/ui/site/run-block";
 import { SitePage } from "@/ui/site/site-page";
 
-const HELLO_PATCH = `clock(120)
+const HELLO_PATCH = `tempo(120)
 
 const s = seq("c3 e3 g3 <b2 a2>")
 s.tri()

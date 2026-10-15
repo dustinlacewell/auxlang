@@ -109,17 +109,18 @@ export function GuideApp() {
 				{ex("routing")}
 				<P>
 					Output ports beyond the default are read by name: <C>pan</C> has <C>.l</C> and <C>.r</C>,
-					the sequencer has <C>.pitch</C>, <C>.gate</C>, <C>.trig</C>. Ports, units, and defaults
+					the sequencer has <C>.gate</C> and <C>.trig</C>. Ports, units, and defaults
 					for every module are on the <TextLink href="/modules.html">modules page</TextLink>.
 				</P>
 			</Section>
 
-			<Section title="Clock and sequencing">
+			<Section title="Tempo and sequencing">
 				<P>
-					<C>clock(120)</C> at the top sets the tempo; every <C>seq</C> uses it. <C>seq(pattern)</C>{" "}
-					has three taps: <C>.pitch</C> (semitones, the default output), <C>.gate</C> (1 while a
-					note sounds), and <C>.trig</C> (a one-sample pulse per onset). Chaining an oscillator off
-					the seq plays its pitch; multiply by an envelope on the gate to shape notes.
+					<C>tempo(120)</C> sets the tempo in beats per minute; every <C>seq</C> reads it. One
+					pattern cycle is one bar of four beats. <C>seq(pattern)</C> has three outputs: the value
+					itself (semitones, the default output), <C>.gate</C> (1 while a note sounds), and{" "}
+					<C>.trig</C> (a one-sample pulse when a new note starts). Chaining an oscillator off the
+					seq plays its pitch; multiply by an envelope on the gate to shape notes.
 				</P>
 				{ex("sequencing")}
 			</Section>
@@ -211,23 +212,24 @@ export function GuideApp() {
 				</P>
 			</Section>
 
-			<Section title="patstep">
+			<Section title="Stepping by trigger">
 				<P>
-					<C>patstep(pattern, trig)</C> steps to the next value on each trigger, ignoring the
-					pattern's own timing — an analog step sequencer. Any trigger works: a seq's <C>.trig</C>,
-					a comparator on an LFO.
+					<C>seq</C> reads a pattern at any position, not only the clock's. <C>counter(trig)</C>{" "}
+					counts triggers into a position, one cycle per trigger, so{" "}
+					<C>{'counter(trig).seq("<a b c>")'}</C> steps to the next value on each trigger — an
+					analog step sequencer. Any trigger works: a seq's <C>.trig</C>, a comparator on an LFO.
 				</P>
-				{ex("patstep")}
+				{ex("counter")}
 			</Section>
 
 			<Section title="When it errors">
 				<P>
 					Everything fails loud at eval time — unknown ports, missing required inputs, notation
 					parse errors — naming what was available. Four footguns: <C>sin(0)</C> is pitch 0, not
-					silence — it's ≈8.18 Hz (use <C>sin()</C> or <C>{"sin({ pitch: 60 })"}</C> for A-440 or
-					a chosen note); forgetting <C>clock(...)</C> leaves seqs unclocked; <C>.mod(port, signal, depth)</C>{" "}
-					adds modulation to a port (modulo is <C>wrap</C>); and an input the chain already wired can't also be set —{" "}
-					<C>{"s.pitch.saw({ pitch: 72 })"}</C> throws.
+					silence — it's ≈8.18 Hz (use <C>sin()</C> or <C>{"sin({ pitch: 60 })"}</C> for A-440 or a
+					chosen note); forgetting <C>tempo(...)</C> leaves seqs without a clock;{" "}
+					<C>.mod(port, signal, depth)</C> adds modulation to a port (modulo is <C>wrap</C>); and an
+					input the chain already wired can't also be set — <C>{"s.saw({ pitch: 72 })"}</C> throws.
 				</P>
 			</Section>
 		</SitePage>

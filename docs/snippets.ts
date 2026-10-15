@@ -25,7 +25,7 @@ export const SNIPPETS: readonly Snippet[] = [
 	{
 		id: "readme-hello",
 		audible: true,
-		code: `clock(120)
+		code: `tempo(120)
 
 const s = seq("c3 e3 g3 <b2 a2>")
 s.tri()
@@ -40,7 +40,7 @@ s.tri()
 	{
 		id: "manifesto-splice",
 		audible: true,
-		code: `clock(120)
+		code: `tempo(120)
 
 const hook = p\`c4 [e4 g4] <a4 b4>\`
 const line = seq(p\`\${hook} \${hook.rev().add(12)} ~ \${hook.fast(2)}\`)
@@ -53,7 +53,7 @@ line.tri()
 	{
 		id: "manifesto-patsig",
 		audible: true,
-		code: `clock(120)
+		code: `tempo(120)
 
 const s = seq("c2 c2 c2 c2")
 const cutoff = slew({ in: p\`67 79 [91 55] <55 103>\`, rise: 5e-6, fall: 5e-6 })
@@ -67,10 +67,10 @@ s.saw()
 	{
 		id: "manifesto-patch",
 		audible: true,
-		code: `clock(124)
+		code: `tempo(124)
 
 const s = seq(p\`c3 [e3 g3] <a2 b2> ~\`.every(4, (q) => q.rev()))
-s.pitch.saw()
+s.saw()
   .lpf({ cutoff: lfo(0.2, 67, 100), res: 0.3 })
   .mul(s.gate.adsr(0.005, 0.1, 0.6, 0.2))
   .gain(0.3)
@@ -80,7 +80,7 @@ s.pitch.saw()
 	{
 		id: "manifesto-loop",
 		audible: true,
-		code: `clock(96)
+		code: `tempo(96)
 
 const s = seq("c3 g3 <c4 e4> g3")
 const exciter = noise().mul(s.gate.ad(0.001, 0.008))
@@ -89,16 +89,16 @@ loop((fb) =>
 ).gain(0.8).out()`,
 	},
 	// §10 closing patch, real API: pads (packed poly) + acid line (feedback) +
-	// drums (euclid triggers, hat velocity stepped by a comparator), stereo pan.
+	// drums (euclid triggers, hat velocity stepped by a counter), stereo pan.
 	{
 		id: "manifesto-closing",
 		audible: true,
-		code: `clock(126)
+		code: `tempo(126)
 
 // pads: width-3 stack, packed lanes, pattern-modulated cutoff, panned wide
 const padP = p\`{c3,e3,g3} <{a2,c3,e3} {f2,a2,c3}>\`.slow(2)
 const pad = seq(padP)
-pad.pitch.saw()
+pad.saw()
   .lpf({ cutoff: p\`67 <79 91>\`.slow(2), res: 0.2 })
   .mul(pad.gate.adsr(0.4, 0.3, 0.7, 1.2))
   .pan(0.4)
@@ -108,16 +108,16 @@ pad.pitch.saw()
 const hook = p\`c2 [c2 eb2] g1 <bb1 c2>\`
 const line = seq(hook.every(4, (q) => q.rev()).off(1 / 8, (q) => q.add(12).degrade(0.4)))
 loop((fb) =>
-  line.pitch.slew(0.03).saw()
+  line.slew(0.03).saw()
     .lpf({ cutoff: hz(line.gate.adsr(0.001, 0.12, 0, 0).mul(3000).add(180)), res: 0.85 })
     .mul(line.gate)
     .add(fb.delay({ time: 0.35, mix: 1 }).mul(0.35)),
 ).gain(0.5).out()
 
-// drums: euclidean kick, backbeat snare, hat velocity stepped by a comparator
+// drums: euclidean kick, backbeat snare, hats fired by a comparator, accents stepped by a counter
 seq(p\`60(4,4)\`).trig.kick().out()
 seq("~ 60 ~ 60").trig.snare().out()
-lfo(9).gt(0.7).apply((tg) => tg.hihat().mul(patstep(p\`1 0.6 0.8 0.5\`, tg)).gain(0.8).out())`,
+lfo(9).gt(0.7).apply((tg) => tg.hihat().mul(counter(tg).seq("<1 0.6 0.8 0.5>")).gain(0.8).out())`,
 	},
 
 	// -- USER GUIDE -----------------------------------------------------------
@@ -139,24 +139,24 @@ const bright = base.lpf({ cutoff: 102 }) // new value; base unchanged
 base.lpf({ cutoff: 67 }) // discarded — never reaches out(), so it is pruned
 bright.gain(0.3).out()`,
 	},
-	// Ambient clock: seq needs no explicit clock.
+	// Ambient clock: tempo() sets it once; every seq reads it.
 	{
 		id: "guide-ambient-clock",
 		audible: true,
-		code: `clock(110)
+		code: `tempo(110)
 seq("c3 e3 g3")
   .tri()
   .mul(seq("c3 e3 g3").gate.adsr(0.005, 0.1, 0.5, 0.15))
   .gain(0.3)
   .out()`,
 	},
-	// Taps: pitch (default), gate, trig off one seq.
+	// Taps: the value (default output), gate, trig off one seq.
 	{
 		id: "guide-taps",
 		audible: true,
-		code: `clock(120)
+		code: `tempo(120)
 const s = seq("c3 e3 g3 e3")
-s.pitch.saw()
+s.saw()
   .lpf({ cutoff: 89, res: 0.3 })
   .mul(s.gate.adsr(0.005, 0.08, 0.4, 0.1))
   .gain(0.3)
@@ -166,7 +166,7 @@ s.pitch.saw()
 	{
 		id: "guide-pattern-values",
 		audible: true,
-		code: `clock(110)
+		code: `tempo(110)
 const hook = p\`c3 [e3 g3] a3 ~\`
 seq(hook.rev().every(2, (q) => q.add(7)))
   .tri()
@@ -178,7 +178,7 @@ seq(hook.rev().every(2, (q) => q.add(7)))
 	{
 		id: "guide-poly",
 		audible: true,
-		code: `clock(90)
+		code: `tempo(90)
 const pad = seq("{c3,e3,g3}")
 pad.tri()
   .lpf({ cutoff: 89, res: 0.2 })
@@ -199,7 +199,7 @@ pad.tri()
 	{
 		id: "guide-patsig-pitch",
 		audible: true,
-		code: `clock(100)
+		code: `tempo(100)
 tri(p\`48 55 60 63\`)
   .lpf({ cutoff: 86, res: 0.2 })
   .mul(lfo(0.5, 0.2, 0.5))
@@ -210,7 +210,7 @@ tri(p\`48 55 60 63\`)
 	{
 		id: "guide-slew-declick",
 		audible: true,
-		code: `clock(100)
+		code: `tempo(100)
 const s = seq("c2 c2 c2 c2")
 const cutoff = slew({ in: p\`67 79 [91 62] <55 103>\`, rise: 5e-6, fall: 5e-6 })
 s.saw()
@@ -233,7 +233,7 @@ s.saw()
 	{
 		id: "guide-stereo",
 		audible: true,
-		code: `clock(120)
+		code: `tempo(120)
 const s = seq("c3 e3 g3 e3")
 s.tri()
   .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.15))
@@ -244,20 +244,20 @@ s.tri()
 	{
 		id: "guide-drums",
 		audible: true,
-		code: `clock(120)
+		code: `tempo(120)
 seq(p\`60(3,8)\`).trig.kick().gain(0.9).out()
 seq("~ 60 ~ 60").trig.snare().gain(0.7).out()
 seq("60*8").trig.hihat({ decay: 0.04 }).gain(0.4).out()`,
 	},
-	// patstep: advance a pattern by trigger, ignore duration.
+	// counter: step a pattern one cycle per trigger, ignoring its own timing.
 	{
-		id: "guide-patstep",
+		id: "guide-counter",
 		audible: true,
-		code: `clock(110)
+		code: `tempo(110)
 const s = seq("c2(4,8)")
 s.tri()
   .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
-  .mul(patstep(p\`0.3 0.1 0.25 0.15\`, s.trig))
+  .mul(counter(s.trig).seq("<0.3 0.1 0.25 0.15>"))
   .gain(0.9)
   .out()`,
 	},

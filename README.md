@@ -5,9 +5,9 @@ domains under one bridge. The *pattern calculus* is discrete, cycle-based, and
 rational-time: patterns are pure, transformable values written in Tidal/Strudel-style
 mini-notation, with a total desugaring to combinators. The *signal calculus* is
 continuous and sample-based: modules are pure state machines wired into a graph in
-which feedback is legal. The *bridge* is that a clock is a signal (a beat-phase ramp)
-and a sequencer is a module that queries a pattern with that phase and emits
-pitch/gate/trig signals, which go anywhere any signal goes. Any knob is patternable;
+which feedback is legal. The *bridge* is that a clock is a signal (a position ramp in bars)
+and a sequencer is a module that reads a pattern at that position and emits
+value/gate/trig signals, which go anywhere any signal goes. Any knob is patternable;
 any pattern is a signal. See `MANIFESTO.md` for the full argument.
 
 ## Quick start
@@ -34,7 +34,7 @@ is core3.)
 ## Hello patch
 
 ```js
-clock(120)
+tempo(120)
 
 const s = seq("c3 e3 g3 <b2 a2>")
 s.tri()
@@ -44,14 +44,14 @@ s.tri()
   .out()
 ```
 
-`clock(120)` sets the ambient tempo. `seq("...")` sequences a mini-notation pattern,
-where `<b2 a2>` alternates per cycle. `s.tri()` chains a triangle oscillator from the
-sequencer's pitch tap; `.lpf` filters it, `.mul(s.gate.adsr(...))` shapes amplitude
+`tempo(120)` sets the ambient tempo. One pattern cycle is one bar. `seq("...")`
+sequences a mini-notation pattern, where `<b2 a2>` alternates per cycle. `s.tri()`
+chains a triangle oscillator from the sequencer's value; `.lpf` filters it, `.mul(s.gate.adsr(...))` shapes amplitude
 with a gate-driven envelope, `.gain(0.3)` scales the result, and `.out()` sends it to
 the master — the only effect in the language.
 
-`seq`, `clock`, `out`, `loop`, `p`, and `patstep` are builders. Module factories such
-as `tri`, `saw`, `sin`, `lpf`, `adsr`, `mul`, `gain`, `delay`, and `pan` come from a
+`tempo`, `out`, `loop`, and `p` are builders. Module factories such as `tri`, `saw`,
+`sin`, `lpf`, `adsr`, `mul`, `gain`, `delay`, `pan`, `seq`, `clock`, and `counter` come from a
 registry. `.gain` and `.vca` are aliases of `.mul`.
 
 ## Learn more
