@@ -2,7 +2,9 @@
  * Feedback delay with a fractional (linearly interpolated) read head. The delay
  * line is a fixed `maxSecs`-second Float32Array allocated once in state();
  * `time` is clamped to it. `mix` crossfades dry/wet; `feedback` re-injects the
- * wet tap.
+ * wet tap. `tone` darkens the repeats: a one-pole lowpass in the feedback
+ * path, its cutoff 200 Hz at 0 rising exponentially toward 20 kHz. At 1 (the
+ * default) the filter is out of the path, so each repeat is untouched.
  */
 defmod({
 	name: "delay",
@@ -13,14 +15,15 @@ defmod({
 		time: secs(0.25),
 		feedback: unit(0.3),
 		mix: unit(0.5),
+		tone: unit(1),
 	},
 	outs: { out: sig() },
 	defaultIn: "in",
 	defaultOut: "out",
-	positional: ["time", "feedback", "mix"],
+	positional: ["time", "feedback", "mix", "tone"],
 	state: (sr) => {
 		const maxSecs = 4;
-		return { buf: new Float32Array(Math.ceil(maxSecs * sr)), w: 0, maxSecs };
+		return { buf: new Float32Array(Math.ceil(maxSecs * sr)), w: 0, maxSecs, lp: 0 };
 	},
 	tick: (s, i, o, _cfg, sr) => {
 		const buf = s.buf;
@@ -37,7 +40,16 @@ defmod({
 		a = ((a % n) + n) % n;
 		b = ((b % n) + n) % n;
 		const wet = (buf[a] ?? 0) * (1 - frac) + (buf[b] ?? 0) * frac;
-		buf[w] = i.in + wet * feedback;
+		const tone = Math.max(0, Math.min(1, i.tone));
+		let fed = wet;
+		if (tone < 1) {
+			const cutoff = 200 * 100 ** tone;
+			s.lp = s.lp + (wet - s.lp) * (1 - Math.exp((-2 * Math.PI * cutoff) / sr));
+			fed = s.lp;
+		} else {
+			s.lp = wet;
+		}
+		buf[w] = i.in + fed * feedback;
 		s.w = (w + 1) % n;
 		o.out = i.in * (1 - mix) + wet * mix;
 	},

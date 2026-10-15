@@ -486,11 +486,11 @@ sin(69)
 		section: "Effects",
 		title: "delay — all params",
 		description:
-			"Short 150 ms time, high 0.6 feedback, 0.4 mix — plucks smear into a repeating, decaying trail.",
+			"Short 150 ms time, high 0.6 feedback, 0.4 mix, tone 0.5 — plucks smear into a repeating trail that dulls as it decays.",
 		code: `const c = tempo(90)
 sin(69)
   .mul(c.beat.ad(0.005, 0.08))
-  .delay({ time: 0.15, feedback: 0.6, mix: 0.4 })
+  .delay({ time: 0.15, feedback: 0.6, mix: 0.4, tone: 0.5 })
   .gain(1)
   .out()`,
 	},
@@ -528,6 +528,18 @@ tri(hz(330))
   .mul(c.beat.ad(0.005, 0.1))
   .delay(0.18, 0.5, lfo(0.2, 0, 0.8))
   .gain(1)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "delay — tone modulated",
+		description:
+			"An LFO sweeps tone 0.1→0.9 — the repeats go dark and muffled, then bright again. The first echo stays clear; each pass through the loop darkens the next.",
+		code: `const c = tempo(90)
+saw(57)
+  .mul(c.beat.ad(0.005, 0.1))
+  .delay({ time: 0.2, feedback: 0.7, mix: 0.5, tone: lfo(0.2, 0.1, 0.9) })
+  .gain(0.6)
   .out()`,
 	},
 	{

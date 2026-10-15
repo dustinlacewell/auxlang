@@ -56,6 +56,34 @@ describe("delay", () => {
 		expect(echo2 / echo1).toBeCloseTo(feedback, 1);
 	});
 
+	it("tone below 1 darkens each repeat but leaves the first echo alone", () => {
+		const time = 0.005;
+		const step = Math.round(time * SR);
+		const echoes = (tone: number) => {
+			const d = driver(delay);
+			const out: number[] = [];
+			for (let k = 0; k < step * 3 + 10; k++) {
+				out.push(d.step({ in: k === 0 ? 1 : 0, time, feedback: 0.9, mix: 1, tone }).out!);
+			}
+			return { first: out[step]!, second: Math.max(...out.slice(step * 2 - 2, step * 2 + 10)) };
+		};
+		const open = echoes(1);
+		const dark = echoes(0.2);
+		expect(dark.first).toBe(open.first);
+		expect(open.second).toBeCloseTo(0.9, 2);
+		expect(dark.second).toBeLessThan(open.second * 0.5);
+	});
+
+	it("tone defaults to 1: the filter is out of the feedback path", () => {
+		expect(delay.ins.tone?.def).toBe(1);
+		const input = [1, 0.3, -0.5, 0, 0.2, ...Array<number>(800).fill(0)];
+		const run = (over: Record<string, number>) => {
+			const d = driver(delay);
+			return input.map((x) => d.step({ in: x, feedback: 0.7, time: 0.004, ...over }).out!);
+		};
+		expect(run({})).toEqual(run({ tone: 1 }));
+	});
+
 	it("mix=0 is fully dry (no wet at all)", () => {
 		const time = 0.005;
 		const d = driver(delay);

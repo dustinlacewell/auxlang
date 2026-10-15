@@ -9,5 +9,6 @@ clock(120)
       .delay({
         time: 0.3,
         feedback: 0.55,
-        mix: 0.45})
+        mix: 0.45,
+        tone: 0.4})
       .out())
