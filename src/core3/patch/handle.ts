@@ -12,6 +12,8 @@
 import type { GNode } from "../graph/node";
 import { getRegistry } from "../module/define";
 import { checkSeed } from "../random/check-seed";
+import { currentCall } from "../source/active-source";
+import { argLiteralSite } from "../source/call-bindings";
 import type { ModuleSpec } from "../types";
 import { bindInput } from "./bind-input";
 import { buildNode } from "./build-node";
@@ -149,9 +151,17 @@ function setInput(
 	input: string,
 	value: unknown,
 ): Handle {
-	const copy = copyNode(node);
+	const copy = rebound(copyNode(node), input, argLiteralSite(currentCall(), 0, value));
 	copy.inputs[input] = bindInput(spec, input, value);
 	return wrap(copy, port, lane);
+}
+
+/** The node with `name`'s literal site replaced: the new literal's, or none. */
+function rebound(node: GNode, name: string, site: number | undefined): GNode {
+	const { bindingSites, ...rest } = node;
+	const { [name]: _old, ...others } = bindingSites ?? {};
+	const sites = site === undefined ? others : { ...others, [name]: site };
+	return Object.keys(sites).length > 0 ? { ...rest, bindingSites: sites } : rest;
 }
 
 /** Value semantics: `.mod` returns a COPY with one more modulation term on `input`. */
@@ -178,6 +188,8 @@ function copyNode(node: GNode): GNode {
 		...(node.pin !== undefined ? { pin: node.pin } : {}),
 		...(node.seed !== undefined ? { seed: node.seed } : {}),
 		...(node.mods !== undefined ? { mods: node.mods } : {}),
+		...(node.site !== undefined ? { site: node.site } : {}),
+		...(node.bindingSites !== undefined ? { bindingSites: node.bindingSites } : {}),
 	};
 }
 

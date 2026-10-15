@@ -33,6 +33,7 @@ import { assertClosureFree, serializeSpec } from "../module/serialize";
 import type { EvalResult } from "../patch/context";
 import type { ModuleSpec, PNode, PortAnn, PortSrc, Program, SerializedModuleSpec } from "../types";
 import { resolveAmbientClocks } from "./ambient-clock";
+import { atNode } from "./at-node";
 import { collect } from "./collect";
 import { copyMeter } from "./copy-meter";
 import { expandMods } from "./expand-mods";
@@ -74,7 +75,7 @@ export function compile(evalResult: EvalResult): Program {
 		specs,
 	};
 
-	const pnodes = order.map((node) => emitNode(node, resolved));
+	const pnodes = order.map((node) => atNode(node, () => emitNode(node, resolved)));
 	const outs = outIndices(evalResult.roots, resolved.index);
 	const used = usedSpecs(order, specs);
 	return {
@@ -128,6 +129,8 @@ function emitNode(node: GNode, r: Resolved): PNode {
 		config: strippedConfig(node.config),
 		...(node.pin !== undefined ? { pin: node.pin } : {}),
 		...(node.seed !== undefined ? { seed: node.seed } : {}),
+		...(node.site !== undefined ? { site: node.site } : {}),
+		...(node.bindingSites !== undefined ? { bindingSites: node.bindingSites } : {}),
 	};
 }
 

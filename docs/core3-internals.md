@@ -20,6 +20,8 @@ Two hosts run the same Engine. An offline renderer runs it headless and is what 
 
 `runEval(fn, { seed })` binds an eval context `{ roots, clock, seed, seedPinned }`. Inside, module factories, `loop`, and `p` construct pure nodes, shaped `{ module, inputs, config, width, pin?, seed? }`; `tempo(bpm)` records the ambient clock and `seed(n)` pins the seed over the option. A node's `inputs` reference other node objects directly — **object identity is node identity**, so sharing a variable across two consumers is fan-out, not duplication. `out()` pushes a root onto `roots`. Node IDs are assigned at collection, not construction.
 
+Before eval, the shell (`ui/core3-playground/eval-patch.ts`) runs the source-location rewrite (`core3/source/rewrite/`): a pure function of the code that lists every call, number and pattern token with its range and wraps each call in a trace, so a node records the site of the call that made it (`site`, `bindingSites`), pattern leaves and their events record their token's site, and a loud error records the code it names (`sourceRange`). Sites are metadata: not identity, not constants.
+
 `compile(evalResult)` then runs, in order:
 
 1. **`collect`** — walk the object-identity graph from roots to find reachable nodes. Cycles are fine at this stage.

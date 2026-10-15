@@ -67,13 +67,13 @@ function splitCycles(span: Span): Span[] {
 function queryCycle(pat: Pat, span: Span, ctx: QueryCtx): Ev[] {
 	switch (pat.op) {
 		case "pure":
-			return [cycleEvent(span, pat.value, "note")];
+			return [sited(cycleEvent(span, pat.value, "note"), pat.site)];
 		case "silence":
 			return [];
 		case "rest":
-			return [cycleEvent(span, 0, "rest")];
+			return [sited(cycleEvent(span, 0, "rest"), pat.site)];
 		case "tie":
-			return queryTie(pat.lanes, span);
+			return queryTie(pat.lanes, span).map((ev) => sited(ev, pat.site));
 		case "slide":
 			return querySlide(pat.child, span, descend(ctx, "slide", 0));
 		// No `descend` for steps and compact: they add no randomness, so a pattern
@@ -237,6 +237,11 @@ function cycleEvent(span: Span, value: number, kind: EvKind, lane?: number): Ev 
 	const cycle = rfloor(span.begin);
 	const whole = { begin: r(cycle), end: r(cycle + 1) };
 	return lane === undefined ? { whole, part: span, value, kind } : { whole, part: span, value, kind, lane };
+}
+
+/** A leaf's event carries the leaf's site, when it has one (metadata only). */
+function sited(ev: Ev, site: number | undefined): Ev {
+	return site === undefined ? ev : { ...ev, site };
 }
 
 /** A tie in each lane, so a chord ties in every lane. A tie has no value of its own. */

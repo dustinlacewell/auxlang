@@ -6,6 +6,8 @@
  * tokens carrying the raw JS value; everything else is lexed from text.
  */
 
+import { notationError } from "./notation-error";
+
 export type TokenKind =
 	| "atom" // note or number literal, e.g. "c4", "eb3", "0.5", "12"
 	| "rest" // ~
@@ -35,6 +37,8 @@ export interface Token {
 	readonly pos: number;
 	/** For SPLICE tokens: the interpolated JS value. */
 	readonly value?: unknown;
+	/** For SPLICE tokens: which interpolation it is (0-based). */
+	readonly splice?: number;
 }
 
 /** Marker object the template layer inserts between segments. */
@@ -159,13 +163,8 @@ function lexSegment(src: string, base: number, out: Token[]): void {
 			continue;
 		}
 
-		throw notationError(`unexpected character '${c}'`, pos, src, base);
+		throw notationError(`unexpected character '${c}'`, pos);
 	}
-}
-
-/** Build a positioned error, including a caret line for the reconstructed source. */
-export function notationError(msg: string, pos: number, _seg?: string, _base?: number): Error {
-	return new Error(`mini-notation: ${msg} (at position ${pos})`);
 }
 
 /**
@@ -182,7 +181,13 @@ export function tokenize(strings: readonly string[], values: readonly unknown[] 
 		base += seg.length;
 		if (k < values.length) {
 			const v = values[k];
-			out.push({ kind: "splice", text: "${…}", pos: base, value: isSplice(v) ? v.value : v });
+			out.push({
+				kind: "splice",
+				text: "${…}",
+				pos: base,
+				value: isSplice(v) ? v.value : v,
+				splice: k,
+			});
 			// interpolation contributes 1 notional char to keep positions monotonic
 			base += 1;
 		}

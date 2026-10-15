@@ -4,11 +4,13 @@
  */
 
 import type { Pat } from "../pattern/ast";
+import type { NotationSource } from "../pattern/notation/notation-source";
 import { parseNotation } from "../pattern/notation/parse";
 import { isP } from "../pattern/pat-class";
 
-export function patternAst(value: unknown, where: string): Pat {
-	if (typeof value === "string") return parseNotation([value], []);
+/** `src`: where a mini-notation string was written, so its tokens carry their sites. */
+export function patternAst(value: unknown, where: string, src?: NotationSource): Pat {
+	if (typeof value === "string") return parseNotation([value], [], src);
 	if (isP(value)) return value.ast;
 	if (isPatData(value)) return value;
 	throw new Error(

@@ -8,6 +8,8 @@
  * A bare number ("12", "0.5", "-3", ".75") is its own numeric value.
  */
 
+import { notationError } from "./notation-error";
+
 export const LETTER_SEMITONE: Record<string, number> = {
 	c: 0,
 	d: 2,
@@ -29,7 +31,7 @@ export function atomValue(text: string, pos: number): number {
 	if (isNumber(text)) return Number(text);
 
 	const m = NOTE_RE.exec(text);
-	if (!m) throw new Error(`mini-notation: invalid note or number '${text}' (at position ${pos})`);
+	if (!m) throw notationError(`invalid note or number '${text}'`, pos, text.length);
 
 	const letter = m[1]!.toLowerCase();
 	const accidentals = m[2]!;

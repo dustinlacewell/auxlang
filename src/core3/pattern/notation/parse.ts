@@ -19,8 +19,12 @@
  *
  * Everything is loud: unknown chars (tokenizer), dangling modifiers, unclosed
  * brackets, malformed probabilities, empty groups — all throw with a position.
+ *
+ * Given a `NotationSource` (where the text was written in the patch), each
+ * leaf carries its token's site and an error points at the exact code.
  */
 
+import { locateError } from "../../source/located-error";
 import type { Pat } from "../ast";
 import {
 	degrade,
@@ -42,6 +46,9 @@ import type { R } from "../rational";
 import { r } from "../rational";
 import { tactus } from "../tactus";
 import { width } from "../widths";
+import { withSite } from "../with-site";
+import { NotationError, notationError } from "./notation-error";
+import type { NotationSource } from "./notation-source";
 import { atomValue, isNumber } from "./note";
 import { type Token, tokenize } from "./tokenize";
 
@@ -52,7 +59,15 @@ interface WStep {
 
 class Parser {
 	private i = 0;
-	constructor(private readonly toks: readonly Token[]) {}
+	constructor(
+		private readonly toks: readonly Token[],
+		private readonly src: NotationSource | undefined,
+	) {}
+
+	/** The site of the token at `t`, when the text was written in the code. */
+	private siteOf(t: Token): number | undefined {
+		return this.src?.tokenSite(t.pos);
+	}
 
 	private peek(): Token | undefined {
 		return this.toks[this.i];
@@ -76,7 +91,7 @@ class Parser {
 		const pat = this.parseSequence(new Set<string>(["__eof__"]));
 		if (this.i < this.toks.length) {
 			const t = this.peek()!;
-			throw new Error(`mini-notation: unexpected '${t.text}' (at position ${t.pos})`);
+			throw notationError(`unexpected '${t.text}'`, t.pos, t.text.length);
 		}
 		return pat;
 	}
@@ -108,9 +123,8 @@ class Parser {
 		if (t.kind === "extend") {
 			this.next();
 			const prev = steps[steps.length - 1];
-			if (!prev)
-				throw new Error(`mini-notation: '_' with no preceding step (at position ${t.pos})`);
-			steps.push({ pat: tie(Math.max(1, width(prev.pat))), weight: r(1) });
+			if (!prev) throw notationError("'_' with no preceding step", t.pos);
+			steps.push({ pat: withSite(tie(Math.max(1, width(prev.pat))), this.siteOf(t)), weight: r(1) });
 			return;
 		}
 
@@ -188,18 +202,18 @@ class Parser {
 	/** A primary term: atom, rest, subgroup, alternation, or stack. */
 	private parseTerm(): Pat {
 		const t = this.peek();
-		if (!t) throw new Error(`mini-notation: expected a value (at position ${this.lastPos()})`);
+		if (!t) throw notationError("expected a value", this.lastPos());
 
 		switch (t.kind) {
 			case "rest":
 				this.next();
-				return rest();
+				return withSite(rest(), this.siteOf(t));
 			case "atom":
 				this.next();
-				return pure(atomValue(t.text, t.pos));
+				return withSite(pure(atomValue(t.text, t.pos)), this.siteOf(t));
 			case "splice":
 				this.next();
-				return spliceToPat(t.value, t.pos);
+				return spliceToPat(t.value, t.pos, spliceSource(this.src, t));
 			case "lbracket":
 				return this.parseBracketGroup();
 			case "langle":
@@ -207,7 +221,7 @@ class Parser {
 			case "lbrace":
 				return this.parseBraceGroup();
 			default:
-				throw new Error(`mini-notation: expected a value, got '${t.text}' (at position ${t.pos})`);
+				throw notationError(`expected a value, got '${t.text}'`, t.pos, t.text.length);
 		}
 	}
 
@@ -260,9 +274,7 @@ class Parser {
 			}
 			break;
 		}
-		if (this.peek()?.kind !== close) {
-			throw new Error(`mini-notation: unclosed '${opener}' (at position ${openPos})`);
-		}
+		if (this.peek()?.kind !== close) throw notationError(`unclosed '${opener}'`, openPos);
 		return segs;
 	}
 
@@ -278,8 +290,9 @@ class Parser {
 		}
 		this.expect("rparen", open.pos, ")");
 		if (steps <= 0 || k < 0 || k > steps) {
-			throw new Error(
-				`mini-notation: euclid needs 0 <= pulses <= steps and steps > 0, got (${k},${steps}) (at position ${open.pos})`,
+			throw notationError(
+				`euclid needs 0 <= pulses <= steps and steps > 0, got (${k},${steps})`,
+				open.pos,
 			);
 		}
 		return euclid(k, steps, rot, child);
@@ -291,7 +304,7 @@ class Parser {
 	private parseFactor(): R {
 		const t = this.peek();
 		if (!t || t.kind !== "atom" || !isNumber(t.text)) {
-			throw new Error(`mini-notation: expected a numeric factor (at position ${this.posOf(t)})`);
+			throw notationError("expected a numeric factor", this.posOf(t));
 		}
 		this.next();
 		const num = Number(t.text);
@@ -299,41 +312,37 @@ class Parser {
 			this.next();
 			const d = this.peek();
 			if (!d || d.kind !== "atom" || !isNumber(d.text)) {
-				throw new Error(
-					`mini-notation: expected denominator after '/' (at position ${this.posOf(d)})`,
-				);
+				throw notationError("expected denominator after '/'", this.posOf(d));
 			}
 			this.next();
 			const den = Number(d.text);
-			if (den === 0 || num <= 0)
-				throw new Error(`mini-notation: malformed rational factor (at position ${t.pos})`);
+			if (den === 0 || num <= 0) throw notationError("malformed rational factor", t.pos);
 			return r(num, den);
 		}
-		if (num <= 0) throw new Error(`mini-notation: factor must be positive (at position ${t.pos})`);
+		if (num <= 0) throw notationError("factor must be positive", t.pos, t.text.length);
 		return r(num);
 	}
 
 	private parseCount(pos: number): number {
 		const t = this.peek();
 		if (!t || t.kind !== "atom" || !isNumber(t.text)) {
-			throw new Error(`mini-notation: expected a count after '!' (at position ${pos})`);
+			throw notationError("expected a count after '!'", pos);
 		}
 		this.next();
 		const n = Number(t.text);
 		if (!Number.isInteger(n) || n < 1)
-			throw new Error(`mini-notation: '!' count must be a positive integer (at position ${t.pos})`);
+			throw notationError("'!' count must be a positive integer", t.pos, t.text.length);
 		return n;
 	}
 
 	private parseIntArg(what: string, pos: number): number {
 		const t = this.peek();
 		if (!t || t.kind !== "atom" || !isNumber(t.text)) {
-			throw new Error(`mini-notation: expected ${what} (at position ${this.posOf(t) || pos})`);
+			throw notationError(`expected ${what}`, this.posOf(t) || pos);
 		}
 		this.next();
 		const n = Number(t.text);
-		if (!Number.isInteger(n))
-			throw new Error(`mini-notation: ${what} must be an integer (at position ${t.pos})`);
+		if (!Number.isInteger(n)) throw notationError(`${what} must be an integer`, t.pos, t.text.length);
 		return n;
 	}
 
@@ -346,16 +355,12 @@ class Parser {
 		const t = this.peek();
 		if (t?.kind === "atom" && t.pos === qPos + 1) {
 			if (!isNumber(t.text)) {
-				throw new Error(
-					`mini-notation: malformed probability '${t.text}' after '?' (at position ${t.pos})`,
-				);
+				throw notationError(`malformed probability '${t.text}' after '?'`, t.pos, t.text.length);
 			}
 			this.next();
 			const drop = Number(t.text);
 			if (!(drop >= 0 && drop <= 1)) {
-				throw new Error(
-					`mini-notation: probability must be in [0,1], got ${t.text} (at position ${t.pos})`,
-				);
+				throw notationError(`probability must be in [0,1], got ${t.text}`, t.pos, t.text.length);
 			}
 			return drop;
 		}
@@ -366,15 +371,14 @@ class Parser {
 		const t = this.peek();
 		if (!t || t.kind !== kind) {
 			const opener = ch === "]" ? "[" : ch === ">" ? "<" : ch === "}" ? "{" : ch === ")" ? "(" : ch;
-			throw new Error(`mini-notation: unclosed '${opener}' (at position ${openPos})`);
+			throw notationError(`unclosed '${opener}'`, openPos);
 		}
 		this.next();
 	}
 
 	private expectComma(pos: number): void {
 		const t = this.peek();
-		if (!t || t.kind !== "comma")
-			throw new Error(`mini-notation: expected ',' (at position ${this.posOf(t) || pos})`);
+		if (!t || t.kind !== "comma") throw notationError("expected ','", this.posOf(t) || pos);
 		this.next();
 	}
 }
@@ -397,7 +401,7 @@ function foldSteps(steps: readonly WStep[], pos: number): Pat {
  * single step, so the Pat's tactus is the written step count.
  */
 function foldLayer(steps: readonly WStep[], pos: number): Pat {
-	if (steps.length === 0) throw new Error(`mini-notation: empty sequence (at position ${pos})`);
+	if (steps.length === 0) throw notationError("empty sequence", pos);
 	if (steps.every((s) => isUnit(s.weight))) return fastcat(steps.map((s) => s.pat));
 	return timecat(steps.map((s) => [s.weight, s.pat] as const));
 }
@@ -413,23 +417,37 @@ function slowcatFromSequence(seq: Pat): Pat {
 	return slowcat([seq]);
 }
 
+/** Where a splice's value was written: its own literal, else the splice's place in the template. */
+interface SpliceSource {
+	readonly site?: number;
+	readonly text?: NotationSource;
+}
+
+function spliceSource(src: NotationSource | undefined, t: Token): SpliceSource {
+	if (src === undefined) return {};
+	const written = t.splice === undefined ? {} : src.splice(t.splice);
+	return { ...written, text: written.text ?? atSplice(src, t.pos) };
+}
+
+/** A splice whose string was not written as a literal: its errors point at the splice. */
+function atSplice(outer: NotationSource, pos: number): NotationSource {
+	return { tokenSite: () => undefined, range: () => outer.range(pos, 1), splice: () => ({}) };
+}
+
 /** Convert an interpolated JS value into a Pat. */
-function spliceToPat(value: unknown, pos: number): Pat {
-	if (typeof value === "number") return pure(value);
+function spliceToPat(value: unknown, pos: number, from: SpliceSource = {}): Pat {
+	if (typeof value === "number") return withSite(pure(value), from.site);
 	if (typeof value === "string") {
 		// A note/number string, or a full mini-notation fragment.
-		return parseNotation([value], []);
+		return parseNotation([value], [], from.text);
 	}
 	if (Array.isArray(value)) {
-		if (value.length === 0)
-			throw new Error(`mini-notation: empty array interpolation (at position ${pos})`);
+		if (value.length === 0) throw notationError("empty array interpolation", pos);
 		return fastcat(value.map((v) => spliceToPat(v, pos)));
 	}
 	if (isP(value)) return value.ast;
 	if (isPat(value)) return value;
-	throw new Error(
-		`mini-notation: cannot splice value of type ${typeof value} (at position ${pos})`,
-	);
+	throw notationError(`cannot splice value of type ${typeof value}`, pos);
 }
 
 /** Structural guard for raw Pat data. */
@@ -437,11 +455,25 @@ function isPat(x: unknown): x is Pat {
 	return typeof x === "object" && x !== null && typeof (x as { op?: unknown }).op === "string";
 }
 
-/** Parse a template (segments + interpolations) to a Pat. */
-export function parseNotation(strings: readonly string[], values: readonly unknown[]): Pat {
-	const toks = tokenize(strings, values);
-	if (toks.length === 0) throw new Error("mini-notation: empty pattern (at position 0)");
-	return new Parser(toks).parseTop();
+/**
+ * Parse a template (segments + interpolations) to a Pat. With `src`, leaves
+ * carry their token's site and a notation error points at its code.
+ */
+export function parseNotation(
+	strings: readonly string[],
+	values: readonly unknown[],
+	src?: NotationSource,
+): Pat {
+	try {
+		const toks = tokenize(strings, values);
+		if (toks.length === 0) throw notationError("empty pattern", 0);
+		return new Parser(toks, src).parseTop();
+	} catch (err) {
+		if (err instanceof NotationError && src !== undefined) {
+			locateError(err, src.range(err.pos, err.length));
+		}
+		throw err;
+	}
 }
 
 /** Parse a plain string to a Pat. */

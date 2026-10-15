@@ -25,6 +25,8 @@ export interface Ev {
 	readonly kind: EvKind;
 	/** Voice lane, fixed by pattern structure (absent = lane 0). See `laneOf`. */
 	readonly lane?: number;
+	/** The site of the token that made this event, when it was written in the code (Pat leaves). */
+	readonly site?: number;
 }
 
 /** The event begins inside this fragment (any kind: rests and ties start steps too). */

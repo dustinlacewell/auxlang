@@ -33,6 +33,11 @@ function ownEntries(node: GNode): number[] {
 		.map(([port, value]) => `${node.module}.${port}=${value}`);
 	const config = Object.entries(node.config)
 		.filter(([key]) => !key.startsWith("__"))
-		.map(([key, value]) => `${node.module}#${key}=${JSON.stringify(value)}`);
+		.map(([key, value]) => `${node.module}#${key}=${JSON.stringify(value, withoutSites)}`);
 	return [...inputs, ...config].map(fnv1a32);
+}
+
+/** Pattern leaves carry source sites (pattern/ast.ts); where code sits is not a constant. */
+function withoutSites(key: string, value: unknown): unknown {
+	return key === "site" ? undefined : value;
 }

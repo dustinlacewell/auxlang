@@ -7,10 +7,16 @@
  * A chain source, or a handle passed positionally into the default input, is a
  * whole-module connection: it binds by name (`connectWhole`), so a stereo
  * source fills `l` and `r` together.
+ *
+ * In a patch under eval the node carries the site of the call that made it,
+ * and each binding from a literal argument carries that literal's site
+ * (MANIFESTO §10.1).
  */
 
 import { isGNode } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
+import { currentCall } from "../source/active-source";
+import { argLiteralSite, propLiteralSite } from "../source/call-bindings";
 import type { ModuleSpec } from "../types";
 import { isUnitTag } from "../units/tag";
 import { bindInput } from "./bind-input";
@@ -47,7 +53,31 @@ export function buildNode(
 
 	if (chained !== undefined) bindChain(spec, chained, inputs);
 
-	return { module: spec.name, inputs, config };
+	return { module: spec.name, inputs, config, ...sourceSites(args, positional) };
+}
+
+/** The making call's site, and the literal sites of the bindings (empty outside a located eval). */
+function sourceSites(
+	args: readonly unknown[],
+	positional: readonly string[],
+): Pick<GNode, "site" | "bindingSites"> {
+	const call = currentCall();
+	if (call === undefined) return {};
+	const sites: Record<string, number> = {};
+	const note = (name: string, site: number | undefined) => {
+		if (site !== undefined) sites[name] = site;
+	};
+	let slot = 0;
+	for (const [index, arg] of args.entries()) {
+		if (!isNamedArgs(arg)) {
+			note(positional[slot++]!, argLiteralSite(call, index, arg));
+			continue;
+		}
+		for (const [key, value] of Object.entries(arg as Record<string, unknown>)) {
+			note(key, propLiteralSite(call, index, key, value));
+		}
+	}
+	return Object.keys(sites).length > 0 ? { site: call.id, bindingSites: sites } : { site: call.id };
 }
 
 /** Positional names, skipping the default input and the chain-bound inputs when chaining. */

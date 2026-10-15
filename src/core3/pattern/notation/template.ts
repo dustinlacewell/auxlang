@@ -10,10 +10,12 @@
  * positions stay aligned with the literal text.
  */
 
+import { activeTemplateSource } from "../../source/active-source";
 import { toP } from "../pat-class";
 import type { P } from "../pat-class";
 import { parseNotation } from "./parse";
 
+/** In a patch under eval, the template's tokens carry their sites (MANIFESTO §10.1). */
 export function p(strings: TemplateStringsArray, ...values: unknown[]): P {
-	return toP(parseNotation(strings, values));
+	return toP(parseNotation(strings, values, activeTemplateSource(strings.length)));
 }

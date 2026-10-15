@@ -193,6 +193,13 @@ export interface PNode extends Identity {
 	 * streams and `hashRandom`, and its streams no longer follow its key.
 	 */
 	readonly seed?: number;
+	/**
+	 * Source locations (MANIFESTO §10.1): the site of the call that made the
+	 * node, and of the literal each input or config entry was bound from, in
+	 * the eval's location tables. Metadata for the editor; the engine ignores it.
+	 */
+	readonly site?: number;
+	readonly bindingSites?: Readonly<Record<string, number>>;
 }
 
 export interface Program {

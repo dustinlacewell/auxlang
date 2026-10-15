@@ -5,7 +5,8 @@
  * audio host — re-running while playing is a crossfade swap in the worklet,
  * not a restart. `reroll` draws a new session seed and re-runs. `stop`
  * silences and ends the session, so the next play draws a fresh seed. Errors
- * are the language's loud errors, surfaced unmodified. (The graph renders
+ * are the language's loud errors, surfaced unmodified behind the line and
+ * column they point at. (The graph renders
  * from the code itself via PatchGraph in the embed, so no compiled Program is
  * held here.)
  */
@@ -13,6 +14,7 @@
 import { play, playSeed, stop } from "@/core3/runtime/audio";
 import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
 import { useCallback, useState } from "react";
+import { errorText } from "./error-text";
 import { DEFAULT_EXAMPLE } from "./examples";
 import type { ShownSeed } from "./seed-bar";
 import { codeFromUrl } from "./share-url";
@@ -42,7 +44,7 @@ export function useCore3Editor(): Core3EditorState {
 			setSeed({ value: program.seed, pinned: seedPinned });
 			setIsPlaying(true);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : String(err));
+			setError(errorText(err, code));
 		}
 	}, [code]);
 

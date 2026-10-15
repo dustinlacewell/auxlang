@@ -45,4 +45,11 @@ export interface GNode {
 	seed?: number;
 	/** Modulation terms per port, from `.mod(port, signal, depth)`. Compile desugars them. */
 	mods?: Record<string, readonly ModTerm[]>;
+	/**
+	 * The site of the call that made this node, and of the literal each input or
+	 * config entry was bound from (source/source-map.ts). Metadata only: not
+	 * identity, not a constant, never read by compile's decisions.
+	 */
+	site?: number;
+	bindingSites?: Readonly<Record<string, number>>;
 }

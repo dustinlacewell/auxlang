@@ -33,12 +33,15 @@ export interface StepLayer {
 	readonly counts: readonly number[];
 }
 
+// A leaf written in the code carries `site`: the id of its token (or literal)
+// in the patch's location tables (source/source-map.ts). Its events carry it
+// on. A site is metadata: never identity, never part of a value.
 export type Pat =
-	| { readonly op: "pure"; readonly value: number } // one note spanning each cycle
+	| { readonly op: "pure"; readonly value: number; readonly site?: number } // one note spanning each cycle
 	| { readonly op: "silence" } // no events at all
-	| { readonly op: "rest" } // one rest event spanning each cycle (`~`)
+	| { readonly op: "rest"; readonly site?: number } // one rest event spanning each cycle (`~`)
 	// One tie event per lane 0..lanes-1 spanning each cycle (`_`): continues the note before.
-	| { readonly op: "tie"; readonly lanes: number }
+	| { readonly op: "tie"; readonly lanes: number; readonly site?: number }
 	// The child's notes become slides (`a_b`): new value, entered without a retrigger.
 	| { readonly op: "slide"; readonly child: Pat }
 	// Re-time by steps (§4.2): in each layer, the nth step spans [n, n+1).
