@@ -76,9 +76,9 @@ describe("engine: reduce policy", () => {
 
 	it("a narrower source is not copied across lanes: each port gets its own lanes", () => {
 		const p3 = prog([
-			pnode("rd.const", [{ v: c(10) }, { v: c(20) }, { v: c(30) }], { id: "wide" }),
-			pnode("rd.const", [{ v: c(5) }], { id: "mono" }),
-			pnode("rd.jacks", [{ a: n(0), b: n(1) }], { id: "jacks" }),
+			pnode("rd.const", [{ v: c(10) }, { v: c(20) }, { v: c(30) }], { place: "wide" }),
+			pnode("rd.const", [{ v: c(5) }], { place: "mono" }),
+			pnode("rd.jacks", [{ a: n(0), b: n(1) }], { place: "jacks" }),
 		]);
 		expect(renderTap(p3, 2, "w", 0, 1, getRegistry())[0]).toBe(3);
 		expect(renderTap(p3, 2, "aLen", 0, 1, getRegistry())[0]).toBe(3);
@@ -89,9 +89,9 @@ describe("engine: reduce policy", () => {
 	it("out: a mono l beside a 4-lane in sums the mono source once", () => {
 		// First sample: the DC blocker passes x through; gain 1 so l reads raw.
 		const p4 = prog([
-			pnode("rd.const", [{ v: c(0) }, { v: c(0) }, { v: c(0) }, { v: c(0) }], { id: "poly" }),
-			pnode("rd.const", [{ v: c(0.25) }], { id: "monoL" }),
-			pnode("out", [{ in: n(0), l: n(1), gain: c(1) }], { id: "master" }),
+			pnode("rd.const", [{ v: c(0) }, { v: c(0) }, { v: c(0) }, { v: c(0) }], { place: "poly" }),
+			pnode("rd.const", [{ v: c(0.25) }], { place: "monoL" }),
+			pnode("out", [{ in: n(0), l: n(1), gain: c(1) }], { place: "master" }),
 		]);
 		expect(renderTap(p4, 2, "l", 0, 1, getRegistry())[0]).toBeCloseTo(0.25, 6);
 	});
