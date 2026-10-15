@@ -33,6 +33,7 @@ export const OP = {
 	i32Store8: 0x3a,
 	i32Store16: 0x3b,
 	i32Const: 0x41,
+	i64Const: 0x42,
 	f64Const: 0x44,
 	i32Eqz: 0x45,
 	i32Eq: 0x46,
@@ -42,6 +43,14 @@ export const OP = {
 	i32GtS: 0x4a,
 	i32LeS: 0x4c,
 	i32GeS: 0x4e,
+	i64Eqz: 0x50,
+	i64Eq: 0x51,
+	i64Ne: 0x52,
+	i64LtS: 0x53,
+	i64LtU: 0x54,
+	i64GtS: 0x55,
+	i64LeS: 0x57,
+	i64GeS: 0x59,
 	f64Eq: 0x61,
 	f64Ne: 0x62,
 	f64Lt: 0x63,
@@ -59,6 +68,10 @@ export const OP = {
 	i32Shl: 0x74,
 	i32ShrS: 0x75,
 	i32ShrU: 0x76,
+	i64Add: 0x7c,
+	i64Sub: 0x7d,
+	i64Mul: 0x7e,
+	i64RemS: 0x81,
 	f64Abs: 0x99,
 	f64Neg: 0x9a,
 	f64Ceil: 0x9b,
@@ -73,11 +86,16 @@ export const OP = {
 	f64Min: 0xa4,
 	f64Max: 0xa5,
 	f64Copysign: 0xa6,
+	i32WrapI64: 0xa7,
 	i32TruncF64S: 0xaa,
 	i32TruncF64U: 0xab,
+	i64ExtendI32S: 0xac,
+	i64ExtendI32U: 0xad,
+	i64TruncF64S: 0xb0,
 	f32DemoteF64: 0xb6,
 	f64ConvertI32S: 0xb7,
 	f64ConvertI32U: 0xb8,
+	f64ConvertI64S: 0xb9,
 	f64PromoteF32: 0xbb,
 	/** Prefix of the saturating truncations; `i32.trunc_sat_f64_s` is sub-opcode 2. */
 	prefixFC: 0xfc,
@@ -88,6 +106,7 @@ export const TRUNC_SAT_F64_U = 3;
 
 /** Value types. */
 export const I32 = 0x7f;
+export const I64 = 0x7e;
 export const F64 = 0x7c;
 
 /** The empty block type. */

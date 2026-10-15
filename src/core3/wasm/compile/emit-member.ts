@@ -12,7 +12,7 @@ import type { AnyNode, MemberExpression } from "acorn";
 import { ELEMENT_BYTES } from "../layout/element-type";
 import type { ArrayShape } from "../layout/state-shape";
 import { toF64 } from "./coerce";
-import { emitLoad, emitStore } from "./element-io";
+import { type NumberKind, emitLoad, emitStore } from "./element-io";
 import { emitExpr, emitValue } from "./emit-expression";
 import type { FnEmitter } from "./fn-emitter";
 import { type Index, type Span, emitIndex, guarded, validIndex } from "./index-access";
@@ -100,7 +100,7 @@ export function endWrite(e: FnEmitter, t: Target, keep: boolean, kind: Kind): vo
 		return;
 	}
 	if (t.k === "element") {
-		writeElement(e, t, keep, kind === "int" ? "int" : "f64");
+		writeElement(e, t, keep, kind === "bool" ? "f64" : kind);
 		return;
 	}
 	if (!keep) {
@@ -115,9 +115,10 @@ export function kindOfTarget(t: Target): Kind {
 	return t.k === "local" ? t.kind : "f64";
 }
 
-/** The kind a value of kind `value` is stored as: an array element takes an int as it is. */
+/** The kind a value of kind `value` is stored as: an array element takes an integer as it is. */
 export function kindToStore(t: Target, value: Kind): Kind {
-	return t.k === "element" && value === "int" ? "int" : kindOfTarget(t);
+	const integer = value === "int" || value === "long";
+	return t.k === "element" && integer ? value : kindOfTarget(t);
 }
 
 function emitMemberReadOr(e: FnEmitter, node: MemberExpression, orElse: (() => Kind) | null): Kind {
@@ -148,9 +149,9 @@ function readElement(
 	at: Address,
 	index: Index,
 	orElse: (() => Kind) | null,
-): "int" | "f64" {
+): NumberKind {
 	const present = alwaysValid(index, shape.length);
-	let kind: "int" | "f64" = "f64";
+	let kind: NumberKind = "f64";
 	guarded(
 		e,
 		spanOf(shape, at),
@@ -176,7 +177,7 @@ function writeElement(
 	e: FnEmitter,
 	t: Target & { k: "element" },
 	keep: boolean,
-	kind: "int" | "f64",
+	kind: NumberKind,
 ): void {
 	const value = e.local(kind);
 	e.code.set(value);

@@ -3,8 +3,11 @@
  * in [lo, hi] — never -0, never NaN, never a fraction. Bounds stay within
  * ±2^53, where JS's f64 arithmetic on integers is exact, so a range's
  * arithmetic is the JS result. A range inside int32 lets the value live in
- * an i32 (int-range-of.ts decides, the emitters follow).
+ * an i32, any other range in an i64 (int-range-of.ts decides, the emitters
+ * follow).
  */
+
+import type { Width } from "./values";
 
 export interface Range {
 	readonly lo: number;
@@ -15,6 +18,8 @@ export const I32_MIN = -(2 ** 31);
 export const I32_MAX = 2 ** 31 - 1;
 export const INT32: Range = { lo: I32_MIN, hi: I32_MAX };
 export const UINT32: Range = { lo: 0, hi: 2 ** 32 - 1 };
+/** Every safe integer: what an i64 local holds when nothing narrower is known. */
+export const SAFE: Range = { lo: Number.MIN_SAFE_INTEGER, hi: Number.MAX_SAFE_INTEGER };
 
 /** A range when both bounds are exact integers (±2^53); null otherwise. */
 export function safeRange(lo: number, hi: number): Range | null {
@@ -32,6 +37,17 @@ export function fitsI32(r: Range | null): r is Range {
 	return r !== null && r.lo >= I32_MIN && r.hi <= I32_MAX;
 }
 
+/** The integer kind that holds every value of `r`: an i32 when it fits, else an i64. */
+export function widthOf(r: Range | null): Width | null {
+	if (r === null) return null;
+	return fitsI32(r) ? "int" : "long";
+}
+
+/** The wider of two widths. */
+export function wider(a: Width, b: Width): Width {
+	return a === "long" || b === "long" ? "long" : "int";
+}
+
 /** Every value of `r` is in [lo, hi]. */
 export function within(r: Range | null, lo: number, hi: number): r is Range {
 	return r !== null && r.lo >= lo && r.hi <= hi;
@@ -44,10 +60,4 @@ export function includes(r: Range, v: number): boolean {
 export function union(a: Range | null, b: Range | null): Range | null {
 	if (a === null || b === null) return null;
 	return { lo: Math.min(a.lo, b.lo), hi: Math.max(a.hi, b.hi) };
-}
-
-/** `r` cut to int32: what an i32 holding one of its values can hold. */
-export function toI32(r: Range | null): Range {
-	if (r === null) return INT32;
-	return { lo: Math.max(r.lo, I32_MIN), hi: Math.min(r.hi, I32_MAX) };
 }

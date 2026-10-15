@@ -9,12 +9,17 @@
  *   bool   a JS boolean in an i32 (0 or 1)
  *   int    a JS number known to be an int32 (a bitwise result, or an
  *          integer whose range fits, int-range-of.ts), in an i32
+ *   long   a JS number known to be an integer within ±2^53 that may not
+ *          fit int32 (a sum of two int32s), in an i64
  */
 
 import type { Shape } from "../layout/state-shape";
 import type { Range } from "./int-range";
 
-export type Kind = "f64" | "bool" | "int";
+export type Kind = "f64" | "bool" | "int" | "long";
+
+/** The two integer kinds. */
+export type Width = "int" | "long";
 
 /** A value known while compiling: config strings, constants, typeof results. */
 export type StaticValue = number | string | boolean | undefined | null;
@@ -28,8 +33,8 @@ export interface Address {
 export type Role = "state" | "ins" | "outs" | "config";
 
 /**
- * `local`: an `int` local carries the range of the values it holds where it
- * is read (a loop counter's range is narrower in the loop body).
+ * `local`: an `int` or `long` local carries the range of the values it
+ * holds where it is read (a loop counter's range is narrower in the body).
  * `memory`: state in linear memory (layout/state-shape.ts) — an f64 number, a
  * typed array, a record or an array of records. A reducer's gathered lanes
  * are an f64 array, as the engine's Float64Array.
@@ -43,10 +48,10 @@ export type Value =
 export type MemoryValue = Value & { readonly k: "memory" };
 
 export const local = (index: number, kind: Kind): Value => ({ k: "local", index, kind });
-export const intLocal = (index: number, range: Range): Value => ({
+export const intLocal = (index: number, kind: Width, range: Range): Value => ({
 	k: "local",
 	index,
-	kind: "int",
+	kind,
 	range,
 });
 export const fixed = (value: StaticValue): Value => ({ k: "static", value });

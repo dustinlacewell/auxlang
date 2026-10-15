@@ -1,8 +1,8 @@
 /**
  * The exact host `Math` functions (math/exact-host-math.ts) as WebAssembly:
  * each is an IEEE or int32 operation with one exact answer, so the bits
- * match V8's. `round` and `sign` are runtime functions. On int32-ranged
- * arguments, min, max, abs and the roundings run in i32 (int-math.ts).
+ * match V8's. `round` and `sign` are runtime functions. On integer
+ * arguments, min, max, abs and the roundings run as integers (int-math.ts).
  */
 
 import type { AnyNode, CallExpression } from "acorn";
@@ -23,7 +23,8 @@ const UNARY: Readonly<Record<string, number>> = {
 
 export function emitMathCall(e: FnEmitter, name: string, node: CallExpression): Kind {
 	const args = node.arguments;
-	if (emitIntMath(e, name, node)) return "int";
+	const int = emitIntMath(e, name, node);
+	if (int !== null) return int;
 	const unary = UNARY[name];
 	if (unary !== undefined) {
 		f64Arg(e, args[0], node);

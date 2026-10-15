@@ -66,7 +66,7 @@ const ELEMENT_RANGES: Readonly<Partial<Record<ElementType, Range>>> = {
 };
 
 function localRange(value: ReturnType<typeof resolve>): Range | null {
-	if (value?.k !== "local" || value.kind !== "int") return null;
+	if (value?.k !== "local" || (value.kind !== "int" && value.kind !== "long")) return null;
 	return value.range ?? INT32;
 }
 

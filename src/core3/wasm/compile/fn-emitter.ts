@@ -7,7 +7,7 @@
 
 import type { AnyNode } from "acorn";
 import { CodeBuffer } from "../encode/code-buffer";
-import { F64, I32, OP } from "../encode/opcodes";
+import { F64, I32, I64, OP } from "../encode/opcodes";
 import type { EmitContext } from "./emit-context";
 import { Scope } from "./scope";
 import type { Kind } from "./values";
@@ -23,7 +23,8 @@ export interface LabelTarget {
 	readonly continueAt: number | null;
 }
 
-export const valueType = (kind: Kind): number => (kind === "f64" ? F64 : I32);
+export const valueType = (kind: Kind): number =>
+	kind === "f64" ? F64 : kind === "long" ? I64 : I32;
 
 export class FnEmitter {
 	code = new CodeBuffer();

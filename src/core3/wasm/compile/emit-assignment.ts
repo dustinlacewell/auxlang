@@ -52,6 +52,7 @@ export function emitUpdate(e: FnEmitter, node: UpdateExpression, keep: boolean):
 	const target = targetOf(e, node.argument);
 	const kind = target.k === "local" ? target.kind : "f64";
 	if (kind === "bool") return e.fail(node, "++/-- need a number variable");
+	if (kind === "long") return e.fail(node, "an i64 variable is never written (compiler bug)");
 	const int = kind === "int";
 	beginWrite(e, target);
 	const current = readTarget(e, target);

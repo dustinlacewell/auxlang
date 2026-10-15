@@ -1,11 +1,12 @@
 /**
  * The emitter's integer typing (compile/int-range-of.ts): a value proven to
- * be an integer in int32 lives in an i32, and everything else stays exact
- * JS. Each helper here runs on WASM next to its JS original over edge
- * inputs; the local types show what was typed. A counter bounded by a
- * constant is an i32; a bound that may be fractional, a sum that leaves
- * int32, -0 and NaN are never i32. A module differential covers indices
- * that may be out of range and integer array state.
+ * be an integer in int32 lives in an i32, one within ±2^53 in an i64, and
+ * everything else stays an exact JS f64. Each helper here runs on WASM next
+ * to its JS original over edge inputs; the local types show what was
+ * typed. A counter bounded by a constant is an i32; a bound that may be
+ * fractional, -0 and NaN are never integers; a sum that leaves int32 is an
+ * i64, a product that leaves ±2^53 an f64. A module differential covers
+ * indices that may be out of range and integer array state.
  */
 
 import { describe, expect, it } from "vitest";
@@ -17,7 +18,7 @@ import { compileHelper } from "@/core3/wasm/compile/compile-helper";
 import { FunctionTable } from "@/core3/wasm/compile/function-table";
 import { Functions } from "@/core3/wasm/compile/functions";
 import { helperSet } from "@/core3/wasm/compile/helper-set";
-import { I32 } from "@/core3/wasm/encode/opcodes";
+import { I32, I64 } from "@/core3/wasm/encode/opcodes";
 import { exportFunctions } from "./function-module";
 import { firstSlotDifference } from "./slot-differential";
 
@@ -61,7 +62,14 @@ const HELPERS: Readonly<Record<string, string>> = {
 	const a = x | 0;
 	const b = a + a;
 	const c = b * b * b;
-	return b + c / 1e9;
+	const d = (a >>> 4) * (a & 0x7fffffff);
+	const e = b > 3 ? b : 3;
+	return b + c / 1e9 + (d % 1000) + (d + 1 - d) + Math.max(e, a) + (b < a ? 1 : 0) + ((b & 7) | 0);
+}`,
+	unsigned: `function unsigned(x) {
+	const u = x >>> 0;
+	const v = (u % 1000) + u;
+	return v + (v >>> 1);
 }`,
 	negZero: `function negZero(x) {
 	const a = x | 0;
@@ -98,12 +106,15 @@ const js: Record<string, (x: number) => number> = Object.fromEntries(
 	Object.entries(HELPERS).map(([name, text]) => [name, new Function(`return ${text}`)()]),
 );
 
-function i32Locals(name: string): number {
+function localsOf(name: string, type: number): number {
 	const set = helperSet("test", HELPERS);
 	const fns = new Functions(new FunctionTable(0));
 	const fn = compileHelper(set, name, [{ k: "run", kind: "f64" }], fns.calls(set));
-	return fn.locals.filter((t) => t === I32).length;
+	return fn.locals.filter((t) => t === type).length;
 }
+
+const i32Locals = (name: string): number => localsOf(name, I32);
+const i64Locals = (name: string): number => localsOf(name, I64);
 
 function expectSameAsJs(name: string): void {
 	for (const x of INPUTS) {
@@ -124,9 +135,15 @@ describe("WASM integer typing", () => {
 		expectSameAsJs("fractionalBound");
 	});
 
-	it("a value that leaves int32 is not an i32, and stays exact", () => {
+	it("a value that leaves int32 is an i64; one that leaves ±2^53 stays an f64", () => {
 		expect(i32Locals("wide")).toBe(1);
+		expect(i64Locals("wide")).toBeGreaterThanOrEqual(2);
 		expectSameAsJs("wide");
+	});
+
+	it("uint32 values are i64 and stay exact", () => {
+		expect(i64Locals("unsigned")).toBe(2);
+		expectSameAsJs("unsigned");
 	});
 
 	it("-0 is never an integer: a product with a negative, a remainder of a negative, a negation", () => {

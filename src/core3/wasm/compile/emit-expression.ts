@@ -10,7 +10,7 @@ import { toF64, toInt32 } from "./coerce";
 import { emitAssignment, emitUpdate } from "./emit-assignment";
 import { emitBinary } from "./emit-binary";
 import { emitCall } from "./emit-call";
-import { emitInt, isInt } from "./emit-int";
+import { emitInteger, integerWidth } from "./emit-int";
 import { emitConditional, emitLogical } from "./emit-logical";
 import { emitMemberRead } from "./emit-member";
 import { emitTest } from "./emit-test";
@@ -111,11 +111,13 @@ function emitUnary(e: FnEmitter, node: UnaryExpression): Kind {
 		e.code.op(OP.i32Eqz);
 		return "bool";
 	}
-	if (node.operator === "-" && isInt(e, node)) {
-		e.code.i32Const(0);
-		emitInt(e, node.argument);
-		e.code.op(OP.i32Sub);
-		return "int";
+	const width = node.operator === "-" ? integerWidth(e, node) : null;
+	if (width !== null) {
+		if (width === "int") e.code.i32Const(0);
+		else e.code.i64Const(0);
+		emitInteger(e, node.argument, width);
+		e.code.op(width === "int" ? OP.i32Sub : OP.i64Sub);
+		return width;
 	}
 	const kind = emitExpr(e, node.argument);
 	switch (node.operator) {
@@ -124,7 +126,7 @@ function emitUnary(e: FnEmitter, node: UnaryExpression): Kind {
 			e.code.op(OP.f64Neg);
 			return "f64";
 		case "+":
-			if (kind === "int") return "int";
+			if (kind === "int" || kind === "long") return kind;
 			toF64(e, kind);
 			return "f64";
 		case "~":

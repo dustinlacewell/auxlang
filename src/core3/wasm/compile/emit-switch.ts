@@ -52,7 +52,7 @@ function dispatch(
 		return;
 	}
 	const kind = emitExpr(e, node.discriminant);
-	const disc = e.local(kind === "bool" ? "bool" : kind === "int" ? "int" : "f64");
+	const disc = e.local(kind);
 	e.code.set(disc);
 	cases.forEach((c, k) => {
 		if (c.test === null || c.test === undefined) return;

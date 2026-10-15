@@ -11,6 +11,18 @@ export function unsignedLeb(value: number, out: number[]): void {
 	} while (n !== 0);
 }
 
+/** A signed 64-bit integer, from a safe integer. */
+export function signedLeb64(value: number, out: number[]): void {
+	let n = BigInt(value);
+	for (;;) {
+		const byte = Number(n & 0x7fn);
+		n >>= 7n;
+		const done = (n === 0n && (byte & 0x40) === 0) || (n === -1n && (byte & 0x40) !== 0);
+		out.push(done ? byte : byte | 0x80);
+		if (done) return;
+	}
+}
+
 /** A signed 32-bit integer. */
 export function signedLeb(value: number, out: number[]): void {
 	let n = value | 0;

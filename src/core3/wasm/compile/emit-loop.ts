@@ -40,7 +40,7 @@ export function emitLoop(e: FnEmitter, node: Loop, label: string | null): void {
 		e.labels.push({ name: label, implicit: true, breakAt: exit, continueAt: next });
 		const body = e.scope.child();
 		if (counter !== null && index !== null)
-			body.declare(counter.name, intLocal(index, counter.body));
+			body.declare(counter.name, intLocal(index, "int", counter.body));
 		e.within(body, () => emitStatement(e, node.body));
 		e.labels.pop();
 		e.exit();
@@ -60,7 +60,7 @@ function declareCounter(e: FnEmitter, counter: Counter): number {
 	emitInt(e, counter.init);
 	const index = e.local("int");
 	e.code.set(index);
-	e.scope.declare(counter.name, intLocal(index, counter.range));
+	e.scope.declare(counter.name, intLocal(index, "int", counter.range));
 	return index;
 }
 

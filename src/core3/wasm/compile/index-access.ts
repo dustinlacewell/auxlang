@@ -3,27 +3,24 @@
  * an index is valid when it is an integer in [0, length) (-0 is 0). Code that
  * needs the element runs with its address pushed only when the index is
  * valid; JS reads `undefined` and drops the write otherwise. An index whose
- * range (int-range-of.ts) is inside [0, length) needs no check; an int32 one
- * needs one unsigned compare; an f64 known to be an integer, two compares.
+ * range (int-range-of.ts) is inside [0, length) needs no check; any other
+ * integer index (i32 or i64) needs one unsigned compare.
  */
 
 import type { AnyNode } from "acorn";
 import { OP } from "../encode/opcodes";
 import { emitExpr } from "./emit-expression";
-import { emitInt, isInt } from "./emit-int";
+import { emitInteger, integerWidth } from "./emit-int";
 import type { FnEmitter } from "./fn-emitter";
-import { intRange, provenIndex } from "./int-range-of";
+import { provenIndex } from "./int-range-of";
 import { staticOf } from "./static-value";
 import type { Address, Kind } from "./values";
 
-/**
- * A constant index, or the local holding a run-time one: an i32 (`proven`:
- * always valid), or an f64 (`integral`: always an integer).
- */
+/** A constant index, or the local holding a run-time one (`proven`: always valid). */
 export type Index =
 	| { readonly k: "static"; readonly value: number }
 	| { readonly k: "int"; readonly local: number; readonly proven: boolean }
-	| { readonly k: "f64"; readonly local: number; readonly integral: boolean };
+	| { readonly k: "long" | "f64"; readonly local: number };
 
 export function emitIndex(e: FnEmitter, property: AnyNode, length: number): Index {
 	const known = staticOf(e, property);
@@ -31,15 +28,17 @@ export function emitIndex(e: FnEmitter, property: AnyNode, length: number): Inde
 		if (typeof known.v !== "number") return e.fail(property, "an index must be a number");
 		return { k: "static", value: known.v };
 	}
-	if (isInt(e, property)) {
-		emitInt(e, property);
+	const width = integerWidth(e, property);
+	if (width === "int") {
+		emitInteger(e, property, width);
 		return { k: "int", local: setLocal(e, "int"), proven: provenIndex(e, property, length) };
 	}
-	const integral = intRange(e, property) !== null;
-	const kind = emitExpr(e, property);
+	let kind: Kind = "long";
+	if (width === "long") emitInteger(e, property, width);
+	else kind = emitExpr(e, property);
 	if (kind === "bool") return e.fail(property, "a boolean is not an index");
 	if (kind === "int") return { k: "int", local: setLocal(e, "int"), proven: false };
-	return { k: "f64", local: setLocal(e, "f64"), integral };
+	return { k: kind, local: setLocal(e, kind) };
 }
 
 function setLocal(e: FnEmitter, kind: Kind): number {
@@ -122,22 +121,29 @@ function pushBase(e: FnEmitter, at: Address): void {
 	else e.code.get(at.base);
 }
 
-/** An i32: 1 when the run-time index is an integer in [0, length). */
-function pushValid(e: FnEmitter, index: Index & { k: "f64" | "int" }, length: number): void {
+type RunTime = Exclude<Index, { k: "static" }>;
+
+/** An i32: 1 when the run-time index is an integer in [0, length). A negative integer is a large unsigned one. */
+function pushValid(e: FnEmitter, index: RunTime, length: number): void {
 	const t = index.local;
 	if (index.k === "int") {
 		e.code.get(t).i32Const(length).op(OP.i32LtU);
 		return;
 	}
+	if (index.k === "long") {
+		e.code.get(t).i64Const(length).op(OP.i64LtU);
+		return;
+	}
 	e.code.get(t).f64Const(0).op(OP.f64Ge);
 	e.code.get(t).f64Const(length).op(OP.f64Lt).op(OP.i32And);
-	if (!index.integral) e.code.get(t).op(OP.f64Trunc).get(t).op(OP.f64Eq).op(OP.i32And);
+	e.code.get(t).op(OP.f64Trunc).get(t).op(OP.f64Eq).op(OP.i32And);
 }
 
 /** base + index × size, for a valid run-time index; the span's offset goes in the memarg. */
-function pushElementAddress(e: FnEmitter, span: Span, index: Index & { k: "f64" | "int" }): void {
+function pushElementAddress(e: FnEmitter, span: Span, index: RunTime): void {
 	e.code.get(index.local);
 	if (index.k === "f64") e.code.op(OP.i32TruncF64U);
+	if (index.k === "long") e.code.op(OP.i32WrapI64);
 	if (span.size > 1) {
 		const shift = Math.log2(span.size);
 		if (Number.isInteger(shift)) e.code.i32Const(shift).op(OP.i32Shl);

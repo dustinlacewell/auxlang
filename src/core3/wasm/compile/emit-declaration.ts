@@ -3,21 +3,22 @@
  * an array or a record stays a compile-time alias; everything else gets a
  * fresh local. A variable never written after its declaration (a `const`,
  * or a `let` that the code after it in its block never writes) keeps the
- * kind of its value: when that value's range fits int32 it is an i32 local
- * with that range. A variable written later stays an f64 or a boolean.
+ * kind of its value: when that value has an integer range it is an i32
+ * local (the range fits int32) or an i64 local, with that range. A
+ * variable written later stays an f64 or a boolean.
  */
 
 import type { AnyNode, VariableDeclaration, VariableDeclarator } from "acorn";
 import { writes } from "./assigned-names";
 import { toF64 } from "./coerce";
 import { emitExpr } from "./emit-expression";
-import { emitInt, isInt } from "./emit-int";
+import { emitInteger } from "./emit-int";
 import type { FnEmitter } from "./fn-emitter";
-import { INT32, toI32 } from "./int-range";
+import { INT32, SAFE, widthOf } from "./int-range";
 import { intRange } from "./int-range-of";
 import { placeOf } from "./place";
 import { staticOf } from "./static-value";
-import { fixed, intLocal, local } from "./values";
+import { type Kind, fixed, intLocal, local } from "./values";
 
 /** `later`: the code in the declaration's scope after it; null when not known (every `let` may be written). */
 export function emitDeclaration(
@@ -44,22 +45,28 @@ function declare(e: FnEmitter, d: VariableDeclarator, constant: boolean, unwritt
 		return;
 	}
 	if (constant && declareAlias(e, name, d.init)) return;
-	if (unwritten && isInt(e, d.init)) {
-		const range = toI32(intRange(e, d.init));
-		emitInt(e, d.init);
-		const index = e.local("int");
-		e.code.set(index);
-		e.scope.declare(name, intLocal(index, range));
+	const range = unwritten ? intRange(e, d.init) : null;
+	const width = widthOf(range);
+	if (range !== null && width !== null) {
+		emitInteger(e, d.init, width);
+		e.scope.declare(name, intLocal(setLocal(e, width), width, range));
 		return;
 	}
 	let kind = emitExpr(e, d.init);
-	if (kind === "int" && !unwritten) {
+	if ((kind === "int" || kind === "long") && !unwritten) {
 		toF64(e, kind);
 		kind = "f64";
 	}
+	const index = setLocal(e, kind);
+	if (kind === "int" || kind === "long")
+		e.scope.declare(name, intLocal(index, kind, kind === "int" ? INT32 : SAFE));
+	else e.scope.declare(name, local(index, kind));
+}
+
+function setLocal(e: FnEmitter, kind: Kind): number {
 	const index = e.local(kind);
 	e.code.set(index);
-	e.scope.declare(name, kind === "int" ? intLocal(index, INT32) : local(index, kind));
+	return index;
 }
 
 /**

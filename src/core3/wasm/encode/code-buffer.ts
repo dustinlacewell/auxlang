@@ -5,7 +5,7 @@
  * the layout's addresses go straight into the code.
  */
 
-import { signedLeb, unsignedLeb } from "./leb128";
+import { signedLeb, signedLeb64, unsignedLeb } from "./leb128";
 import { OP, TRUNC_SAT_F64_S, TRUNC_SAT_F64_U, VOID_BLOCK } from "./opcodes";
 
 const F64_BYTES = new DataView(new ArrayBuffer(8));
@@ -26,6 +26,13 @@ export class CodeBuffer {
 	i32Const(n: number): this {
 		this.bytes.push(OP.i32Const);
 		signedLeb(n, this.bytes);
+		return this;
+	}
+
+	/** A safe integer as an i64. */
+	i64Const(n: number): this {
+		this.bytes.push(OP.i64Const);
+		signedLeb64(n, this.bytes);
 		return this;
 	}
 
