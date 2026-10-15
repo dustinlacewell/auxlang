@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Pat } from "@/core3/pattern/ast";
+import type { Layer, Pat } from "@/core3/pattern/ast";
 import { parse } from "@/core3/pattern/notation/parse";
 import { r } from "@/core3/pattern/rational";
 
@@ -14,7 +14,10 @@ const timecat = (...children: [number, Pat][]): Pat => ({
 });
 const slowcat = (...children: Pat[]): Pat => ({ op: "slowcat", children });
 const stack = (...children: Pat[]): Pat => ({ op: "stack", children });
+const layer = (steps: number, pat: Pat): Layer => ({ pat, steps: r(steps) });
+const polymeter = (...layers: Layer[]): Pat => ({ op: "polymeter", layers });
 const fast = (factor: ReturnType<typeof r>, child: Pat): Pat => ({ op: "fast", factor, child });
+const slow = (factor: ReturnType<typeof r>, child: Pat): Pat => ({ op: "slow", factor, child });
 const degrade = (prob: number, child: Pat): Pat => ({ op: "degrade", prob, child });
 const euclid = (k: number, steps: number, rot: number, child: Pat): Pat => ({
 	op: "euclid",
@@ -32,7 +35,7 @@ const e4 = 64;
 const g4 = 67;
 const a4 = 69;
 
-describe("desugaring table (platonic.md §3.2)", () => {
+describe("parse shapes (MANIFESTO §3.3)", () => {
 	it("sequence within cycle -> fastcat", () => {
 		expect(parse("c4 e4")).toEqual(fastcat(pure(c4), pure(e4)));
 	});
@@ -53,16 +56,39 @@ describe("desugaring table (platonic.md §3.2)", () => {
 		expect(parse("<a4 b4>")).toEqual(slowcat(pure(a4), pure(71)));
 	});
 
-	it("{a, b} stack -> stack", () => {
-		expect(parse("{c4, e4}")).toEqual(stack(pure(c4), pure(e4)));
+	it("[a, b] chord -> stack", () => {
+		expect(parse("[c4, e4]")).toEqual(stack(pure(c4), pure(e4)));
 	});
 
-	it("{c4,e4,g4} three-voice chord", () => {
-		expect(parse("{c4,e4,g4}")).toEqual(stack(pure(c4), pure(e4), pure(g4)));
+	it("[c4,e4,g4] three-voice chord", () => {
+		expect(parse("[c4,e4,g4]")).toEqual(stack(pure(c4), pure(e4), pure(g4)));
+	});
+
+	it("{a b c, d e} -> polymeter, layers keep their written step counts", () => {
+		expect(parse("{c4 e4 g4, a4 b4}")).toEqual(
+			polymeter(
+				layer(3, fastcat(pure(c4), pure(e4), pure(g4))),
+				layer(2, fastcat(pure(a4), pure(71))),
+			),
+		);
+	});
+
+	it("{a, [b c]} -> a single-step layer is still one step", () => {
+		expect(parse("{c4, [e4 g4]}")).toEqual(
+			polymeter(layer(1, fastcat(pure(c4))), layer(1, fastcat(fastcat(pure(e4), pure(g4))))),
+		);
 	});
 
 	it("a*2 fast within slot", () => {
 		expect(parse("c4*2")).toEqual(fast(r(2), pure(c4)));
+	});
+
+	it("a/2 slow within slot", () => {
+		expect(parse("c4/2")).toEqual(slow(r(2), pure(c4)));
+	});
+
+	it("a/3/2 rational factor", () => {
+		expect(parse("c4/3/2")).toEqual(slow(r(3, 2), pure(c4)));
 	});
 
 	it("a*3/2 rational factor", () => {
@@ -102,8 +128,9 @@ describe("desugaring table (platonic.md §3.2)", () => {
 		expect(parse("c4?")).toEqual(degrade(0.5, pure(c4)));
 	});
 
-	it("a?.75 keep-prob 0.75 -> degrade(0.25)", () => {
-		expect(parse("c4?.75")).toEqual(degrade(0.25, pure(c4)));
+	it("a?0.7 drop chance 0.7 -> degrade(0.7)", () => {
+		expect(parse("c4?0.7")).toEqual(degrade(0.7, pure(c4)));
+		expect(parse("c4?.25")).toEqual(degrade(0.25, pure(c4)));
 	});
 
 	it("a(3,8) euclid", () => {

@@ -57,8 +57,13 @@ describe("loud errors with position", () => {
 		expect(() => parse("[]")).toThrow(/empty/);
 	});
 
-	it("empty stack segment (trailing comma)", () => {
+	it("empty chord or polymeter segment (trailing comma)", () => {
+		expect(() => parse("[c4,]")).toThrow(/empty/);
 		expect(() => parse("{c4,}")).toThrow(/empty/);
+	});
+
+	it("dangling / with no factor", () => {
+		expect(() => parse("c4/")).toThrow(/factor/);
 	});
 
 	it("invalid note letter", () => {

@@ -22,7 +22,7 @@ export type TokenKind =
 	| "star" // *
 	| "bang" // !
 	| "at" // @
-	| "slash" // /  (rational factor denominator: 3/2)
+	| "slash" // /  (slow modifier a/2, or rational factor denominator 3/2)
 	| "question" // ?
 	| "tie" // _  when it joins atoms: a_b  (see note below)
 	| "splice"; // interpolated JS value

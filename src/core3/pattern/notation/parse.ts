@@ -1,17 +1,19 @@
 /**
  * Recursive-descent parser: token stream -> `Pat` (serializable AST data).
  *
- * Strategy (the desugaring table of platonic.md §3.2 is normative):
- *   sequence of steps          -> weighted fastcat  (single unit-weight step: itself)
+ * Strategy (the desugaring table of MANIFESTO §3.3 is normative):
+ *   sequence of steps          -> fastcat  (single step: itself)
  *   ~                          -> silence
  *   [ .. ]                     -> fastcat (one step)
+ *   [ .. , .. ]                -> stack (chord)
  *   < .. >                     -> slowcat
- *   { .. , .. }                -> stack
- *   a*f                        -> fast(f, a)          (f may be rational 3/2)
+ *   { .. , .. }                -> polymeter, steps from the first layer
+ *   a*f  a/f                   -> fast(f, a) / slow(f, a)   (f may be rational 3/2)
  *   a!n                        -> n replicated steps
- *   a@w                        -> step of weight w
+ *   a@w                        -> timecat step of weight w
+ *   a _                        -> extends the previous step's weight by 1
  *   a_b                        -> fastcat([tieNext a, tiePrev b]) as one step
- *   a?  a?.75                  -> degrade(0.5 / 1-0.75, a)
+ *   a?  a?0.7                  -> degrade(0.5, a) / degrade(0.7, a)  (drop chance)
  *   a(k,s)  a(k,s,rot)         -> euclid(k,s,rot, a)
  * Modifiers chain left-to-right: c4*2? = degrade(fast(2, c4)).
  *
@@ -25,8 +27,10 @@ import {
 	euclid,
 	fast,
 	fastcat,
+	polymeter,
 	pure,
 	silence,
+	slow,
 	slowcat,
 	stack,
 	tieNext,
@@ -79,7 +83,7 @@ class Parser {
 	 * A sequence: steps until a closing/stop token. Returns a weighted fastcat,
 	 * or the single step directly when there is exactly one unit-weight step.
 	 */
-	private parseSequence(stop: Set<string>): Pat {
+	private parseSequence(stop: Set<string>, fold: StepFold = foldSteps): Pat {
 		const steps: WStep[] = [];
 		while (true) {
 			const t = this.peek();
@@ -87,7 +91,7 @@ class Parser {
 			if (stop.has(t.kind)) break;
 			this.parseStep(steps);
 		}
-		return foldSteps(steps, this.lastPos());
+		return fold(steps, this.lastPos());
 	}
 
 	/**
@@ -155,7 +159,7 @@ class Parser {
 		return fastcat(flagged);
 	}
 
-	/** A term plus its `*` / `?` / `(k,s,rot)` modifiers, chained left-to-right. */
+	/** A term plus its `*` / `/` / `?` / `(k,s,rot)` modifiers, chained left-to-right. */
 	private parseModified(): Pat {
 		let pat = this.parseTerm();
 		while (true) {
@@ -163,6 +167,11 @@ class Parser {
 			if (t?.kind === "star") {
 				this.next();
 				pat = fast(this.parseFactor(), pat);
+				continue;
+			}
+			if (t?.kind === "slash") {
+				this.next();
+				pat = slow(this.parseFactor(), pat);
 				continue;
 			}
 			if (t?.kind === "question") {
@@ -223,24 +232,30 @@ class Parser {
 		return stack(alts.map(slowcatFromSequence));
 	}
 
+	/** `{a b c, d e}`: polymeter. Each layer keeps its written step count, even a single step. */
 	private parseBraceGroup(): Pat {
 		const open = this.next(); // {
-		const body = this.parseGroupBody("rbrace", open.pos, "}");
+		const layers = this.parseGroupBody("rbrace", open.pos, "}", foldLayer);
 		this.expect("rbrace", open.pos, "}");
-		return body.length === 1 ? body[0]! : stack(body);
+		return polymeter(layers);
 	}
 
 	/**
 	 * Comma-separated sequences inside a group. Returns one Pat per comma segment
-	 * (each a folded sequence). Empty segments are errors (no parses-but-silent).
+	 * (each folded by `fold`). Empty segments are errors (no parses-but-silent).
 	 */
-	private parseGroupBody(close: string, openPos: number, closeCh: string): Pat[] {
+	private parseGroupBody(
+		close: string,
+		openPos: number,
+		closeCh: string,
+		fold: StepFold = foldSteps,
+	): Pat[] {
 		const opener = closeCh === "]" ? "[" : closeCh === ">" ? "<" : "{";
 		const segs: Pat[] = [];
 		const stop = new Set<string>([close, "comma"]);
 		while (true) {
-			// parseSequence throws "empty sequence" on a missing/empty segment.
-			segs.push(this.parseSequence(stop));
+			// The fold throws "empty sequence" on a missing/empty segment.
+			segs.push(this.parseSequence(stop, fold));
 			const t = this.peek();
 			if (t?.kind === "comma") {
 				this.next();
@@ -326,9 +341,9 @@ class Parser {
 	}
 
 	/**
-	 * Drop probability from `?` / `?.75`. A probability must be *adjacent* to the
-	 * `?` (no whitespace): `a?.75` attaches, but `a? 2` is `a?` then step `2`.
-	 * Keep-prob p means drop-prob 1-p; bare `?` is 0.5.
+	 * Drop probability from `?` / `?0.7`. A probability must be *adjacent* to the
+	 * `?` (no whitespace): `a?0.7` attaches, but `a? 2` is `a?` then step `2`.
+	 * The number is the drop chance, as in Strudel; bare `?` is 0.5.
 	 */
 	private parseDropProb(qPos: number): number {
 		const t = this.peek();
@@ -339,13 +354,13 @@ class Parser {
 				);
 			}
 			this.next();
-			const keep = Number(t.text);
-			if (!(keep >= 0 && keep <= 1)) {
+			const drop = Number(t.text);
+			if (!(drop >= 0 && drop <= 1)) {
 				throw new Error(
 					`mini-notation: probability must be in [0,1], got ${t.text} (at position ${t.pos})`,
 				);
 			}
-			return 1 - keep;
+			return drop;
 		}
 		return 0.5;
 	}
@@ -371,14 +386,24 @@ class Parser {
 
 const radd1 = (w: R): R => r(w.n + w.d, w.d);
 
+type StepFold = (steps: readonly WStep[], pos: number) => Pat;
+
 const isUnit = (w: R): boolean => w.n === w.d;
 
-/** Fold weighted steps into the sequence's Pat: fastcat, or timecat when any step is weighted. */
+/** Fold weighted steps into the sequence's Pat: a single unit step is itself. */
 function foldSteps(steps: readonly WStep[], pos: number): Pat {
+	const [only] = steps;
+	if (steps.length === 1 && only && isUnit(only.weight)) return only.pat;
+	return foldLayer(steps, pos);
+}
+
+/**
+ * Fold steps into fastcat, or timecat when any step is weighted. Never unwraps a
+ * single step, so the Pat's tactus is the written step count.
+ */
+function foldLayer(steps: readonly WStep[], pos: number): Pat {
 	if (steps.length === 0) throw new Error(`mini-notation: empty sequence (at position ${pos})`);
-	if (steps.every((s) => isUnit(s.weight))) {
-		return steps.length === 1 ? steps[0]!.pat : fastcat(steps.map((s) => s.pat));
-	}
+	if (steps.every((s) => isUnit(s.weight))) return fastcat(steps.map((s) => s.pat));
 	return timecat(steps.map((s) => [s.weight, s.pat] as const));
 }
 
