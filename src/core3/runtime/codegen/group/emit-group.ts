@@ -8,6 +8,7 @@
 
 import type { NodeRun } from "../../node-run";
 import type { DriverScope } from "../driver-scope";
+import { eagerFunction } from "../eager-function";
 import { emitBlockLoop } from "../emit-block-loop";
 import { emitCallNode } from "../emit-call-node";
 import { slotLocal } from "../name-table";
@@ -42,14 +43,14 @@ export function emitGroup(
 	);
 	const crossing = slots.all.filter((s) => env.block.base.has(s));
 	const region = (s: number) => env.block.base.get(s) as number;
-	return [
-		`function ${name}(bufs, n, count, sr) {`,
-		...emitBlockLoop(
+	return eagerFunction(
+		name,
+		"bufs, n, count, sr",
+		emitBlockLoop(
 			slots,
 			nodes,
 			crossing.map((s) => `${env.buffer}[${region(s) + 1} + k] = ${slotLocal(s)};`),
 			crossing.map((s) => `${env.buffer}[${region(s)}] = ${slotLocal(s)};`),
 		),
-		"}",
-	];
+	);
 }

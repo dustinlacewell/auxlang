@@ -5,6 +5,7 @@
  * Signature: `(outL, outR, offset, n)`.
  */
 
+import { eagerFunction } from "../eager-function";
 import type { BlockSlots } from "./block-slots";
 
 export function emitGroupTaps(
@@ -19,12 +20,10 @@ export function emitGroupTaps(
 		for (const slot of taps) s = `(${s} + ${buffer}[${(block.base.get(slot) as number) + 1} + k])`;
 		return s;
 	};
-	return [
-		`function ${name}(outL, outR, offset, n) {`,
+	return eagerFunction(name, "outL, outR, offset, n", [
 		"for (let k = 0; k < n; k++) {",
 		`outL[offset + k] = ${sum(tapsL)};`,
 		`outR[offset + k] = ${sum(tapsR)};`,
 		"}",
-		"}",
-	];
+	]);
 }
