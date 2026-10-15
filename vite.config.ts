@@ -10,6 +10,8 @@ export default defineConfig(({ command }) => ({
 	plugins: [react(), tailwindcss(), interactiveTestsPlugin(), patternTestsPlugin()],
 	test: {
 		exclude: [...configDefaults.exclude, "**/.claude/worktrees/**"],
+		// Renders of heavy patches near 5 s when the full suite runs in parallel.
+		testTimeout: 20_000,
 	},
 	build: {
 		target: "esnext",

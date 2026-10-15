@@ -73,8 +73,7 @@ describe("codegen driver is bit-identical to the interpreter", () => {
 	});
 
 	for (const c of CASES) {
-		// Each case renders 1 s three times; heavy patches near 5 s under parallel load.
-		it(c.label, () => expectIdentical(evalPatch(c.code)), 20_000);
+		it(c.label, () => expectIdentical(evalPatch(c.code)));
 	}
 
 	it("a re-eval swap with migrated state (seq, lpf cutoff edit, delay)", () => {
