@@ -1,12 +1,9 @@
 // chord - showcase
 // Chord progression from sequencer
-clock(30)
-  .seq("c3 f3 g3 c3")
-  .apply(s =>
-    s.cv
-      .chord("maj7")
-      .tri()
-      .lpf({ cutoff: 800 })
-      .gain({ level: s.gate.adsr({ attack: 0.2, release: 0.5 }) })
-      .spread()
-      .out())
+tempo(30)
+const s = seq(chord("<Cmaj7 Fmaj7 Gmaj7 Cmaj7>").voicing())
+s.tri()
+  .lpf(hz(800))
+  .gain(s.gate.adsr({ attack: 0.2, release: 0.5 }))
+  .gain(0.2)
+  .out()

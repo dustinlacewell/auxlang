@@ -5,6 +5,6 @@ lfo(0.3, 200, 600)
     root: 9,
     octave: 3,
     range: 2,
-    scale: "minor pentatonic"})
+    scaleName: "minor pentatonic"})
   .tri()
   .out()

@@ -3,7 +3,6 @@
 clock(120)
   .seq("c4 e4 g4 c5")
   .apply(s =>
-    s.cv
-      .slew()
+    s.slew()
       .saw()
       .out())

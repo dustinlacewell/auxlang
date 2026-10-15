@@ -3,11 +3,13 @@
 clock(120)
   .seq("c4*4")
   .apply(s =>
-    sah({ input: noise(), trig: s.trig }).scale({
+    noise()
+      .sah(s.trig)
+      .scale({
         from: -1,
         to: 1,
-        min: 200,
-        max: 800})
+        min: 48,
+        max: 72})
       .tri()
-      .gain({ level: s.gate.ar() })
+      .gain(s.gate.ar())
       .out())
