@@ -460,6 +460,18 @@ s.tri()
 	},
 	{
 		section: "Combinators",
+		title: "swing",
+		description:
+			".swing(4) delays the second eighth of each beat to a triplet's last third — a shuffle. .swingBy(amount, n) sets how late: 0 is straight.",
+		code: `tempo(110)
+const s = seq(p\`c3 e3 g3 e3 c3 e3 g3 b3\`.swing(4))
+s.tri()
+  .mul(s.gate.adsr(0.003, 0.08, 0.3, 0.05))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Combinators",
 		title: "euclid",
 		description:
 			".euclid(3, 8) masks the line to a euclidean rhythm — the melody survives only on the tresillo hits.",

@@ -104,6 +104,9 @@ function queryCycle(pat: Pat, span: Span, ctx: QueryCtx): Ev[] {
 			return queryShifted(rsub(R0, pat.amount), pat.child, span, descend(ctx, "late", 0));
 		case "iter":
 			return queryIter(pat.n, pat.child, span, descend(ctx, "iter", 0));
+		// No `descend`: swing moves only time, so a swung pattern drops the same notes.
+		case "swing":
+			return querySwing(pat.amount, pat.n, pat.child, span, ctx);
 		case "ply":
 			return queryPly(pat.n, pat.child, span, descend(ctx, "ply", 0));
 		case "euclid":
@@ -181,6 +184,7 @@ const OP_CODE: Record<PatOp, number> = {
 	steps: 34, // never descended into (see queryCycle)
 	compact: 35, // never descended into
 	seed: 36, // never descended into: it starts a fresh path
+	swing: 37, // never descended into
 };
 
 function descend(ctx: QueryCtx, op: PatOp, index: number): QueryCtx {
@@ -226,6 +230,48 @@ function queryShifted(amount: R, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
 		(t) => radd(t, amount),
 		(t) => rsub(t, amount),
 	);
+}
+
+const HALF = r(1, 2);
+const TWO = r(2);
+
+/**
+ * Swing: inside each of n slots per cycle, time is bent so the slot's
+ * midpoint lands at `mid = (1 + amount) / 2`. The first half stretches and the
+ * second squeezes, so an off-beat onset lands where Strudel's swingBy puts
+ * it, while slot edges stay put: no event gains an overlap or a gap, and
+ * width, ties and slides are unchanged.
+ */
+function querySwing(amount: R, n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
+	const mid = rdiv(radd(R1, amount), TWO);
+	return warp(
+		child,
+		span,
+		ctx,
+		(t) => inSlots(t, n, (v) => straightAt(v, mid)),
+		(t) => inSlots(t, n, (u) => swungAt(u, mid)),
+	);
+}
+
+/** Apply `f` to t's position inside its 1/n slot. */
+function inSlots(t: R, n: number, f: TimeMap): R {
+	const scaled = rmul(t, r(n));
+	const slot = r(rfloor(scaled));
+	return rdiv(radd(slot, f(rsub(scaled, slot))), r(n));
+}
+
+/** A straight slot position u to its swung place: [0, ½) → [0, mid), [½, 1) → [mid, 1). */
+function swungAt(u: R, mid: R): R {
+	return rlt(u, HALF)
+		? rmul(u, rmul(TWO, mid))
+		: radd(mid, rmul(rsub(u, HALF), rmul(TWO, rsub(R1, mid))));
+}
+
+/** The inverse of swungAt. */
+function straightAt(v: R, mid: R): R {
+	return rlt(v, mid)
+		? rdiv(v, rmul(TWO, mid))
+		: radd(HALF, rdiv(rsub(v, mid), rmul(TWO, rsub(R1, mid))));
 }
 
 // ---------------------------------------------------------------------------

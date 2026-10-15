@@ -7,7 +7,7 @@
 import { checkSeed } from "../random/check-seed";
 import type { Pat, SignalKind, VoicePolicy, WChild } from "./ast";
 import { period } from "./period";
-import { type R, r } from "./rational";
+import { type R, r, rnear } from "./rational";
 import { stepCounts } from "./step-counts";
 import { stepLayers } from "./step-layers";
 import { tactus } from "./tactus";
@@ -130,6 +130,28 @@ export const iter = (n: number, child: Pat): Pat => ({
 	n: positiveInt(n, "iter"),
 	child,
 });
+
+/** Swing amounts are rounded to a fraction with a denominator up to this. */
+const SWING_DENOMINATOR = 1000;
+
+/**
+ * Swing (Strudel's `swingBy`): in each of `n` slots per cycle, the second
+ * half starts `amount / 2` of a slot later. `amount` lies in (-1, 1); 1/3 is
+ * a triplet shuffle.
+ */
+export function swingBy(amount: number | R, n: number, child: Pat): Pat {
+	return { op: "swing", amount: swingAmount(amount), n: positiveInt(n, "swingBy"), child };
+}
+
+/** A typed decimal becomes a small fraction; anything outside (-1, 1) is a loud error. */
+function swingAmount(amount: number | R): R {
+	const a = typeof amount !== "number" ? amount : Number.isFinite(amount) ? rnear(amount, SWING_DENOMINATOR) : null;
+	if (a === null || !(a.n > -a.d && a.n < a.d)) {
+		const shown = typeof amount === "number" ? amount : `${amount.n}/${amount.d}`;
+		throw new Error(`swingBy: amount must be in (-1, 1), got ${shown}`);
+	}
+	return a;
+}
 
 export const ply = (n: number, child: Pat): Pat => ({ op: "ply", n: positiveInt(n, "ply"), child });
 

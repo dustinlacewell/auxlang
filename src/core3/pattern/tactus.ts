@@ -64,6 +64,7 @@ function structuralTactus(pat: Pat): R {
 		case "early":
 		case "late":
 		case "iter":
+		case "swing":
 		case "degrade":
 		case "seed":
 		case "add":

@@ -61,6 +61,8 @@ export type Pat =
 	| { readonly op: "early"; readonly amount: R; readonly child: Pat } // shift earlier (rotate)
 	| { readonly op: "late"; readonly amount: R; readonly child: Pat }
 	| { readonly op: "iter"; readonly n: number; readonly child: Pat } // shift by i/n on cycle i
+	// Swing: in each of n slots per cycle, the second half starts amount/2 of a slot later.
+	| { readonly op: "swing"; readonly amount: R; readonly n: number; readonly child: Pat }
 	| { readonly op: "ply"; readonly n: number; readonly child: Pat } // repeat each event n times in place
 	| {
 			readonly op: "euclid";

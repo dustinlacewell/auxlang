@@ -60,5 +60,26 @@ export const rfrac = (a: R): R => rsub(a, r(rfloor(a)));
 
 export const rtof = (a: R): number => a.n / a.d;
 
+/**
+ * The continued-fraction convergent of `x` with the largest denominator up to
+ * `maxDen`: `0.333…` gives 1/3, `0.15` gives 3/20. Keeps a typed decimal from
+ * becoming a 10^9 denominator that later products would overflow.
+ */
+export function rnear(x: number, maxDen: number): R {
+	let [hPrev, h, kPrev, k] = [0, 1, 1, 0];
+	let rest = x;
+	for (let i = 0; i < 64; i++) {
+		const a = Math.floor(rest);
+		const kNext = a * k + kPrev;
+		if (kNext > maxDen) break;
+		[hPrev, h] = [h, a * h + hPrev];
+		[kPrev, k] = [k, kNext];
+		const frac = rest - a;
+		if (frac < 1e-12 || Math.abs(h / k - x) < 1e-12) break;
+		rest = 1 / frac;
+	}
+	return r(h, k);
+}
+
 /** Sample position (cycle number) of a point in time. */
 export const rcycle = rfloor;

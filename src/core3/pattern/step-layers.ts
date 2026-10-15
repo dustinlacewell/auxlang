@@ -32,6 +32,7 @@ function layersAt(pat: Pat, offset: number): LaneRange[] {
 		case "early":
 		case "late":
 		case "iter":
+		case "swing":
 		case "ply":
 		case "degrade":
 		case "seed":

@@ -32,11 +32,12 @@ import {
 	stack,
 	steps,
 	struct,
+	swingBy,
 	timecat,
 	voices,
 	withSeed,
 } from "./combinators";
-import type { R } from "./rational";
+import { type R, r } from "./rational";
 
 export class P {
 	constructor(readonly ast: Pat) {}
@@ -71,6 +72,16 @@ export class P {
 
 	ply(n: number): P {
 		return new P(ply(n, this.ast));
+	}
+
+	/** In each of n slots per cycle, start the second half `amount / 2` of a slot late (Strudel's swingBy). */
+	swingBy(amount: number | R, n: number): P {
+		return new P(swingBy(amount, n, this.ast));
+	}
+
+	/** `swingBy(1/3, n)`: a triplet shuffle on every other subdivision of n. */
+	swing(n: number): P {
+		return this.swingBy(r(1, 3), n);
 	}
 
 	euclid(k: number, steps: number, rot = 0): P {

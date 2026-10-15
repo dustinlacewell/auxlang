@@ -34,6 +34,7 @@ export function childrenOf(pat: Pat): readonly Pat[] {
 		case "early":
 		case "late":
 		case "iter":
+		case "swing":
 		case "ply":
 		case "euclid":
 		case "degrade":
