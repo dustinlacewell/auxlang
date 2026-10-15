@@ -121,6 +121,28 @@ describe("out", () => {
 		expect(maxL).toBeGreaterThan(0.5);
 	});
 
+	// Jack widths differ: each jack mixes its own lanes. First sample, so the DC
+	// blocker passes x through (x1 = y1 = 0) and only gain and the clip act.
+	it("a mono l jack beside a 4-lane in counts once", () => {
+		const d = reduceDriver(out, 4);
+		const o = d.step({ in: lanes(0, 0, 0, 0), l: lanes(0.25), gain: 1 });
+		expect(o.l).toBeCloseTo(0.25, 6);
+		expect(o.r).toBe(0);
+	});
+
+	it("a 4-lane l jack sums its own lanes by 1/√4", () => {
+		const d = reduceDriver(out, 4);
+		const o = d.step({ l: lanes(0.1, 0.2, 0.3, 0.4), gain: 1 });
+		expect(o.l).toBeCloseTo(1 / 2, 6);
+	});
+
+	it("a mono in beside a 4-lane l sits dead center, once", () => {
+		const d = reduceDriver(out, 4);
+		const o = d.step({ in: lanes(0.5), l: lanes(0, 0, 0, 0), gain: 1 });
+		expect(o.l).toBeCloseTo(0.5 * Math.SQRT1_2, 6);
+		expect(o.r).toBeCloseTo(0.5 * Math.SQRT1_2, 6);
+	});
+
 	it("DC is removed over time (constant input decays to ~0)", () => {
 		const d = reduceDriver(out, 1);
 		let last = 0;

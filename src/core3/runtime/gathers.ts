@@ -1,11 +1,13 @@
 /**
  * Input gather compilation for reduce-policy nodes. A reduce node has one
  * lane record but sees ALL lanes of each connected source port at once: per
- * port the engine keeps a preallocated Float32Array view of `width` lanes
- * (width = max connected source width) and refills it each sample from the
- * current ("n") or previous ("z") buffer, broadcasting narrower sources by
- * lane % srcLanes. Constants stay plain numbers; lambdas are evaluated to a
- * number each sample — matching ReduceTickFn's `Float32Array | number` ins.
+ * port the engine keeps a preallocated Float32Array view of that source's own
+ * lanes and refills it each sample from the current ("n") or previous ("z")
+ * buffer. A narrower source is NOT copied across a wider one's lanes: a
+ * reducer sums what it is given, so a width-1 jack beside a 4-lane jack counts
+ * once, not four times. `width` (passed to the tick) is the widest connected
+ * source. Constants stay plain numbers; lambdas are evaluated to a number each
+ * sample — matching ReduceTickFn's `Float32Array | number` ins.
  */
 
 import type { ModuleSpec, PNode, PortAnn, PortSrc } from "../types";
@@ -24,7 +26,7 @@ export interface PortGather {
 	/** Slot of (srcNode, port, lane 0); lanes are contiguous from here. */
 	readonly base: number;
 	readonly srcLanes: number;
-	/** Preallocated lane view (length = ReduceGathers.width); null for const/lambda. */
+	/** Preallocated lane view (length = srcLanes, the source's own width); null for const/lambda. */
 	readonly view: Float32Array | null;
 	readonly lambda: LambdaSlot | null;
 }
@@ -105,7 +107,7 @@ export function compileReduceGathers(
 	);
 	const ports = partials.map((p) => ({
 		...p,
-		view: p.kind === GATHER_CUR || p.kind === GATHER_PREV ? new Float32Array(width) : null,
+		view: p.kind === GATHER_CUR || p.kind === GATHER_PREV ? new Float32Array(p.srcLanes) : null,
 	}));
 	return { width, ports };
 }

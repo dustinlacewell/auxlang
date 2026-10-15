@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import "@/core3/modules/all";
 import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
 import { renderTap } from "@/core3/runtime/render";
@@ -38,6 +39,26 @@ defmod({
 	},
 });
 
+defmod({
+	name: "rd.jacks",
+	category: "utils",
+	ins: { a: sig(0), b: sig(0) },
+	outs: { out: sig(), w: sig(), aLen: sig(), bLen: sig(), bSum: sig() },
+	defaultIn: "a",
+	defaultOut: "out",
+	policy: "reduce",
+	tick: (_s, ins, o, _cfg, _sr, width) => {
+		const a = ins.a as Float32Array;
+		const b = ins.b as Float32Array;
+		o.w = width as number;
+		o.aLen = a.length;
+		o.bLen = b.length;
+		let sum = 0;
+		for (let l = 0; l < b.length; l++) sum += b[l] as number;
+		o.bSum = sum;
+	},
+});
+
 describe("engine: reduce policy", () => {
 	const program = prog([
 		pnode("rd.const", [{ v: c(10) }, { v: c(20) }, { v: c(30) }], { place: "src" }),
@@ -51,6 +72,28 @@ describe("engine: reduce policy", () => {
 
 	it("sums all lanes of the source", () => {
 		expect(renderTap(program, 1, "out", 0, 2, getRegistry())[1]).toBe(60);
+	});
+
+	it("a narrower source is not copied across lanes: each port gets its own lanes", () => {
+		const p3 = prog([
+			pnode("rd.const", [{ v: c(10) }, { v: c(20) }, { v: c(30) }], { id: "wide" }),
+			pnode("rd.const", [{ v: c(5) }], { id: "mono" }),
+			pnode("rd.jacks", [{ a: n(0), b: n(1) }], { id: "jacks" }),
+		]);
+		expect(renderTap(p3, 2, "w", 0, 1, getRegistry())[0]).toBe(3);
+		expect(renderTap(p3, 2, "aLen", 0, 1, getRegistry())[0]).toBe(3);
+		expect(renderTap(p3, 2, "bLen", 0, 1, getRegistry())[0]).toBe(1);
+		expect(renderTap(p3, 2, "bSum", 0, 1, getRegistry())[0]).toBe(5);
+	});
+
+	it("out: a mono l beside a 4-lane in sums the mono source once", () => {
+		// First sample: the DC blocker passes x through; gain 1 so l reads raw.
+		const p4 = prog([
+			pnode("rd.const", [{ v: c(0) }, { v: c(0) }, { v: c(0) }, { v: c(0) }], { id: "poly" }),
+			pnode("rd.const", [{ v: c(0.25) }], { id: "monoL" }),
+			pnode("out", [{ in: n(0), l: n(1), gain: c(1) }], { id: "master" }),
+		]);
+		expect(renderTap(p4, 2, "l", 0, 1, getRegistry())[0]).toBeCloseTo(0.25, 6);
 	});
 
 	it("broadcast constants arrive as plain numbers", () => {

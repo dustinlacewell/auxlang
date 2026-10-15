@@ -66,6 +66,8 @@ export type TickFn = (
 /**
  * Reducer tick: sees all lanes of each input at once (Float32Array per port,
  * or a plain number when the input is a broadcast constant). One output lane set.
+ * Each port's array holds that source's own lanes (its length); a narrower
+ * source is not copied across lanes. `width` is the widest connected source.
  */
 export type ReduceTickFn = (
 	state: Record<string, unknown>,

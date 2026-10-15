@@ -11,8 +11,10 @@
  *
  * The two paths add: a patch may auto-spread some voices while hard-routing
  * others. Both jacks are optional (`def: null`, opt) — unconnected arrives as
- * the NaN "absent" sentinel and contributes nothing. Both paths mix lanes down
- * by 1/√n, so n uncorrelated lanes at equal level keep the power of one.
+ * the NaN "absent" sentinel and contributes nothing. Each jack mixes its OWN
+ * lanes down by 1/√n (n = that jack's width), so n uncorrelated lanes at equal
+ * level keep the power of one, and a mono jack beside a 4-lane jack counts
+ * once (the engine does not copy a narrower jack across lanes).
  *
  * `gain` scales the mixed signal (read from lane 0 — a broadcast knob), then
  * per channel: a DC guard (one-pole high-pass at 5 Hz — below musical content,
@@ -41,17 +43,19 @@ function safetyClip(x, threshold) {
 
 /**
  * Mix all lanes of a reduce-gathered stereo jack down into one channel, by
- * 1/√width like the `in` path. An UNCONNECTED optional jack arrives as a plain
- * number (the NaN "absent" sentinel) → contributes nothing; a constant is one
- * signal and passes as is. A CONNECTED jack arrives as a lane array — a
- * non-finite lane (diverging feedback) is deliberately left to poison the sum
- * so the master's flush guard fires, exactly as it does for the `in` path.
+ * 1/√n over the jack's own n lanes, like the `in` path. An UNCONNECTED
+ * optional jack arrives as a plain number (the NaN "absent" sentinel) →
+ * contributes nothing; a constant is one signal and passes as is. A CONNECTED
+ * jack arrives as a lane array — a non-finite lane (diverging feedback) is
+ * deliberately left to poison the sum so the master's flush guard fires,
+ * exactly as it does for the `in` path.
  */
-function mixdownJack(jack, width) {
+function mixdownJack(jack) {
 	if (typeof jack === "number") return finite(jack) ? jack : 0;
+	const n = jack.length;
 	let s = 0;
-	for (let l = 0; l < width; l++) s += jack[l] ?? 0;
-	return s / Math.sqrt(Math.max(1, width));
+	for (let l = 0; l < n; l++) s += jack[l];
+	return s / Math.sqrt(Math.max(1, n));
 }
 
 defmod({
@@ -72,21 +76,23 @@ defmod({
 		clipThreshold: 10 ** (-1 / 20),
 	}),
 	helpers: { finite, safetyClip, mixdownJack },
-	tick: (s, ins, o, _cfg, _sr, width) => {
+	tick: (s, ins, o, _cfg, _sr, _width) => {
 		const lanes = ins.in;
 		const gains = ins.gain;
 		const gain = typeof gains === "number" ? gains : (gains[0] ?? 0.8);
-		const norm = 1 / Math.sqrt(Math.max(1, width));
-		// Auto-spread path: mono/poly `in` lanes fanned to constant-power positions.
-		// An unconnected `in` is the number NaN sentinel — contributes nothing; a
-		// connected lane array sums raw so a diverging lane still trips the flush.
+		// Auto-spread path: mono/poly `in` lanes fanned to constant-power positions
+		// across `in`'s own width. An unconnected `in` is the number NaN sentinel —
+		// contributes nothing; a connected lane array sums raw so a diverging lane
+		// still trips the flush.
 		const inAbsent = typeof lanes === "number" && !finite(lanes);
+		const inWidth = typeof lanes === "number" ? 1 : lanes.length;
+		const norm = 1 / Math.sqrt(Math.max(1, inWidth));
 		let sumL = 0;
 		let sumR = 0;
 		if (!inAbsent) {
-			for (let l = 0; l < width; l++) {
-				const v = typeof lanes === "number" ? lanes : (lanes[l] ?? 0);
-				const pos = width === 1 ? 0 : ((l + 0.5) / width) * 2 - 1;
+			for (let l = 0; l < inWidth; l++) {
+				const v = typeof lanes === "number" ? lanes : lanes[l];
+				const pos = inWidth === 1 ? 0 : ((l + 0.5) / inWidth) * 2 - 1;
 				const theta = ((pos + 1) / 2) * (Math.PI / 2);
 				sumL += v * Math.cos(theta);
 				sumR += v * Math.sin(theta);
@@ -95,8 +101,8 @@ defmod({
 		sumL *= norm;
 		sumR *= norm;
 		// Stereo jack path: pre-panned l/r lanes mix straight into each channel.
-		sumL += mixdownJack(ins.l, width);
-		sumR += mixdownJack(ins.r, width);
+		sumL += mixdownJack(ins.l);
+		sumR += mixdownJack(ins.r);
 		sumL *= gain;
 		sumR *= gain;
 		// A non-finite bus sample (user NaN lambda, diverging feedback) must not
