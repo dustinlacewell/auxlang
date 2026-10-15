@@ -482,16 +482,22 @@ from an output back to an input.
 
 Re-eval is the core interaction, so its rules are part of the language:
 
-- The new graph is matched to the running one **structurally**: by module, by
-  the identity of its inputs, and by order among duplicates. Matching nodes keep
-  their state. `.id("bass")` pins identity when the structure changes.
+- **Rewiring resets nothing**, as in a rack: patching a new cable into a
+  filter leaves the filter's charge and the delay after it untouched. A module
+  starts fresh only when it is new or its old state no longer fits.
+- The new graph is matched to the running one by **place**: each module is
+  matched to the old module of the same type at the same position in the patch
+  (the path of ports and module types from an `out` root), then by type and
+  order among the rest. Matching nodes keep their state. `.id("bass")` pins
+  identity when nothing else can.
 - The clock position is continuous across evals. Patterns pick up mid-cycle.
 - The old and new graphs crossfade equal-power over a short window.
 - Module state is data (§5), so migration is copy-and-carry.
 - A patch-defined module's source is part of its identity. A changed tick is a
   different machine, so its state resets unless pinned.
-- A constant's value is not identity. Identity is module type, wiring, `.id()`
-  pins, and state shape. Changing `lpf(800)` to `lpf(900)` keeps state; a change
+- Neither a constant's value nor the wiring is identity. Identity is module
+  type, place, `.id()` pins, and state shape. Changing `lpf(800)` to
+  `lpf(900)`, or adding `.mod("cutoff", lfo(0.3), 12)`, keeps state; a change
   that alters state shape resets only that module.
 - Control moves (§5.3) are not re-evals. They change a value and nothing else.
 
