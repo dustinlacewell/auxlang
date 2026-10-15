@@ -19,7 +19,6 @@ interface CodeMirrorProps {
 	onChange: (value: string) => void;
 	onRun: () => void;
 	onStop: () => void;
-	isPlaying: boolean;
 	className?: string;
 }
 
@@ -28,7 +27,6 @@ export function CodeMirror({
 	onChange,
 	onRun,
 	onStop,
-	isPlaying,
 	className = "",
 }: CodeMirrorProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -36,21 +34,30 @@ export function CodeMirror({
 	const onChangeRef = useRef(onChange);
 	const onRunRef = useRef(onRun);
 	const onStopRef = useRef(onStop);
-	const isPlayingRef = useRef(isPlaying);
 	const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null);
 
 	onChangeRef.current = onChange;
 	onRunRef.current = onRun;
 	onStopRef.current = onStop;
-	isPlayingRef.current = isPlaying;
 
 	useEffect(() => {
 		if (!containerRef.current) return;
 
+		// Run re-evaluates while playing (a swap, no gap); stop has its own key.
 		const runKeymap = keymap.of([
 			{
 				key: "Mod-Enter",
-				run: () => (isPlayingRef.current ? onStopRef.current() : onRunRef.current(), true),
+				run: () => {
+					onRunRef.current();
+					return true;
+				},
+			},
+			{
+				key: "Mod-.",
+				run: () => {
+					onStopRef.current();
+					return true;
+				},
 			},
 		]);
 		const updateListener = EditorView.updateListener.of((update) => {

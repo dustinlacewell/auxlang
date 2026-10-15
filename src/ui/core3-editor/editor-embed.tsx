@@ -92,14 +92,16 @@ export function EditorEmbed({ code, onChange, isPlaying, onRun, onStop }: Editor
 							onChange(source);
 						}}
 					/>
-					<span className="self-center text-[10px] text-gray-500 pl-2">Ctrl+Enter runs</span>
+					<span className="self-center text-[10px] text-gray-500 pl-2">
+						Ctrl+Enter runs · Ctrl+. stops
+					</span>
 				</>
 			}
 			tabsRight={
 				<>
 					<TabButton
 						active={isPlaying}
-						title={isPlaying ? "Stop" : "Run (Ctrl+Enter)"}
+						title={isPlaying ? "Stop (Ctrl+.)" : "Run (Ctrl+Enter)"}
 						onClick={isPlaying ? onStop : onRun}
 					>
 						{isPlaying ? <Square size={12} className="text-white" /> : <Play size={12} />}
@@ -121,7 +123,6 @@ export function EditorEmbed({ code, onChange, isPlaying, onRun, onStop }: Editor
 				onChange={onChange}
 				onRun={onRun}
 				onStop={onStop}
-				isPlaying={isPlaying}
 				className="text-xs"
 			/>
 		</EmbedFrame>
