@@ -21,7 +21,7 @@ function patch(body: string, helpers = "", after = ""): string {
 		"  outs: { out: sig() },",
 		'  defaultIn: "in",',
 		'  defaultOut: "out",',
-		"  state: () => ({ n: 0, buf: new Float32Array(4), arr: [0, 0], voice: { gain: 1 } }),",
+		"  state: () => ({ n: 0, buf: new Float32Array(4), arr: new Float64Array(2), voice: { gain: 1 } }),",
 		`  helpers: { ${helpers} },`,
 		"  tick: (s, i, o, c) => {",
 		`    ${body}`,

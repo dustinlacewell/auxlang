@@ -11,6 +11,7 @@ import { checkCall } from "./check-call";
 import { checkForm } from "./check-form";
 import { checkMember } from "./check-member";
 import { checkName } from "./check-name";
+import { checkNullish } from "./check-nullish";
 import { checkBinary, checkStringLiteral, checkUnary } from "./check-string";
 import { checkWrite } from "./check-write";
 import { type FunctionNode, parseFunction } from "./parse-function";
@@ -75,9 +76,12 @@ function visit(
 	else if (node.type === "MemberExpression") checkMember(node, parent, key, ctx);
 	else if (node.type === "UnaryExpression") checkUnary(node, parent, ctx);
 	else if (node.type === "BinaryExpression") checkBinary(node, ctx);
-	else if (node.type === "AssignmentExpression") {
+	else if (node.type === "LogicalExpression") {
+		if (node.operator === "??") checkNullish(node.left, ctx);
+	} else if (node.type === "AssignmentExpression") {
 		if (node.operator === "**=")
 			ctx.fail(node, "`**=` is not allowed — write `x = x ** y` (`**` is auxlang's pow)");
+		if (node.operator === "??=") checkNullish(node.left, ctx);
 		checkWrite(node.left, ctx);
 	} else if (node.type === "UpdateExpression") checkWrite(node.argument, ctx);
 }
