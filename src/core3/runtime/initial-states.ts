@@ -71,6 +71,7 @@ function carriedLanes(
 }
 
 function keyed(node: PNode, key: string): KeyedIdentity {
-	const identity = { key, kind: node.kind, place: node.place, upstream: node.upstream };
+	const { kind, place, upstream, constants } = node;
+	const identity = { key, kind, place, upstream, constants };
 	return node.pin === undefined ? identity : { ...identity, pin: node.pin };
 }

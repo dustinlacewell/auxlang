@@ -7,26 +7,33 @@
  *   1. pin             — `.id(name)` pins pair by name.
  *   2. place+upstream  — same place and same upstream signature: breaks ties
  *                        among nodes sharing a place, so swapped parallel
- *                        chains keep their own state.
+ *                        chains keep their own state. Within it, the most
+ *                        shared constant evidence pairs first, so deleting one
+ *                        of two near-identical chains leaves the survivor its
+ *                        own state.
  *   3. place           — same kind at the same place (path from an `out` root).
  *   4. kind            — the rest by kind.
  *
- * Within a pass, the k-th new node with a value pairs with the k-th old node
- * with that value, both in program order. Pass 2 never steals a unique place
- * match: a place with one old and one new node pairs them in pass 2 or 3
- * alike. A node no pass pairs is new and starts fresh.
+ * Otherwise the k-th new node with a value pairs with the k-th old node with
+ * that value, both in program order (pairings.ts). Pass 2 never steals a
+ * unique place match: a place with one old and one new node pairs them in
+ * pass 2 or 3 alike. A node no pass pairs is new and starts fresh.
  */
 
 import type { Identity, KeyedIdentity } from "../types";
+import { type Pairing, byEvidence, inOrder } from "./pairings";
 
-/** A pass's matching value; undefined takes no part in that pass. */
-type Facet = (node: Identity) => string | undefined;
+interface Pass {
+	/** The pass's matching value; undefined takes no part in it. */
+	readonly facet: (node: Identity) => string | undefined;
+	readonly pairing: Pairing;
+}
 
-const PASSES: readonly Facet[] = [
-	(n) => n.pin,
-	(n) => `${n.place}|${n.upstream}`,
-	(n) => n.place,
-	(n) => n.kind,
+const PASSES: readonly Pass[] = [
+	{ facet: (n) => n.pin, pairing: inOrder },
+	{ facet: (n) => `${n.place}|${n.upstream}`, pairing: byEvidence },
+	{ facet: (n) => n.place, pairing: inOrder },
+	{ facet: (n) => n.kind, pairing: inOrder },
 ];
 
 /** New node index → the old node's migration key. */
@@ -36,41 +43,32 @@ export function match(
 ): Map<number, string> {
 	const paired = new Map<number, string>();
 	const taken = new Set<number>();
-	for (const facet of PASSES) pairBy(facet, old, fresh, paired, taken);
+	for (const pass of PASSES) {
+		const olds = groupBy(pass.facet, old, (j) => !taken.has(j));
+		const news = groupBy(pass.facet, fresh, (i) => !paired.has(i));
+		for (const [value, group] of news) {
+			for (const [i, j] of pass.pairing(olds.get(value) ?? [], group, old, fresh)) {
+				paired.set(i, (old[j] as KeyedIdentity).key);
+				taken.add(j);
+			}
+		}
+	}
 	return paired;
 }
 
-function pairBy(
-	facet: Facet,
-	old: readonly KeyedIdentity[],
-	fresh: readonly Identity[],
-	paired: Map<number, string>,
-	taken: Set<number>,
-): void {
-	const queues = oldByFacet(facet, old, taken);
-	fresh.forEach((node, i) => {
-		if (paired.has(i)) return;
-		const value = facet(node);
-		const j = value === undefined ? undefined : queues.get(value)?.shift();
-		if (j === undefined) return;
-		paired.set(i, (old[j] as KeyedIdentity).key);
-		taken.add(j);
-	});
-}
-
-/** Unpaired old node indices grouped by facet value, each group in program order. */
-function oldByFacet(
-	facet: Facet,
-	old: readonly KeyedIdentity[],
-	taken: ReadonlySet<number>,
+/** Indices of the open nodes grouped by facet value, each group in program order. */
+function groupBy(
+	facet: Pass["facet"],
+	nodes: readonly Identity[],
+	open: (index: number) => boolean,
 ): Map<string, number[]> {
-	const queues = new Map<string, number[]>();
-	old.forEach((node, j) => {
+	const groups = new Map<string, number[]>();
+	nodes.forEach((node, index) => {
 		const value = facet(node);
-		if (taken.has(j) || value === undefined) return;
-		const queue = queues.get(value);
-		if (queue === undefined) queues.set(value, [j]);
-		else queue.push(j);
+		if (value === undefined || !open(index)) return;
+		const group = groups.get(value);
+		if (group === undefined) groups.set(value, [index]);
+		else group.push(index);
 	});
-	return queues;
+	return groups;
 }

@@ -227,19 +227,47 @@ describe("rewiring resets nothing (§6.2)", () => {
 		for (const module of ["lpf", "out"]) expectOwnChainState(before, after, module);
 	});
 
-	it("two identical chains pair by code order", () => {
-		const { before, after } = swappedChains(
-			() => factory("saw")(48).lpf(800).out(),
-			() => factory("saw")(55).lpf(1200).out(),
-		);
+	it("deleting the first of two near-identical chains leaves the survivor its own state", () => {
+		const chain = (pitch: number) => () => factory("saw")(pitch).lpf(60).delay(DELAY).out();
+		const before = runProgram(() => {
+			chain(48)();
+			chain(55)();
+		});
+		const after = runProgram(chain(55));
 		const { state, swapped } = swap(before, after);
 		const carried = swapped.collectState();
-		const olds = nodesOf(before, "lpf");
-		const news = nodesOf(after, "lpf");
-		expect(lanesAt(state, olds[0]?.i as number)).not.toEqual(lanesAt(state, olds[1]?.i as number));
-		news.forEach(({ i }, k) => {
-			expect(lanesAt(carried, i)).toEqual(lanesAt(state, olds[k]?.i as number));
-		});
+		for (const module of ["saw", "lpf", "delay", "out"]) {
+			const [deleted, survivor] = nodesOf(before, module);
+			const [kept] = nodesOf(after, module);
+			expect(lanesAt(state, deleted?.i as number), module).not.toEqual(
+				lanesAt(state, survivor?.i as number),
+			);
+			expect(lanesAt(carried, kept?.i as number), module).toEqual(
+				lanesAt(state, survivor?.i as number),
+			);
+		}
+	});
+
+	it("two chains identical in every constant pair by code order", () => {
+		const chain = () => factory("noise")().lpf(800).delay(DELAY).out();
+		const both = () =>
+			runProgram(() => {
+				chain();
+				chain();
+			});
+		const before = both();
+		const after = both();
+		const { state, swapped } = swap(before, after);
+		const carried = swapped.collectState();
+		for (const module of ["noise", "lpf", "delay", "out"]) {
+			const olds = nodesOf(before, module);
+			expect(lanesAt(state, olds[0]?.i as number), module).not.toEqual(
+				lanesAt(state, olds[1]?.i as number),
+			);
+			nodesOf(after, module).forEach(({ i }, k) => {
+				expect(lanesAt(carried, i), module).toEqual(lanesAt(state, olds[k]?.i as number));
+			});
+		}
 	});
 
 	it("noise keeps its stream across a rewire", () => {

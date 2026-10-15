@@ -1,7 +1,7 @@
 /**
  * The re-eval matcher (MANIFESTO §6.2): pins first, then place (ties broken
- * by upstream signature), then kind, each pass pairing in program order among
- * what the earlier passes left.
+ * by upstream signature, then constant evidence), then kind, each pass
+ * pairing in program order among what the earlier passes left.
  */
 
 import { describe, expect, it } from "vitest";
@@ -9,15 +9,58 @@ import { describe, expect, it } from "vitest";
 import { match } from "@/core3/runtime/match";
 import type { Identity, KeyedIdentity } from "@/core3/types";
 
-const node = (kind: string, place: string, pin?: string, upstream = "u"): Identity =>
-	pin === undefined ? { kind, place, upstream } : { kind, place, upstream, pin };
+const node = (
+	kind: string,
+	place: string,
+	pin?: string,
+	upstream = "u",
+	constants: number[] = [],
+): Identity =>
+	pin === undefined
+		? { kind, place, upstream, constants }
+		: { kind, place, upstream, constants, pin };
 const old = (
 	key: string,
 	kind: string,
 	place: string,
 	pin?: string,
 	upstream?: string,
-): KeyedIdentity => ({ ...node(kind, place, pin, upstream), key });
+	constants?: number[],
+): KeyedIdentity => ({ ...node(kind, place, pin, upstream, constants), key });
+
+describe("match: constant evidence", () => {
+	it("breaks a place and signature tie toward the most shared constants", () => {
+		const paired = match(
+			[old("A", "dly", "p1", undefined, "s", [1, 2]), old("B", "dly", "p1", undefined, "s", [1, 3])],
+			[node("dly", "p1", undefined, "s", [1, 3])],
+		);
+		expect(paired.get(0)).toBe("B");
+	});
+
+	it("falls back to code order when the constants are equal", () => {
+		const paired = match(
+			[old("A", "dly", "p1", undefined, "s", [1]), old("B", "dly", "p1", undefined, "s", [1])],
+			[node("dly", "p1", undefined, "s", [1]), node("dly", "p1", undefined, "s", [1])],
+		);
+		expect([paired.get(0), paired.get(1)]).toEqual(["A", "B"]);
+	});
+
+	it("never overrides a signature match", () => {
+		const paired = match(
+			[old("A", "dly", "p1", undefined, "saw", [1, 3]), old("B", "dly", "p1", undefined, "sin", [9])],
+			[node("dly", "p1", undefined, "sin", [1, 3])],
+		);
+		expect(paired.get(0)).toBe("B");
+	});
+
+	it("never overrides a unique place match", () => {
+		const paired = match(
+			[old("A", "dly", "p1", undefined, "s", [1]), old("B", "dly", "p2", undefined, "s", [2])],
+			[node("dly", "p1", undefined, "s", [2])],
+		);
+		expect(paired.get(0)).toBe("A");
+	});
+});
 
 describe("match: ties at one place", () => {
 	it("break by upstream signature before code order", () => {

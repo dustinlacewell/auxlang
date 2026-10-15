@@ -29,6 +29,7 @@ export function pnode(
 		kind: module,
 		place: opts.place ?? module,
 		upstream: opts.upstream ?? module,
+		constants: [],
 		module,
 		width: lanes.length,
 		lanes,

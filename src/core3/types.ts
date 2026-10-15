@@ -164,6 +164,8 @@ export interface Identity {
 	readonly place: string;
 	/** Hash of the module types and ports feeding the node, recursively; breaks ties among nodes sharing a place. */
 	readonly upstream: string;
+	/** Sorted hashes of the constants and config on the node and upstream of it; breaks ties left after `upstream`. Not identity. */
+	readonly constants: readonly number[];
 	/** User-pinned identity (`.id(name)`), matched first. */
 	readonly pin?: string;
 }

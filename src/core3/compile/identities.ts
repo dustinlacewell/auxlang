@@ -1,8 +1,9 @@
 /**
  * Each node's identity for re-eval matching (MANIFESTO §6.2, runtime/match.ts):
  * its kind; its place — a hash of the kind and its first path from an `out`
- * root; and its upstream signature, which breaks ties among nodes sharing a
- * place. Wiring and constants are not identity, so adding a `.mod` or a
+ * root; its upstream signature, which breaks ties among nodes sharing a
+ * place; and its constant evidence, which breaks the ties left after that.
+ * Wiring and constants are not identity, so adding a `.mod` or a
  * module upstream leaves a node's place alone. The pin is carried at emit.
  */
 
@@ -10,6 +11,7 @@ import type { GNode } from "../graph/node";
 import { fnv1aHex } from "../hash/fnv1a-hex";
 import type { SpecTable } from "../module/resolve";
 import type { Identity } from "../types";
+import { constantEvidence } from "./constant-evidence";
 import { firstPaths } from "./first-paths";
 import { kindOf } from "./kind";
 import { upstreamSignatures } from "./upstream-signatures";
@@ -25,6 +27,7 @@ export function identities(
 	const paths = firstPaths(roots);
 	const kinds = new Map(order.map((node) => [node, kindOf(node, specs)]));
 	const upstream = upstreamSignatures(order, kinds);
+	const constants = constantEvidence(order);
 	const result = new Map<GNode, Placement>();
 	for (const node of order) {
 		const path = paths.get(node);
@@ -36,6 +39,7 @@ export function identities(
 			kind,
 			place: `p${fnv1aHex(`${kind}@${path}`)}`,
 			upstream: upstream.get(node) as string,
+			constants: constants.get(node) as number[],
 		});
 	}
 	return result;

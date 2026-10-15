@@ -10,8 +10,8 @@ import type { Identity } from "@/core3/types";
 
 const node = (place: string, pin?: string): Identity =>
 	pin === undefined
-		? { kind: "k", place, upstream: "u" }
-		: { kind: "k", place, upstream: "u", pin };
+		? { kind: "k", place, upstream: "u", constants: [] }
+		: { kind: "k", place, upstream: "u", constants: [], pin };
 
 describe("migrationKeys", () => {
 	it("a fresh patch keys by place, duplicates suffixed in order", () => {
