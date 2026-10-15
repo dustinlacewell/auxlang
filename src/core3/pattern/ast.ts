@@ -116,7 +116,7 @@ export type Pat =
 /** Continuous pattern generators, sampled wherever a value is needed. */
 export type SignalKind = "rand" | "perlin" | "sine" | "saw" | "tri" | "isaw";
 
-/** How `voices` assigns events to lanes. */
-export type VoicePolicy = "packed";
+/** How `voices` assigns events to lanes: by structure, keeping held notes in place, or in turn. */
+export type VoicePolicy = "packed" | "stable" | "rr";
 
 export type PatOp = Pat["op"];

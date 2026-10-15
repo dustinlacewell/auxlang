@@ -36,6 +36,7 @@ import {
 } from "./rational";
 import { locateStep } from "./step-locate";
 import { inLayer, stepOnsets } from "./step-onsets";
+import { historyVoices } from "./voices/history-voices";
 import { width } from "./widths";
 
 export interface QueryCtx {
@@ -132,7 +133,11 @@ function queryCycle(pat: Pat, span: Span, ctx: QueryCtx): Ev[] {
 		case "chordidx":
 			return queryChordIdx(pat.tables, pat.per, pat.child, span, ctx);
 		case "voices":
-			return queryVoices(pat.n, pat.child, span, ctx);
+			return pat.policy === "packed"
+				? queryPackedVoices(pat.n, pat.child, span, ctx)
+				: historyVoices({ node: pat, policy: pat.policy, n: pat.n }, span, ctx.seed, ctx.path, (s) =>
+						query(pat.child, s, ctx),
+					);
 	}
 }
 
@@ -318,8 +323,9 @@ function shiftLanes(evs: Ev[], offset: number): Ev[] {
  * width guard: an event past the last lane would have nowhere to sound, so it
  * is a loud error, never a silent drop. No `descend`: voices adds no
  * randomness, and seq wraps every pattern in it, so it must not move paths.
+ * `stable` and `rr` read history instead (voices/history-voices.ts).
  */
-function queryVoices(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
+function queryPackedVoices(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
 	const evs = query(child, span, ctx);
 	for (const ev of evs) {
 		if (laneOf(ev) >= n) {

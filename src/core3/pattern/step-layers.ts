@@ -41,9 +41,12 @@ function layersAt(pat: Pat, offset: number): LaneRange[] {
 		case "clip":
 		case "sometimesBy":
 		case "chordidx":
-		case "voices":
 		case "compact":
 			return layersAt(pat.child, offset);
+		case "voices": // stable and rr move events between lanes, so their lanes are one layer
+			return pat.policy === "packed"
+				? layersAt(pat.child, offset)
+				: [{ lo: offset, hi: offset + pat.n }];
 		default:
 			return [{ lo: offset, hi: offset + Math.max(1, width(pat)) }];
 	}

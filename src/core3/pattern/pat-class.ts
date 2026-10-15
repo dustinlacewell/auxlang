@@ -149,7 +149,7 @@ export class P {
 		return new P(compact(this.ast));
 	}
 
-	/** Assign events to `n` lanes under `policy`; `n` defaults to the structural width. */
+	/** Assign events to `n` lanes under `policy`; `n` defaults to the structural width (`rr` requires it). */
 	voices(policy = "packed", n?: number): P {
 		return new P(voices(policy, n, this.ast));
 	}

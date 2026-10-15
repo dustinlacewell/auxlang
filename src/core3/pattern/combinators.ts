@@ -193,16 +193,22 @@ export function chordidx(
 	return { op: "chordidx", tables, per: positiveInt(per, "chordidx"), child };
 }
 
-const VOICE_POLICIES: readonly VoicePolicy[] = ["packed"];
+const VOICE_POLICIES: readonly VoicePolicy[] = ["packed", "stable", "rr"];
 
 /**
- * Assign events to `n` lanes (§3.5). `n` defaults to the structural width;
- * an explicit `n` below it would leave events with no lane, so it is an error.
+ * Assign events to `n` lanes (§3.5). For `packed` and `stable`, `n` defaults
+ * to the structural width, and an `n` below it would leave events with no
+ * lane, so it is an error. For `rr`, `n` is how many tails may ring, which
+ * structure cannot know: it is required, and any positive count works.
  */
 export function voices(policy: string, n: number | undefined, child: Pat): Pat {
 	const known = VOICE_POLICIES.find((p) => p === policy);
 	if (!known) {
 		throw new Error(`voices: unknown policy '${policy}'; available: ${VOICE_POLICIES.join(", ")}`);
+	}
+	if (known === "rr") {
+		if (n === undefined) throw new Error('voices("rr", n): n is required: how many tails may ring');
+		return { op: "voices", policy: known, n: positiveInt(n, "voices"), child };
 	}
 	const needed = width(child);
 	if (n === undefined) return { op: "voices", policy: known, n: needed, child };
