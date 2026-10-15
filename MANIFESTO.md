@@ -129,6 +129,7 @@ p.euclid(3, 8, 2)                // euclidean: 3 notes, 5 rests, rotated
 p.degrade(0.3)                   // turn notes into rests with probability 0.3
 p.add(12)  p.mul(2)              // arithmetic on values
 p.off(1/8, q => q.add(12))       // overlay a transformed, shifted copy
+p.swingBy(1/3, 4)  p.swing(4)    // bend time: late second half of each slot
 p.with({ vel: q })               // add record fields, structure from p (§3.4)
 p.steps()                        // re-time: the nth event spans [n, n+1)
 p.compact()                      // drop rests
@@ -579,6 +580,11 @@ Runtime obligations:
   controls (§5.3).
 - **No whole-patch seeking** (§7).
 - **No host randomness.** `Math.random` is always the seeded stream.
+- **No runtime-variable structure.** A counter's `length`, a chord's notes,
+  and anything else that sets width are fixed at eval. Modulate what is read,
+  not how many lanes exist.
+- **No `poly()` constructor.** Lanes come from patterns (`[a, b]`, arrays)
+  and `.voices()`; summing lanes is `mix`.
 
 ---
 
