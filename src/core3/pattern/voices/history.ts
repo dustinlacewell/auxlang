@@ -53,16 +53,23 @@ export function createHistory(start: VoiceState): History {
 export function historyCycle(h: History, c: number, fold: FoldCycle): readonly Ev[] {
 	const hit = h.recent.get(c);
 	if (hit !== undefined) return remember(h, c, hit);
+	const next = fold(historyState(h, c, fold), c);
+	h.cursor = { cycle: c + 1, state: next.state };
+	return remember(h, c, next.events);
+}
+
+/** The lanes as cycle `c` begins (c >= 0). */
+export function historyState(h: History, c: number, fold: FoldCycle): VoiceState {
 	let { cycle, state } = nearestBefore(h, c);
-	let events: readonly Ev[] = [];
-	for (; cycle <= c; cycle++) {
+	for (; cycle < c; cycle++) {
 		if (cycle % h.stride === 0) keepCheckpoint(h, cycle, state);
 		const next = fold(state, cycle);
-		events = remember(h, cycle, next.events);
+		remember(h, cycle, next.events);
 		state = next.state;
 	}
-	h.cursor = { cycle, state };
-	return events;
+	if (c % h.stride === 0) keepCheckpoint(h, c, state);
+	h.cursor = { cycle: c, state };
+	return state;
 }
 
 /** The kept state nearest at or before cycle `c`: the cursor or a checkpoint. */

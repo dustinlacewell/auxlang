@@ -7,18 +7,25 @@
  *           cycle ends in a rest or a gap; a tie there is followed back to
  *           its note
  *
- * Both look back one period: if a period holds no note, none came earlier.
- * When randomness picks the rests (`degrade`, `?`), the last note may lie
- * further back than one period, so the look-back is at least
- * RANDOM_LOOKBACK_CYCLES. Nothing found holds value 0 and no note (NO_NOTE).
+ * Packed lanes are structural, so both look back one period: if a period
+ * holds no note, none came earlier. When randomness picks the rests
+ * (`degrade`, `?`), the last note may lie further back than one period, so the
+ * look-back is at least RANDOM_LOOKBACK_CYCLES. Nothing found holds value 0
+ * and no note (NO_NOTE).
+ *
+ * `stable` and `rr` lanes are not periodic: a lane can stay empty for any
+ * number of cycles. Their carry comes from the voices history
+ * (history-carry.ts), so it is exact.
  */
 
 import type { Pat } from "../ast";
 import type { Ev } from "../event";
 import { period } from "../period";
+import { historyRead } from "../query";
 import { hasRandomKinds } from "../random-kinds";
 import { r, rlt } from "../rational";
 import { NO_NOTE } from "./event-table";
+import { historyCarry } from "./history-carry";
 import { laneCycle } from "./lane-cycle";
 import { ownNoteId } from "./note-id";
 
@@ -30,6 +37,14 @@ export interface Carry {
 }
 
 export function carryBefore(pat: Pat, seed: number, lane: number, c: number): Carry {
+	if (pat.op === "voices" && pat.policy !== "packed") {
+		const history = historyRead(pat, pat.policy, { seed, path: 0 });
+		return historyCarry(history, lane, c, () => lookbackCarry(pat, seed, lane, Math.min(c, 0)));
+	}
+	return lookbackCarry(pat, seed, lane, c);
+}
+
+function lookbackCarry(pat: Pat, seed: number, lane: number, c: number): Carry {
 	const at = { pat, seed, lane };
 	const depth = lookback(pat);
 	return { value: valueBefore(at, c, depth), noteId: noteAtStart(at, c, depth) };

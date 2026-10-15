@@ -36,7 +36,7 @@ import {
 } from "./rational";
 import { locateStep } from "./step-locate";
 import { inLayer, stepOnsets } from "./step-onsets";
-import { historyVoices } from "./voices/history-voices";
+import { type HistoryPolicy, type HistoryRead, historyVoices } from "./voices/history-voices";
 import { width } from "./widths";
 
 export interface QueryCtx {
@@ -135,9 +135,7 @@ function queryCycle(pat: Pat, span: Span, ctx: QueryCtx): Ev[] {
 		case "voices":
 			return pat.policy === "packed"
 				? queryPackedVoices(pat.n, pat.child, span, ctx)
-				: historyVoices({ node: pat, policy: pat.policy, n: pat.n }, span, ctx.seed, ctx.path, (s) =>
-						query(pat.child, s, ctx),
-					);
+				: historyVoices(historyRead(pat, pat.policy, ctx), span);
 	}
 }
 
@@ -325,6 +323,22 @@ function shiftLanes(evs: Ev[], offset: number): Ev[] {
  * randomness, and seq wraps every pattern in it, so it must not move paths.
  * `stable` and `rr` read history instead (voices/history-voices.ts).
  */
+/** A `stable` or `rr` voices node, read through this interpreter at `ctx`. */
+export function historyRead(
+	pat: Extract<Pat, { op: "voices" }>,
+	policy: HistoryPolicy,
+	ctx: QueryCtx,
+): HistoryRead {
+	return {
+		node: pat,
+		policy,
+		n: pat.n,
+		seed: ctx.seed,
+		path: ctx.path,
+		queryChild: (span) => query(pat.child, span, ctx),
+	};
+}
+
 function queryPackedVoices(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
 	const evs = query(child, span, ctx);
 	for (const ev of evs) {

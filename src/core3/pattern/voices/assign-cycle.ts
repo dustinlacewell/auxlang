@@ -1,22 +1,28 @@
 /**
- * One cycle of `stable` or `rr` voices: fold the child's events for the cycle
- * into lanes, from the lanes as the cycle begins.
+ * One cycle of `stable` or `rr` voices: fold the child's events for cycle `c`
+ * into lanes, from the lanes as the cycle begins. Lanes follow the events as
+ * they play:
  *
  * - Rests take no lane. An empty stretch of a lane reads as a rest.
- * - A fragment of an earlier note keeps that note's lane. A fragment whose
- *   note lost its lane (rr cut it off) or never had one is dropped.
+ * - A fragment of an earlier note keeps that note's lane. A fragment of a
+ *   note rr cut off does not sound. A fragment whose onset never played (an
+ *   `every` or `<>` switch at the cycle edge) is a note entering where the
+ *   fragment starts, as packed lanes play it.
+ * - A voice whose note does not go on into this cycle (a switch dropped it)
+ *   ended at the cycle start, so it holds its lane no longer.
  * - A tie or a slide continues the voice of its child lane that ends where it
- *   begins. With no such voice, a tie is dropped (it would read as a rest) and
- *   a slide is a new note.
+ *   begins. With no such voice, a tie is a rest (dropped) and a slide is a
+ *   new note.
  * - New notes that begin together get their lanes from `place`: the policy.
- *   When two land in one lane, the later one wins.
+ *   A note placed in a lane whose voice still sounds steals it: the old note
+ *   stops at the steal, and none of its later fragments sound.
  */
 
-import type { Ev } from "../event";
+import type { Ev, Span } from "../event";
 import { laneOf, startsHere } from "../event";
-import { type R, rcmp, req } from "../rational";
+import { type R, r, rcmp, req, rlt, rmin } from "../rational";
 import { discreteWhole } from "./discrete-whole";
-import { type Voice, type VoiceState, voiceOf } from "./voice-state";
+import { type Cut, type Voice, type VoiceState, noteVoice, tieVoice } from "./voice-state";
 
 /** Lanes for the notes that begin together at `t`, in order. `onsets` counts the notes begun before them. */
 export type Place = (lanes: readonly (Voice | null)[], notes: readonly Ev[], t: R, onsets: number) => number[];
@@ -26,31 +32,54 @@ export interface Assigned {
 	readonly events: readonly Ev[];
 }
 
-export function assignCycle(state: VoiceState, evs: readonly Ev[], place: Place): Assigned {
-	const lanes = [...state.lanes];
-	const out = carriedOver(lanes, evs);
+/** The fold's working copy of a state, for one cycle. */
+interface Fold {
+	readonly lanes: (Voice | null)[];
+	readonly cut: Cut[];
+	readonly out: Ev[];
+}
+
+export function assignCycle(state: VoiceState, evs: readonly Ev[], c: number, place: Place): Assigned {
+	const start = r(c);
+	const f: Fold = { lanes: [...state.lanes], cut: state.cut.filter((x) => rlt(start, x.end)), out: [] };
+	const entering = carryOver(f, evs, start);
 	let onsets = state.onsets;
-	for (const group of startsByTime(evs)) {
-		const fresh = continueVoices(lanes, group, out);
-		const at = place(lanes, fresh, group.t, onsets);
-		placeNotes(lanes, fresh, at, out);
+	for (const group of byOnset(evs, entering)) {
+		const fresh = continueVoices(f, group);
+		placeNotes(f, fresh, place(f.lanes, fresh, group.t, onsets), group.t);
 		onsets += fresh.length;
 	}
-	return { state: { lanes, onsets }, events: out };
+	return { state: { lanes: f.lanes, cut: f.cut, onsets }, events: f.out };
 }
 
 const withLane = (ev: Ev, lane: number): Ev => (laneOf(ev) === lane ? ev : { ...ev, lane });
 
-/** Fragments of notes begun before: each keeps its voice's lane, or is dropped. */
-function carriedOver(lanes: readonly (Voice | null)[], evs: readonly Ev[]): Ev[] {
-	const out: Ev[] = [];
+const sameNote = (x: { from: number; begin: R }, ev: Ev, begin: R): boolean =>
+	x.from === laneOf(ev) && req(x.begin, begin);
+
+/**
+ * Fragments of notes begun before the cycle keep their voice's lane; those of
+ * cut notes and of ties with no voice are dropped. Voices that do not go on
+ * end at the cycle start. Returns the fragments that enter as new notes.
+ */
+function carryOver(f: Fold, evs: readonly Ev[], start: R): Ev[] {
+	const goesOn = new Set<number>();
+	const entering: Ev[] = [];
 	for (const ev of evs) {
 		if (ev.kind === "rest" || startsHere(ev)) continue;
 		const begin = discreteWhole(ev).begin;
-		const lane = lanes.findIndex((v) => v !== null && v.from === laneOf(ev) && req(v.begin, begin));
-		if (lane >= 0) out.push(withLane(ev, lane));
+		const lane = f.lanes.findIndex((v) => v !== null && sameNote(v, ev, begin));
+		if (lane >= 0) {
+			goesOn.add(lane);
+			f.out.push(withLane(ev, lane));
+		} else if (ev.kind !== "tie" && !f.cut.some((x) => sameNote(x, ev, begin))) {
+			entering.push(ev.kind === "slide" ? { ...ev, kind: "note" } : ev);
+		}
 	}
-	return out;
+	f.lanes.forEach((v, i) => {
+		if (v !== null && !goesOn.has(i) && rlt(start, v.end)) f.lanes[i] = { ...v, end: start };
+	});
+	return entering;
 }
 
 interface Group {
@@ -58,14 +87,17 @@ interface Group {
 	readonly evs: readonly Ev[];
 }
 
-/** Events that begin in this cycle (rests left out), grouped by onset, each group in child-lane order. */
-function startsByTime(evs: readonly Ev[]): Group[] {
-	const starts = evs
-		.filter((ev) => ev.kind !== "rest" && startsHere(ev))
-		.sort((a, b) => rcmp(discreteWhole(a).begin, discreteWhole(b).begin) || laneOf(a) - laneOf(b));
+/** When an event starts to play: its onset, or where an entering fragment starts. */
+const playsFrom = (ev: Ev): R => (startsHere(ev) ? discreteWhole(ev).begin : ev.part.begin);
+
+/** The cycle's onsets (rests left out) and entering fragments, grouped by start, each group in child-lane order. */
+function byOnset(evs: readonly Ev[], entering: readonly Ev[]): Group[] {
+	const starts = [...evs.filter((ev) => ev.kind !== "rest" && startsHere(ev)), ...entering].sort(
+		(a, b) => rcmp(playsFrom(a), playsFrom(b)) || laneOf(a) - laneOf(b),
+	);
 	const groups: { t: R; evs: Ev[] }[] = [];
 	for (const ev of starts) {
-		const t = discreteWhole(ev).begin;
+		const t = playsFrom(ev);
 		const last = groups[groups.length - 1];
 		if (last !== undefined && req(last.t, t)) last.evs.push(ev);
 		else groups.push({ t, evs: [ev] });
@@ -77,33 +109,50 @@ function startsByTime(evs: readonly Ev[]): Group[] {
  * Ties and slides take the lane of the voice they continue. Returns the
  * group's new notes: its notes, plus slides with nothing to slide from.
  */
-function continueVoices(lanes: (Voice | null)[], group: Group, out: Ev[]): Ev[] {
+function continueVoices(f: Fold, group: Group): Ev[] {
 	const fresh: Ev[] = [];
 	for (const ev of group.evs) {
-		if (ev.kind === "note") {
+		if (ev.kind === "note" || !startsHere(ev)) {
 			fresh.push(ev);
 			continue;
 		}
-		const lane = lanes.findIndex((v) => v !== null && v.from === laneOf(ev) && req(v.end, group.t));
+		const lane = f.lanes.findIndex((v) => v !== null && v.from === laneOf(ev) && req(v.end, group.t));
 		if (lane < 0) {
 			if (ev.kind === "slide") fresh.push({ ...ev, kind: "note" });
 			continue;
 		}
-		const held = lanes[lane] as Voice;
-		lanes[lane] = voiceOf(ev, discreteWhole(ev), ev.kind === "tie" ? held.value : ev.value);
-		out.push(withLane(ev, lane));
+		const whole = discreteWhole(ev);
+		f.lanes[lane] = ev.kind === "tie" ? tieVoice(f.lanes[lane] as Voice, ev, whole) : noteVoice(ev, whole);
+		f.out.push(withLane(ev, lane));
 	}
 	return fresh;
 }
 
-/** Each new note takes its lane; of two in one lane, the later one wins. */
-function placeNotes(lanes: (Voice | null)[], notes: readonly Ev[], at: readonly number[], out: Ev[]): void {
-	const winner = new Map<number, number>();
-	at.forEach((lane, i) => winner.set(lane, i));
+/** Each new note takes its lane, stealing it from a voice that still sounds there. */
+function placeNotes(f: Fold, notes: readonly Ev[], at: readonly number[], t: R): void {
 	notes.forEach((ev, i) => {
 		const lane = at[i] as number;
-		if (winner.get(lane) !== i) return;
-		lanes[lane] = voiceOf(ev, discreteWhole(ev), ev.value);
-		out.push(withLane(ev, lane));
+		steal(f, lane, t);
+		f.lanes[lane] = noteVoice(ev, discreteWhole(ev));
+		f.out.push(withLane(ev, lane));
 	});
+}
+
+/** The voice in `lane`, if it sounds past `t`, stops at `t`: its events are cut there and its later fragments dropped. */
+function steal(f: Fold, lane: number, t: R): void {
+	const v = f.lanes[lane];
+	if (v === null || v === undefined || !rlt(t, v.end)) return;
+	f.cut.push({ from: v.from, begin: v.begin, end: v.end });
+	for (let i = f.out.length - 1; i >= 0; i--) {
+		const ev = f.out[i] as Ev;
+		if (laneOf(ev) !== lane || !rlt(t, ev.part.end)) continue;
+		if (!rlt(ev.part.begin, t)) f.out.splice(i, 1);
+		else f.out[i] = cutAt(ev, t);
+	}
+}
+
+function cutAt(ev: Ev, t: R): Ev {
+	const whole = discreteWhole(ev);
+	const cutWhole: Span = { begin: whole.begin, end: rmin(whole.end, t) };
+	return { ...ev, whole: cutWhole, part: { begin: ev.part.begin, end: t } };
 }

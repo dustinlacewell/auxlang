@@ -13,7 +13,7 @@ import type { Ev } from "../event";
 import { laneOf } from "../event";
 import { R0, rcmp, rlt } from "../rational";
 import { discreteWhole } from "./discrete-whole";
-import { type Voice, type VoiceState, emptyState, voiceOf } from "./voice-state";
+import { type Voice, type VoiceState, emptyState, noteVoice, tieVoice } from "./voice-state";
 
 export function packedLanes(evs: readonly Ev[], n: number): Ev[] {
 	return evs.filter((ev) => ev.kind !== "rest").map((ev) => ({ ...ev, lane: laneOf(ev) % n }));
@@ -25,8 +25,10 @@ export function seedState(cycleBefore: readonly Ev[], n: number): VoiceState {
 	const evs = cycleBefore.filter((ev) => ev.kind !== "rest").sort((a, b) => rcmp(a.part.begin, b.part.begin));
 	for (const ev of evs) {
 		const lane = laneOf(ev) % n;
-		const value = ev.kind === "tie" ? (lanes[lane]?.value ?? 0) : ev.value;
-		lanes[lane] = voiceOf(ev, discreteWhole(ev), value);
+		const held = lanes[lane];
+		const whole = discreteWhole(ev);
+		if (ev.kind !== "tie") lanes[lane] = noteVoice(ev, whole);
+		else if (held) lanes[lane] = tieVoice(held, ev, whole);
 	}
-	return { lanes: lanes.map((v) => (v !== null && rlt(R0, v.end) ? v : null)), onsets: 0 };
+	return { ...emptyState(n), lanes: lanes.map((v) => (v !== null && rlt(R0, v.end) ? v : null)) };
 }

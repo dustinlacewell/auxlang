@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Pat } from "@/core3/pattern/ast";
-import { stack, steps, voices } from "@/core3/pattern/combinators";
+import { pure, slow, stack, steps, voices } from "@/core3/pattern/combinators";
 import { type Ev, laneOf } from "@/core3/pattern/event";
 import { p } from "@/core3/pattern/notation/template";
 import { rcmp } from "@/core3/pattern/rational";
@@ -73,6 +73,22 @@ describe("stable", () => {
 		expect(ties.map((ev) => laneOf(ev)).sort()).toEqual([0, 1]);
 	});
 
+	it("a note that a `<>` switch cuts short frees its lane at the switch", () => {
+		// Cycle 0 plays [c4,e4] half a cycle late: the onset at 0.5 would ring to 1.5,
+		// but cycle 1 switches to [g4,b4], so it ends at 1 and lanes 0 and 1 are free.
+		const late = p`[c4,e4]`.late(0.5);
+		const pat = p`<${late} [g4,b4]>`.voices("stable", 3).ast;
+		expect(lanes(pat, 1, 2)).toEqual([[67, 0], [71, 1]]);
+	});
+
+	it("an `every` switch: notes whose onset never played enter where they start", () => {
+		// Cycle 0 plays the transformed chord (c5, e5) over [0, 2); cycle 1 switches back,
+		// so c5 and e5 end at 1 and the plain chord's second halves enter at 1.
+		const pat = p`[c4,e4]`.slow(2).every(2, (q) => q.add(12)).voices("stable").ast;
+		expect(lanes(pat, 0, 1)).toEqual([[72, 0], [76, 1]]);
+		expect(lanes(pat, 1, 2)).toEqual([[60, 0], [64, 1]]);
+	});
+
 	it("n defaults to the structural width; an n below it is a loud error", () => {
 		expect(width(p`[c4,e4,g4]`.voices("stable").ast)).toBe(3);
 		expect(() => p`[c4,e4,g4]`.voices("stable", 2)).toThrow(/needs 3 lanes/);
@@ -106,6 +122,16 @@ describe("rr", () => {
 			["tie", 2],
 			["note", 0],
 		]);
+	});
+
+	it("more overlapping notes than lanes steal the oldest sounding note", () => {
+		// c4 rings over [0, 2); e4 and g4 enter at 1/2 and 3/4 of each cycle. With 2 lanes,
+		// g4 steals c4's lane at 3/4: c4 stops there and its second half never sounds.
+		const pat = voices("rr", 2, stack([slow(2, pure(60)), p`~ e4`.ast, p`~ ~ ~ g4`.ast]));
+		expect(lanes(pat, 0, 1)).toEqual([[60, 0], [64, 1], [67, 0]]);
+		const c4 = queryCycles(pat, 0, 1).find((ev) => ev.value === 60) as Ev;
+		expect(c4.part.end).toEqual({ n: 3, d: 4 });
+		expect(lanes(pat, 1, 2)).toEqual([[64, 1], [67, 0]]);
 	});
 
 	it("read by steps, its lanes are one layer, so no event falls outside a layer", () => {

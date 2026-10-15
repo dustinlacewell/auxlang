@@ -1,7 +1,7 @@
 /**
  * What `stable` and `rr` voices carry from one cycle to the next: the voice
- * each lane holds and how many notes have begun. States are immutable, because
- * the history keeps them as checkpoints.
+ * each lane holds, the notes rr cut off, and how many notes have begun. States
+ * are immutable, because the history keeps them as checkpoints.
  */
 
 import type { Ev, Span } from "../event";
@@ -14,23 +14,40 @@ export interface Voice {
 	readonly from: number;
 	/** The value it sounds. A tie keeps its note's value. */
 	readonly value: number;
-	/** The latest event's whole: later fragments match `begin`; the lane is free from `end`. */
+	/** The onset of the note it sounds (the table's note id). A tie keeps its note's. */
+	readonly note: R;
+	/** The latest event's whole as it plays: later fragments match `begin`; the lane is free from `end`. */
+	readonly begin: R;
+	readonly end: R;
+}
+
+/** A note cut off before its whole ends: its later fragments do not sound. */
+export interface Cut {
+	readonly from: number;
 	readonly begin: R;
 	readonly end: R;
 }
 
 export interface VoiceState {
 	readonly lanes: readonly (Voice | null)[];
+	/** Notes cut off that would still ring past the state's cycle. */
+	readonly cut: readonly Cut[];
 	/** Note onsets so far: rr's turn counter. */
 	readonly onsets: number;
 }
 
 export const emptyState = (n: number): VoiceState => ({
 	lanes: Array.from({ length: n }, () => null),
+	cut: [],
 	onsets: 0,
 });
 
-/** The voice an event starts or continues, holding `value`. */
-export function voiceOf(ev: Ev, whole: Span, value: number): Voice {
-	return { from: laneOf(ev), value, begin: whole.begin, end: whole.end };
+/** The voice a note or slide starts. */
+export function noteVoice(ev: Ev, whole: Span): Voice {
+	return { from: laneOf(ev), value: ev.value, note: whole.begin, begin: whole.begin, end: whole.end };
+}
+
+/** The voice a tie continues, now reaching to the tie's end. */
+export function tieVoice(held: Voice, ev: Ev, whole: Span): Voice {
+	return { ...held, from: laneOf(ev), begin: whole.begin, end: whole.end };
 }

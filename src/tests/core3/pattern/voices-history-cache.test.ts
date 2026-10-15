@@ -23,7 +23,7 @@ function countingFold(): { fold: FoldCycle; calls: () => number } {
 	const fold: FoldCycle = (state, cycle) => {
 		calls++;
 		const ev: Ev = { whole: null, part: { begin: r(cycle), end: r(cycle + 1) }, value: state.onsets, kind: "note" };
-		return { state: { lanes: [], onsets: state.onsets + cycle }, events: [ev] };
+		return { state: { lanes: [], cut: [], onsets: state.onsets + cycle }, events: [ev] };
 	};
 	return { fold, calls: () => calls };
 }
@@ -33,7 +33,7 @@ const valueAt = (evs: readonly Ev[]): number => (evs[0] as Ev).value;
 
 describe("voices history cache", () => {
 	it("stays bounded past MAX_CHECKPOINTS and stays exact after thinning", () => {
-		const h = createHistory({ lanes: [], onsets: 0 });
+		const h = createHistory({ lanes: [], cut: [], onsets: 0 });
 		const { fold, calls } = countingFold();
 		const far = 2 * MAX_CHECKPOINTS * CHECKPOINT_CYCLES + 5;
 		expect(valueAt(historyCycle(h, far, fold))).toBe(before(far));
@@ -47,7 +47,7 @@ describe("voices history cache", () => {
 	});
 
 	it("playing forward folds one new cycle per read", () => {
-		const h = createHistory({ lanes: [], onsets: 0 });
+		const h = createHistory({ lanes: [], cut: [], onsets: 0 });
 		const { fold, calls } = countingFold();
 		historyCycle(h, 500, fold);
 		const start = calls();
