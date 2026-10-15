@@ -11,11 +11,11 @@ import "@/core3/modules/all";
 import { factory, p, runEval, runProgram, seed, seq, tempo } from "@/core3/api";
 import { degrade, pure, stack, withSeed } from "@/core3/pattern/combinators";
 import { getRegistry } from "@/core3/module/define";
-import { Core3Engine } from "@/core3/runtime/engine";
 import { render, renderTap } from "@/core3/runtime/render";
 import { createSeedSession } from "@/core3/runtime/seed-session";
 import type { Program } from "@/core3/types";
 import { evSet, queryCycles } from "../pattern/helpers";
+import { BACKENDS, type TestEngine } from "../runtime/backends";
 
 const noise = factory("noise");
 const tri = factory("tri");
@@ -94,10 +94,10 @@ describe("play session seed", () => {
 	});
 });
 
-describe("a seed change during play", () => {
+describe.each(BACKENDS)("a seed change during play ($name)", ({ create, swap }) => {
 	const SAMPLES = 2000;
 
-	function run(engine: Core3Engine, node: number): number[] {
+	function run(engine: TestEngine, node: number): number[] {
 		const frame = new Float32Array(2);
 		const out: number[] = [];
 		for (let k = 0; k < SAMPLES; k++) {
@@ -110,22 +110,22 @@ describe("a seed change during play", () => {
 	/** Play `before`, swap to `after` with migrated state; return the noise after the swap. */
 	function swapped(before: Program, after: Program): number[] {
 		const [node] = nodesOf(before, "noise");
-		const first = new Core3Engine(before, 48000, getRegistry());
+		const first = create(before, 48000, getRegistry());
 		run(first, node as number);
-		const second = new Core3Engine(after, 48000, getRegistry(), first.collectState());
+		const second = swap(after, 48000, getRegistry(), first);
 		return run(second, node as number);
 	}
 
 	/** The first stretch of `program` from a fresh engine. */
 	function fromStart(program: Program): number[] {
 		const [node] = nodesOf(program, "noise");
-		return run(new Core3Engine(program, 48000, getRegistry()), node as number);
+		return run(create(program, 48000, getRegistry()), node as number);
 	}
 
 	/** The second stretch of `program` from a fresh engine: the stream continued. */
 	function continued(program: Program): number[] {
 		const [node] = nodesOf(program, "noise");
-		const engine = new Core3Engine(program, 48000, getRegistry());
+		const engine = create(program, 48000, getRegistry());
 		run(engine, node as number);
 		return run(engine, node as number);
 	}

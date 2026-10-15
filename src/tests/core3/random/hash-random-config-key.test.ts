@@ -76,11 +76,7 @@ describe("hashRandom with a config key", () => {
 		);
 		const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
 		const prepared = prepareWasm(program, SR);
-		const wasm = new WasmEngine(
-			new WebAssembly.Module(prepared.compiled.bytes),
-			prepared.compiled,
-			prepared.start,
-		);
+		const wasm = new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared);
 		const l = new Float32Array(128);
 		const r = new Float32Array(128);
 		js.renderBlock(l, r, 0, 128);

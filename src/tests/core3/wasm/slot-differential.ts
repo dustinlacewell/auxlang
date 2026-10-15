@@ -18,11 +18,7 @@ const SR = 48000;
 export function firstSlotDifference(program: Program, samples: number): string | null {
 	const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
 	const prepared = prepareWasm(program, SR);
-	const wasm = new WasmEngine(
-		new WebAssembly.Module(prepared.compiled.bytes),
-		prepared.compiled,
-		prepared.start,
-	);
+	const wasm = new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared);
 	const l = new Float32Array(1);
 	const r = new Float32Array(1);
 	const layout = js.layout;

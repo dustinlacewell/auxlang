@@ -9,9 +9,9 @@ import { describe, expect, it } from "vitest";
 import "@/core3/modules/all";
 import { factory, runProgram } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
-import { Core3Engine } from "@/core3/runtime/engine";
 import { renderTap } from "@/core3/runtime/render";
 import type { Program } from "@/core3/types";
+import { BACKENDS, type TestEngine } from "./backends";
 import { c, pnode } from "./helpers";
 
 const SAMPLES = 2000;
@@ -51,7 +51,7 @@ function tapLanes(program: Program): Float32Array[] {
 	return [0, 1].map((lane) => renderTap(program, 0, "out", lane, SAMPLES));
 }
 
-function run(engine: Core3Engine, node: number, samples: number): number[] {
+function run(engine: TestEngine, node: number, samples: number): number[] {
 	const frame = new Float32Array(2);
 	const out: number[] = [];
 	for (let k = 0; k < samples; k++) {
@@ -80,17 +80,17 @@ describe.each(["noise", "snare"])("%s random streams", (module) => {
 		);
 	});
 
-	it("re-eval continues the stream rather than restarting it", () => {
+	it.each(BACKENDS)("re-eval continues the stream rather than restarting it ($name)", (backend) => {
 		const registry = getRegistry();
 		const node = nodesOf(twoInstances(module), module)[0] as number;
 
-		const reference = new Core3Engine(twoInstances(module), 48000, registry);
+		const reference = backend.create(twoInstances(module), 48000, registry);
 		const fromStart = run(reference, node, SAMPLES);
 		const continued = run(reference, node, SAMPLES);
 
-		const before = new Core3Engine(twoInstances(module), 48000, registry);
+		const before = backend.create(twoInstances(module), 48000, registry);
 		run(before, node, SAMPLES);
-		const after = new Core3Engine(twoInstances(module), 48000, registry, before.collectState());
+		const after = backend.swap(twoInstances(module), 48000, registry, before);
 		const swapped = run(after, node, SAMPLES);
 
 		expect(swapped).toEqual(continued);

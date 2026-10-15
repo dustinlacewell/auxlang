@@ -13,6 +13,7 @@ import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import type { Program } from "@/core3/types";
 import { sig } from "@/core3/types";
+import { BACKENDS, type TestEngine } from "./backends";
 
 const SAMPLES = 1000;
 
@@ -44,7 +45,7 @@ function engine(program: Program, prev?: ReturnType<Core3Engine["collectState"]>
 }
 
 /** Each (node, lane) of `jitter`, sampled for `samples` ticks. */
-function taps(e: Core3Engine, program: Program, samples = SAMPLES): number[][] {
+function taps(e: TestEngine, program: Program, samples = SAMPLES): number[][] {
 	const sites = program.nodes.flatMap((n, i) =>
 		n.module === "jitter" ? n.lanes.map((_, lane) => [i, lane] as const) : [],
 	);
@@ -73,15 +74,16 @@ describe("Math.random() in a patch-defined tick", () => {
 		expect(run(42)).not.toEqual(run(43));
 	});
 
-	it("continues across re-eval instead of restarting", () => {
+	it.each(BACKENDS)("continues across re-eval instead of restarting ($name)", (backend) => {
 		const program = patch(1);
-		const reference = engine(program);
+		const registry = withProgramSpecs(getRegistry(), program);
+		const reference = backend.create(program, 48000, registry);
 		const fromStart = taps(reference, program);
 		const continued = taps(reference, program);
 
-		const before = engine(program);
+		const before = backend.create(program, 48000, registry);
 		taps(before, program);
-		const after = engine(patch(1), before.collectState());
+		const after = backend.swap(patch(1), 48000, registry, before);
 		const swapped = taps(after, program);
 
 		expect(swapped).toEqual(continued);

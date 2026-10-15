@@ -26,11 +26,7 @@ function firstDifference(samples: number): string | null {
 		codegen: true,
 	});
 	const prepared = prepareWasm(program, SR);
-	const wasm = new WasmEngine(
-		new WebAssembly.Module(prepared.compiled.bytes),
-		prepared.compiled,
-		prepared.start,
-	);
+	const wasm = new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared);
 	const l = new Float32Array(1);
 	const r = new Float32Array(1);
 	const layout = js.layout;

@@ -23,11 +23,7 @@ const BLOCK = 128;
 
 function wasmEngine(program: Program, sampleRate: number): WasmEngine {
 	const prepared = prepareWasm(program, sampleRate);
-	return new WasmEngine(
-		new WebAssembly.Module(prepared.compiled.bytes),
-		prepared.compiled,
-		prepared.start,
-	);
+	return new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared);
 }
 
 /** The first difference over `seconds`, or null. */

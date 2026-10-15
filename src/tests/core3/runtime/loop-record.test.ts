@@ -12,11 +12,12 @@ import { factory, loop, out, runEval, runProgram } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
 import { Core3Engine } from "@/core3/runtime/engine";
 import type { Program } from "@/core3/types";
+import { BACKENDS, type TestEngine, WASM_BACKEND } from "./backends";
 
 const SR = 48000;
 const sin = factory("sin");
 
-function run(engine: Core3Engine, samples: number): number[] {
+function run(engine: TestEngine, samples: number): number[] {
 	const frame = new Float32Array(2);
 	const rendered: number[] = [];
 	for (let k = 0; k < samples; k++) {
@@ -44,13 +45,13 @@ describe("loop(init, f): the cross-coupled pair", () => {
 		expect(second).toEqual(first);
 	});
 
-	it("is bit-exact across an unchanged re-eval", () => {
-		const reference = new Core3Engine(crossFm(), SR, getRegistry());
+	it.each(BACKENDS)("is bit-exact across an unchanged re-eval ($name)", ({ create, swap }) => {
+		const reference = create(crossFm(), SR, getRegistry());
 		run(reference, 3000);
 		const expected = run(reference, 2000);
-		const head = new Core3Engine(crossFm(), SR, getRegistry());
+		const head = create(crossFm(), SR, getRegistry());
 		run(head, 3000);
-		const swapped = new Core3Engine(crossFm(), SR, getRegistry(), head.collectState());
+		const swapped = swap(crossFm(), SR, getRegistry(), head);
 		const got = run(swapped, 2000);
 		expect(got.every((v, i) => Object.is(v, expected[i]))).toBe(true);
 	});
@@ -109,7 +110,7 @@ describe("loop(init, f): start values", () => {
 		});
 
 		it(`an unchanged re-eval is bit-exact: a matched wire carries, it does not restart (${mode})`, () => {
-			const build = (prev?: Parameters<typeof run>[0]) =>
+			const build = (prev?: TestEngine) =>
 				new Core3Engine(decay(), SR, getRegistry(), prev?.collectState(), { codegen });
 			const reference = build();
 			run(reference, 40);
@@ -120,6 +121,16 @@ describe("loop(init, f): start values", () => {
 			expect(got.every((v, i) => Object.is(v, expected[i]))).toBe(true);
 		});
 	}
+
+	it("an unchanged re-eval is bit-exact on WASM: a matched wire carries, it does not restart", () => {
+		const reference = WASM_BACKEND.create(decay(), SR, getRegistry());
+		run(reference, 40);
+		const expected = run(reference, 40);
+		const head = WASM_BACKEND.create(decay(), SR, getRegistry());
+		run(head, 40);
+		const got = run(WASM_BACKEND.swap(decay(), SR, getRegistry(), head), 40);
+		expect(got.every((v, i) => Object.is(v, expected[i]))).toBe(true);
+	});
 });
 
 describe("loop(init, f): loud errors", () => {

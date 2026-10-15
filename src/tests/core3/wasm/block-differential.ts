@@ -28,11 +28,7 @@ export interface BlockComparison {
 export function compareBlocks(program: Program, seconds: number): BlockComparison {
 	const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
 	const prepared = prepareWasm(program, SR);
-	const wasm = new WasmEngine(
-		new WebAssembly.Module(prepared.compiled.bytes),
-		prepared.compiled,
-		prepared.start,
-	);
+	const wasm = new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared);
 	const jl = new Float32Array(BLOCK);
 	const jr = new Float32Array(BLOCK);
 	const wl = new Float32Array(BLOCK);

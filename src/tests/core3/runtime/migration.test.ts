@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
-import { Core3Engine } from "@/core3/runtime/engine";
 import { sig } from "@/core3/types";
+import { BACKENDS, type TestEngine } from "./backends";
 import { type IO, type St, c, pnode, prog } from "./helpers";
 
 defmod({
@@ -54,7 +54,7 @@ defmod({
 
 const SR = 48000;
 
-function tapRun(engine: Core3Engine, node: number, samples: number): number[] {
+function tapRun(engine: TestEngine, node: number, samples: number): number[] {
 	const frame = new Float32Array(2);
 	const out: number[] = [];
 	for (let i = 0; i < samples; i++) {
@@ -64,7 +64,7 @@ function tapRun(engine: Core3Engine, node: number, samples: number): number[] {
 	return out;
 }
 
-describe("engine: state migration", () => {
+describe.each(BACKENDS)("engine: state migration ($name)", ({ create, swap }) => {
 	const program = prog([
 		pnode("mg.count", [{ step: c(1) }], { place: "a" }),
 		pnode("mg.count", [{ step: c(2) }], { place: "b" }),
@@ -73,25 +73,38 @@ describe("engine: state migration", () => {
 	it("is seamless: rebuilt engine matches an un-swapped reference exactly", () => {
 		const registry = getRegistry();
 
-		const reference = new Core3Engine(program, SR, registry);
+		const reference = create(program, SR, registry);
 		tapRun(reference, 0, 100);
 		const expectedA = tapRun(reference, 0, 100);
 
-		const first = new Core3Engine(program, SR, registry);
+		const first = create(program, SR, registry);
 		tapRun(first, 0, 100);
-		const swapped = new Core3Engine(program, SR, registry, first.collectState());
+		const swapped = swap(program, SR, registry, first);
 		const gotA = tapRun(swapped, 0, 100);
 
 		expect(gotA).toEqual(expectedA);
 		expect(swapped.sampleCount).toBe(reference.sampleCount);
 	});
 
+	it("continues a snapshot exactly", () => {
+		const registry = getRegistry();
+		const reference = create(program, SR, registry);
+		tapRun(reference, 0, 100);
+		const expectedA = tapRun(reference, 0, 100);
+
+		const first = create(program, SR, registry);
+		tapRun(first, 0, 100);
+		const restored = create(program, SR, registry, first.collectState());
+		expect(tapRun(restored, 0, 100)).toEqual(expectedA);
+		expect(restored.sampleCount).toBe(reference.sampleCount);
+	});
+
 	it("typed-array state migrates by value (deep-cloned, not shared)", () => {
 		const registry = getRegistry();
-		const first = new Core3Engine(program, SR, registry);
+		const first = create(program, SR, registry);
 		tapRun(first, 0, 10);
 		const state = first.collectState();
-		const swapped = new Core3Engine(program, SR, registry, state);
+		const swapped = create(program, SR, registry, state);
 		tapRun(swapped, 0, 5);
 		// mutating the swapped engine must not have touched the snapshot
 		const lanes = state.nodes.a as Record<string, unknown>[];
@@ -100,14 +113,14 @@ describe("engine: state migration", () => {
 
 	it("a node at a new place keeps the state of the leftover node of its kind", () => {
 		const registry = getRegistry();
-		const first = new Core3Engine(program, SR, registry);
+		const first = create(program, SR, registry);
 		tapRun(first, 0, 100); // a: 100, b: 200
 
 		const moved = prog([
 			pnode("mg.count", [{ step: c(1) }], { place: "a" }),
 			pnode("mg.count", [{ step: c(2) }], { place: "c" }), // b, moved
 		]);
-		const swapped = new Core3Engine(moved, SR, registry, first.collectState());
+		const swapped = swap(moved, SR, registry, first);
 		const frame = new Float32Array(2);
 		swapped.tick(frame);
 		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
@@ -116,7 +129,7 @@ describe("engine: state migration", () => {
 
 	it("a new node starts fresh while the others keep state", () => {
 		const registry = getRegistry();
-		const first = new Core3Engine(program, SR, registry);
+		const first = create(program, SR, registry);
 		tapRun(first, 0, 100); // a: 100, b: 200
 
 		const grown = prog([
@@ -124,7 +137,7 @@ describe("engine: state migration", () => {
 			pnode("mg.count", [{ step: c(2) }], { place: "b" }),
 			pnode("mg.count", [{ step: c(3) }], { place: "c" }), // new
 		]);
-		const swapped = new Core3Engine(grown, SR, registry, first.collectState());
+		const swapped = swap(grown, SR, registry, first);
 		const frame = new Float32Array(2);
 		swapped.tick(frame);
 		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
@@ -134,14 +147,14 @@ describe("engine: state migration", () => {
 
 	it("a matched node whose state no longer fits resets alone", () => {
 		const registry = getRegistry();
-		const first = new Core3Engine(program, SR, registry);
+		const first = create(program, SR, registry);
 		tapRun(first, 0, 100); // a: 100, b: 200
 
 		const reshaped = prog([
 			pnode("mg.count", [{ step: c(1) }], { place: "a" }),
 			pnode("mg.wide", [{ step: c(2) }], { place: "b" }), // same place, extra state key
 		]);
-		const swapped = new Core3Engine(reshaped, SR, registry, first.collectState());
+		const swapped = swap(reshaped, SR, registry, first);
 		const frame = new Float32Array(2);
 		swapped.tick(frame);
 		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
@@ -155,10 +168,10 @@ describe("engine: state migration", () => {
 				pnode("mg.count", [{ step: c(1) }], { place: "a" }),
 				pnode("mg.count", [{ step: c(2) }], { place: "b", config: { k } }),
 			]);
-		const first = new Core3Engine(configured(1), SR, registry);
+		const first = create(configured(1), SR, registry);
 		tapRun(first, 0, 100); // a: 100, b: 200
 
-		const swapped = new Core3Engine(configured(2), SR, registry, first.collectState());
+		const swapped = swap(configured(2), SR, registry, first);
 		const frame = new Float32Array(2);
 		swapped.tick(frame);
 		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
@@ -167,14 +180,14 @@ describe("engine: state migration", () => {
 
 	it("a matched node whose buffer changed length resets alone", () => {
 		const registry = getRegistry();
-		const first = new Core3Engine(program, SR, registry);
+		const first = create(program, SR, registry);
 		tapRun(first, 0, 100); // a: 100, b: 200
 
 		const resized = prog([
 			pnode("mg.count", [{ step: c(1) }], { place: "a" }),
 			pnode("mg.long", [{ step: c(2) }], { place: "b" }), // same place, longer buffer
 		]);
-		const swapped = new Core3Engine(resized, SR, registry, first.collectState());
+		const swapped = swap(resized, SR, registry, first);
 		const frame = new Float32Array(2);
 		swapped.tick(frame);
 		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
@@ -183,7 +196,7 @@ describe("engine: state migration", () => {
 
 	it("never carries a lane's scratch", () => {
 		const registry = getRegistry();
-		const first = new Core3Engine(program, SR, registry);
+		const first = create(program, SR, registry);
 		tapRun(first, 0, 10);
 		const state = first.collectState();
 		for (const lanes of Object.values(state.nodes)) {
@@ -197,7 +210,7 @@ describe("engine: state migration", () => {
 			pnode("mg.count", [{ step: c(1) }], { place: "x", pin: "keep" }),
 			pnode("mg.count", [{ step: c(2) }], { place: "b" }),
 		]);
-		const first = new Core3Engine(pinned, SR, registry);
+		const first = create(pinned, SR, registry);
 		tapRun(first, 0, 50); // keep: 50, b: 100
 
 		// Both moved and swapped order: by kind alone, node 0 would take keep's state.
@@ -205,7 +218,7 @@ describe("engine: state migration", () => {
 			pnode("mg.count", [{ step: c(2) }], { place: "q" }),
 			pnode("mg.count", [{ step: c(1) }], { place: "y", pin: "keep" }),
 		]);
-		const swapped = new Core3Engine(restructured, SR, registry, first.collectState());
+		const swapped = swap(restructured, SR, registry, first);
 		const frame = new Float32Array(2);
 		swapped.tick(frame);
 		expect(swapped.peek(0, "out", 0)).toBe(102);

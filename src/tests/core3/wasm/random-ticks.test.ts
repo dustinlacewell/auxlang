@@ -12,17 +12,13 @@ import "@/core3/modules/all";
 import { defmod, out, runProgram, seq, tempo } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
 import { hashRandom as hostHashRandom } from "@/core3/random/hash-random";
-import { EngineBuild } from "@/core3/runtime/build/engine-build";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
-import { LiveEngine } from "@/core3/runtime/live-engine";
 import { slotOf } from "@/core3/runtime/output-slots";
-import { prepareProgram } from "@/core3/runtime/prepare/prepare-program";
-import type { EngineState, Program } from "@/core3/types";
+import type { Program } from "@/core3/types";
 import { sig } from "@/core3/types";
-import { WasmEngine } from "@/core3/wasm/host/wasm-engine";
-import { compileWasm } from "@/core3/wasm/program/compile-program";
-import { lambdaSources } from "@/core3/wasm/program/lambda-sources";
+import { createWasmEngine, swapWasmEngine } from "@/core3/wasm/host/create-wasm-engine";
+import type { WasmEngine } from "@/core3/wasm/host/wasm-engine";
 
 /** The tick's own binding: one argument, the patch seed implied. */
 declare const hashRandom: (key: number | string) => number;
@@ -75,29 +71,14 @@ interface Pair {
 	readonly wasm: WasmEngine;
 }
 
-/** Both backends built for `program`, continuing `prev` when given, from the same built values. */
-function engines(program: Program, prev?: EngineState): Pair {
+/** Both backends built for `program`, each continuing its own engine of `prev` when given. */
+function engines(program: Program, prev?: Pair): Pair {
 	const registry = withProgramSpecs(getRegistry(), program);
-	const js = new Core3Engine(program, SR, registry, prev);
-	const prepared = prepareProgram(program, registry, SR, prev?.identities, {});
-	const parts = new EngineBuild(prepared, registry, prev).finish();
-	if (prev !== undefined) new LiveEngine(parts).handOver(prev);
-	const taps = (port: string) =>
-		Int32Array.from(program.outs, (n) => slotOf(parts.layout, n, port, 0));
-	const compiled = compileWasm({
-		runs: parts.runs,
-		modules: program.nodes.map((n) => n.module),
-		readsPattern: program.nodes.map((n) => registry.get(n.module)?.reads === "pattern"),
-		lambdas: lambdaSources(program.nodes),
-		tapsL: taps("l"),
-		tapsR: taps("r"),
-		size: parts.layout.size,
-		sampleRate: SR,
-	});
-	const wasm = new WasmEngine(new WebAssembly.Module(compiled.bytes), compiled, {
-		runs: parts.runs,
-		cur: parts.bufs.cur,
-	});
+	const js = new Core3Engine(program, SR, registry, prev?.js.collectState());
+	const wasm =
+		prev === undefined
+			? createWasmEngine(program, SR, registry)
+			: swapWasmEngine(program, SR, registry, prev.wasm);
 	return { program, js, wasm };
 }
 
@@ -161,7 +142,7 @@ describe("tick randomness on the interpreter and WASM", () => {
 		const fromStart = render(reference);
 		const continued = render(reference);
 
-		const swapped = render(engines(patch(7), before.js.collectState()));
+		const swapped = render(engines(patch(7), before));
 		expect(swapped).toEqual(continued);
 		expect(pick(swapped, STREAMS)).not.toEqual(pick(fromStart, STREAMS));
 	});
@@ -169,7 +150,7 @@ describe("tick randomness on the interpreter and WASM", () => {
 	it("starts the new seed's streams across a re-eval that rerolls it", () => {
 		const before = engines(patch(7));
 		render(before);
-		const swapped = render(engines(patch(8), before.js.collectState()));
+		const swapped = render(engines(patch(8), before));
 
 		const fresh = engines(patch(8));
 		const freshStart = render(fresh);

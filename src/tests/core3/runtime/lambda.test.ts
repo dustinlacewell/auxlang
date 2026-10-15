@@ -4,6 +4,7 @@ import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
 import { createEngine } from "@/core3/runtime/engine";
 import { sig } from "@/core3/types";
+import { BACKENDS } from "./backends";
 import { type IO, type St, lam, pnode, prog } from "./helpers";
 
 defmod({
@@ -22,20 +23,23 @@ defmod({
 const SR = 1000;
 
 describe("engine: lambdas", () => {
-	it("time continues across a swap (sampleCount seeds from prev)", () => {
-		const program = prog([pnode("lt.pass", [{ v: lam("(s, sr, t) => t") }])], [0]);
-		const registry = getRegistry();
-		const frame = new Float32Array(2);
+	it.each(BACKENDS)(
+		"time continues across a swap (sampleCount seeds from prev) ($name)",
+		({ create, swap }) => {
+			const program = prog([pnode("lt.pass", [{ v: lam("(s, sr, t) => t") }])], [0]);
+			const registry = getRegistry();
+			const frame = new Float32Array(2);
 
-		const first = createEngine(program, SR, registry);
-		for (let i = 0; i < 100; i++) first.tick(frame);
-		expect(frame[0]).toBe(Math.fround(99 / SR));
+			const first = create(program, SR, registry);
+			for (let i = 0; i < 100; i++) first.tick(frame);
+			expect(frame[0]).toBe(Math.fround(99 / SR));
 
-		const second = createEngine(program, SR, registry, first.collectState());
-		expect(second.sampleCount).toBe(100);
-		second.tick(frame);
-		expect(frame[0]).toBe(Math.fround(100 / SR));
-	});
+			const second = swap(program, SR, registry, first);
+			expect(second.sampleCount).toBe(100);
+			second.tick(frame);
+			expect(frame[0]).toBe(Math.fround(100 / SR));
+		},
+	);
 
 	it("lambda state persists across samples within an engine", () => {
 		const program = prog(
