@@ -20,7 +20,7 @@ Auxlang's claim: these are one language with **two calculi and one bridge**.
 - The **signal calculus**: per-sample time. Modules are state machines wired into
   a graph. Feedback is legal.
 - The **bridge**: `seq(pattern, position)` reads a pattern at a position, and the
-  position is a signal. A clock gives a position in beats. A counter gives a
+  position is a signal. A clock gives a position in bars. A counter gives a
   position in steps. An LFO scans. The outputs are signals and go anywhere.
 
 Three invariants:
@@ -75,7 +75,7 @@ Units are **conventions, not types**:
 | control knobs | 0..1 | |
 | time (musical) | beats | resolved against the governing clock |
 | time (physical) | seconds | envelopes, delays |
-| position | beats (clock) or steps (counter), unbounded | what `seq` reads |
+| position | cycles: bars (clock) or steps (counter), unbounded | what `seq` reads; one cycle = one bar |
 | gate | 0/1, threshold 0.5 | |
 | trig | single-sample 1 | |
 
@@ -207,7 +207,7 @@ required: it is how many tails may ring, which structure cannot know.
 ### 4.1 Read
 
 `seq(pattern, position)` reads `pattern` at `position`. When `position` is
-omitted, it is the ambient clock's beat position.
+omitted, it is the ambient clock's position in bars.
 
 Outputs:
 
@@ -228,9 +228,12 @@ stage fires its pulse, however you got there.
 
 ### 4.2 Positions
 
+- A position is measured in **cycles**. One cycle of a pattern is one bar.
 - `tempo(bpm)` sets the ambient clock and returns it. `clock(bpm)` makes another
-  clock for polytempo. A clock's outputs: `out` (beat position), `beat` (trig),
-  `bar` (trig per cycle). Tempo is an input, so tempo modulation is patching.
+  clock for polytempo. `bpm` counts beats; `{ beatsPerBar }` (default 4) sets
+  the meter. A clock's outputs: `out` (position in bars), `beat` (trig per
+  beat), `bar` (trig per bar). Tempo is an input, so tempo modulation is
+  patching. `beats(x)` tags (§2) resolve against `bpm`.
 - `counter(trig, { reset, length })` counts triggers. Its output is a step
   position.
 - Any signal is a position: `seq(p.steps(), lfo(0.1, 0, 8))` scans eight steps.
