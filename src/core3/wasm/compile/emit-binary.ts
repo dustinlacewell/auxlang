@@ -49,6 +49,8 @@ const I32_COMPARE: Readonly<Record<string, number>> = {
 
 const EQUALITY: ReadonlySet<string> = new Set(["===", "==", "!==", "!="]);
 
+const STRICT: ReadonlySet<string> = new Set(["===", "!=="]);
+
 const BITWISE: Readonly<Record<string, number>> = {
 	"&": OP.i32And,
 	"|": OP.i32Or,
@@ -101,10 +103,16 @@ export function combine(
 
 /**
  * Two ints or two booleans compare as i32; anything else as f64, booleans
- * as 0/1 (so `true === 1` is true here, where JS says false; no tick
- * compares a boolean with a number).
+ * as 0/1 (ToNumber, as JS's `<` and `==`). Strict equality between a
+ * boolean and a number is decided by the types alone, as in JS: `true === 1`
+ * is false. Both sides still run, for their effects.
  */
 function emitCompare(e: FnEmitter, op: string, left: Operand, right: Operand): Kind {
+	if (STRICT.has(op) && (left.value === "bool") !== (right.value === "bool")) {
+		e.code.append(left.bytes).op(OP.drop).append(right.bytes).op(OP.drop);
+		e.code.i32Const(op === "===" ? 0 : 1);
+		return "bool";
+	}
 	const ints = left.value === "int" && right.value === "int";
 	const bools = left.value === "bool" && right.value === "bool" && EQUALITY.has(op);
 	if (ints || bools) {

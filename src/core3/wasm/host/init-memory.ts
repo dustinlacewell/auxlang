@@ -1,8 +1,9 @@
 /**
  * Fill a fresh instance's memory from the engine's built values: the value
  * buffer (with feedback start values), each node's outputs record and lane
- * states (numbers, typed arrays and records), an empty math cache (NaN, as
- * cache-names.ts) and empty seq tables (cycle NaN, as a fresh EventTable).
+ * states (numbers, typed arrays and records), empty math caches, the lane's
+ * and each lambda's (NaN, as cache-names.ts), and empty seq tables (cycle
+ * NaN, as a fresh EventTable). The sample count starts at 0, as fresh memory.
  */
 
 import type { NodeRun } from "../../runtime/node-run";
@@ -26,6 +27,8 @@ export function initMemory(
 			for (const [name, field] of Object.entries(lane.aggregates))
 				writeState(f64.buffer as ArrayBuffer, field.offset, field.shape, state[name]);
 			f64.fill(Number.NaN, lane.cache / 8, lane.cache / 8 + lane.cacheSlots);
+			for (const lambda of Object.values(lane.lambdas))
+				f64.fill(Number.NaN, lambda.cache / 8, lambda.cache / 8 + lambda.cacheSlots);
 			if (lane.table === null) return;
 			f64[lane.table / 8] = Number.NaN;
 			f64[lane.table / 8 + 1] = 0;

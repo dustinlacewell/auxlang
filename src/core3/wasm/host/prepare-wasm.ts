@@ -11,6 +11,7 @@ import { slotOf } from "../../runtime/output-slots";
 import { prepareProgram } from "../../runtime/prepare/prepare-program";
 import type { Program, Registry } from "../../types";
 import { type CompiledWasm, type WasmInput, compileWasm } from "../program/compile-program";
+import { lambdaSources } from "../program/lambda-sources";
 import type { WasmStart } from "./wasm-engine";
 
 export interface PreparedWasm {
@@ -42,6 +43,7 @@ export function buildWasmInput(
 		runs: parts.runs,
 		modules: program.nodes.map((n) => n.module),
 		readsPattern: program.nodes.map((n) => layered.get(n.module)?.reads === "pattern"),
+		lambdas: lambdaSources(program.nodes),
 		tapsL: taps("l"),
 		tapsR: taps("r"),
 		size: parts.layout.size,

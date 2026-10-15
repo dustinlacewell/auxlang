@@ -6,12 +6,13 @@
 
 import type { AnyNode, Expression, SequenceExpression, UnaryExpression } from "acorn";
 import { OP } from "../encode/opcodes";
-import { toBool, toF64, toInt32 } from "./coerce";
+import { toF64, toInt32 } from "./coerce";
 import { emitAssignment, emitUpdate } from "./emit-assignment";
 import { emitBinary } from "./emit-binary";
 import { emitCall } from "./emit-call";
 import { emitConditional, emitLogical } from "./emit-logical";
 import { emitMemberRead } from "./emit-member";
+import { emitTest } from "./emit-test";
 import type { FnEmitter } from "./fn-emitter";
 import { staticOf } from "./static-value";
 import type { Kind, StaticValue, Value } from "./values";
@@ -104,6 +105,11 @@ function emitUnary(e: FnEmitter, node: UnaryExpression): Kind {
 	}
 	if (node.operator === "typeof" || node.operator === "delete")
 		return e.fail(node, `\`${node.operator}\` must fold while compiling`);
+	if (node.operator === "!") {
+		emitTest(e, node.argument);
+		e.code.op(OP.i32Eqz);
+		return "bool";
+	}
 	const kind = emitExpr(e, node.argument);
 	switch (node.operator) {
 		case "-":
@@ -113,10 +119,6 @@ function emitUnary(e: FnEmitter, node: UnaryExpression): Kind {
 		case "+":
 			toF64(e, kind);
 			return "f64";
-		case "!":
-			toBool(e, kind);
-			e.code.op(OP.i32Eqz);
-			return "bool";
 		case "~":
 			toInt32(e, kind);
 			e.code.i32Const(-1).op(OP.i32Xor);

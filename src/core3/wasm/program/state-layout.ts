@@ -1,8 +1,8 @@
 /**
  * The memory shapes of a lane's built state (layout/state-shape.ts). A value
- * with no memory form (a string, a plain array of numbers, a BigInt array,
- * records of differing shapes) gets no shape; a tick that reads it fails to
- * compile, naming the field.
+ * with no memory form (a string, a boolean, which an f64 would turn into a
+ * number (compile/one-type.ts), a BigInt array, records of differing shapes)
+ * gets no shape; a tick that reads it fails to compile, naming the field.
  */
 
 import { ELEMENT_BYTES, elementTypeOf } from "../layout/element-type";
@@ -25,7 +25,7 @@ export function planAggregates(
 }
 
 export function shapeOf(value: unknown): Shape | null {
-	if (typeof value === "number" || typeof value === "boolean") return NUMBER;
+	if (typeof value === "number") return NUMBER;
 	const type = elementTypeOf(value);
 	if (type !== null) return { k: "array", type, length: (value as ArrayLike<number>).length };
 	if (Array.isArray(value)) return recordsShape(value);

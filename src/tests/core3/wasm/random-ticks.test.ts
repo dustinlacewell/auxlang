@@ -22,6 +22,7 @@ import type { EngineState, Program } from "@/core3/types";
 import { sig } from "@/core3/types";
 import { WasmEngine } from "@/core3/wasm/host/wasm-engine";
 import { compileWasm } from "@/core3/wasm/program/compile-program";
+import { lambdaSources } from "@/core3/wasm/program/lambda-sources";
 
 /** The tick's own binding: one argument, the patch seed implied. */
 declare const hashRandom: (key: number | string) => number;
@@ -87,6 +88,7 @@ function engines(program: Program, prev?: EngineState): Pair {
 		runs: parts.runs,
 		modules: program.nodes.map((n) => n.module),
 		readsPattern: program.nodes.map((n) => registry.get(n.module)?.reads === "pattern"),
+		lambdas: lambdaSources(program.nodes),
 		tapsL: taps("l"),
 		tapsR: taps("r"),
 		size: parts.layout.size,

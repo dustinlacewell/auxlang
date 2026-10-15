@@ -16,6 +16,7 @@ import { emitLoad, emitStore } from "./element-io";
 import { emitExpr, emitValue } from "./emit-expression";
 import type { FnEmitter } from "./fn-emitter";
 import { type Index, type Span, emitIndex, guarded } from "./index-access";
+import { assertOneType } from "./one-type";
 import { placeOf } from "./place";
 import { staticOf } from "./static-value";
 import type { Address, Kind } from "./values";
@@ -43,8 +44,8 @@ export function emitMemberRead(e: FnEmitter, node: MemberExpression): Kind {
 
 /**
  * `node ?? orElse`: an array element at an invalid index is `undefined`, so
- * `orElse` runs; any other run-time value is a number or a boolean, never
- * nullish. A chain `a ?? b ?? c` is `a ?? (b ?? c)`.
+ * `orElse` runs. The checker (tick-subset/check-nullish.ts) allows nothing
+ * else on the left. A chain `a ?? b ?? c` is `a ?? (b ?? c)`.
  */
 export function emitNullish(e: FnEmitter, node: AnyNode, orElse: () => Kind): Kind {
 	const known = staticOf(e, node);
@@ -52,7 +53,7 @@ export function emitNullish(e: FnEmitter, node: AnyNode, orElse: () => Kind): Ki
 	if (node.type === "MemberExpression") return emitMemberReadOr(e, node, orElse);
 	if (node.type === "LogicalExpression" && node.operator === "??")
 		return emitNullish(e, node.left, () => emitNullish(e, node.right, orElse));
-	return emitExpr(e, node);
+	return e.fail(node, "`??` needs a direct array element on its left (`a[j] ?? d`)");
 }
 
 /** The place `node` names for a write. Emits what JS evaluates first: the array, then the index. */
@@ -121,7 +122,15 @@ function emitMemberReadOr(e: FnEmitter, node: MemberExpression, orElse: (() => K
 	const cache = cacheTarget(e, node);
 	if (cache !== null) return readTarget(e, cache);
 	const array = arrayOf(e, node.object);
-	readElement(e, array.shape, array.at, emitIndex(e, node.property), orElse);
+	const other =
+		orElse === null
+			? null
+			: () => {
+					const kind = orElse();
+					assertOneType(e, "f64", kind, node);
+					return kind;
+				};
+	readElement(e, array.shape, array.at, emitIndex(e, node.property), other);
 	return "f64";
 }
 

@@ -1,10 +1,11 @@
 /**
  * Linear memory for one program, fixed at eval from the shapes the engine
  * built (MANIFESTO §5.1): the two output blocks (f32), the value buffer
- * (f64 per slot, as the engine's `cur`), then per node its outputs record,
- * the f64 lane views its reducer inputs are gathered into, and per lane its
- * numeric state fields, its typed arrays and records (state-layout.ts), its
- * math call cache and (a module that reads a pattern) its event table.
+ * (f64 per slot, as the engine's `cur`), the sample count, then per node its
+ * outputs record, the f64 lane views its reducer inputs are gathered into,
+ * and per lane its numeric state fields, its typed arrays and records
+ * (state-layout.ts), its math call cache, (a module that reads a pattern)
+ * its event table, and each lambda input's own math cache.
  * Everything is f64 except the f32 output blocks, which the JS engine also
  * holds as Float32Arrays, and typed arrays, which keep their element type.
  */
@@ -13,6 +14,9 @@ import { TABLE_ROW_FIELDS } from "../../module/tick-subset/table-intrinsics";
 import type { NodeRun } from "../../runtime/node-run";
 import type { ModuleSource } from "../../types";
 import type { Field } from "../layout/state-shape";
+import { cacheSlotsIn } from "./cache-slots";
+import type { LambdaSources } from "./lambda-sources";
+import { lambdaText } from "./lambda-text";
 import { planAggregates } from "./state-layout";
 
 /** Samples per render call at most (the AudioWorklet quantum). */
@@ -33,6 +37,13 @@ export interface LaneMemory {
 	readonly cacheSlots: number;
 	/** The lane's event table when its module reads a pattern, else null. */
 	readonly table: number | null;
+	/** Lambda input port → its own math cache. */
+	readonly lambdas: Readonly<Record<string, LambdaMemory>>;
+}
+
+export interface LambdaMemory {
+	readonly cache: number;
+	readonly cacheSlots: number;
 }
 
 export interface NodeMemory {
@@ -47,6 +58,8 @@ export interface WasmLayout {
 	readonly outL: number;
 	readonly outR: number;
 	readonly cur: number;
+	/** The sample count (f64): lambda time is (count + k) / sampleRate. */
+	readonly count: number;
 	readonly size: number;
 	readonly nodes: readonly NodeMemory[];
 }
@@ -55,6 +68,7 @@ export function planMemory(
 	runs: readonly NodeRun[],
 	readsPattern: readonly boolean[],
 	sources: readonly ModuleSource[],
+	lambdas: LambdaSources,
 	size: number,
 ): WasmLayout {
 	let top = 0;
@@ -66,14 +80,16 @@ export function planMemory(
 	const outL = take(4 * BLOCK_MAX);
 	const outR = take(4 * BLOCK_MAX);
 	const cur = take(8 * size);
+	const count = take(8);
 	const nodes = runs.map((run, i) => {
 		const outs = Object.fromEntries(run.outPorts.map((p) => [p, take(8)]));
 		const views: Record<string, number> = {};
 		for (const port of run.gathers?.ports ?? []) {
 			if (port.view !== null) views[port.name] = take(8 * port.srcLanes);
 		}
-		const slots = cacheSlots(sources[i] as ModuleSource);
-		const lanes = run.states.map((state) => ({
+		const source = sources[i] as ModuleSource;
+		const slots = cacheSlotsIn([source.tick, ...Object.values(source.helpers)]);
+		const lanes = run.states.map((state, l) => ({
 			state: Object.fromEntries(numericFields(state).map((f) => [f, take(8)])),
 			aggregates: planAggregates(state, take),
 			cache: take(8 * slots),
@@ -81,10 +97,11 @@ export function planMemory(
 			table: readsPattern[i]
 				? take(TABLE_HEADER + 8 * TABLE_ROW_FIELDS.length * TABLE_CAPACITY)
 				: null,
+			lambdas: planLambdas(lambdas[i]?.[l] ?? {}, take),
 		}));
 		return { outs, views, lanes };
 	});
-	return { pages: Math.max(1, Math.ceil(top / 65536)), outL, outR, cur, size, nodes };
+	return { pages: Math.max(1, Math.ceil(top / 65536)), outL, outR, cur, count, size, nodes };
 }
 
 /** A table field's row address. */
@@ -92,18 +109,23 @@ export function tableRow(table: number, field: number, row: number): number {
 	return table + TABLE_HEADER + 8 * (field * TABLE_CAPACITY + row);
 }
 
-/** The engine's numeric fields count: `__rng` (the stream position), `__seed`, `__lane`. */
+/**
+ * The engine's numeric fields count: `__rng` (the stream position), `__seed`,
+ * `__lane`. A boolean has no memory form (state-layout.ts).
+ */
 function numericFields(state: Record<string, unknown>): string[] {
-	return Object.keys(state).filter(
-		(f) => typeof state[f] === "number" || typeof state[f] === "boolean",
-	);
+	return Object.keys(state).filter((f) => typeof state[f] === "number");
 }
 
-/** One past the highest `__mc[slot]` in the tick and helpers. */
-function cacheSlots(source: ModuleSource): number {
-	let slots = 0;
-	for (const text of [source.tick, ...Object.values(source.helpers)]) {
-		for (const m of text.matchAll(/__mc\[(\d+)\]/g)) slots = Math.max(slots, Number(m[1]) + 1);
+/** Each lambda input's own math cache. */
+function planLambdas(
+	lambdas: Readonly<Record<string, string>>,
+	take: (bytes: number) => number,
+): Record<string, LambdaMemory> {
+	const out: Record<string, LambdaMemory> = {};
+	for (const [port, src] of Object.entries(lambdas)) {
+		const cacheSlots = cacheSlotsIn([lambdaText(src)]);
+		out[port] = { cache: take(8 * cacheSlots), cacheSlots };
 	}
-	return slots;
+	return out;
 }

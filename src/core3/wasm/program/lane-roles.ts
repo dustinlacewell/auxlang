@@ -3,8 +3,8 @@
  * function's locals: numeric state fields and outputs are memory mirrors,
  * typed arrays and records stay in memory, inputs are
  * what the engine's bindings say (a constant, the value slot of an upstream
- * output this sample, or of any output last sample) and, for a reducer, the
- * f64 view its lanes are gathered into.
+ * output this sample, or of any output last sample, or a lambda's value this
+ * sample) and, for a reducer, the f64 view its lanes are gathered into.
  */
 
 import type { AnyNode } from "acorn";
@@ -24,6 +24,7 @@ export function laneRoles(
 	lane: number,
 	slots: ValueSlots,
 	mirror: (addr: number) => number,
+	lambdas: Readonly<Record<string, number>>,
 ): TickRoles {
 	const laneMemory = memory.lanes[lane];
 	if (laneMemory === undefined) throw new Error(`wasm: no memory for lane ${lane}`);
@@ -32,8 +33,8 @@ export function laneRoles(
 		output: (port, at) => mirror(known(e, memory.outs, port, "output", at)),
 		input: (port, at) =>
 			run.bindings === null
-				? gathered(e, run, memory, port, at)
-				: bound(e, run.bindings[lane], port, slots, at),
+				? gathered(e, run, memory, port, lambdas, at)
+				: bound(e, run.bindings[lane], port, slots, lambdas, at),
 		config: (field, at) => configValue(e, run.config[field], field, at),
 	};
 }
@@ -53,7 +54,7 @@ function stateField(
 		return inMemory(aggregate.shape, { base: null, offset: aggregate.offset });
 	return e.fail(
 		at,
-		`state field '${field}' is unknown or has no memory form (a string, a plain array of numbers, records of differing shapes)`,
+		`state field '${field}' is unknown or has no memory form (a string, a boolean, records of differing shapes)`,
 	);
 }
 
@@ -62,6 +63,7 @@ function bound(
 	b: LaneBindings | undefined,
 	port: string,
 	slots: ValueSlots,
+	lambdas: Readonly<Record<string, number>>,
 	at: AnyNode,
 ): Value {
 	const j = b?.names.indexOf(port) ?? -1;
@@ -71,7 +73,7 @@ function bound(
 	if (kind === BIND_CONST) return fixed(b.consts[j] as number);
 	if (kind === BIND_CUR) return local(slots.current(offset), "f64");
 	if (kind === BIND_PREV) return local(slots.previous(offset), "f64");
-	return e.fail(at, "signal lambdas are not supported by the WASM spike");
+	return lambdaValue(e, lambdas, port, at);
 }
 
 function gathered(
@@ -79,6 +81,7 @@ function gathered(
 	run: NodeRun,
 	memory: NodeMemory,
 	port: string,
+	lambdas: Readonly<Record<string, number>>,
 	at: AnyNode,
 ): Value {
 	const p = run.gathers?.ports.find((g) => g.name === port);
@@ -89,7 +92,19 @@ function gathered(
 			{ k: "array", type: "f64", length: p.srcLanes },
 			{ base: null, offset: memory.views[port] as number },
 		);
-	return e.fail(at, "signal lambdas are not supported by the WASM spike");
+	return lambdaValue(e, lambdas, port, at);
+}
+
+/** The local this sample's lambda call left the input's value in (lambda-inputs.ts). */
+function lambdaValue(
+	e: FnEmitter,
+	lambdas: Readonly<Record<string, number>>,
+	port: string,
+	at: AnyNode,
+): Value {
+	const index = lambdas[port];
+	if (index === undefined) return e.fail(at, `input '${port}' has no lambda call`);
+	return local(index, "f64");
 }
 
 function known(

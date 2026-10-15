@@ -11,6 +11,7 @@ import { combine } from "./emit-binary";
 import { emitExpr } from "./emit-expression";
 import { beginWrite, endWrite, kindOfTarget, readTarget, targetOf } from "./emit-member";
 import type { FnEmitter } from "./fn-emitter";
+import { assertNotHidden } from "./one-type";
 import type { Kind } from "./values";
 
 export function emitAssignment(
@@ -31,6 +32,8 @@ export function emitAssignment(
 		const right = e.capture(() => emitExpr(e, node.right));
 		value = combine(e, op.slice(0, -1), current, right, node);
 	}
+	// A typed-array element converts a boolean in JS too.
+	if (target.k !== "element") assertNotHidden(e, value, kind, node);
 	coerce(e, value, kind, node);
 	endWrite(e, target, keep);
 	return keep ? kind : null;

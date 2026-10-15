@@ -14,10 +14,11 @@ import type {
 	VariableDeclarator,
 } from "acorn";
 import { OP } from "../encode/opcodes";
-import { toBool, toF64 } from "./coerce";
+import { toF64 } from "./coerce";
 import { emitDiscard, emitExpr } from "./emit-expression";
 import { emitLoop } from "./emit-loop";
 import { emitSwitch } from "./emit-switch";
+import { emitTest } from "./emit-test";
 import type { FnEmitter } from "./fn-emitter";
 import { placeOf } from "./place";
 import { staticOf } from "./static-value";
@@ -116,7 +117,7 @@ function emitIf(e: FnEmitter, node: IfStatement): boolean {
 		const live = known.v ? node.consequent : node.alternate;
 		return live !== null && live !== undefined && emitStatement(e, live);
 	}
-	toBool(e, emitExpr(e, node.test));
+	emitTest(e, node.test);
 	e.enter(OP.if);
 	const yes = emitStatement(e, node.consequent);
 	let no = false;
