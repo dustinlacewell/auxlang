@@ -18,6 +18,7 @@ import { CARRY_F64 } from "./carry/carry-run";
 import { feedbackRuns } from "./carry/feedback-runs";
 import { laneFits } from "./carry/lane-fits";
 import { laneRuns } from "./carry/lane-runs";
+import { pairedNodes } from "./carry/paired-nodes";
 import { RunList } from "./carry/run-list";
 import type { EngineFacts } from "./engine-facts";
 
@@ -35,17 +36,6 @@ export function planCarry(old: CarrySide, fresh: CarrySide): Int32Array {
 	for (const [node, from] of oldIndex) nodeRuns(runs, old, fresh, from, node);
 	feedbackRuns(runs, old, fresh, oldIndex);
 	return runs.toArray();
-}
-
-/** New node index → the old node index it takes state from. */
-function pairedNodes(old: EngineFacts, fresh: EngineFacts): Map<number, number> {
-	const byKey = new Map(old.identities.map((identity, i) => [identity.key, i]));
-	const pairs = new Map<number, number>();
-	for (const [node, key] of fresh.paired) {
-		const from = byKey.get(key);
-		if (from !== undefined) pairs.set(node, from);
-	}
-	return pairs;
 }
 
 /** Each fresh lane that the old node also has and whose state fits. */

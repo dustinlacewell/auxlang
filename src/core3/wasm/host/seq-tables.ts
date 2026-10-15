@@ -9,7 +9,8 @@
  * - `fillAhead`: after a render, each lane that wants a cycle gets it in
  *   `next`, at most `budget` fills per call; the rest wait for the next
  *   block, taken in turn so no lane starves.
- * - `prefill`: a build step, `cur` and `next` for a start cycle.
+ * - `prefill`, `prefillLane`: a build step, `cur` and `next` for a start
+ *   cycle (all lanes, or one).
  *
  * A table is a pure function of (pattern, seed, lane, cycle), so which kind
  * filled it changes timing only, never output.
@@ -18,6 +19,7 @@
 import { fillLaneTable, laneTable } from "../../bridge/lane-table";
 import type { NodeRun } from "../../runtime/node-run";
 import { SLOT_CUR, SLOT_NEXT } from "../layout/table-format";
+import { tableLanes } from "../layout/table-lanes";
 import type { WasmLayout } from "../program/memory-layout";
 import type { TableHeap } from "./table-heap";
 
@@ -40,27 +42,35 @@ export class SeqTables {
 		layout: WasmLayout,
 		private readonly heap: TableHeap,
 	) {
-		const lanes: TableLane[] = [];
-		this.index = layout.nodes.map((node, i) =>
-			node.lanes.map((lane, l) => {
-				if (lane.tables === null) return -1;
-				const run = runs[i] as NodeRun;
-				lanes.push({
-					state: run.states[l] as Record<string, unknown>,
-					config: run.config,
-					slot: lane.tables,
-				});
-				heap.init(lane.tables);
-				return lanes.length - 1;
-			}),
-		);
-		this.lanes = lanes;
+		const refs = tableLanes(layout);
+		this.lanes = refs.map(({ node, lane, slot }) => {
+			const run = runs[node] as NodeRun;
+			heap.init(slot);
+			return { state: run.states[lane] as Record<string, unknown>, config: run.config, slot };
+		});
+		const index = layout.nodes.map((node) => node.lanes.map(() => -1));
+		refs.forEach(({ node, lane }, k) => {
+			(index[node] as number[])[lane] = k;
+		});
+		this.index = index;
+	}
+
+	/** Table lanes, numbered in layout order (layout/table-lanes.ts). */
+	get count(): number {
+		return this.lanes.length;
 	}
 
 	/** The miss path: `cur` of (node, lane) gets `cycle`. */
 	fill(node: number, lane: number, cycle: number): void {
 		this.misses++;
 		this.stage(this.lanes[this.index[node]?.[lane] as number] as TableLane, SLOT_CUR, cycle);
+	}
+
+	/** The cycle `cur` of (node, lane) holds; NaN when it holds none or the lane has no tables. */
+	cycleOf(node: number, lane: number): number {
+		const k = this.index[node]?.[lane] ?? -1;
+		if (k < 0) return Number.NaN;
+		return this.heap.cycleAt((this.lanes[k] as TableLane).slot, SLOT_CUR);
 	}
 
 	/** Fill wanted cycles into `next`, at most `budget`; returns how many were filled. */
@@ -84,10 +94,14 @@ export class SeqTables {
 
 	/** Every lane's `cur` gets `cycle`, `next` the one after. */
 	prefill(cycle: number): void {
-		for (const lane of this.lanes) {
-			this.stage(lane, SLOT_CUR, cycle);
-			this.stage(lane, SLOT_NEXT, cycle + 1);
-		}
+		for (let k = 0; k < this.lanes.length; k++) this.prefillLane(k, cycle);
+	}
+
+	/** Table lane `k`'s `cur` gets `cycle`, `next` the one after. */
+	prefillLane(k: number, cycle: number): void {
+		const lane = this.lanes[k] as TableLane;
+		this.stage(lane, SLOT_CUR, cycle);
+		this.stage(lane, SLOT_NEXT, cycle + 1);
 		this.heap.keepReserve();
 	}
 

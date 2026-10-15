@@ -3,7 +3,8 @@
  * Bundles only the audio host (audio.ts) with the project's resolve/worker
  * config, then follows the URL it hands to audioWorklet.addModule to the
  * emitted file. Guards against the worklet shipping as raw TypeScript (a bare
- * `?url` import inlined it as a `data:video/mp2t` URL).
+ * `?url` import inlined it as a `data:video/mp2t` URL), and checks the
+ * worklet carries the WASM engine's path.
  */
 
 import { resolve } from "node:path";
@@ -58,5 +59,7 @@ describe("production worklet build", () => {
 		const code = sourceOf(worklet as Rollup.OutputChunk | Rollup.OutputAsset);
 		expect(() => parseAst(code)).not.toThrow();
 		expect(code).toContain("core3-processor");
+		// The WASM backend's build step instantiates the posted Module in the worklet.
+		expect(code).toContain("new WebAssembly.Instance");
 	}, 60_000);
 });

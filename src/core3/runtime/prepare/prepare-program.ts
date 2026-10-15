@@ -22,6 +22,7 @@ import { freshNodeStates } from "../fresh-node-states";
 import { buildOutputLayout, slotOf } from "../output-slots";
 import { reevalIdentities } from "../reeval-identities";
 import { TIER_CONFIG, type TierConfig } from "../tier/tier-config";
+import type { WasmPrepared } from "./wasm-prepared";
 
 export interface PreparedProgram {
 	readonly program: Program;
@@ -39,6 +40,8 @@ export interface PreparedProgram {
 	/** Phase 2, built and warmed after the swap and then switched to (tier/); null = none. */
 	readonly tier: DriverCode | null;
 	readonly tierConfig: TierConfig;
+	/** The program compiled to WASM (prepare-wasm-program.ts); null = a JS engine. */
+	readonly wasm: WasmPrepared | null;
 }
 
 export function prepareProgram(
@@ -75,5 +78,6 @@ export function prepareProgram(
 		build: options.build ?? BUILD_CONFIG,
 		tier: tierUp ? emitGroupedCode(plan, { paste: true, budget }) : null,
 		tierConfig: options.tier ?? TIER_CONFIG,
+		wasm: null,
 	};
 }

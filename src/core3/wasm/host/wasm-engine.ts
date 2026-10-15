@@ -2,8 +2,9 @@
  * A compiled program running in an instance, with the JS engine's contract
  * (runtime/live-engine.ts): `renderBlock`, `tick`, `sampleCount`,
  * `collectState`, `liveState` and `handOver`, so a host can run either. The
- * instance is made from a `WebAssembly.Module`, which is what a worklet would
- * receive from the host thread (it is structured-cloneable).
+ * instance is made from a `WebAssembly.Module`, which is what the worklet
+ * receives from the main thread (it is structured-cloneable), here or ahead
+ * as its own build step (link-instance.ts).
  *
  * The hand-over differs in one place: the JS engine plans its carry while it
  * builds, the WASM engine gets it prepared (carry-plan.ts). `liveState` is
@@ -22,10 +23,12 @@
 import type { NodeRun } from "../../runtime/node-run";
 import { slotOf } from "../../runtime/output-slots";
 import type { Engine, EngineState } from "../../types";
+import type { CompiledWasm } from "../program/compile-program";
 import type { CarrySide } from "./carry-plan";
 import { type CarryViews, bindCarry, carryCurrent, runCarry } from "./carry/run-carry";
+import type { EngineFacts } from "./engine-facts";
 import { initMemory } from "./init-memory";
-import type { PreparedWasm } from "./prepare-wasm";
+import { type LinkedInstance, linkInstance } from "./link-instance";
 import { SeqTables } from "./seq-tables";
 import { type CodecTarget, readEngineState, writeEngineState } from "./state-codec";
 import { TableHeap } from "./table-heap";
@@ -40,6 +43,25 @@ export interface WasmStart {
 	readonly cur: Float64Array;
 }
 
+/**
+ * What an engine runs on besides its instance: a PreparedWasm
+ * (prepare-wasm.ts) less the bytes, which the worklet never has.
+ */
+export interface WasmEngineInput {
+	readonly compiled: Pick<CompiledWasm, "layout">;
+	readonly start: WasmStart;
+	readonly facts: EngineFacts;
+	/** The hand-over's copies from the running engine (carry-plan.ts); null when nothing runs. */
+	readonly carry: Int32Array | null;
+}
+
+export interface WasmEngineOptions {
+	/** Tables filled ahead after a block at most (FILL_BUDGET). */
+	readonly fillBudget?: number;
+	/** The instance's memory already holds the start values (init-memory.ts, as build steps). */
+	readonly written?: boolean;
+}
+
 export class WasmEngine implements Engine {
 	private views: WasmMemory;
 	private f32: Float32Array;
@@ -49,26 +71,29 @@ export class WasmEngine implements Engine {
 	private carrySource: WasmMemory | null = null;
 	private carryViews: CarryViews | null = null;
 
+	private readonly fillBudget: number;
+
+	/** `source`: a Module to instantiate here, or an instance made ahead (link-instance.ts). */
 	constructor(
-		module: WebAssembly.Module,
-		private readonly prepared: PreparedWasm,
-		private readonly fillBudget = FILL_BUDGET,
+		source: WebAssembly.Module | LinkedInstance,
+		private readonly prepared: WasmEngineInput,
+		options: WasmEngineOptions = {},
 	) {
 		const { layout } = prepared.compiled;
-		let tables: SeqTables | null = null;
-		const instance = new WebAssembly.Instance(module, {
-			env: {
-				fill: (node: number, lane: number, cycle: number) =>
-					(tables as SeqTables).fill(node, lane, cycle),
-			},
-		});
+		const { instance, link } = source instanceof WebAssembly.Module ? linkInstance(source) : source;
+		this.fillBudget = options.fillBudget ?? FILL_BUDGET;
 		this.memory = instance.exports.memory as WebAssembly.Memory;
 		this.views = memoryViews(this.memory.buffer);
 		this.f32 = new Float32Array(this.memory.buffer);
 		this.render = instance.exports.render as (n: number) => void;
-		initMemory(this.views.f64, layout, prepared.start.runs, prepared.start.cur);
-		tables = new SeqTables(prepared.start.runs, layout, new TableHeap(this.memory, layout.heap));
-		this.tables = tables;
+		if (options.written !== true)
+			initMemory(this.views.f64, layout, prepared.start.runs, prepared.start.cur);
+		this.tables = new SeqTables(
+			prepared.start.runs,
+			layout,
+			new TableHeap(this.memory, layout.heap),
+		);
+		link.tables = this.tables;
 		this.syncViews();
 	}
 
@@ -140,6 +165,12 @@ export class WasmEngine implements Engine {
 		runCarry(this.carryViews as CarryViews);
 	}
 
+	/** Drop the carry's views after the last hand-over, so they no longer hold the old memory. */
+	releaseCarry(): void {
+		this.carrySource = null;
+		this.carryViews = null;
+	}
+
 	/** Continue a snapshot (runtime/live-engine.ts `handOver`); right after construction only. */
 	load(state: EngineState): void {
 		writeEngineState(this.codec(), this.prepared.start.runs, state);
@@ -153,6 +184,22 @@ export class WasmEngine implements Engine {
 	prefill(cycle: number): void {
 		this.tables.prefill(cycle);
 		this.syncViews();
+	}
+
+	/** Table lanes (layout/table-lanes.ts order). */
+	get tableLanes(): number {
+		return this.tables.count;
+	}
+
+	/** As `prefill`, for table lane `k` alone: a build step per lane. */
+	prefillLane(k: number, cycle: number): void {
+		this.tables.prefillLane(k, cycle);
+		this.syncViews();
+	}
+
+	/** The cycle the current table of (node, lane) holds; NaN when none. */
+	tableCycle(node: number, lane: number): number {
+		return this.tables.cycleOf(node, lane);
 	}
 
 	/** A value slot as of the last sample rendered (the engine's `cur`). */

@@ -1,9 +1,11 @@
 /**
  * Main-thread audio host: owns the AudioContext + AudioWorkletNode pair and
  * the worklet's message port. `play(program)` prepares the program here
- * (prepare/prepare-program.ts: the re-eval match against the last program
- * played, and the generated driver code) and posts it as a swap; the
- * worklet builds it while the old engine plays, then swaps and crossfades.
+ * for the chosen backend (prepare/prepare-for-host.ts: the re-eval match
+ * against the last program played, and the generated driver code or the
+ * compiled and warmed WASM module) and posts it as a swap; the worklet
+ * builds it while the old engine plays, then swaps and crossfades.
+ * `setBackend` picks the backend ("js" by default).
  * `stop()` silences it and ends the session: the next play starts fresh.
  * The worklet bundle is
  * loaded via Vite's `?worker&url` import: Vite bundles it as a separate ES
@@ -12,10 +14,11 @@
  */
 
 import { getRegistry } from "../module/define";
-import type { KeyedIdentity, Program } from "../types";
-import type { DriverOptions } from "./driver";
+import type { Program } from "../types";
 import { withProgramSpecs } from "./hydrate-specs";
-import { prepareProgram } from "./prepare/prepare-program";
+import { type Backend, DEFAULT_BACKEND, type HostOptions } from "./prepare/host-options";
+import { prepareForHost } from "./prepare/prepare-for-host";
+import type { PreparedProgram } from "./prepare/prepare-program";
 import { type SeedSession, createSeedSession } from "./seed-session";
 import workletUrl from "./worklet/index.ts?worker&url";
 import type { PerfOverrun, PerfReport, WorkletMessage, WorkletReply } from "./worklet/messages";
@@ -39,12 +42,23 @@ interface AudioHost {
 let host: AudioHost | null = null;
 // Beats/sec used to place overruns on the musical grid; set by enablePerf().
 let perfBps = 0;
-// The last program played, as identities: the next one matches against them.
-let running: readonly KeyedIdentity[] | undefined;
+// The last program played: the next one matches against it and plans its carry from it.
+let running: PreparedProgram | undefined;
 
-// The worklet runs the generated per-program driver; its build falls back to
-// the interpreter (logged) if the host forbids `new Function`.
-const WORKLET_OPTIONS: DriverOptions = { codegen: true };
+// On the JS backend the worklet runs the generated per-program driver; its
+// build falls back to the interpreter (logged) if the host forbids `new Function`.
+let options: HostOptions = { codegen: true, backend: DEFAULT_BACKEND };
+
+/**
+ * Pick the engine the worklet runs from the next play: "js" or "wasm". A
+ * change ends the session (stop): one backend cannot continue the other's
+ * state.
+ */
+export function setBackend(backend: Backend): void {
+	if (backend === (options.backend ?? DEFAULT_BACKEND)) return;
+	stop();
+	options = { ...options, backend };
+}
 
 async function ensureHost(): Promise<AudioHost> {
 	if (host) return host;
@@ -70,7 +84,20 @@ async function ensureHost(): Promise<AudioHost> {
 	return host;
 }
 
-export async function play(program: Program): Promise<void> {
+// Plays prepare one after another (a WASM prepare awaits its compile and
+// warm-up): each matches against the one before and posts in order.
+let plays: Promise<void> = Promise.resolve();
+// Counts stops: a play called before a stop is dropped, not posted after it.
+let session = 0;
+
+export function play(program: Program): Promise<void> {
+	const at = session;
+	const result = plays.then(() => playNext(program, at));
+	plays = result.catch(() => {});
+	return result;
+}
+
+async function playNext(program: Program, at: number): Promise<void> {
 	const { context, node } = await ensureHost();
 	if (context.state === "suspended") await context.resume();
 	// A constant patch tempo feeds the perf beat grid; an explicit enablePerf(bpm)
@@ -78,8 +105,9 @@ export async function play(program: Program): Promise<void> {
 	const bpm = constantBpm(program);
 	if (bpm > 0) perfBps = bpm / 60;
 	const registry = withProgramSpecs(getRegistry(), program);
-	const prepared = prepareProgram(program, registry, context.sampleRate, running, WORKLET_OPTIONS);
-	running = prepared.identities;
+	const prepared = await prepareForHost(program, registry, context.sampleRate, running, options);
+	if (at !== session) return;
+	running = prepared;
 	const message: WorkletMessage = { type: "swap", prepared };
 	node.port.postMessage(message);
 }
@@ -94,6 +122,7 @@ export const playSeed: SeedSession = createSeedSession();
 export function stop(): void {
 	playSeed.end();
 	running = undefined;
+	session++;
 	if (!host) return;
 	const message: WorkletMessage = { type: "stop" };
 	host.node.port.postMessage(message);

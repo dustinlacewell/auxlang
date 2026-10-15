@@ -1,8 +1,9 @@
 /**
- * Write one built state value into fresh memory at its shape's address. Fresh
- * memory is zero, so only non-zero words are written: a 4 s delay line of
- * silence costs a scan, never a page write. Typed arrays are copied as raw
- * bytes, which keeps every bit (NaN payloads, -0).
+ * Write one built state value into fresh memory at its shape's address.
+ * Fresh memory is zero, so a number that is zero is skipped. Typed arrays
+ * are copied whole as raw bytes, which keeps every bit (NaN payloads, -0):
+ * a copy beats a scan for non-zero words, and the worklet maps every page
+ * ahead anyway (touch-pages.ts).
  */
 
 import type { Shape } from "../layout/state-shape";
@@ -15,7 +16,7 @@ export function writeState(memory: ArrayBuffer, at: number, shape: Shape, value:
 			return;
 		}
 		case "array":
-			copyNonZero(memory, at, value as ArrayBufferView);
+			copyBytes(memory, at, value as ArrayBufferView);
 			return;
 		case "record": {
 			const record = value as Record<string, unknown>;
@@ -33,15 +34,11 @@ export function writeState(memory: ArrayBuffer, at: number, shape: Shape, value:
 }
 
 /** `at` is 8-aligned (layout/state-shape.ts); a word copy needs the source 4-aligned too. */
-function copyNonZero(memory: ArrayBuffer, at: number, src: ArrayBufferView): void {
+function copyBytes(memory: ArrayBuffer, at: number, src: ArrayBufferView): void {
 	const n = src.byteLength;
 	const words = src.byteOffset % 4 === 0 && n % 4 === 0;
 	const Unit = words ? Int32Array : Uint8Array;
 	const size = words ? 4 : 1;
 	const from = new Unit(src.buffer as ArrayBuffer, src.byteOffset, n / size);
-	const to = new Unit(memory, at, n / size);
-	for (let k = 0; k < from.length; k++) {
-		const v = from[k] as number;
-		if (v !== 0) to[k] = v;
-	}
+	new Unit(memory, at, n / size).set(from);
 }

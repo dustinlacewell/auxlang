@@ -62,7 +62,8 @@ const coastline = () =>
 
 function wasmOf(program: Program, budget?: number): WasmEngine {
 	const prepared = prepareWasm(program, SR);
-	return new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared, budget);
+	const options = budget === undefined ? {} : { fillBudget: budget };
+	return new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared, options);
 }
 
 function jsOf(program: Program, prev?: ReturnType<Core3Engine["liveState"]>): Core3Engine {

@@ -30,6 +30,22 @@ export const STEP_COSTS = {
 	/** One later shadow call of a unit: per source character, plus per character and sample. */
 	callPerChar: 0.004,
 	callPerCharSample: 0.0002,
+	/** WASM (wasm-steps.ts): instantiating a module. */
+	instantiate: 100,
+	/** Touching memory, per 64 KB page. */
+	touchPerPage: 20,
+	/** Writing the value buffer and the outputs records, per node. */
+	valuesPerNode: 0.5,
+	/** Writing a lane's start state: per lane, plus per kilobyte of typed arrays and records. */
+	laneBase: 2,
+	lanePerKilobyte: 0.2,
+	/** Making the engine over written memory, per table lane (its empty tables). */
+	enginePerTableLane: 2,
+	/** Prefilling one table lane's two tables. */
+	prefillPerLane: 40,
+	/** Binding the carry's views and copying once: per run, plus per kilobyte copied. */
+	bindPerRun: 0.5,
+	bindPerKilobyte: 0.15,
 };
 
 export function nodeBuildCost(run: NodeRun): number {

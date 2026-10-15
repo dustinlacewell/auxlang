@@ -13,7 +13,7 @@ import { getRegistry } from "../../module/define";
 import { EngineBuild } from "../../runtime/build/engine-build";
 import { withProgramSpecs } from "../../runtime/hydrate-specs";
 import { slotOf } from "../../runtime/output-slots";
-import { prepareProgram } from "../../runtime/prepare/prepare-program";
+import { type PreparedProgram, prepareProgram } from "../../runtime/prepare/prepare-program";
 import type { KeyedIdentity, Program, Registry } from "../../types";
 import { type CompiledWasm, type WasmInput, compileWasm } from "../program/compile-program";
 import { lambdaSources } from "../program/lambda-sources";
@@ -35,7 +35,17 @@ export function prepareWasm(
 	registry: Registry = getRegistry(),
 	running?: readonly KeyedIdentity[],
 ): PreparedWasm {
-	const built = buildWasmInput(program, sampleRate, registry, running);
+	const layered = withProgramSpecs(registry, program);
+	return prepareWasmFrom(prepareProgram(program, layered, sampleRate, running, {}), layered);
+}
+
+/**
+ * From a program prepared for the interpreter (no driver code) and the
+ * registry with its specs: build it, then compile. The worklet builds the
+ * same prepared program into the same start values.
+ */
+export function prepareWasmFrom(prepared: PreparedProgram, layered: Registry): PreparedWasm {
+	const built = wasmInputOf(prepared, layered);
 	return {
 		compiled: compileWasm(built.input),
 		start: built.start,
@@ -56,15 +66,25 @@ export function prepareWasmSwap(
 	return { ...prepared, carry: planCarry(running, side) };
 }
 
+interface WasmBuilt {
+	readonly input: WasmInput;
+	readonly start: WasmStart;
+	readonly facts: EngineFacts;
+}
+
 /** The engine built for `program`: what the compiler reads and what an instance starts from. */
 export function buildWasmInput(
 	program: Program,
 	sampleRate: number,
 	registry: Registry = getRegistry(),
 	running?: readonly KeyedIdentity[],
-): { input: WasmInput; start: WasmStart; facts: EngineFacts } {
+): WasmBuilt {
 	const layered = withProgramSpecs(registry, program);
-	const prepared = prepareProgram(program, layered, sampleRate, running, {});
+	return wasmInputOf(prepareProgram(program, layered, sampleRate, running, {}), layered);
+}
+
+function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
+	const { program, sampleRate } = prepared;
 	const parts = new EngineBuild(prepared, layered, undefined).finish();
 	const taps = (port: string) =>
 		Int32Array.from(program.outs, (n) => slotOf(parts.layout, n, port, 0));
