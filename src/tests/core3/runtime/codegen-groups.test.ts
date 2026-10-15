@@ -14,6 +14,7 @@ import { EXAMPLES as SITE } from "@/ui/core3-editor/examples";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { describe, expect, it } from "vitest";
 import { INTERPRETER, SR, expectSameRun, run } from "./codegen-harness";
+import { c, n, pnode, prog, z } from "./helpers";
 
 const ungrouped = (deps: number[][]) => ({ deps, cost: deps.map(() => 1) });
 
@@ -50,27 +51,14 @@ describe("planGroups", () => {
 });
 
 /** sin → mul reading it through "z" (no loop) → out. */
-const FORWARD_Z: Program = {
-	nodes: [
-		{ id: "a", module: "sin", width: 1, lanes: [{ pitch: { k: "c", v: 60 } }], config: {} },
-		{
-			id: "b",
-			module: "mul",
-			width: 1,
-			lanes: [{ in: { k: "z", node: 0, port: "out", lane: 0 }, by: { k: "c", v: 0.5 } }],
-			config: {},
-		},
-		{
-			id: "c",
-			module: "out",
-			width: 1,
-			lanes: [{ in: { k: "n", node: 1, port: "out", lane: 0 } }],
-			config: {},
-		},
+const FORWARD_Z: Program = prog(
+	[
+		pnode("sin", [{ pitch: c(60) }]),
+		pnode("mul", [{ in: z(0), by: c(0.5) }]),
+		pnode("out", [{ in: n(1) }]),
 	],
-	outs: [2],
-	seed: 1,
-};
+	[2],
+);
 
 const ONE_PER_GROUP = { codegen: true, paste: true, groupBudget: 0 } as const;
 
