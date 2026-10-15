@@ -32,7 +32,7 @@ function patch(seed: number): Program {
 				},
 			});
 			tempo(120);
-			out(jitter({ in: seq("{c3,e3}") }));
+			out(jitter({ in: seq("[c3,e3]") }));
 			out(jitter({ in: 0 }));
 		},
 		{ seed },
