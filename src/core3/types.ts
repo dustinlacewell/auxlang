@@ -197,11 +197,16 @@ export interface Program {
 // Engine contract — one interpreter, two hosts (offline renderer + worklet)
 // ---------------------------------------------------------------------------
 
+/** Migration key → output port → per-lane value. */
+export type FeedbackValues = Readonly<Record<string, Readonly<Record<string, readonly number[]>>>>;
+
 export interface EngineState {
 	/** migration key -> per-lane state array */
 	readonly nodes: Record<string, Record<string, unknown>[]>;
 	/** The running nodes' identities, in program order: the old side of re-eval matching. */
 	readonly identities: readonly KeyedIdentity[];
+	/** The last sample's outputs that z-edges read, for the next engine's first tick (runtime/feedback.ts). */
+	readonly feedback: FeedbackValues;
 	/** The rate the state was built at; a different rate migrates nothing. */
 	readonly sampleRate: number;
 	readonly sampleCount: number;

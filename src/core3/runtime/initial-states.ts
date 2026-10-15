@@ -31,6 +31,8 @@ export interface LaneStateSet {
 	readonly identities: readonly KeyedIdentity[];
 	/** states[i][lane] is node i's lane state. */
 	readonly states: readonly Record<string, unknown>[][];
+	/** New node index → the old key it matched (empty without a previous engine). */
+	readonly paired: ReadonlyMap<number, string>;
 }
 
 export function buildLaneStates(
@@ -56,7 +58,7 @@ export function buildLaneStates(
 			return state;
 		});
 	});
-	return { identities: nodes.map((node, i) => keyed(node, keys[i] as string)), states };
+	return { identities: nodes.map((node, i) => keyed(node, keys[i] as string)), states, paired };
 }
 
 /** The previous engine's lanes under the paired old key, unless the sample rate changed (state buffers are sized from it). */

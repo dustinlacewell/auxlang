@@ -22,6 +22,7 @@ import type {
 import { compileLaneBindings } from "./bindings";
 import { deepClone } from "./deep-clone";
 import type { Driver } from "./driver";
+import { type FeedbackRead, captureFeedback, feedbackReads, restoreFeedback } from "./feedback";
 import { compileReduceGathers } from "./gathers";
 import { buildLaneStates } from "./initial-states";
 import type { NodeRun } from "./node-run";
@@ -37,6 +38,7 @@ export class Core3Engine implements Engine {
 	private readonly runs: NodeRun[];
 	private readonly driver: Driver;
 	private readonly identities: readonly KeyedIdentity[];
+	private readonly feedback: readonly FeedbackRead[];
 	private readonly sr: number;
 	private cur: Float64Array;
 	private prv: Float64Array;
@@ -61,6 +63,8 @@ export class Core3Engine implements Engine {
 		const specs = program.nodes.map((n) => registry.get(n.module) as ModuleSpec);
 		const laneStates = buildLaneStates(program.nodes, specs, sampleRate, program.seed, prev);
 		this.identities = laneStates.identities;
+		this.feedback = feedbackReads(program.nodes);
+		restoreFeedback(this.feedback, laneStates.paired, this.layout, sampleRate, prev, this.cur);
 
 		this.runs = program.nodes.map((node, i) => {
 			const spec = specs[i] as ModuleSpec;
@@ -141,7 +145,14 @@ export class Core3Engine implements Engine {
 			const key = (this.identities[i] as KeyedIdentity).key;
 			nodes[key] = r.states.map(({ __scratch: _scratch, ...carried }) => deepClone(carried));
 		});
-		return { nodes, identities: this.identities, sampleRate: this.sr, sampleCount: this.count };
+		const feedback = captureFeedback(this.feedback, this.identities, this.layout, this.cur);
+		return {
+			nodes,
+			identities: this.identities,
+			feedback,
+			sampleRate: this.sr,
+			sampleCount: this.count,
+		};
 	}
 
 	/** Read a node's output for the sample just ticked. Test/tap hook, not part of the Engine contract. */
