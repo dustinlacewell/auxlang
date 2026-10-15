@@ -58,7 +58,7 @@ The module families:
 
 ### Effects
 
-- `delay({ time, feedback, mix })` — `time` in seconds.
+- `delay({ time, feedback, mix, tone })` — `time` in seconds. `tone` (0..1, default 1 = open) darkens each repeat with a lowpass in the feedback path.
 - `pan({ pos })` — constant-power pan, outputs `l` and `r`.
 - `spread(amount)` — places lane k of n evenly across `[-amount, amount]`, outputs `l` and `r`.
 - `period(pitch)` — seconds per cycle of a pitch in semitones; feed it to `delay`'s `time` to tune an echo or a Karplus-Strong string to a note.
@@ -68,6 +68,7 @@ The module families:
 - `tempo(bpm)` sets the ambient clock. `clock(bpm)` makes an extra clock with outputs `out` (position in bars), `beat` and `bar` (triggers).
 - `seq(pattern, position)` reads a pattern at a position. With no position it reads the ambient clock. A pattern handed to a knob becomes a `seq` automatically.
 - `counter(trig, { reset, length })` counts triggers into a step position, one step per trigger.
+- `clockdiv(trig, by, { reset })` passes the first trigger and every `by`-th after it. `clockmult(trig, by)` fires `by` evenly spaced triggers per input period; it locks after two input triggers.
 
 ### Drums (trigger-driven, default input `trig`)
 
@@ -165,7 +166,7 @@ Rests and ties are events, so every step exists whether it sounds or not. `?`, `
 
 Methods on a `P` value (from `` p`...` ``):
 
-`.fast(n)`, `.slow(n)`, `.rev()`, `.early(a)`, `.late(a)`, `.every(n, q => ...)`, `.iter(n)`, `.ply(n)`, `.euclid(k, steps, rot)`, `.degrade(p)`, `.add(semis)`, `.mul(f)`, `.off(amt, q => ...)`, `.steps()`, `.compact()`.
+`.fast(n)`, `.slow(n)`, `.rev()`, `.early(a)`, `.late(a)`, `.every(n, q => ...)`, `.iter(n)`, `.ply(n)`, `.euclid(k, steps, rot)`, `.degrade(p)`, `.add(semis)`, `.mul(f)`, `.off(amt, q => ...)`, `.steps()`, `.compact()`, `.swingBy(amount, n)`, `.swing(n)`.
 
 `.steps()` re-times by steps: the nth event, rests and ties included, spans step n. A top-level stack counts each layer on its own; a chord inside a sequence is one step. `.compact()` drops rests.
 
