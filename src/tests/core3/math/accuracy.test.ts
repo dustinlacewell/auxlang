@@ -82,7 +82,11 @@ function worst(fn: (...a: number[]) => number, arity: number, cases: readonly En
 		const hi = decode(row[arity] as Encoded);
 		const err = row[arity + 1] as number;
 		const got = fn(...args);
-		const e = Number.isFinite(hi) ? Math.abs((got - hi) / ulp(hi) - err) : Object.is(got, hi) ? 0 : Infinity;
+		const e = Number.isFinite(hi)
+			? Math.abs((got - hi) / ulp(hi) - err)
+			: Object.is(got, hi)
+				? 0
+				: Number.POSITIVE_INFINITY;
 		if (!(e <= max)) {
 			max = e;
 			at = args;
@@ -108,7 +112,23 @@ describe("auxlang math accuracy", () => {
 });
 
 /** Inputs whose results ECMAScript fixes: zeros, infinities, NaN, and their neighbours. */
-const SPECIAL = [0, -0, Infinity, -Infinity, Number.NaN, 1, -1, 2, -2, 0.5, -0.5, 3, -3, 5e-324, -5e-324];
+const SPECIAL = [
+	0,
+	-0,
+	Number.POSITIVE_INFINITY,
+	Number.NEGATIVE_INFINITY,
+	Number.NaN,
+	1,
+	-1,
+	2,
+	-2,
+	0.5,
+	-0.5,
+	3,
+	-3,
+	5e-324,
+	-5e-324,
+];
 
 describe("auxlang math special values", () => {
 	const host = Math as unknown as Record<string, (...a: number[]) => number>;
@@ -117,7 +137,10 @@ describe("auxlang math special values", () => {
 	it.each(names)("%s gives ECMAScript's zeros, infinities and NaNs", (name) => {
 		const ours = fns[name] as (...a: number[]) => number;
 		const theirs = host[name] as (...a: number[]) => number;
-		const pairs = ours.length === 2 ? SPECIAL.flatMap((a) => SPECIAL.map((b) => [a, b])) : SPECIAL.map((a) => [a]);
+		const pairs =
+			ours.length === 2
+				? SPECIAL.flatMap((a) => SPECIAL.map((b) => [a, b]))
+				: SPECIAL.map((a) => [a]);
 		for (const args of pairs) {
 			const want = theirs(...args);
 			const got = ours(...args);

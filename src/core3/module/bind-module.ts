@@ -36,7 +36,9 @@ function sourceOf(
 	const texts: Record<string, string> = {};
 	for (const [name, fn] of Object.entries(helpers)) {
 		if (name.startsWith(MATH_HELPER_PREFIX))
-			throw new Error(`${owner}: helper names starting with '${MATH_HELPER_PREFIX}' are reserved for auxlang math`);
+			throw new Error(
+				`${owner}: helper names starting with '${MATH_HELPER_PREFIX}' are reserved for auxlang math`,
+			);
 		texts[name] = fn.toString();
 	}
 	return { tick: tick.toString(), helpers: texts };

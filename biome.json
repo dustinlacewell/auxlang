@@ -12,6 +12,21 @@
       }
     }
   },
+  "files": {
+    "ignore": ["src/tests/core3/math/refs/*.json"]
+  },
+  "overrides": [
+    {
+      "include": ["src/core3/math/lib/**"],
+      "linter": {
+        "rules": {
+          "correctness": { "noPrecisionLoss": "off" },
+          "suspicious": { "noSelfCompare": "off", "noApproximativeNumericConstant": "off" },
+          "style": { "useNumberNamespace": "off" }
+        }
+      }
+    }
+  ],
   "formatter": {
     "enabled": true,
     "indentStyle": "tab",

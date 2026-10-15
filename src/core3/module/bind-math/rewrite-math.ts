@@ -29,7 +29,11 @@ export function rewriteMath(src: string, what: string): MathRewrite {
 		else if (node.type === "BinaryExpression" && node.operator === "**")
 			collectPower(node, parsed.expression, edits, uses);
 	});
-	const local = edits.map((e) => ({ ...e, start: e.start - parsed.offset, end: e.end - parsed.offset }));
+	const local = edits.map((e) => ({
+		...e,
+		start: e.start - parsed.offset,
+		end: e.end - parsed.offset,
+	}));
 	return { text: applyEdits(src, local), uses };
 }
 
@@ -66,8 +70,9 @@ function collectPower(
 
 /** The offset of the `**` token between two operands (past any parentheses and comments). */
 function operatorIn(text: string, from: number, to: number): number {
-	for (const token of tokenizer(text.slice(from, to), { ecmaVersion: "latest" })) {
-		if (token.value === "**") return from + token.start;
+	const gap = text.slice(from, to);
+	for (const token of tokenizer(gap, { ecmaVersion: "latest" })) {
+		if (gap.slice(token.start, token.end) === "**") return from + token.start;
 	}
 	throw new Error(`no ** operator between offsets ${from} and ${to}`);
 }
@@ -77,7 +82,11 @@ function declares(fn: FunctionNode, name: string): boolean {
 	if (fn.params.some((p) => p.type === "Identifier" && p.name === name)) return true;
 	let found = false;
 	walk(fn.body, (node) => {
-		if (node.type === "VariableDeclarator" && node.id.type === "Identifier" && node.id.name === name)
+		if (
+			node.type === "VariableDeclarator" &&
+			node.id.type === "Identifier" &&
+			node.id.name === name
+		)
 			found = true;
 	});
 	return found;

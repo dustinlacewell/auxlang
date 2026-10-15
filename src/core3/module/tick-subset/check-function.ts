@@ -5,7 +5,7 @@
  * module's recursion check.
  */
 
-import type { AnyNode, Node as AcornNode } from "acorn";
+import type { Node as AcornNode, AnyNode } from "acorn";
 import { locateInSource } from "../source-text";
 import { checkCall } from "./check-call";
 import { checkForm } from "./check-form";
@@ -76,8 +76,7 @@ function visit(
 		if (node.operator === "**=")
 			ctx.fail(node, "`**=` is not allowed — write `x = x ** y` (`**` is auxlang's pow)");
 		checkWrite(node.left, ctx);
-	}
-	else if (node.type === "UpdateExpression") checkWrite(node.argument, ctx);
+	} else if (node.type === "UpdateExpression") checkWrite(node.argument, ctx);
 }
 
 function paramNames(fn: FunctionNode, fail: SubsetContext["fail"]): string[] {

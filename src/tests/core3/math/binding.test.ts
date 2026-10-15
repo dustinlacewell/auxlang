@@ -34,7 +34,10 @@ function hostMathIn(text: string): string[] {
 			if (!EXACT_HOST_MATH.has(name) && !MATH_CONSTANTS.has(name) && name !== "random")
 				found.push(`Math.${name}`);
 		}
-		if ((node.type === "BinaryExpression" || node.type === "AssignmentExpression") && node.operator.startsWith("**"))
+		if (
+			(node.type === "BinaryExpression" || node.type === "AssignmentExpression") &&
+			node.operator.startsWith("**")
+		)
 			found.push(node.operator);
 	});
 	return found;
@@ -97,7 +100,9 @@ describe("the checker's Math surface", () => {
 	const lambda = (body: string) => () => checkLambda(`(s, sr, t) => ${body}`);
 
 	it("accepts auxlang math, exact host operations and constants", () => {
-		expect(lambda("Math.sin(t) + Math.atan2(t, 1) + Math.floor(t) * Math.PI + t ** 2")).not.toThrow();
+		expect(
+			lambda("Math.sin(t) + Math.atan2(t, 1) + Math.floor(t) * Math.PI + t ** 2"),
+		).not.toThrow();
 	});
 
 	it("rejects Math functions outside the set, and engine-only ones", () => {

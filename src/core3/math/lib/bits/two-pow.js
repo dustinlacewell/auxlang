@@ -3,6 +3,9 @@
  * above the largest double. Built by squaring powers of two, which are exact.
  */
 function twoPow(k) {
+	// The common small exponents, exactly, from an integer shift.
+	if (k >= 0 && k < 31) return 1 << k;
+	if (k < 0 && k > -31) return 1 / (1 << -k);
 	if (k > 1023) return Infinity;
 	if (k < -1074) return 0;
 	let p = 1;
