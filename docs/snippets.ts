@@ -271,4 +271,33 @@ s.tri()
   .gain(0.3)
   .out()`,
 	},
+	// defmod with helpers and hashRandom: a 16-step random melody that repeats.
+	{
+		id: "guide-defmod-helpers",
+		audible: true,
+		code: `tempo(120)
+const beat = seq("c3*8")
+const pick = defmod({
+  name: "pick",
+  category: "utils",
+  ins: { trig: trigPort(), lo: semis(48), hi: semis(72) },
+  outs: { out: semis(60) },
+  defaultIn: "trig",
+  defaultOut: "out",
+  state: () => ({ step: 0, value: 60, was: 0 }),
+  helpers: { lerp: (a, b, t) => a + (b - a) * t },
+  tick: (s, i, o) => {
+    if (i.trig > 0.5 && s.was <= 0.5) {
+      s.step = (s.step + 1) % 16
+      s.value = Math.round(lerp(i.lo, i.hi, hashRandom(s.step)))
+    }
+    s.was = i.trig
+    o.out = s.value
+  },
+})
+beat.trig.pick().tri()
+  .mul(beat.gate.adsr(0.005, 0.08, 0.3, 0.1))
+  .gain(0.3)
+  .out()`,
+	},
 ];
