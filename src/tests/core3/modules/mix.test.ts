@@ -7,7 +7,7 @@ import { reduceDriver } from "./helpers";
 const mix = getModule("mix");
 
 /** Build a lane array. */
-const lanes = (...v: number[]) => Float32Array.from(v);
+const lanes = (...v: number[]) => Float64Array.from(v);
 
 describe("mix", () => {
 	it("sums lanes scaled by 1/√width", () => {

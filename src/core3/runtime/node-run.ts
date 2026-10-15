@@ -17,7 +17,7 @@ export interface NodeRun {
 	readonly laneCount: number;
 	readonly states: Record<string, unknown>[];
 	/** Reused across lanes and samples. */
-	readonly ins: Record<string, number> & Record<string, Float32Array | number>;
+	readonly ins: Record<string, number> & Record<string, Float64Array | number>;
 	readonly outs: Record<string, number>;
 	readonly outPorts: readonly string[];
 	/** outBases[j] + lane = slot of outPorts[j]. */

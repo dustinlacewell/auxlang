@@ -98,16 +98,16 @@ export function reduceDriver(
 	const cfg = { ...(spec.config ?? {}), ...config };
 	const tick = spec.tick as (
 		s: Record<string, unknown>,
-		i: Record<string, Float32Array | number>,
+		i: Record<string, Float64Array | number>,
 		o: Outs,
 		c: Record<string, unknown>,
 		sr: number,
 		w: number,
 	) => void;
-	const step = (laneIns: Record<string, Float32Array | number>): Outs => {
+	const step = (laneIns: Record<string, Float64Array | number>): Outs => {
 		const outs = freshOuts(spec);
 		// fill any missing input port with its default broadcast
-		const ins: Record<string, Float32Array | number> = {};
+		const ins: Record<string, Float64Array | number> = {};
 		for (const [k, ann] of Object.entries(spec.ins)) {
 			ins[k] = ann.def == null ? 0 : ann.def;
 		}

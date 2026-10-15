@@ -10,7 +10,7 @@ const spread = getModule("spread");
 /** spread's l/r for one sample of `lanes`, at `amount`. */
 function place(lanes: number[], amount?: number) {
 	const d = reduceDriver(spread, lanes.length);
-	const ins = { in: Float32Array.from(lanes), ...(amount === undefined ? {} : { amount }) };
+	const ins = { in: Float64Array.from(lanes), ...(amount === undefined ? {} : { amount }) };
 	const o = d.step(ins);
 	return { l: o.l!, r: o.r!, power: o.l! ** 2 + o.r! ** 2 };
 }

@@ -31,7 +31,7 @@ export function reducePort(
 
 function viewFill(p: PortGather, view: string, slots: SlotAccess): string[] {
 	const read = p.kind === GATHER_CUR ? (s: number) => slots.cur(s) : (s: number) => slots.prev(s);
-	const width = (p.view as Float32Array).length;
+	const width = (p.view as Float64Array).length;
 	const lines: string[] = [];
 	for (let l = 0; l < width; l++) lines.push(`${view}[${l}] = ${read(p.base + l)};`);
 	return lines;

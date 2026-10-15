@@ -6,7 +6,7 @@ import { reduceDriver } from "./helpers";
 
 const out = getModule("out");
 
-const lanes = (...v: number[]) => Float32Array.from(v);
+const lanes = (...v: number[]) => Float64Array.from(v);
 
 describe("out", () => {
 	it("width 1 puts signal dead center (equal l/r)", () => {
@@ -25,7 +25,7 @@ describe("out", () => {
 		for (const width of [1, 2, 3, 4]) {
 			const d = reduceDriver(out, width);
 			// all lanes carry the same unit value; measure summed power / norm²·width
-			const laneVals = Float32Array.from(Array(width).fill(1));
+			const laneVals = Float64Array.from(Array(width).fill(1));
 			const o = d.step({ in: laneVals, gain: 1 });
 			// undo the 1/√width mixdown to inspect per-unit lane power sum
 			powers.push(o.l! * o.l! + o.r! * o.r!);
@@ -46,7 +46,7 @@ describe("out", () => {
 		const energies: number[] = [];
 		for (let lane = 0; lane < width; lane++) {
 			const d = reduceDriver(out, width);
-			const vals = new Float32Array(width);
+			const vals = new Float64Array(width);
 			vals[lane] = amp;
 			const o = d.step({ in: vals, gain: 1 });
 			// first sample: DC blocker y = x (y1=0, x1=0). Undo 1/√width norm and amp.

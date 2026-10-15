@@ -63,7 +63,7 @@ function tickReduce(
 	time: number,
 ): void {
 	const g = r.gathers as ReduceGathers;
-	const ins = r.ins as Record<string, Float32Array | number>;
+	const ins = r.ins as Record<string, Float64Array | number>;
 	const ports = g.ports;
 	for (let j = 0; j < ports.length; j++) {
 		const p = ports[j] as (typeof ports)[number];
@@ -73,7 +73,7 @@ function tickReduce(
 			ins[p.name] = slot.fn(slot.state, sr, time);
 		} else {
 			const buf = p.kind === GATHER_CUR ? cur : prv;
-			const view = p.view as Float32Array;
+			const view = p.view as Float64Array;
 			const base = p.base;
 			for (let l = 0; l < view.length; l++) view[l] = buf[base + l] as number;
 			ins[p.name] = view;

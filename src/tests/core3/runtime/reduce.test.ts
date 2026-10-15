@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import "@/core3/modules/all";
 import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
+import { Core3Engine } from "@/core3/runtime/engine";
 import { renderTap } from "@/core3/runtime/render";
+import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { sig } from "@/core3/types";
 import { type IO, type St, c, n, pnode, prog } from "./helpers";
 
@@ -65,7 +67,7 @@ describe("engine: reduce policy", () => {
 		pnode("rd.sum", [{ in: n(0), gain: c(1) }], { place: "sum" }),
 	]);
 
-	it("receives connected lanes as a Float32Array and the gathered width", () => {
+	it("receives connected lanes as a Float64Array and the gathered width", () => {
 		expect(renderTap(program, 1, "isArr", 0, 1, getRegistry())[0]).toBe(1);
 		expect(renderTap(program, 1, "w", 0, 1, getRegistry())[0]).toBe(3);
 	});
@@ -94,6 +96,23 @@ describe("engine: reduce policy", () => {
 			pnode("out", [{ in: n(0), l: n(1), gain: c(1) }], { place: "master" }),
 		]);
 		expect(renderTap(p4, 2, "l", 0, 1, getRegistry())[0]).toBeCloseTo(0.25, 6);
+	});
+
+	it("a reducer sums f64 values without f32 truncation", () => {
+		// 0.1 + 0.2 rounds differently at f32 than at f64 (Math.fround proves it).
+		// A reducer's gathered lane view must carry the exact f64 value through,
+		// not round-trip it through a narrower array first. renderTap's own tap
+		// buffer is f32 (it mirrors the audio-output contract), so this reads the
+		// node's raw f64 output slot directly via peek(), bypassing that tap.
+		const v = 0.1 + 0.2;
+		expect(Math.fround(v)).not.toBe(v);
+		const p = prog([
+			pnode("rd.const", [{ v: c(v) }], { place: "exact" }),
+			pnode("rd.sum", [{ in: n(0), gain: c(1) }], { place: "sum64" }),
+		]);
+		const engine = new Core3Engine(p, 48000, withProgramSpecs(getRegistry(), p));
+		engine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
+		expect(engine.peek(1, "out", 0)).toBe(v);
 	});
 
 	it("broadcast constants arrive as plain numbers", () => {

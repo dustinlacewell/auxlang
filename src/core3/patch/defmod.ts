@@ -67,7 +67,7 @@ export interface DefmodReduceSpec<
 	readonly policy: "reduce";
 	readonly tick: (
 		s: St,
-		i: { [K in keyof I]: Float32Array | number },
+		i: { [K in keyof I]: Float64Array | number },
 		o: Outs<O>,
 		config: Cfg,
 		sampleRate: number,
