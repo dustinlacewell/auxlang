@@ -11,7 +11,7 @@ defmod({
 		trig: trigPort(),
 		pitch: hz(50),
 		sweep: sig(4),
-		decay: sig(0.3),
+		decay: secs(0.3),
 		click: unit(0.3),
 	},
 	outs: { out: sig() },

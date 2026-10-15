@@ -34,7 +34,7 @@ defmod({
 	...envelope,
 	name: "ad",
 	doc: "Attack-decay envelope, fired by each trigger.",
-	ins: { gate: gatePort(), attack: sig(0.01), decay: sig(0.1) },
+	ins: { gate: gatePort(), attack: secs(0.01), decay: secs(0.1) },
 	positional: ["attack", "decay"],
 	state: () => ({ level: 0, stage: 0, wasGate: 0 }),
 	tick: (s, i, o, _cfg, sr) => {
@@ -72,7 +72,7 @@ defmod({
 	...envelope,
 	name: "ar",
 	doc: "Attack-release envelope that follows the gate.",
-	ins: { gate: gatePort(), attack: sig(0.01), release: sig(0.1) },
+	ins: { gate: gatePort(), attack: secs(0.01), release: secs(0.1) },
 	positional: ["attack", "release"],
 	state: () => ({ level: 0, stage: 0, wasGate: 0, relStart: 0 }),
 	tick: (s, i, o, _cfg, sr) => {
@@ -120,10 +120,10 @@ defmod({
 	doc: "Attack-decay-sustain-release envelope that follows the gate.",
 	ins: {
 		gate: gatePort(),
-		attack: sig(0.01),
-		decay: sig(0.1),
+		attack: secs(0.01),
+		decay: secs(0.1),
 		sustain: unit(0.7),
-		release: sig(0.3),
+		release: secs(0.3),
 	},
 	positional: ["attack", "decay", "sustain", "release"],
 	state: () => ({ level: 0, stage: 0, wasGate: 0, relStart: 0 }),

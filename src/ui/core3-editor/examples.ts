@@ -74,6 +74,18 @@ loop({ a: 0, b: 0 }, (fb) => ({
 })).apply((v) => v.a.add(v.b).gain(0.2).out())
 `;
 
+/** beats(x): a delay time in beats, so the echo stays synced to tempo. */
+const syncedEcho = `// beats(x): echo time in beats — stays synced when tempo changes
+tempo(100)
+
+const s = seq("c3 ~ g3 ~")
+s.tri()
+  .mul(s.gate.ad(0.005, 0.15))
+  .apply((dry) => loop((fb) => dry.add(fb.delay({ time: beats(0.75), mix: 1 }).mul(0.5))))
+  .gain(0.3)
+  .out()
+`;
+
 /** defmod with patch: a sub-patch saved as a module, used twice. */
 const subpatch = `// defmod with patch: save a sub-patch as a module, use it like any module
 tempo(110)
@@ -664,6 +676,7 @@ export const EXAMPLES: readonly Example[] = [
 	{ name: "pattern as signal", source: patternAsSignal },
 	{ name: "karplus pluck (loop)", source: karplus },
 	{ name: "cross FM (loop record)", source: crossFm },
+	{ name: "synced echo (beats)", source: syncedEcho },
 	{ name: "sub-patch module (defmod patch)", source: subpatch },
 	{ name: "poly chords", source: polyChords },
 	{ name: "wide saws (detune + spread)", source: wideSaws },

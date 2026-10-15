@@ -7,7 +7,7 @@ defmod({
 	name: "clap",
 	category: "drums",
 	doc: "Hand clap.",
-	ins: { trig: trigPort(), decay: sig(0.2), tone: unit(0.5) },
+	ins: { trig: trigPort(), decay: secs(0.2), tone: unit(0.5) },
 	outs: { out: sig() },
 	defaultIn: "trig",
 	defaultOut: "out",

@@ -133,14 +133,14 @@ pad.saw()
   .pan(0.4)
   .out()
 
-// acid line: transformed hook, feedback delay
+// acid line: transformed hook, feedback delay synced to tempo
 const hook = p\`c2 [c2 eb2] g1 <bb1 c2>\`
 const line = seq(hook.every(4, (q) => q.rev()).off(1 / 8, (q) => q.add(12).degrade(0.4)))
 loop((fb) =>
   line.slew(0.03).saw()
     .lpf({ cutoff: hz(line.gate.adsr(0.001, 0.12, 0, 0).mul(3000).add(180)), res: 0.85 })
     .mul(line.gate)
-    .add(fb.delay({ time: 0.35, mix: 1 }).mul(0.35)),
+    .add(fb.delay({ time: beats(3 / 4), mix: 1 }).mul(0.35)),
 ).gain(0.5).out()
 
 // drums: euclidean kick, backbeat snare, hats fired by a comparator, accents stepped by a counter

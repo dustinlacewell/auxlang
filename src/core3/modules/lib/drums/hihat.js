@@ -16,7 +16,7 @@ defmod({
 	doc: "Hi-hat.",
 	ins: {
 		trig: trigPort(),
-		decay: sig(0.05),
+		decay: secs(0.05),
 		tone: unit(0.6),
 		metal: unit(0.5),
 	},
