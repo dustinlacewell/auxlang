@@ -4,12 +4,14 @@
  * lane) for a node with its own `.seed(n)`. The engine injects three
  * per-lane fields, none part of the state's shape: `__lane` (the lane
  * index), `__scratch` (a record for data derived from config, such as the
- * event table of a module that reads a pattern; never carried) and `__seed` (the patch
+ * event table of a module that reads a pattern, whose queries the node's
+ * lanes share; never carried) and `__seed` (the patch
  * seed or the node's local seed, which `hashRandom(key)` in a tick reads).
  * A re-eval then carries old values into these states
  * (hand-over/carry-states.ts).
  */
 
+import { nodeQueries } from "../bridge/lane-table";
 import { streamSeed } from "../random/stream-seed";
 import type { ModuleSpec, PNode } from "../types";
 import { freshLaneState } from "./fresh-lane-state";
@@ -29,8 +31,9 @@ export function freshNodeStates(
 ): Record<string, unknown>[] {
 	const seed = nodeSeed(node, patchSeed);
 	const streamKey = node.seed === undefined ? key : LOCAL_SEED_KEY;
+	const queries = nodeQueries(spec);
 	return node.lanes.map((_, lane) => {
-		const state = freshLaneState(spec, sampleRate, streamSeed(seed, streamKey, lane));
+		const state = freshLaneState(spec, sampleRate, streamSeed(seed, streamKey, lane), queries);
 		state.__lane = lane;
 		state.__seed = seed;
 		return state;

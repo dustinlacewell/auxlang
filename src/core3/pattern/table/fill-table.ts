@@ -2,21 +2,33 @@
  * fillTable — build lane `lane` of cycle `c` into `t`: the cycle's events as
  * contiguous rows with rest rows in the gaps, the carry from before the
  * cycle, and the gate-dip marks (peeking the next cycle's first row for the
- * last one). The only bridge code that queries a pattern.
+ * last one). The only bridge code that queries a pattern; it reads through
+ * the lane's LaneFill, which remembers what the next cycle's fill can reuse
+ * (a fresh one by default: every fill looks back).
  */
 
 import type { Pat } from "../ast";
 import type { Ev } from "../event";
 import { rtof } from "../rational";
-import { carryBefore } from "./carry-before";
+import { CycleQueries } from "./cycle-queries";
 import { type EventTable, KIND_NOTE, KIND_REST, NO_NOTE, ensureCapacity, sounds } from "./event-table";
-import { laneCycle } from "./lane-cycle";
+import { LaneFill } from "./lane-fill";
 import { type RowKind, rowKind, setsValue } from "./row-kind";
 
-export function fillTable(pat: Pat, seed: number, lane: number, c: number, t: EventTable): void {
-	const carry = carryBefore(pat, seed, lane, c);
-	const inForceAtEnd = writeRows(laneCycle(pat, seed, lane, c), c, carry.value, carry.noteId, t);
-	markDips(t, nextHead(pat, seed, lane, c + 1, inForceAtEnd));
+export function fillTable(
+	pat: Pat,
+	seed: number,
+	lane: number,
+	c: number,
+	t: EventTable,
+	fill: LaneFill = new LaneFill(new CycleQueries()),
+): void {
+	fill.bind(pat, seed, lane);
+	const carry = fill.carryInto(c);
+	const evs = fill.laneCycle(c);
+	const inForceAtEnd = writeRows(evs, c, carry.value, carry.noteId, t);
+	fill.filled(c, evs);
+	markDips(t, nextHead(fill.laneCycle(c + 1), c + 1, inForceAtEnd));
 	t.cycle = c;
 	t.carryValue = carry.value;
 	t.carryNoteId = carry.noteId;
@@ -76,9 +88,9 @@ function pushRow(t: EventTable, begin: number, end: number, value: number, row: 
 	t.count = i + 1;
 }
 
-/** The first row of cycle `c`: a rest when nothing starts at its very beginning. */
-function nextHead(pat: Pat, seed: number, lane: number, c: number, inForce: number): RowKind {
-	const first = laneCycle(pat, seed, lane, c)[0];
+/** The first row of cycle `c` (its events `evs`): a rest when nothing starts at its very beginning. */
+function nextHead(evs: readonly Ev[], c: number, inForce: number): RowKind {
+	const first = evs[0];
 	if (first === undefined || rtof(first.part.begin) > c) return GAP;
 	return rowKind(first, inForce);
 }

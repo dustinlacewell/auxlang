@@ -4,21 +4,43 @@
  * re-eval. The lane is born with an empty table (cycle NaN), so a tick reads
  * `state.__scratch.table` directly; the tick refills it when the position
  * leaves the cycle it holds. Lane `l` reads pattern lane `l % config.lanes`.
+ * Beside the table, the scratch holds the lane's LaneFill (what the next
+ * fill can reuse), whose queries the node's lanes share.
  */
 
 import type { Pat } from "../pattern/ast";
+import { CycleQueries } from "../pattern/table/cycle-queries";
 import { type EventTable, createTable } from "../pattern/table/event-table";
 import { fillTable } from "../pattern/table/fill-table";
+import { LaneFill } from "../pattern/table/lane-fill";
 import type { ModuleSpec } from "../types";
 
-/** A fresh lane's scratch record: it holds an empty table when the module reads a pattern. */
-export function freshScratch(spec: ModuleSpec): Record<string, unknown> {
-	return spec.reads === "pattern" ? { table: createTable() } : {};
+type TableScratch = {
+	readonly table: EventTable;
+	readonly fill: LaneFill;
+};
+
+/** The queries a node's lanes share; undefined when the module reads no pattern. */
+export function nodeQueries(spec: ModuleSpec): CycleQueries | undefined {
+	return spec.reads === "pattern" ? new CycleQueries() : undefined;
+}
+
+/**
+ * A fresh lane's scratch record: an empty table and its fill when the module
+ * reads a pattern, querying through `queries` (its own when none is given).
+ */
+export function freshScratch(spec: ModuleSpec, queries?: CycleQueries): Record<string, unknown> {
+	if (spec.reads !== "pattern") return {};
+	const scratch: TableScratch = {
+		table: createTable(),
+		fill: new LaneFill(queries ?? new CycleQueries()),
+	};
+	return scratch;
 }
 
 /** The lane's table. */
 export function laneTable(s: Record<string, unknown>): EventTable {
-	return (s.__scratch as { table: EventTable }).table;
+	return (s.__scratch as TableScratch).table;
 }
 
 /** Refill the lane's table with the rows of `cycle`. */
@@ -28,5 +50,6 @@ export function fillLaneTable(
 	cycle: number,
 ): void {
 	const lane = ((s.__lane as number) | 0) % ((cfg.lanes as number) | 0 || 1);
-	fillTable(cfg.pattern as Pat, (cfg.seed as number) | 0, lane, cycle, laneTable(s));
+	const { table, fill } = s.__scratch as TableScratch;
+	fillTable(cfg.pattern as Pat, (cfg.seed as number) | 0, lane, cycle, table, fill);
 }

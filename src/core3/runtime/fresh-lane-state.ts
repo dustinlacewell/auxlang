@@ -5,19 +5,22 @@
  * `__scratch` (see fresh-node-states.ts; bridge/lane-table.ts for a module
  * that reads a pattern). A re-eval copies carried values into these states,
  * `__rng` included, so a carried stream continues where it was
- * (hand-over/carry-states.ts).
+ * (hand-over/carry-states.ts). A node's lanes pass the pattern queries they
+ * share; a lane alone has its own.
  */
 
 import { freshScratch } from "../bridge/lane-table";
+import type { CycleQueries } from "../pattern/table/cycle-queries";
 import type { ModuleSpec } from "../types";
 
 export function freshLaneState(
 	spec: ModuleSpec,
 	sampleRate: number,
 	rng: number,
+	queries?: CycleQueries,
 ): Record<string, unknown> {
 	const state = spec.state ? spec.state(sampleRate) : {};
 	state.__rng = rng;
-	state.__scratch = freshScratch(spec);
+	state.__scratch = freshScratch(spec, queries);
 	return state;
 }
