@@ -18,10 +18,11 @@ export const lam = (src: string): PortSrc => ({ k: "l", src });
 export function pnode(
 	module: string,
 	lanes: Record<string, PortSrc>[],
-	opts: { id?: string; pin?: string; config?: Record<string, unknown> } = {},
+	opts: { place?: string; pin?: string; config?: Record<string, unknown> } = {},
 ): PNode {
 	const node: PNode = {
-		id: opts.id ?? module,
+		kind: module,
+		place: opts.place ?? module,
 		module,
 		width: lanes.length,
 		lanes,

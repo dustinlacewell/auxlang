@@ -51,8 +51,8 @@ defmod({
 describe("render", () => {
 	const program = prog(
 		[
-			pnode("rn.osc", [{ freq: c(440) }], { id: "osc" }),
-			pnode("rn.split", [{ in: n(0) }], { id: "split" }),
+			pnode("rn.osc", [{ freq: c(440) }], { place: "osc" }),
+			pnode("rn.split", [{ in: n(0) }], { place: "split" }),
 		],
 		[1],
 	);
@@ -69,8 +69,8 @@ describe("render", () => {
 	it("sums two out-nodes' l/r into the frame", () => {
 		const two = prog(
 			[
-				pnode("rn.pair", [{}], { id: "p1", config: { lv: 1, rv: 2 } }),
-				pnode("rn.pair", [{}], { id: "p2", config: { lv: 10, rv: 20 } }),
+				pnode("rn.pair", [{}], { place: "p1", config: { lv: 1, rv: 2 } }),
+				pnode("rn.pair", [{}], { place: "p2", config: { lv: 10, rv: 20 } }),
 			],
 			[0, 1],
 		);

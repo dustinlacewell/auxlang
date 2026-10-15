@@ -1,8 +1,9 @@
 /**
- * Live re-eval continuity (MANIFESTO §6.2): constants and config are not
- * identity, so editing a value keeps the state of the edited module and of
- * everything downstream. The clock position carries across a tempo edit, and
- * patterns pick up mid-cycle; a pattern edit keeps the note under the position.
+ * Live re-eval continuity (MANIFESTO §6.2): constants, config and wiring are
+ * not identity, so editing a value or rewiring keeps the state of every module
+ * still matched by place or kind. The clock position carries across a tempo
+ * edit, and patterns pick up mid-cycle; a pattern edit keeps the note under the
+ * position.
  */
 
 import { describe, expect, it } from "vitest";
@@ -38,13 +39,13 @@ function swap(before: Program, after: Program, samples = MID) {
 	return { old, state, swapped: new Core3Engine(after, SR, getRegistry(), state) };
 }
 
-const keyOf = (program: Program, module: string): string => {
-	const node = program.nodes[indexOf(program, module)];
-	return node?.pin ?? (node?.id as string);
-};
+/** Node i's carried lanes, under the key the engine that ran `state` gave it. */
+const lanesAt = (state: EngineState, i: number) =>
+	state.nodes[state.identities[i]?.key as string];
 
+/** The lanes of the first `module` node, `program` being the one `state`'s engine ran. */
 const lanesOf = (state: EngineState, program: Program, module: string) =>
-	state.nodes[keyOf(program, module)];
+	lanesAt(state, indexOf(program, module));
 
 const atTempo = (bpm: number) =>
 	runProgram(() => {
@@ -99,7 +100,7 @@ describe("constant edit keeps state downstream", () => {
 		// Lambdas cross to the engine as source, so they cannot close over a parameter.
 		const before = lambda((_s, _sr, t) => 800 + 100 * t);
 		const after = lambda((_s, _sr, t) => 900 + 50 * t);
-		expect(after.nodes.map((n) => n.id)).toEqual(before.nodes.map((n) => n.id));
+		expect(after.nodes.map((n) => n.place)).toEqual(before.nodes.map((n) => n.place));
 		const { state, swapped } = swap(before, after);
 		const carried = swapped.collectState();
 		for (const module of ["lpf", "delay"]) {
@@ -123,6 +124,94 @@ describe("config edit keeps state (config is not identity, §6.2)", () => {
 		for (const module of ["lfo", "sin", "mul", "delay"]) {
 			expect(lanesOf(carried, after, module), module).toEqual(lanesOf(state, before, module));
 		}
+	});
+});
+
+describe("rewiring resets nothing (§6.2)", () => {
+	const DELAY = { time: 0.1, feedback: 0.5, mix: 0.5 };
+
+	/** Expect each `after` module to carry the state its `before` namesake ran with. */
+	function expectKept(before: Program, after: Program, modules: readonly string[]) {
+		const { state, swapped } = swap(before, after);
+		const carried = swapped.collectState();
+		for (const module of modules) {
+			expect(lanesOf(state, before, module), module).toBeDefined();
+			expect(lanesOf(carried, after, module), module).toEqual(lanesOf(state, before, module));
+		}
+		return carried;
+	}
+
+	it("adding a .mod to an lpf keeps the lpf's state and the delay after it", () => {
+		const before = runProgram(() => {
+			factory("saw")(48).lpf(800).delay(DELAY).out();
+		});
+		const after = runProgram(() => {
+			factory("saw")(48).lpf(800).mod("cutoff", factory("lfo")(0.3), 12).delay(DELAY).out();
+		});
+		const carried = expectKept(before, after, ["saw", "lpf", "delay"]);
+		const buf = (lanesOf(carried, after, "delay")?.[0] as Record<string, unknown>).buf;
+		expect((buf as Float32Array).some((v) => v !== 0)).toBe(true);
+	});
+
+	it("inserting a module keeps the state below it and the oscillator above it", () => {
+		const before = runProgram(() => {
+			factory("saw")(48).lpf(800).delay(DELAY).out();
+		});
+		const after = runProgram(() => {
+			factory("saw")(48).lpf(800).hpf(100).delay(DELAY).out();
+		});
+		const carried = expectKept(before, after, ["saw", "lpf", "delay"]);
+		expect(lanesOf(carried, after, "saw")?.[0]?.phase).not.toBe(0);
+	});
+
+	it("swapping the order of two parallel chains keeps each chain's state", () => {
+		const chainA = () => factory("saw")(48).lpf(800).delay(DELAY).out();
+		const chainB = () => factory("sin")(60).lpf(1200).out();
+		const before = runProgram(() => {
+			chainA();
+			chainB();
+		});
+		const after = runProgram(() => {
+			chainB();
+			chainA();
+		});
+		const { state, swapped } = swap(before, after);
+		const carried = swapped.collectState();
+		const filters = (program: Program) =>
+			program.nodes.flatMap((n, i) => (n.module === "lpf" ? [{ place: n.place, i }] : []));
+		const [first, second] = filters(after);
+		expect(filters(before).map((f) => f.place)).toEqual([second?.place, first?.place]);
+		for (const filter of filters(after)) {
+			const old = filters(before).find((f) => f.place === filter.place);
+			expect(lanesAt(state, old?.i as number)).toBeDefined();
+			expect(lanesAt(carried, filter.i)).toEqual(lanesAt(state, old?.i as number));
+		}
+		const [oldA, oldB] = filters(before).map((f) => lanesAt(state, f.i));
+		expect(oldA).not.toEqual(oldB);
+		for (const module of ["saw", "sin", "delay"]) {
+			expect(lanesOf(state, before, module), module).toBeDefined();
+			expect(lanesOf(carried, after, module), module).toEqual(lanesOf(state, before, module));
+		}
+	});
+
+	it("noise keeps its stream across a rewire", () => {
+		const before = runProgram(() => {
+			factory("noise")().lpf(2000).out();
+		});
+		const after = runProgram(() => {
+			factory("noise")().hpf(100).lpf(2000).out();
+		});
+		const tap = (engine: Core3Engine, program: Program) => {
+			const frame = new Float32Array(2);
+			return Array.from({ length: 1000 }, () => {
+				engine.tick(frame);
+				return engine.peek(indexOf(program, "noise"), "out", 0);
+			});
+		};
+		const reference = new Core3Engine(before, SR, getRegistry());
+		run(reference, MID);
+		const { swapped } = swap(before, after);
+		expect(tap(swapped, after)).toEqual(tap(reference, before));
 	});
 });
 

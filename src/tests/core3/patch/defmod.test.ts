@@ -1,8 +1,8 @@
 /**
  * defmod(spec) — THE module registration function, scope-aware. Inside an eval
  * a spec chains like any built-in, compiles to ordinary nodes, ships inside
- * Program.specs (only when used), folds its tick source into structural
- * identity, is loud on every misuse, and never leaks between evals; at root
+ * Program.specs (only when used), folds its tick source into its kind
+ * (identity), is loud on every misuse, and never leaks between evals; at root
  * scope the same call registers into the realm registry. A closure-capturing
  * tick fails at its definition (the tick subset check); a closure-capturing
  * state fails at compile when a reachable node uses it, never in the audio
@@ -94,20 +94,20 @@ describe("Program.specs", () => {
 	});
 });
 
-describe("structural identity", () => {
+describe("identity", () => {
 	const patch = (tick: (typeof boostSpec)["tick"]) => () => {
 		defmod({ ...boostSpec, tick });
 		out(factory("tosc")(220).boost(3));
 	};
-	const boostId = (p: ReturnType<typeof runProgram>) =>
-		p.nodes.find((n) => n.module === "boost")!.id;
+	const boostKind = (p: ReturnType<typeof runProgram>) =>
+		p.nodes.find((n) => n.module === "boost")!.kind;
 
-	it("identical source across re-evals yields identical ids (state migrates)", () => {
+	it("identical source across re-evals yields an identical kind (state migrates)", () => {
 		const tick = boostSpec.tick;
-		expect(boostId(runProgram(patch(tick)))).toBe(boostId(runProgram(patch(tick))));
+		expect(boostKind(runProgram(patch(tick)))).toBe(boostKind(runProgram(patch(tick))));
 	});
 
-	it("a changed tick source yields a new id (fresh state — different machine)", () => {
+	it("a changed tick source yields a new kind (fresh state — different machine)", () => {
 		const a = runProgram(
 			patch((_s, i, o) => {
 				o.out = i.in * i.amt;
@@ -118,7 +118,7 @@ describe("structural identity", () => {
 				o.out = i.in * i.amt * 2;
 			}),
 		);
-		expect(boostId(a)).not.toBe(boostId(b));
+		expect(boostKind(a)).not.toBe(boostKind(b));
 	});
 });
 

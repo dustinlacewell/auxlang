@@ -40,8 +40,8 @@ defmod({
 
 describe("engine: reduce policy", () => {
 	const program = prog([
-		pnode("rd.const", [{ v: c(10) }, { v: c(20) }, { v: c(30) }], { id: "src" }),
-		pnode("rd.sum", [{ in: n(0), gain: c(1) }], { id: "sum" }),
+		pnode("rd.const", [{ v: c(10) }, { v: c(20) }, { v: c(30) }], { place: "src" }),
+		pnode("rd.sum", [{ in: n(0), gain: c(1) }], { place: "sum" }),
 	]);
 
 	it("receives connected lanes as a Float32Array and the gathered width", () => {
@@ -55,8 +55,8 @@ describe("engine: reduce policy", () => {
 
 	it("broadcast constants arrive as plain numbers", () => {
 		const p2 = prog([
-			pnode("rd.const", [{ v: c(7) }], { id: "src1" }),
-			pnode("rd.sum", [{ in: c(4), gain: c(2) }], { id: "sum1" }),
+			pnode("rd.const", [{ v: c(7) }], { place: "src1" }),
+			pnode("rd.sum", [{ in: c(4), gain: c(2) }], { place: "sum1" }),
 		]);
 		// const input, width 1 -> sum = 4, gain 2 -> 8
 		expect(renderTap(p2, 1, "out", 0, 1, getRegistry())[0]).toBe(8);

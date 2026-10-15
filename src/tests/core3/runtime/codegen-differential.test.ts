@@ -114,7 +114,7 @@ s.saw()
   .out()`);
 		const before = patch(800);
 		const after = patch(1400);
-		expect(after.nodes.map((n) => n.id)).toEqual(before.nodes.map((n) => n.id));
+		expect(after.nodes.map((n) => n.place)).toEqual(before.nodes.map((n) => n.place));
 
 		const ref = swapRun(before, after, false);
 		const gen = swapRun(before, after, true);

@@ -76,7 +76,7 @@ describe("closing patch (platonic.md §10, adapted)", () => {
 		expect(second.r).toEqual(first.r);
 	});
 
-	it("recompiling the same source yields the same program (structural ids stable)", () => {
+	it("recompiling the same source yields the same program (identities stable)", () => {
 		const again = build();
 		expect(JSON.stringify(again)).toBe(JSON.stringify(program));
 	});

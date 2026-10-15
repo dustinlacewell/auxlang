@@ -10,7 +10,15 @@
  * order, and sums the out-nodes' l/r — it allocates nothing.
  */
 
-import type { Engine, EngineCtor, EngineState, ModuleSpec, Program, Registry } from "../types";
+import type {
+	Engine,
+	EngineCtor,
+	EngineState,
+	KeyedIdentity,
+	ModuleSpec,
+	Program,
+	Registry,
+} from "../types";
 import { compileLaneBindings } from "./bindings";
 import { deepClone } from "./deep-clone";
 import type { Driver } from "./driver";
@@ -28,7 +36,7 @@ export interface EngineOptions {
 export class Core3Engine implements Engine {
 	private readonly runs: NodeRun[];
 	private readonly driver: Driver;
-	private readonly keys: readonly string[];
+	private readonly identities: readonly KeyedIdentity[];
 	private readonly sr: number;
 	private cur: Float64Array;
 	private prv: Float64Array;
@@ -52,7 +60,7 @@ export class Core3Engine implements Engine {
 
 		const specs = program.nodes.map((n) => registry.get(n.module) as ModuleSpec);
 		const laneStates = buildLaneStates(program.nodes, specs, sampleRate, program.seed, prev);
-		this.keys = laneStates.keys;
+		this.identities = laneStates.identities;
 
 		this.runs = program.nodes.map((node, i) => {
 			const spec = specs[i] as ModuleSpec;
@@ -130,10 +138,10 @@ export class Core3Engine implements Engine {
 	collectState(): EngineState {
 		const nodes: Record<string, Record<string, unknown>[]> = {};
 		this.runs.forEach((r, i) => {
-			const key = this.keys[i] as string;
+			const key = (this.identities[i] as KeyedIdentity).key;
 			nodes[key] = r.states.map(({ __scratch: _scratch, ...carried }) => deepClone(carried));
 		});
-		return { nodes, sampleRate: this.sr, sampleCount: this.count };
+		return { nodes, identities: this.identities, sampleRate: this.sr, sampleCount: this.count };
 	}
 
 	/** Read a node's output for the sample just ticked. Test/tap hook, not part of the Engine contract. */

@@ -156,16 +156,27 @@ export type PortSrc =
 	| { readonly k: "z"; readonly node: number; readonly port: string; readonly lane: number } // cycle-cut connection: reads PREVIOUS sample
 	| { readonly k: "l"; readonly src: string }; // user lambda, stringified (state, sr, time) => number
 
-export interface PNode {
-	/** Stable structural id (hash of module + wiring; constants and config excluded) for state migration. */
-	readonly id: string;
+/** What re-eval matching sees of a node (runtime/match.ts, MANIFESTO §6.2). Wiring and constants are not identity. */
+export interface Identity {
+	/** Module type; a patch-defined module adds a hash of its source (a changed tick is a different machine). */
+	readonly kind: string;
+	/** Hash of the kind and the first path of (port, module) hops from an `out` root. */
+	readonly place: string;
+	/** User-pinned identity (`.id(name)`), matched first. */
+	readonly pin?: string;
+}
+
+/** A running node's identity plus its migration key (the key its state is carried under). */
+export interface KeyedIdentity extends Identity {
+	readonly key: string;
+}
+
+export interface PNode extends Identity {
 	readonly module: string;
 	readonly width: number;
 	/** Per-lane input sources: lanes[lane][portName]. length === width (1 for reduce). */
 	readonly lanes: readonly Record<string, PortSrc>[];
 	readonly config: Record<string, unknown>;
-	/** User-pinned identity (overrides structural id in migration). */
-	readonly pin?: string;
 }
 
 export interface Program {
@@ -185,6 +196,8 @@ export interface Program {
 export interface EngineState {
 	/** migration key -> per-lane state array */
 	readonly nodes: Record<string, Record<string, unknown>[]>;
+	/** The running nodes' identities, in program order: the old side of re-eval matching. */
+	readonly identities: readonly KeyedIdentity[];
 	/** The rate the state was built at; a different rate migrates nothing. */
 	readonly sampleRate: number;
 	readonly sampleCount: number;

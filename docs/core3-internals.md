@@ -30,7 +30,7 @@ Two hosts run the same Engine. An offline renderer runs it headless and is what 
 6. **`cutZ1Edges`** — connections into `z1` nodes become z-edges (the unit-delay marker).
 7. **`toposort`** — z-edges are cut first; a cycle with no z1 in it is a loud error.
 8. **`resolveWidths`** — max-input-width fixpoint. A reduce-policy node collapses to width 1. Lane broadcast is `lane % srcWidth`.
-9. **index by topo position**, compute `structuralIds`, then **`emit`** → per-lane `PortSrc` resolution → `PNode[]` → `Program { nodes, outs, seed }`.
+9. **index by topo position**, compute `identities` (kind and place), then **`emit`** → per-lane `PortSrc` resolution → `PNode[]` → `Program { nodes, outs, seed }`.
 
 Config keys prefixed `__` are compile hints and are stripped from the shipped Program. A required input — `def: null`, not optional — left unconnected is a loud compile error.
 
@@ -57,13 +57,15 @@ Feedback is legal only when every cycle passes through a `z1` unit delay; the `l
 
 ---
 
-## 5. Structural-id migration
+## 5. Re-eval matching and migration
 
-Live re-eval keeps running state — oscillator phase, delay lines, envelope position, seq cycle — by matching nodes structurally across edits.
+Live re-eval keeps running state — oscillator phase, delay lines, envelope position, seq cycle — by matching each new node to a running one. Rewiring resets nothing.
 
-`id(node) = fnv1a(module | per-port source descriptions)`, computed in topo order so every dependency already has an id when the node is hashed. Constants, lambdas, and config are not identity. Z-edge sources are described shallowly (`module:port`) to keep the recursion well-founded across cycles.
+Compile gives each node a `kind` and a `place` (`compile/identities.ts`). The kind is the module type; a patch-defined module adds a hash of its tick and state source. The place hashes the kind and the node's first path of (input port, module) hops from an `out` root, breadth-first, ports in name order. Constants, lambdas, config, and wiring are not identity.
 
-A matched node keeps its state whenever the carried state fits the fresh state's shape: same keys, value kinds, and array lengths (`state-fits.ts`). Config is not consulted, so module state must not cache values derived from config; a config edit that resizes state resets that module through its shape. A sample-rate change migrates nothing. `x.id("name")` pins a `pin` that overrides the structural id, letting state survive a structural change. State is plain serializable data, so migration is clone-and-carry: `deepClone` per lane. Each lane also gets two engine fields outside the shape: `__lane` and `__scratch`, a record for derived data (seq's event tables) that every engine starts empty.
+The engine matches with `runtime/match.ts`, a pure reconciler over the old engine's identities (carried in `EngineState.identities`) and the new nodes. Passes: `.id()` pins, then place, then kind; each pairs the k-th new node with the k-th leftover old node, in program order. Keys (`state-keys.ts`) follow the match: a pin, else the paired old key, else the place, with a `~k` suffix for duplicates. A fresh patch therefore keys from the graph alone, and random streams seed from the key.
+
+A matched node keeps its state whenever the carried state fits the fresh state's shape: same keys, value kinds, and array lengths (`state-fits.ts`). Config is not consulted, so module state must not cache values derived from config; a config edit that resizes state resets that module through its shape. A sample-rate change migrates nothing. State is plain serializable data, so migration is clone-and-carry: `deepClone` per lane. Each lane also gets two engine fields outside the shape: `__lane` and `__scratch`, a record for derived data (seq's event tables) that every engine starts empty.
 
 ---
 

@@ -66,8 +66,8 @@ function tapRun(engine: Core3Engine, node: number, samples: number): number[] {
 
 describe("engine: state migration", () => {
 	const program = prog([
-		pnode("mg.count", [{ step: c(1) }], { id: "a" }),
-		pnode("mg.count", [{ step: c(2) }], { id: "b" }),
+		pnode("mg.count", [{ step: c(1) }], { place: "a" }),
+		pnode("mg.count", [{ step: c(2) }], { place: "b" }),
 	]);
 
 	it("is seamless: rebuilt engine matches an un-swapped reference exactly", () => {
@@ -98,20 +98,38 @@ describe("engine: state migration", () => {
 		expect(((lanes[0] as Record<string, unknown>).buf as Float32Array)[0]).toBe(10);
 	});
 
-	it("changed-id node resets while others keep state", () => {
+	it("a node at a new place keeps the state of the leftover node of its kind", () => {
 		const registry = getRegistry();
 		const first = new Core3Engine(program, SR, registry);
 		tapRun(first, 0, 100); // a: 100, b: 200
 
-		const changed = prog([
-			pnode("mg.count", [{ step: c(1) }], { id: "a" }),
-			pnode("mg.count", [{ step: c(2) }], { id: "c" }), // new identity
+		const moved = prog([
+			pnode("mg.count", [{ step: c(1) }], { place: "a" }),
+			pnode("mg.count", [{ step: c(2) }], { place: "c" }), // b, moved
 		]);
-		const swapped = new Core3Engine(changed, SR, registry, first.collectState());
+		const swapped = new Core3Engine(moved, SR, registry, first.collectState());
 		const frame = new Float32Array(2);
 		swapped.tick(frame);
 		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
-		expect(swapped.peek(1, "out", 0)).toBe(2); // fresh state
+		expect(swapped.peek(1, "out", 0)).toBe(202); // b's state, matched by kind
+	});
+
+	it("a new node starts fresh while the others keep state", () => {
+		const registry = getRegistry();
+		const first = new Core3Engine(program, SR, registry);
+		tapRun(first, 0, 100); // a: 100, b: 200
+
+		const grown = prog([
+			pnode("mg.count", [{ step: c(1) }], { place: "a" }),
+			pnode("mg.count", [{ step: c(2) }], { place: "b" }),
+			pnode("mg.count", [{ step: c(3) }], { place: "c" }), // new
+		]);
+		const swapped = new Core3Engine(grown, SR, registry, first.collectState());
+		const frame = new Float32Array(2);
+		swapped.tick(frame);
+		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
+		expect(swapped.peek(1, "out", 0)).toBe(202); // kept state
+		expect(swapped.peek(2, "out", 0)).toBe(3); // fresh state
 	});
 
 	it("a matched node whose state no longer fits resets alone", () => {
@@ -120,8 +138,8 @@ describe("engine: state migration", () => {
 		tapRun(first, 0, 100); // a: 100, b: 200
 
 		const reshaped = prog([
-			pnode("mg.count", [{ step: c(1) }], { id: "a" }),
-			pnode("mg.wide", [{ step: c(2) }], { id: "b" }), // same key, extra state key
+			pnode("mg.count", [{ step: c(1) }], { place: "a" }),
+			pnode("mg.wide", [{ step: c(2) }], { place: "b" }), // same place, extra state key
 		]);
 		const swapped = new Core3Engine(reshaped, SR, registry, first.collectState());
 		const frame = new Float32Array(2);
@@ -134,8 +152,8 @@ describe("engine: state migration", () => {
 		const registry = getRegistry();
 		const configured = (k: number) =>
 			prog([
-				pnode("mg.count", [{ step: c(1) }], { id: "a" }),
-				pnode("mg.count", [{ step: c(2) }], { id: "b", config: { k } }),
+				pnode("mg.count", [{ step: c(1) }], { place: "a" }),
+				pnode("mg.count", [{ step: c(2) }], { place: "b", config: { k } }),
 			]);
 		const first = new Core3Engine(configured(1), SR, registry);
 		tapRun(first, 0, 100); // a: 100, b: 200
@@ -153,8 +171,8 @@ describe("engine: state migration", () => {
 		tapRun(first, 0, 100); // a: 100, b: 200
 
 		const resized = prog([
-			pnode("mg.count", [{ step: c(1) }], { id: "a" }),
-			pnode("mg.long", [{ step: c(2) }], { id: "b" }), // same key, longer buffer
+			pnode("mg.count", [{ step: c(1) }], { place: "a" }),
+			pnode("mg.long", [{ step: c(2) }], { place: "b" }), // same place, longer buffer
 		]);
 		const swapped = new Core3Engine(resized, SR, registry, first.collectState());
 		const frame = new Float32Array(2);
@@ -173,16 +191,24 @@ describe("engine: state migration", () => {
 		}
 	});
 
-	it("pin overrides structural id", () => {
+	it("a pin matches before place and kind", () => {
 		const registry = getRegistry();
-		const pinned = prog([pnode("mg.count", [{ step: c(1) }], { id: "x", pin: "keep" })]);
+		const pinned = prog([
+			pnode("mg.count", [{ step: c(1) }], { place: "x", pin: "keep" }),
+			pnode("mg.count", [{ step: c(2) }], { place: "b" }),
+		]);
 		const first = new Core3Engine(pinned, SR, registry);
-		tapRun(first, 0, 50);
+		tapRun(first, 0, 50); // keep: 50, b: 100
 
-		const restructured = prog([pnode("mg.count", [{ step: c(1) }], { id: "y", pin: "keep" })]);
+		// Both moved and swapped order: by kind alone, node 0 would take keep's state.
+		const restructured = prog([
+			pnode("mg.count", [{ step: c(2) }], { place: "q" }),
+			pnode("mg.count", [{ step: c(1) }], { place: "y", pin: "keep" }),
+		]);
 		const swapped = new Core3Engine(restructured, SR, registry, first.collectState());
 		const frame = new Float32Array(2);
 		swapped.tick(frame);
-		expect(swapped.peek(0, "out", 0)).toBe(51);
+		expect(swapped.peek(0, "out", 0)).toBe(102);
+		expect(swapped.peek(1, "out", 0)).toBe(51);
 	});
 });

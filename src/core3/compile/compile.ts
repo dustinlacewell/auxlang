@@ -13,7 +13,7 @@
  *   widths       max-input-width fixpoint (reduce collapses to 1)
  *   toposort     z-edges cut; a z-less cycle is a loud error
  *   index        topo position → node index
- *   ids          structural id per node (pin overrides at emit)
+ *   identities   kind and place per node, for re-eval matching (pin added at emit)
  *   emit         per-lane PortSrc resolution → PNode → Program
  *   specs        eval-defined (defmod) specs used by reachable nodes
  *                serialize into program.specs (tick/state as source strings);
@@ -37,9 +37,9 @@ import { collect } from "./collect";
 import { copyMeter } from "./copy-meter";
 import { expandMods } from "./expand-mods";
 import { expandPatterns } from "./expand-patterns";
+import { type Placement, identities } from "./identities";
 import { markClocked } from "./mark-clocked";
 import { prepareSeqs } from "./prepare-seqs";
-import { structuralIds } from "./structural-id";
 import { toposort } from "./toposort";
 import { resolveWidths } from "./widths";
 import { cutZ1Edges } from "./z1-edges";
@@ -48,7 +48,7 @@ import { cutZ1Edges } from "./z1-edges";
 interface Resolved {
 	readonly widths: Map<GNode, number>;
 	readonly index: Map<GNode, number>;
-	readonly ids: Map<GNode, string>;
+	readonly identities: Map<GNode, Placement>;
 	/** Patch-defined specs (defmod) from the eval, layered under every module lookup. */
 	readonly specs: SpecTable;
 }
@@ -70,7 +70,7 @@ export function compile(evalResult: EvalResult): Program {
 	const resolved: Resolved = {
 		widths: resolveWidths(nodes, specs),
 		index: indexByPosition(order),
-		ids: structuralIds(order, specs),
+		identities: identities(evalResult.roots, order, specs),
 		specs,
 	};
 
@@ -121,7 +121,7 @@ function emitNode(node: GNode, r: Resolved): PNode {
 	const width = r.widths.get(node) ?? 1;
 	const lanes = Array.from({ length: width }, (_, lane) => resolveLane(node, spec.ins, lane, r));
 	return {
-		id: r.ids.get(node) ?? "n00000000",
+		...(r.identities.get(node) as Placement),
 		module: node.module,
 		width,
 		lanes,

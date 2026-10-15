@@ -44,7 +44,7 @@ function tapAll(program: Program, module: string): Float32Array[] {
 /** One noise node with two identical lanes. */
 function twoLaneNoise(seed: number): Program {
 	const lane = { min: c(-1), max: c(1) };
-	return { nodes: [pnode("noise", [lane, lane], { id: "hiss" })], outs: [], seed };
+	return { nodes: [pnode("noise", [lane, lane], { place: "hiss" })], outs: [], seed };
 }
 
 function tapLanes(program: Program): Float32Array[] {

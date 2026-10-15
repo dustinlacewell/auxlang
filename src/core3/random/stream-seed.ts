@@ -1,8 +1,9 @@
 /**
  * The start of one random stream: a pure function of (patch seed, module
- * identity, lane). Identity is the node's migration key (pin, else structural
- * id, with a `~k` suffix for duplicates — runtime/state-keys.ts), so the
- * stream follows the node across re-evals exactly as its state does.
+ * identity, lane). Identity is the node's migration key (pin, else the key of
+ * the old node it matched, else its place — runtime/state-keys.ts), so the
+ * stream follows the node across re-evals exactly as its state does, and a
+ * fresh patch seeds from the graph alone.
  * Never 0: xorshift32 is stuck at 0.
  */
 

@@ -32,9 +32,9 @@ defmod({
 
 describe("engine: 3-node chain", () => {
 	const program = prog([
-		pnode("ch.add1", [{ in: c(5) }], { id: "a" }), // 5 + 1 = 6
-		pnode("ch.mul2", [{ in: n(0) }], { id: "b" }), // 6 * 2 = 12
-		pnode("ch.add1", [{ in: n(1) }], { id: "c" }), // 12 + 1 = 13
+		pnode("ch.add1", [{ in: c(5) }], { place: "a" }), // 5 + 1 = 6
+		pnode("ch.mul2", [{ in: n(0) }], { place: "b" }), // 6 * 2 = 12
+		pnode("ch.add1", [{ in: n(1) }], { place: "c" }), // 12 + 1 = 13
 	]);
 
 	it("propagates constants through same-sample n-sources", () => {
