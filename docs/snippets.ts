@@ -51,7 +51,7 @@ line.tri()
 	},
 	// §4.3 pattern-as-signal (slew-declicked cutoff).
 	{
-		id: "manifesto-patsig",
+		id: "manifesto-pattern-knob",
 		audible: true,
 		code: `tempo(120)
 
