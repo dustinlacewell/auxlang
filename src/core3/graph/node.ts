@@ -16,7 +16,12 @@ export interface NodeRef {
 
 /** Loop back-edge: reads the referenced output one sample late. */
 export interface ZRef {
-	readonly z: { readonly node: GNode; readonly port: string };
+	readonly z: {
+		readonly node: GNode;
+		readonly port: string;
+		/** The value read before the source's first sample (a `loop` init). Absent means 0. */
+		readonly start?: number;
+	};
 }
 
 /** User per-sample lambda `(state, sampleRate, time) => number`. */

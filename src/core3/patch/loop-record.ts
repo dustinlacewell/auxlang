@@ -5,8 +5,8 @@
  * returns a record with the same keys; each value feeds its wire back. The
  * result is a record handle whose `.apply` reaches the body's outputs.
  *
- * The engine starts every fed-back value at 0 (runtime/feedback), so 0 is
- * the only init value; any other is a loud error.
+ * Each init value is what its wire reads before the body's first sample, and
+ * again whenever the wire's source starts fresh (runtime/feedback).
  */
 
 import type { GNode } from "../graph/node";
@@ -16,7 +16,8 @@ import { feedInto, feedbackPlaceholder } from "./loop-wire";
 import { RESERVED_WIRE_NAMES, type WireRecord, wireRecord } from "./wire-record";
 
 export function loopRecord(init: unknown, f: unknown): WireRecord<string> {
-	const names = wireNames(init);
+	const starts = wireStarts(init);
+	const names = [...starts.keys()];
 	if (typeof f !== "function") {
 		throw new Error("loop(init, f): f must be a function of the fed-back record");
 	}
@@ -24,13 +25,14 @@ export function loopRecord(init: unknown, f: unknown): WireRecord<string> {
 	const result = f(Object.freeze(handlesOf(placeholders)));
 	const outputs = bodyOutputs(result, names);
 	for (const [name, placeholder] of placeholders) {
-		feedInto(placeholder, handleData(outputs[name] as Handle), `loop(init, f) wire '${name}'`);
+		const where = `loop(init, f) wire '${name}'`;
+		feedInto(placeholder, handleData(outputs[name] as Handle), where, starts.get(name));
 	}
 	return wireRecord(outputs);
 }
 
-/** The wire names, from an init record whose every value is 0. */
-function wireNames(init: unknown): string[] {
+/** Each wire's start value, from an init record of finite numbers. */
+function wireStarts(init: unknown): Map<string, number> {
 	if (typeof init !== "object" || init === null || Array.isArray(init) || isHandle(init)) {
 		throw new Error("loop(init, f): init must be a record of wire names, e.g. { a: 0, b: 0 }");
 	}
@@ -40,13 +42,13 @@ function wireNames(init: unknown): string[] {
 		if (RESERVED_WIRE_NAMES.has(name)) {
 			throw new Error(`loop(init, f): '${name}' is reserved on the result record; rename the wire`);
 		}
-		if (value !== 0) {
+		if (typeof value !== "number" || !Number.isFinite(value)) {
 			throw new Error(
-				`loop(init, f): wire '${name}' starts at ${String(value)}. Every fed-back wire starts at 0, so each init value must be 0.`,
+				`loop(init, f): wire '${name}' starts at ${String(value)}. A start value is a finite number.`,
 			);
 		}
 	}
-	return entries.map(([name]) => name);
+	return new Map(entries as [string, number][]);
 }
 
 function handlesOf(placeholders: ReadonlyMap<string, GNode>): Record<string, Handle> {

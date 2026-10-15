@@ -168,7 +168,14 @@ export interface SerializedModuleSpec {
 export type PortSrc =
 	| { readonly k: "c"; readonly v: number } // constant
 	| { readonly k: "n"; readonly node: number; readonly port: string; readonly lane: number } // connection (node = index into Program.nodes)
-	| { readonly k: "z"; readonly node: number; readonly port: string; readonly lane: number } // cycle-cut connection: reads PREVIOUS sample
+	// cycle-cut connection: reads PREVIOUS sample; `start` is the value before the source's first (absent = 0, runtime/feedback)
+	| {
+			readonly k: "z";
+			readonly node: number;
+			readonly port: string;
+			readonly lane: number;
+			readonly start?: number;
+	  }
 	| { readonly k: "l"; readonly src: string }; // user lambda, stringified (state, sr, time) => number
 
 /** What re-eval matching sees of a node (runtime/match.ts, MANIFESTO §6.2). Wiring and constants are not identity. */

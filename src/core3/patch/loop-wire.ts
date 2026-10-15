@@ -13,8 +13,9 @@ export function feedbackPlaceholder(): GNode {
 	return newNode("z1", {}, {});
 }
 
-/** Wire `source` back into `placeholder` as a z-edge. */
-export function feedInto(placeholder: GNode, source: HandleData, where: string): void {
+/** Wire `source` back into `placeholder` as a z-edge; `start` is read before its first sample. */
+export function feedInto(placeholder: GNode, source: HandleData, where: string, start = 0): void {
 	const { node, port } = refFromHandle(source, where);
-	placeholder.inputs[getModule("z1").defaultIn] = { z: { node, port } };
+	const z = start === 0 ? { node, port } : { node, port, start };
+	placeholder.inputs[getModule("z1").defaultIn] = { z };
 }

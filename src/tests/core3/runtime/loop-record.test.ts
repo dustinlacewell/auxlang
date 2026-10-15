@@ -86,6 +86,42 @@ describe("loop(init, f): each wire is one sample late", () => {
 	}
 });
 
+describe("loop(init, f): start values", () => {
+	/** A wire that halves its own previous sample, starting at 0.5. */
+	const decay = (): Program =>
+		runProgram(() => {
+			loop({ a: 0.5 }, (fb) => ({ a: fb.a.mul(0.5) })).apply((v) =>
+				v.a.add(sin(60).mul(0.1)).out(),
+			);
+		});
+
+	for (const codegen of [false, true]) {
+		const mode = codegen ? "codegen" : "interpreter";
+
+		it(`the wire reads its start value on sample 0 (${mode})`, () => {
+			const program = decay();
+			const engine = new Core3Engine(program, SR, getRegistry(), undefined, { codegen });
+			const wire = program.nodes.findIndex((n) => n.module === "z1");
+			run(engine, 1);
+			expect(engine.peek(wire, "out", 0)).toBe(0.5);
+			run(engine, 1);
+			expect(engine.peek(wire, "out", 0)).toBe(0.25);
+		});
+
+		it(`an unchanged re-eval is bit-exact: a matched wire carries, it does not restart (${mode})`, () => {
+			const build = (prev?: Parameters<typeof run>[0]) =>
+				new Core3Engine(decay(), SR, getRegistry(), prev?.collectState(), { codegen });
+			const reference = build();
+			run(reference, 40);
+			const expected = run(reference, 40);
+			const head = build();
+			run(head, 40);
+			const got = run(build(head), 40);
+			expect(got.every((v, i) => Object.is(v, expected[i]))).toBe(true);
+		});
+	}
+});
+
 describe("loop(init, f): loud errors", () => {
 	it("returned keys that differ from init name both key sets", () => {
 		expect(() =>
@@ -95,12 +131,12 @@ describe("loop(init, f): loud errors", () => {
 		).toThrow(/returned keys \[a, c\].*init names \[a, b\]/);
 	});
 
-	it("a non-zero init value is refused", () => {
+	it("a start value that is not a finite number is refused", () => {
 		expect(() =>
 			runEval(() => {
-				loop({ a: 0.5 }, (fb) => ({ a: fb.a.mul(1) }));
+				loop({ a: Number.NaN }, (fb) => ({ a: fb.a.mul(1) }));
 			}),
-		).toThrow(/wire 'a' starts at 0.5/);
+		).toThrow(/wire 'a' starts at NaN/);
 	});
 
 	it("a wire that is not a handle is refused", () => {

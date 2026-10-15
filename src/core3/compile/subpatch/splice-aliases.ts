@@ -12,7 +12,7 @@
  */
 
 import { isNodeRef, isZRef } from "../../graph/input-kinds";
-import type { GNode, InputValue, ModTerm, NodeRef } from "../../graph/node";
+import type { GNode, InputValue, ModTerm, NodeRef, ZRef } from "../../graph/node";
 
 export type Aliases = ReadonlyMap<GNode, Readonly<Record<string, InputValue>>>;
 
@@ -68,10 +68,7 @@ function resolveRef(ref: NodeRef, aliases: Aliases, trail: Set<GNode>): InputVal
 }
 
 /** A z-edge into an alias reads the value it stands for, one sample late. */
-function resolveZ(
-	z: { readonly node: GNode; readonly port: string },
-	aliases: Aliases,
-): InputValue {
+function resolveZ(z: ZRef["z"], aliases: Aliases): InputValue {
 	const target = resolveRef({ node: z.node, port: z.port }, aliases, new Set());
 	if (!isNodeRef(target)) return target;
 	if (target.lane !== undefined) {
@@ -79,7 +76,8 @@ function resolveZ(
 			`loop(): the fed-back output of sub-patch '${z.node.module}' is a single lane. Feed back the whole signal.`,
 		);
 	}
-	return { z: { node: target.node, port: target.port } };
+	const start = z.start === undefined ? {} : { start: z.start };
+	return { z: { node: target.node, port: target.port, ...start } };
 }
 
 function withLane(target: InputValue, lane: number | undefined, module: string): InputValue {

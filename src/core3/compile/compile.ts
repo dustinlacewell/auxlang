@@ -170,16 +170,18 @@ function srcOf(value: InputValue, node: GNode, port: string, lane: number, r: Re
 	if (isLambdaInput(value)) return { k: "l", src: value.lambda.toString() };
 	if (isNodeRef(value))
 		return connSrc("n", value.node, value.port, value.lane, lane, r, node, port);
-	if (isZRef(value))
-		return connSrc("z", value.z.node, value.z.port, undefined, lane, r, node, port);
+	if (isZRef(value)) {
+		const src = connSrc("z", value.z.node, value.z.port, undefined, lane, r, node, port);
+		return value.z.start === undefined ? src : { ...src, start: value.z.start };
+	}
 	throw new Error(
 		`${node.module}.${port}: unexpanded pattern input reached compile (internal error)`,
 	);
 }
 
 /** A connection, with lane broadcast: an explicit lane pins it, otherwise `lane % srcWidth`. */
-function connSrc(
-	k: "n" | "z",
+function connSrc<K extends "n" | "z">(
+	k: K,
 	src: GNode,
 	srcPort: string,
 	pinnedLane: number | undefined,
@@ -187,7 +189,7 @@ function connSrc(
 	r: Resolved,
 	consumer: GNode,
 	consumerPort: string,
-): PortSrc {
+): { readonly k: K; readonly node: number; readonly port: string; readonly lane: number } {
 	const target = r.index.get(src);
 	if (target === undefined) {
 		throw new Error(
