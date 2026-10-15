@@ -5,11 +5,13 @@
  * the record persists between samples and is shared by the lanes, exactly
  * as the call-site form uses it). Per lane: one local per state field the
  * tick names, loaded before the block; each field the tick writes is stored
- * back after it. Typed arrays and nested objects stay references in their
+ * back after it; and one per math cache slot, empty at the block's start and
+ * never stored, so caches are not state. Typed arrays and nested objects stay references in their
  * local, so element writes land in the state itself. Field and port names
  * reach the source only as JSON keys.
  */
 
+import { CACHE_INIT } from "../../../module/bind-math/cache-names";
 import type { NodeRun } from "../../node-run";
 import type { DriverScope } from "../driver-scope";
 import { propKey } from "../js-literal";
@@ -61,6 +63,7 @@ export class NodeFrame {
 export class LaneFrame implements FieldLocals {
 	private readonly stateRecord: string;
 	private readonly stateLocals = new Map<string, { local: string; written: boolean }>();
+	private readonly cacheLocals = new Map<number, string>();
 
 	constructor(
 		private readonly node: NodeFrame,
@@ -81,6 +84,16 @@ export class LaneFrame implements FieldLocals {
 		return entry.local;
 	}
 
+	/** The local for math cache slot `slot`: it starts empty each block and is never stored. */
+	cache(slot: number): string {
+		let local = this.cacheLocals.get(slot);
+		if (local === undefined) {
+			local = this.names.fresh();
+			this.cacheLocals.set(slot, local);
+		}
+		return local;
+	}
+
 	input(port: string): string {
 		return this.inputs.get(port) ?? refuse(`unknown input '${port}'`);
 	}
@@ -94,9 +107,12 @@ export class LaneFrame implements FieldLocals {
 	}
 
 	before(): string[] {
-		return [...this.stateLocals].map(
-			([f, e]) => `let ${e.local} = ${this.stateRecord}${propKey(f)};`,
-		);
+		return [
+			...[...this.stateLocals].map(
+				([f, e]) => `let ${e.local} = ${this.stateRecord}${propKey(f)};`,
+			),
+			...[...this.cacheLocals.values()].map((l) => `let ${l} = ${CACHE_INIT};`),
+		];
 	}
 
 	after(): string[] {

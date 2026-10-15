@@ -4,7 +4,8 @@
  * (`v12` is slot 12's current value, `z12` its previous-sample value); every
  * other local, label and pasted helper is `_<n>`. Neither form can collide
  * with the driver's own names (bufs, outL, outR, offset, n, count, sr, k,
- * time, cur, prv) or with phase-1 scope names (T0, S0_0, ...).
+ * time, cur, prv) or with phase-1 names (T0, S0_0, a tick factory F0 and
+ * its lane instances K0_0, ...).
  */
 
 export class NameTable {

@@ -32,4 +32,10 @@ export interface PasteContext {
 	readonly hashRandom: string | null;
 	/** Tick: the label a `return` breaks out of. Helper: null, `return` stays. */
 	readonly exit: string | null;
+	/**
+	 * Tick: the local standing in for math cache slot `slot` (`__mc[slot]`,
+	 * bind-math/cache-names.ts). Helper: null, and `__mc` resolves through
+	 * `locals` to its factory's cache array.
+	 */
+	readonly cacheSlot: ((slot: number) => string) | null;
 }

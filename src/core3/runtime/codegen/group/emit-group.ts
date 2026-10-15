@@ -3,7 +3,9 @@
  * chosen and possible, call sites otherwise), reading other groups' slots
  * from their block regions and writing its own crossing slots to theirs —
  * the value before the block once, then each sample's value. Signature:
- * `(bufs, n, count, sr)`, with `n` at most BLOCK_MAX.
+ * `(bufs, n, count, sr)`, with `n` at most BLOCK_MAX. The nodes' prologue
+ * lines (per-lane instances that keep math call caches) run once, before the
+ * unit returns the function.
  */
 
 import type { NodeRun } from "../../node-run";
@@ -43,14 +45,17 @@ export function emitGroup(
 	);
 	const crossing = slots.all.filter((s) => env.block.base.has(s));
 	const region = (s: number) => env.block.base.get(s) as number;
-	return returnFunction(
-		name,
-		"bufs, n, count, sr",
-		emitBlockLoop(
-			slots,
-			nodes,
-			crossing.map((s) => `${env.buffer}[${region(s) + 1} + k] = ${slotLocal(s)};`),
-			crossing.map((s) => `${env.buffer}[${region(s)}] = ${slotLocal(s)};`),
+	return [
+		...nodes.flatMap((node) => node.prologue),
+		returnFunction(
+			name,
+			"bufs, n, count, sr",
+			emitBlockLoop(
+				slots,
+				nodes,
+				crossing.map((s) => `${env.buffer}[${region(s) + 1} + k] = ${slotLocal(s)};`),
+				crossing.map((s) => `${env.buffer}[${region(s)}] = ${slotLocal(s)};`),
+			),
 		),
-	);
+	].join("\n");
 }

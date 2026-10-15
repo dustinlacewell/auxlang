@@ -1,12 +1,14 @@
 /**
  * A field read or write in a pasted function. A named field of an object
  * parameter (`s.phase`, `i.cutoff`, `o.out`, `cfg.mode`) becomes the local
- * standing in for it; `Math.PI` stays host math; any other access prints as
- * an access on the printed object, its property re-spelled from a checked
+ * standing in for it; in a tick, a math cache slot (`__mc[3]`) becomes its
+ * lane's local; `Math.PI` stays host math; any other access prints as an
+ * access on the printed object, its property re-spelled from a checked
  * identifier or as a JSON key.
  */
 
 import type { MemberExpression } from "acorn";
+import { cacheSlotOf } from "../../../module/bind-math/cache-names";
 import { refuse } from "./not-pasteable";
 import type { PasteContext } from "./paste-context";
 import { printExpression } from "./print-expression";
@@ -16,6 +18,8 @@ const PLAIN_PROPERTY = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 export function printMember(node: MemberExpression, ctx: PasteContext, write: boolean): string {
 	if (node.optional) refuse("optional chaining is not pasteable");
+	const slot = ctx.cacheSlot === null ? null : cacheSlotOf(node);
+	if (slot !== null && ctx.cacheSlot !== null) return ctx.cacheSlot(slot);
 	const named = namedField(node);
 	if (named !== null) {
 		const field = roleField(named.owner, named.field, ctx, write);

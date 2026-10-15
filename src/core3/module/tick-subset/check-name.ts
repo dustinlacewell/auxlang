@@ -2,10 +2,13 @@
  * Free names. A tick may name only its parameters, its locals, `Math`, its
  * helpers and `hashRandom` — nothing from the patch or the file around it, so
  * the text alone is the whole machine. `Math` must be read as `Math.name`;
- * helpers and `hashRandom` must be called.
+ * helpers and `hashRandom` must be called. Bound text also names the math
+ * call cache, only as a slot (`__mc[3]`, bind-math/cache-names.ts); written
+ * text may not (bind-math/rewrite-math.ts rejects it).
  */
 
 import type { AnyNode, Identifier } from "acorn";
+import { CACHE_ARRAY, cacheSlotOf } from "../bind-math/cache-names";
 import { type SubsetContext, isBound } from "./subset-context";
 
 const CONSTANTS = new Set(["undefined", "NaN", "Infinity"]);
@@ -19,6 +22,8 @@ export function checkName(
 	if (!isReference(parent, key)) return;
 	const name = node.name;
 	if (isBound(ctx, name) || CONSTANTS.has(name)) return;
+	if (name === CACHE_ARRAY && key === "object" && parent !== null && cacheSlotOf(parent) !== null)
+		return;
 	if (name === "Math") {
 		if (parent?.type === "MemberExpression" && key === "object" && !parent.computed) return;
 		ctx.fail(node, "Math may only be used as Math.name");

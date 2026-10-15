@@ -7,11 +7,14 @@
  * of the same program.
  */
 
+import { tickFactory } from "../../module/tick-build/tick-factories";
 import { hashRandom } from "../../random/hash-random";
 import type { NodeRun } from "../node-run";
 
 export type BindingPath =
 	| { readonly k: "tick" | "ins" | "outs" | "config"; readonly node: number }
+	/** The factory of a node's tick, when it keeps math call caches (tick-build/tick-factories.ts). */
+	| { readonly k: "tick-factory"; readonly node: number }
 	| { readonly k: "state"; readonly node: number; readonly lane: number }
 	| { readonly k: "lambda"; readonly node: number; readonly lane: number; readonly port: number }
 	| { readonly k: "gather-lambda" | "view"; readonly node: number; readonly port: number }
@@ -30,6 +33,8 @@ export function pathIndex(runs: readonly NodeRun[]): Map<unknown, BindingPath> {
 	add(hashRandom, { k: "hash-random" });
 	runs.forEach((run, node) => {
 		add(run.tick, { k: "tick", node });
+		const factory = tickFactory(run.tick);
+		if (factory !== undefined) add(factory, { k: "tick-factory", node });
 		add(run.ins, { k: "ins", node });
 		add(run.outs, { k: "outs", node });
 		add(run.config, { k: "config", node });
@@ -63,6 +68,8 @@ export function resolvePath(
 			return extras.block;
 		case "helper":
 			return extras.helpers[path.index];
+		case "tick-factory":
+			return tickFactory(run(runs, path.node).tick);
 		case "state":
 			return run(runs, path.node).states[path.lane];
 		case "lambda":

@@ -4,7 +4,8 @@
  * bridge ones), no other lane shares its state objects, and its tick and
  * helpers print (anything the printer refuses keeps the node at its call
  * site, with every scope binding the attempt made rolled back). Helpers
- * paste once per module into one helpers unit (`helperUnit`).
+ * paste once per module into one helpers unit (`helperUnit`); helpers that
+ * keep math caches paste inside a factory each lane calls (paste-helpers.ts).
  */
 
 import { hashRandom } from "../../../random/hash-random";
@@ -52,10 +53,10 @@ export class Paster {
 		}
 	}
 
-	/** The names of the pasted helper functions, in the order `helperUnit` returns them. */
+	/** The names of the pasted helper functions and factories, in the order `helperUnit` returns them. */
 	helperNames(): string[] {
 		return [...this.helpers.values()].flatMap((h) =>
-			h instanceof NotPasteable ? [] : [...h.names.values()],
+			h instanceof NotPasteable ? [] : [...h.unitNames],
 		);
 	}
 
@@ -76,6 +77,7 @@ export class Paster {
 			fn,
 			declared: functionNames(fn, new Set(helpers.names.keys())),
 			helpers: helpers.names,
+			helperFactory: helpers.factory,
 		};
 	}
 

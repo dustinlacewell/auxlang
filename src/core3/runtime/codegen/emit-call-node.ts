@@ -6,6 +6,7 @@
  * or after the sample loop.
  */
 
+import { tickFactory } from "../../module/tick-build/tick-factories";
 import type { LaneBindings } from "../bindings";
 import type { ReduceGathers } from "../gathers";
 import type { NodeRun } from "../node-run";
@@ -24,27 +25,48 @@ export function emitCallNode(
 	scope: DriverScope,
 	slots: SlotAccess,
 ): NodeCode {
-	const node = bindNode(run, i, scope);
+	const ticks = laneTicks(run, i, scope);
+	const node = bindNode(run, i, ticks.names[0] as string, scope);
 	const sample =
 		run.gathers === null
-			? mapLanes(run, i, node, scope, slots)
+			? mapLanes(run, i, node, ticks.names, scope, slots)
 			: reduce(run, i, node, scope, slots);
-	return { before: [], sample, after: [] };
+	return { prologue: ticks.prologue, before: [], sample, after: [] };
 }
 
-function bindNode(run: NodeRun, i: number, scope: DriverScope): NodeNames {
+function bindNode(run: NodeRun, i: number, tick: string, scope: DriverScope): NodeNames {
 	return {
-		tick: scope.bind(`T${i}`, run.tick),
+		tick,
 		ins: scope.bind(`I${i}`, run.ins),
 		outs: scope.bind(`O${i}`, run.outs),
 		config: scope.bind(`C${i}`, run.config),
 	};
 }
 
+/**
+ * The tick each lane calls. A tick that keeps math call caches gets one
+ * instance per lane from its factory (tick-build/tick-factories.ts), made in
+ * the unit's prologue; any other tick is shared by every lane.
+ */
+function laneTicks(
+	run: NodeRun,
+	i: number,
+	scope: DriverScope,
+): { names: string[]; prologue: string[] } {
+	const lanes = run.gathers === null ? run.laneCount : 1;
+	const factory = tickFactory(run.tick);
+	if (factory === undefined)
+		return { names: Array(lanes).fill(scope.bind(`T${i}`, run.tick)), prologue: [] };
+	const bound = scope.bind(`F${i}`, factory);
+	const names = Array.from({ length: lanes }, (_, lane) => `K${i}_${lane}`);
+	return { names, prologue: names.map((name) => `const ${name} = ${bound}();`) };
+}
+
 function mapLanes(
 	run: NodeRun,
 	i: number,
 	node: NodeNames,
+	ticks: readonly string[],
 	scope: DriverScope,
 	slots: SlotAccess,
 ): string[] {
@@ -52,10 +74,11 @@ function mapLanes(
 	const lines: string[] = [];
 	for (let lane = 0; lane < run.laneCount; lane++) {
 		const b = bindings[lane] as LaneBindings;
+		const laneNode = { ...node, tick: ticks[lane] as string };
 		lines.push(
 			`// node ${i} lane ${lane}`,
 			...emitLaneGathers(b, node.ins, `L${i}_${lane}`, scope, slots),
-			emitMapTickCall(node, scope.bind(`S${i}_${lane}`, run.states[lane])),
+			emitMapTickCall(laneNode, scope.bind(`S${i}_${lane}`, run.states[lane])),
 			...emitScatter(run, lane, (j) => outRead(run, node, j)),
 		);
 	}
