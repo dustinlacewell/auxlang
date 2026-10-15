@@ -113,6 +113,7 @@ pad.tri()
   .lpf({ cutoff: p\`74 <81 89>\`, res: 0.2 })
   .mul(amp)
   .mul(0.3)
+  .spread()
   .out()
 `;
 
@@ -219,6 +220,7 @@ loop((fb) =>
 )
   .reverb({ room: 0.6, damp: 0.6, mix: 0.15 })
   .mul(0.45)
+  .spread()
   .out()
 
 // ---- pad: two saws seven cents apart, above the stab's band ----
@@ -295,6 +297,7 @@ epiano.tri()
   .phaser({ rate: 0.25, depth: 0.7, mix: 0.4 })
   .reverb({ room: 0.5, damp: 0.5, mix: 0.28 })
   .mul(0.26)
+  .spread()
   .out()
 
 // ---- bass: n("<0!3 1*2>").set(chords).mode("root:g2") — root, then the 3rd ----
@@ -359,6 +362,7 @@ pad.tri()
   .lpf(lfo(0.05, 71, 85), 0.1)
   .mul(pad.gate.adsr(0.3, 0.5, 0.7, 0.8))
   .gain(0.2)
+  .spread()
   .out()
 
 // the bass climbs D E F G; its mirror walks down D C B A
@@ -453,6 +457,7 @@ strings.tri()
   .lpf(hz(energy.mul(1600).add(400)))
   .mul(strings.gate.adsr(0.6, 0.5, 0.8, 1))
   .gain(0.18)
+  .spread()
   .out()
 
 // ---- harp: plays sixteenths, but only the steps the energy allows ----

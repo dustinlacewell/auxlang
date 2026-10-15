@@ -18,45 +18,38 @@ describe("out", () => {
 		expect(o.l!).toBeGreaterThan(0);
 	});
 
-	it("lane spread is constant-power: l²+r² roughly constant across positions", () => {
-		// Compare a 1-lane center vs the per-lane power in a 2-lane spread,
-		// bypassing the DC blocker by reading the first sample.
-		const powers: number[] = [];
+	it("every in lane lands at center, regardless of width (no auto-spread)", () => {
+		// All lanes sum to the same center position; l and r stay equal at every
+		// width, instead of a per-lane pan spreading them across the field.
 		for (const width of [1, 2, 3, 4]) {
 			const d = reduceDriver(out, width);
-			// all lanes carry the same unit value; measure summed power / norm²·width
 			const laneVals = Float64Array.from(Array(width).fill(1));
 			const o = d.step({ in: laneVals, gain: 1 });
-			// undo the 1/√width mixdown to inspect per-unit lane power sum
-			powers.push(o.l! * o.l! + o.r! * o.r!);
-		}
-		// Not asking for exact equality (sum of correlated lanes differs), but each
-		// stays a sane bounded value — constant-power law means no blow-up.
-		for (const p of powers) {
-			expect(p).toBeGreaterThan(0);
-			expect(p).toBeLessThan(2);
+			expect(o.l!).toBeCloseTo(o.r!, 6);
+			expect(o.l!).toBeGreaterThan(0);
 		}
 	});
 
-	it("single lane swept across pan positions keeps l²+r² constant", () => {
-		// Drive each of the N lanes ALONE in an N-wide out; the placed lane's
-		// pan angle changes but l²+r² for that lane is invariant.
+	it("a single active lane among many still lands dead center (no per-lane pan)", () => {
+		// Drive each of the N lanes ALONE in an N-wide out; under the old
+		// auto-spread this swept the pan angle by lane index. Now every lane
+		// shares the same center placement, so L stays equal to R regardless of
+		// which lane carries the signal.
 		const width = 8;
-		const amp = 1e-3; // well below the safety clip threshold
-		const energies: number[] = [];
+		const amp = 1e-3;
 		for (let lane = 0; lane < width; lane++) {
 			const d = reduceDriver(out, width);
 			const vals = new Float64Array(width);
 			vals[lane] = amp;
 			const o = d.step({ in: vals, gain: 1 });
-			// first sample: DC blocker y = x (y1=0, x1=0). Undo 1/√width norm and amp.
-			const norm = 1 / Math.sqrt(width);
-			const l = o.l! / norm / amp;
-			const r = o.r! / norm / amp;
-			energies.push(l * l + r * r);
+			expect(o.l!).toBeCloseTo(o.r!, 6);
 		}
-		const first = energies[0]!;
-		for (const e of energies) expect(e).toBeCloseTo(first, 5);
+	});
+
+	it("a 3-lane in gives identical L and R (center sum, not spread)", () => {
+		const d = reduceDriver(out, 3);
+		const o = d.step({ in: lanes(0.2, 0.5, -0.1), gain: 1 });
+		expect(o.l!).toBeCloseTo(o.r!, 12);
 	});
 
 	it("a signal at 0.5 passes unchanged (gain 1)", () => {

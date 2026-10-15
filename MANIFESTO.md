@@ -561,7 +561,8 @@ Runtime obligations:
 - **Re-eval does not glitch.** A new program is compiled and warmed before the
   swap.
 - **Mixing.** Reducers use equal-power laws. `out` applies 1/√n lane mixdown, a
-  DC guard, and a peak safety clip.
+  DC guard, and a peak safety clip; it places every `in` lane dead center —
+  `spread` and `pan` are what place lanes across the stereo field.
 
 ---
 

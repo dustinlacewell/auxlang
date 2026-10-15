@@ -1127,14 +1127,15 @@ noise()
 	},
 	{
 		section: "Utils",
-		title: "out — poly auto-spread (showcase)",
+		title: "out — poly spread (showcase)",
 		description:
-			"Poly lanes fan across the stereo field at constant power — a four-voice chord gets width with no pan in sight.",
+			"out places every in lane dead center; spread() fans the poly lanes across the stereo field at constant power before they reach it — a four-voice chord gets width.",
 		code: `tempo(90)
 const s = seq("[c2,g2,e3,b3]")
 s.tri()
   .mul(s.gate.adsr(0.02, 0.1, 0.6, 0.2))
   .gain(0.5)
+  .spread()
   .out()`,
 	},
 
