@@ -19,6 +19,7 @@ import { laneSource } from "../lane-source";
 import type { NameTable } from "../name-table";
 import type { NodeCode } from "../node-code";
 import { reducePort } from "../reduce-port";
+import type { SlotAccess } from "../slot-access";
 import type { FunctionNames } from "./function-names";
 import { LaneFrame, NodeFrame } from "./node-frame";
 import type { PasteContext } from "./paste-context";
@@ -44,13 +45,21 @@ interface LaneInputs {
 	readonly locals: ReadonlyMap<string, string>;
 }
 
-export function emitPastedNode(run: NodeRun, i: number, tick: PasteTick, env: PasteEnv): NodeCode {
+export function emitPastedNode(
+	run: NodeRun,
+	i: number,
+	tick: PasteTick,
+	env: PasteEnv,
+	slots: SlotAccess,
+): NodeCode {
 	const node = new NodeFrame(run, env.names, env.scope);
 	const lanes: LaneFrame[] = [];
 	const sample: string[] = [];
 	for (let lane = 0; lane < run.laneCount; lane++) {
 		const inputs =
-			run.gathers === null ? mapInputs(run, lane, env) : reduceInputs(run.gathers, env);
+			run.gathers === null
+				? mapInputs(run, lane, env, slots)
+				: reduceInputs(run.gathers, env, slots);
 		const frame = new LaneFrame(
 			node,
 			run.states[lane] as Record<string, unknown>,
@@ -74,23 +83,23 @@ export function emitPastedNode(run: NodeRun, i: number, tick: PasteTick, env: Pa
 	};
 }
 
-function mapInputs(run: NodeRun, lane: number, env: PasteEnv): LaneInputs {
+function mapInputs(run: NodeRun, lane: number, env: PasteEnv, slots: SlotAccess): LaneInputs {
 	const b = (run.bindings as readonly LaneBindings[])[lane] as LaneBindings;
 	const locals = new Map<string, string>();
 	const lines = b.names.map((port, j) => {
 		const local = env.names.fresh();
 		locals.set(port, local);
-		return `const ${local} = ${laneSource(b, j, env.names.fresh(), env.scope)};`;
+		return `const ${local} = ${laneSource(b, j, env.names.fresh(), env.scope, slots)};`;
 	});
 	return { lines, locals };
 }
 
-function reduceInputs(g: ReduceGathers, env: PasteEnv): LaneInputs {
+function reduceInputs(g: ReduceGathers, env: PasteEnv, slots: SlotAccess): LaneInputs {
 	const locals = new Map<string, string>();
 	const lines = g.ports.flatMap((p) => {
 		const local = env.names.fresh();
 		locals.set(p.name, local);
-		const port = reducePort(p, env.names.fresh(), env.scope);
+		const port = reducePort(p, env.names.fresh(), env.scope, slots);
 		return [...port.fill, `const ${local} = ${port.value};`];
 	});
 	return { lines, locals };

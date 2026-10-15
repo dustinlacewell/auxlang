@@ -32,6 +32,7 @@ function driverSource(program: Program): string {
 	try {
 		new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program), undefined, {
 			codegen: true,
+			paste: true,
 		});
 	} finally {
 		globalThis.Function = Real;

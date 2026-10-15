@@ -8,14 +8,17 @@ import type { LaneBindings } from "../bindings";
 import type { DriverScope } from "./driver-scope";
 import { propKey } from "./js-literal";
 import { laneSource } from "./lane-source";
+import type { SlotAccess } from "./slot-access";
 
 export function emitLaneGathers(
 	b: LaneBindings,
 	ins: string,
 	lambdaPrefix: string,
 	scope: DriverScope,
+	slots: SlotAccess,
 ): string[] {
 	return b.names.map(
-		(name, j) => `${ins}${propKey(name)} = ${laneSource(b, j, `${lambdaPrefix}_${j}`, scope)};`,
+		(name, j) =>
+			`${ins}${propKey(name)} = ${laneSource(b, j, `${lambdaPrefix}_${j}`, scope, slots)};`,
 	);
 }

@@ -1,18 +1,19 @@
 /**
  * The codegen gate: for every site, module-docs, pattern-docs, and doc-snippet
- * example, the generated driver must reproduce the interpreter bit for bit —
- * every output sample, and every lane state after the render (harness:
- * codegen-harness.ts). The interpreter ticks per sample; the generated driver
- * renders in uneven blocks, so state kept in locals must be stored back
- * exactly at every block end. Determinism is a project invariant, so any
- * divergence is a generator bug.
+ * example, both generated drivers (phase 1, and phase 2's grouped pasted
+ * driver) must reproduce the interpreter bit for bit — every output sample,
+ * and every lane state after the render (harness: codegen-harness.ts). The
+ * interpreter ticks per sample; the generated drivers render in uneven
+ * blocks, so state kept in locals and block buffers must be exact at every
+ * block end. Determinism is a project invariant, so any divergence is a
+ * generator bug.
  */
 
 import "@/core3/modules/all";
 
 import { compile, defmod, out, runEval } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
-import { Core3Engine } from "@/core3/runtime/engine";
+import { Core3Engine, type EngineOptions } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import type { EngineState, Program } from "@/core3/types";
 import { sig } from "@/core3/types";
@@ -22,7 +23,15 @@ import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples";
 import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples";
 import { describe, expect, it } from "vitest";
 import { SNIPPETS } from "../../../../docs/snippets";
-import { type Run, SR, expectIdentical, firstBitDiff, render } from "./codegen-harness";
+import {
+	GENERATED,
+	INTERPRETER,
+	type Run,
+	SR,
+	expectIdentical,
+	expectSameRun,
+	render,
+} from "./codegen-harness";
 
 const SAMPLES = SR; // 1 s
 
@@ -32,15 +41,14 @@ interface SwapRun extends Run {
 }
 
 /** Render `before` for 0.5 s, then swap to `after` with its migrated state for 0.5 s. */
-function swapRun(before: Program, after: Program, codegen: boolean): SwapRun {
+function swapRun(before: Program, after: Program, options: EngineOptions): SwapRun {
 	const half = SAMPLES / 2;
-	const first = new Core3Engine(before, SR, withProgramSpecs(getRegistry(), before), undefined, {
-		codegen,
-	});
-	const head = render(first, half, codegen);
+	const registryBefore = withProgramSpecs(getRegistry(), before);
+	const first = new Core3Engine(before, SR, registryBefore, undefined, options);
+	const head = render(first, half, options);
 	const registry = withProgramSpecs(getRegistry(), after);
-	const second = new Core3Engine(after, SR, registry, head.state, { codegen });
-	const tail = render(second, half, codegen);
+	const second = new Core3Engine(after, SR, registry, head.state, options);
+	const tail = render(second, half, options);
 	const l = new Float32Array(SAMPLES);
 	const r = new Float32Array(SAMPLES);
 	l.set(head.l);
@@ -65,7 +73,7 @@ describe("codegen driver is bit-identical to the interpreter", () => {
 	});
 
 	for (const c of CASES) {
-		// Each case renders 1 s twice; heavy patches near 5 s under parallel load.
+		// Each case renders 1 s three times; heavy patches near 5 s under parallel load.
 		it(c.label, () => expectIdentical(evalPatch(c.code)), 20_000);
 	}
 
@@ -83,12 +91,12 @@ s.saw()
 		const after = patch(1400);
 		expect(after.nodes.map((n) => n.place)).toEqual(before.nodes.map((n) => n.place));
 
-		const ref = swapRun(before, after, false);
-		const gen = swapRun(before, after, true);
-		expect(firstBitDiff(ref.l, gen.l), "first differing left sample").toBe(-1);
-		expect(firstBitDiff(ref.r, gen.r), "first differing right sample").toBe(-1);
-		expect(gen.swapState).toEqual(ref.swapState);
-		expect(gen.state).toEqual(ref.state);
+		const ref = swapRun(before, after, INTERPRETER);
+		for (const { label, options } of GENERATED) {
+			const gen = swapRun(before, after, options);
+			expectSameRun(ref, gen, label);
+			expect(gen.swapState, `${label}: state at the swap`).toEqual(ref.swapState);
+		}
 		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.01);
 	});
 

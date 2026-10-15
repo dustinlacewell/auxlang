@@ -6,7 +6,7 @@
  */
 
 import { numLiteral } from "@/core3/runtime/codegen/js-literal";
-import type { Driver, DriverPlan } from "@/core3/runtime/driver";
+import type { Driver, DriverOptions, DriverPlan } from "@/core3/runtime/driver";
 import { selectDriver } from "@/core3/runtime/select-driver";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -16,17 +16,27 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("selectDriver", () => {
 	it("codegen off never calls the compiler", () => {
-		const compile = vi.fn<(plan: DriverPlan, budget?: number) => Driver>();
+		const compile = vi.fn<(plan: DriverPlan, options: DriverOptions) => Driver>();
 		selectDriver(noPlan, { codegen: false }, compile);
 		expect(compile).not.toHaveBeenCalled();
 	});
 
-	it("codegen on returns the compiled driver, passing the paste budget through", () => {
+	it("codegen on returns the compiled driver, passing the options through", () => {
 		const driver: Driver = () => {};
-		const compile = vi.fn((_plan: DriverPlan, _budget?: number) => driver);
+		const compile = vi.fn((_plan: DriverPlan, _options: DriverOptions) => driver);
 		expect(selectDriver(noPlan, { codegen: true }, compile)).toBe(driver);
-		selectDriver(noPlan, { codegen: true, pasteBudget: 0 }, compile);
-		expect(compile.mock.calls.map((c) => c[1])).toEqual([undefined, 0]);
+		selectDriver(noPlan, { codegen: true, paste: true }, compile);
+		expect(compile.mock.calls.map((c) => c[1].paste)).toEqual([undefined, true]);
+	});
+
+	it("both generated forms compile an empty program", () => {
+		const out = new Float32Array(4);
+		for (const paste of [false, true]) {
+			const driver = selectDriver(noPlan, { codegen: true, paste });
+			const bufs = { cur: new Float64Array(0), prv: new Float64Array(0) };
+			driver(bufs, out, out, 0, 4, 0, 48000);
+			expect([...out]).toEqual([0, 0, 0, 0]);
+		}
 	});
 
 	it("an EvalError (CSP) falls back to the interpreter and logs", () => {

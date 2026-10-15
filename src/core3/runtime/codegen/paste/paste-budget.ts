@@ -1,6 +1,7 @@
 /**
- * The size budget for pasting, in estimated bytes of V8 bytecode
- * (node-cost.ts): nodes paste only while the driver's estimate fits.
+ * The size cap for pasting into one generated function, in estimated bytes
+ * of V8 bytecode (node-cost.ts): in a group larger than this (one big
+ * feedback component), nodes paste only while the estimate fits.
  *
  * How it was measured (Node 24, src/tests/scratch/codegen-size.ts with
  * --print-bytecode and --trace-opt): V8 hands a function to TurboFan only

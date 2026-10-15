@@ -16,10 +16,19 @@ import { emitScatter } from "./emit-scatter";
 import { type NodeNames, emitMapTickCall, emitReduceTickCall } from "./emit-tick-call";
 import { propKey } from "./js-literal";
 import type { NodeCode } from "./node-code";
+import type { SlotAccess } from "./slot-access";
 
-export function emitCallNode(run: NodeRun, i: number, scope: DriverScope): NodeCode {
+export function emitCallNode(
+	run: NodeRun,
+	i: number,
+	scope: DriverScope,
+	slots: SlotAccess,
+): NodeCode {
 	const node = bindNode(run, i, scope);
-	const sample = run.gathers === null ? mapLanes(run, i, node, scope) : reduce(run, i, node, scope);
+	const sample =
+		run.gathers === null
+			? mapLanes(run, i, node, scope, slots)
+			: reduce(run, i, node, scope, slots);
 	return { before: [], sample, after: [] };
 }
 
@@ -32,13 +41,20 @@ function bindNode(run: NodeRun, i: number, scope: DriverScope): NodeNames {
 	};
 }
 
-function mapLanes(run: NodeRun, i: number, node: NodeNames, scope: DriverScope): string[] {
+function mapLanes(
+	run: NodeRun,
+	i: number,
+	node: NodeNames,
+	scope: DriverScope,
+	slots: SlotAccess,
+): string[] {
 	const bindings = run.bindings as readonly LaneBindings[];
 	const lines: string[] = [];
 	for (let lane = 0; lane < run.laneCount; lane++) {
+		const b = bindings[lane] as LaneBindings;
 		lines.push(
 			`// node ${i} lane ${lane}`,
-			...emitLaneGathers(bindings[lane] as LaneBindings, node.ins, `L${i}_${lane}`, scope),
+			...emitLaneGathers(b, node.ins, `L${i}_${lane}`, scope, slots),
 			emitMapTickCall(node, scope.bind(`S${i}_${lane}`, run.states[lane])),
 			...emitScatter(run, lane, (j) => outRead(run, node, j)),
 		);
@@ -46,11 +62,17 @@ function mapLanes(run: NodeRun, i: number, node: NodeNames, scope: DriverScope):
 	return lines;
 }
 
-function reduce(run: NodeRun, i: number, node: NodeNames, scope: DriverScope): string[] {
+function reduce(
+	run: NodeRun,
+	i: number,
+	node: NodeNames,
+	scope: DriverScope,
+	slots: SlotAccess,
+): string[] {
 	const gathers = run.gathers as ReduceGathers;
 	return [
 		`// node ${i} reduce`,
-		...emitReduceGathers(gathers, node.ins, `G${i}`, scope),
+		...emitReduceGathers(gathers, node.ins, `G${i}`, scope, slots),
 		emitReduceTickCall(node, scope.bind(`S${i}_0`, run.states[0]), gathers.width),
 		...emitScatter(run, 0, (j) => outRead(run, node, j)),
 	];

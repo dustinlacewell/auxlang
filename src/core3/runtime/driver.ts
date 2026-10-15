@@ -20,11 +20,13 @@ export interface DriverOptions {
 	/** Run a generated per-program driver instead of the interpreter. Default off. */
 	readonly codegen?: boolean;
 	/**
-	 * With codegen: the size budget for pasting module ticks inline
-	 * (codegen/paste/paste-budget.ts is the default). 0 keeps every node at a
-	 * call site — phase 1's form, for benchmarks and bisecting.
+	 * With codegen: phase 2 — the grouped driver with module ticks pasted
+	 * inline (codegen/compile-grouped.ts). Default off: phase 1, every node at
+	 * a call site in one function.
 	 */
-	readonly pasteBudget?: number;
+	readonly paste?: boolean;
+	/** With paste: the group size budget (codegen/group/group-budget.ts is the default). */
+	readonly groupBudget?: number;
 }
 
 /** What a driver walks: the built node runs and the slots the out-nodes' l/r land in. */

@@ -9,7 +9,6 @@
  */
 
 import { BIND_PREV, type LaneBindings } from "../bindings";
-import type { DriverPlan } from "../driver";
 import { GATHER_PREV } from "../gathers";
 import type { NodeRun } from "../node-run";
 import { prevLocal, slotLocal } from "./name-table";
@@ -19,8 +18,22 @@ export interface ValueSlots {
 	readonly prev: readonly number[];
 }
 
-export function valueSlots(plan: DriverPlan): ValueSlots {
-	return { all: plan.runs.flatMap(outputSlots), prev: [...new Set(plan.runs.flatMap(prevReads))] };
+/**
+ * The slot locals of a function running `runs`: every slot they produce, and
+ * a previous-sample local for each of those that one of them reads as "z".
+ */
+export function valueSlots(runs: readonly NodeRun[]): ValueSlots {
+	const all = runs.flatMap(outputSlots);
+	const own = new Set(all);
+	return { all, prev: [...new Set(runs.flatMap(prevReads))].filter((s) => own.has(s)) };
+}
+
+/** Every slot a run produces: each out port's lanes. */
+export function outputSlots(run: NodeRun): number[] {
+	const slots: number[] = [];
+	for (const base of run.outBases)
+		for (let lane = 0; lane < run.laneCount; lane++) slots.push(base + lane);
+	return slots;
 }
 
 export function emitSlotLoads(slots: ValueSlots): string[] {
@@ -41,13 +54,6 @@ export function emitSlotStores(slots: ValueSlots): string[] {
 		...slots.all.map((s) => `cur[${s}] = ${slotLocal(s)};`),
 		...slots.prev.map((s) => `prv[${s}] = ${prevLocal(s)};`),
 	];
-}
-
-function outputSlots(run: NodeRun): number[] {
-	const slots: number[] = [];
-	for (const base of run.outBases)
-		for (let lane = 0; lane < run.laneCount; lane++) slots.push(base + lane);
-	return slots;
 }
 
 function prevReads(run: NodeRun): number[] {

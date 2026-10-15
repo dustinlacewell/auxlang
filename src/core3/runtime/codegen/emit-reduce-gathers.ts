@@ -8,15 +8,17 @@ import type { ReduceGathers } from "../gathers";
 import type { DriverScope } from "./driver-scope";
 import { propKey } from "./js-literal";
 import { reducePort } from "./reduce-port";
+import type { SlotAccess } from "./slot-access";
 
 export function emitReduceGathers(
 	g: ReduceGathers,
 	ins: string,
 	prefix: string,
 	scope: DriverScope,
+	slots: SlotAccess,
 ): string[] {
 	return g.ports.flatMap((p, j) => {
-		const port = reducePort(p, `${prefix}_${j}`, scope);
+		const port = reducePort(p, `${prefix}_${j}`, scope, slots);
 		return [...port.fill, `${ins}${propKey(p.name)} = ${port.value};`];
 	});
 }
