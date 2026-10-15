@@ -20,7 +20,7 @@ s.tri().lpf(900).mul(s.gate.adsr(0.005, 0.1, 0.5, 0.2)).gain(0.3).out()`);
 
 describe("buildSteps", () => {
 	it("specs, layout, one step per node, assemble", () => {
-		const steps = buildSteps(prepareProgram(PROGRAM, getRegistry(), 48000, undefined));
+		const steps = buildSteps(prepareProgram(PROGRAM, getRegistry(), 48000, undefined), false);
 		expect(steps.map((s) => s.k)).toEqual([
 			"specs",
 			"layout",

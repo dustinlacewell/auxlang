@@ -41,7 +41,7 @@ export function wasmSteps(wasm: WasmPrepared, tableLanes: number, carries: boole
 		...layout.nodes.flatMap((node, n) =>
 			node.lanes.map((lane, l) => ({ k: "lane" as const, node: n, lane: l, cost: laneCost(lane) })),
 		),
-		{ k: "engine", cost: STEP_COSTS.enginePerTableLane * tableLanes },
+		{ k: "engine", cost: STEP_COSTS.engineBase + STEP_COSTS.enginePerTableLane * tableLanes },
 		...Array.from({ length: tableLanes }, (_, lane) => ({
 			k: "prefill" as const,
 			lane,

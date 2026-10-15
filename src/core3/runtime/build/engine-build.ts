@@ -55,7 +55,9 @@ export class EngineBuild {
 		private readonly source: EngineState | undefined,
 	) {
 		this.paired = new Map(prepared.paired);
-		this.runner = new StepRunner(buildSteps(prepared), (step) => this.execute(step));
+		this.runner = new StepRunner(buildSteps(prepared, source !== undefined), (step) =>
+			this.execute(step),
+		);
 	}
 
 	get done(): boolean {
