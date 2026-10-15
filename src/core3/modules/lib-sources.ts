@@ -1,41 +1,19 @@
 /**
  * The text of the built-in module library (`lib/**\/*.js`) — the only I/O in
- * loading it. Under vite and vitest the bundler inlines the files
- * (`import.meta.glob` with `?raw`); under plain node (tsx scripts) they are
- * read from disk. Either way the result is sorted by path, so every host
- * registers the library in the same order.
+ * loading it (raw-files/raw-files.ts says how each host gets the text).
  */
 
-export interface LibSource {
-	/** Path under lib/, e.g. `noise.js`. */
-	readonly file: string;
-	readonly text: string;
-}
+import { type RawFile, bundled, fromDisk, fromGlob } from "../raw-files/raw-files";
+
+/** A library file: its path under lib/ (e.g. `noise.js`) and its text. */
+export type LibSource = RawFile;
 
 export function libSources(): LibSource[] {
-	const found = import.meta.env === undefined ? fromDisk() : fromBundler();
-	return found.sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
-}
-
-function fromBundler(): LibSource[] {
+	if (!bundled()) return fromDisk(new URL("./lib/", import.meta.url));
 	const files = import.meta.glob<string>("./lib/**/*.js", {
 		query: "?raw",
 		import: "default",
 		eager: true,
 	});
-	return Object.entries(files).map(([path, text]) => ({
-		file: path.replace(/^\.\/lib\//, ""),
-		text,
-	}));
-}
-
-function fromDisk(): LibSource[] {
-	const fs = process.getBuiltinModule("node:fs");
-	const url = process.getBuiltinModule("node:url");
-	const dir = url.fileURLToPath(new URL("./lib/", import.meta.url));
-	const entries = fs.readdirSync(dir, { recursive: true, encoding: "utf8" });
-	return entries
-		.map((entry) => entry.replaceAll("\\", "/"))
-		.filter((file) => file.endsWith(".js"))
-		.map((file) => ({ file, text: fs.readFileSync(`${dir}/${file}`, "utf8") }));
+	return fromGlob(files, "./lib/");
 }

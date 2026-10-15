@@ -69,10 +69,14 @@ function visit(
 	if (node.type === "Identifier") checkName(node, parent, key, ctx);
 	else if (node.type === "Literal") checkStringLiteral(node, parent, key, ctx);
 	else if (node.type === "CallExpression") checkCall(node, ctx);
-	else if (node.type === "MemberExpression") checkMember(node, ctx);
+	else if (node.type === "MemberExpression") checkMember(node, parent, key, ctx);
 	else if (node.type === "UnaryExpression") checkUnary(node, parent, ctx);
 	else if (node.type === "BinaryExpression") checkBinary(node, ctx);
-	else if (node.type === "AssignmentExpression") checkWrite(node.left, ctx);
+	else if (node.type === "AssignmentExpression") {
+		if (node.operator === "**=")
+			ctx.fail(node, "`**=` is not allowed — write `x = x ** y` (`**` is auxlang's pow)");
+		checkWrite(node.left, ctx);
+	}
 	else if (node.type === "UpdateExpression") checkWrite(node.argument, ctx);
 }
 

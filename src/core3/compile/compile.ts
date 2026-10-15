@@ -30,6 +30,7 @@
 
 import { isLambdaInput, isNodeRef, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
+import { bindLambdaMath } from "../module/bind-math/bind-lambda-math";
 import { type SpecTable, resolveSpec } from "../module/resolve";
 import { assertClosureFree, serializeSpec } from "../module/serialize";
 import type { EvalResult } from "../patch/context";
@@ -167,7 +168,7 @@ function portSrc(
 
 function srcOf(value: InputValue, node: GNode, port: string, lane: number, r: Resolved): PortSrc {
 	if (typeof value === "number") return { k: "c", v: value };
-	if (isLambdaInput(value)) return { k: "l", src: value.lambda.toString() };
+	if (isLambdaInput(value)) return { k: "l", src: bindLambdaMath(value.lambda.toString()) };
 	if (isNodeRef(value))
 		return connSrc("n", value.node, value.port, value.lane, lane, r, node, port);
 	if (isZRef(value)) {

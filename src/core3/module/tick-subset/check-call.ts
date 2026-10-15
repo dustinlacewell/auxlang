@@ -7,6 +7,8 @@
  */
 
 import type { CallExpression } from "acorn";
+import { AUX_MATH_FUNCTIONS } from "../../math/aux-math-functions";
+import { EXACT_HOST_MATH } from "../../math/exact-host-math";
 import { type SubsetContext, isBound } from "./subset-context";
 
 const ONLY = "only Math.*, helpers and hashRandom(key) may be called (no method calls)";
@@ -33,12 +35,29 @@ export function checkCall(node: CallExpression, ctx: SubsetContext): void {
 		callee.property.type === "Identifier"
 	) {
 		const name = callee.property.name;
-		if (typeof (Math as unknown as Record<string, unknown>)[name] !== "function")
-			ctx.fail(node, `Math.${name} is not a function`);
 		if (name === "random") checkRandomCall(node, "Math.random()", 0, ctx);
+		else checkMathCall(node, name, ctx);
 		return;
 	}
 	ctx.fail(node, ONLY);
+}
+
+/**
+ * A tick calls auxlang's math (bind-math/) or an exact host operation —
+ * never host transcendentals, which differ between engines (MANIFESTO §7).
+ */
+function checkMathCall(node: CallExpression, name: string, ctx: SubsetContext): void {
+	const arity = AUX_MATH_FUNCTIONS.get(name);
+	if (arity !== undefined) {
+		if (node.arguments.length !== arity)
+			ctx.fail(node, `Math.${name} takes ${arity === 1 ? "one argument" : `${arity} arguments`}`);
+		return;
+	}
+	if (EXACT_HOST_MATH.has(name)) return;
+	ctx.fail(
+		node,
+		`Math.${name} is not available in a tick (auxlang math: ${[...AUX_MATH_FUNCTIONS.keys(), ...EXACT_HOST_MATH, "random"].sort().join(", ")})`,
+	);
 }
 
 function checkRandomCall(

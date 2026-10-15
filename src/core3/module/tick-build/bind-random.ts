@@ -8,27 +8,22 @@
 import type { AnyNode, CallExpression } from "acorn";
 import type { ParsedFunction } from "../tick-subset/parse-function";
 import { walk } from "../tick-subset/walk";
+import { type TextEdit, applyEdits } from "./text-edits";
 
 /** The bound name of the stream draw (random/next-random.ts) inside a built tick. */
 export const RANDOM_DRAW = "__auxRandom";
 
-interface Edit {
-	readonly start: number;
-	readonly end: number;
-	readonly text: string;
-}
-
 export function bindRandom(tick: ParsedFunction): string {
 	const first = tick.node.params[0];
 	if (first === undefined || first.type !== "Identifier") return tick.expression;
-	const edits: Edit[] = [];
+	const edits: TextEdit[] = [];
 	walk(tick.node.body, (node) => {
 		if (node.type === "CallExpression") collectEdit(node, first.name, edits);
 	});
 	return applyEdits(tick.expression, edits);
 }
 
-function collectEdit(call: CallExpression, state: string, edits: Edit[]): void {
+function collectEdit(call: CallExpression, state: string, edits: TextEdit[]): void {
 	if (isMathRandom(call.callee) && call.arguments.length === 0) {
 		edits.push({ start: call.start, end: call.end, text: `${RANDOM_DRAW}(${state})` });
 		return;
@@ -49,13 +44,4 @@ function isMathRandom(callee: AnyNode): boolean {
 		callee.property.type === "Identifier" &&
 		callee.property.name === "random"
 	);
-}
-
-/** Apply non-overlapping edits back to front so earlier offsets stay valid. */
-function applyEdits(text: string, edits: readonly Edit[]): string {
-	let out = text;
-	for (const edit of [...edits].sort((a, b) => b.start - a.start)) {
-		out = out.slice(0, edit.start) + edit.text + out.slice(edit.end);
-	}
-	return out;
 }
