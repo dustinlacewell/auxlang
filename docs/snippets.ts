@@ -288,6 +288,20 @@ s.tri()
   .pan(lfo(0.5, -1, 1))
   .out()`,
 	},
+	// Stereo: detune by a pattern stack, lanes fanned out by spread.
+	{
+		id: "guide-spread-detune",
+		audible: true,
+		code: `tempo(90)
+const s = seq("c3 g2 a2 f2")
+s.add(p\`[-0.12, 0, 0.12]\`)
+  .saw()
+  .lpf(84, 0.2)
+  .mul(s.gate.adsr(0.01, 0.2, 0.6, 0.3))
+  .gain(0.3)
+  .spread()
+  .out()`,
+	},
 	// seq + gate + trig for drums.
 	{
 		id: "guide-drums",

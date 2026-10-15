@@ -104,6 +104,21 @@ pad.tri()
   .out()
 `;
 
+/** (e2) Detune and spread: a pattern stack makes lanes, spread places them. */
+const wideSaws = `// detune and spread: a [stack] of cent offsets added to the pitch makes
+// three saws per note; spread fans the lanes left, center, right
+tempo(90)
+
+const s = seq("c3 <g2 a2> f2 <g2 e2>")
+s.add(p\`[-0.12, 0, 0.12]\`)
+  .saw()
+  .lpf({ cutoff: 84, res: 0.2 })
+  .mul(s.gate.adsr(0.01, 0.2, 0.6, 0.3))
+  .mul(0.3)
+  .spread()
+  .out()
+`;
+
 /** (f) Drums + counter: euclidean gates, a hat velocity stepped per trigger. */
 const drums = `// drums: a euclidean kick, a backbeat snare, eighth-note hats
 // whose velocity a counter steps one value per hit
@@ -651,6 +666,7 @@ export const EXAMPLES: readonly Example[] = [
 	{ name: "cross FM (loop record)", source: crossFm },
 	{ name: "sub-patch module (defmod patch)", source: subpatch },
 	{ name: "poly chords", source: polyChords },
+	{ name: "wide saws (detune + spread)", source: wideSaws },
 	{ name: "drums + counter", source: drums },
 	{ name: "seeded chance", source: seededChance },
 ];

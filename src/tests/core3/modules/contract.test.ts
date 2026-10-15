@@ -12,6 +12,7 @@ const RESERVED_PORTS = ["apply", "lane", "id", "seed", "width", "mod"];
 /** Modules whose default output is legitimately NOT "out" (undefined: none, a stereo module). */
 const NON_OUT_DEFAULTS: Record<string, string | undefined> = {
 	pan: undefined,
+	spread: undefined,
 	out: undefined,
 };
 

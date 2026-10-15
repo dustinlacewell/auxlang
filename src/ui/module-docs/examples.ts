@@ -468,7 +468,7 @@ s.tri()
 	},
 
 	// ======================================================================
-	// Effects — delay, reverb, pan, phaser, shape
+	// Effects — delay, reverb, pan, spread, phaser, shape
 	// ======================================================================
 	{
 		section: "Effects",
@@ -621,6 +621,59 @@ sin(69)
   .gain(0.3)
   .pan(lfo(0.3, -1, 1))
   .apply(p => out({ l: p.l, r: p.r }))`,
+	},
+	{
+		section: "Effects",
+		title: "spread — default",
+		description:
+			"A three-note chord spread wide: C hard left, E in the center, G hard right. spread places each lane evenly across the field.",
+		code: `tempo(60)
+const s = seq("[c4,e4,g4]")
+s.tri()
+  .mul(s.gate.ad(0.01, 0.6))
+  .gain(0.4)
+  .spread()
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "spread — all params",
+		description: "amount 0.3: the same chord pulled in close to the center, a narrow stereo image.",
+		code: `tempo(60)
+const s = seq("[c4,e4,g4]")
+s.tri()
+  .mul(s.gate.ad(0.01, 0.6))
+  .gain(0.4)
+  .spread(0.3)
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "spread — amount modulated",
+		description:
+			"An LFO sweeps amount 0→1 — a held chord opens from mono to full width and folds back.",
+		code: `tempo(60)
+const s = seq("[c3,g3,e4,b4]")
+s.tri()
+  .mul(s.gate.adsr(0.05, 0.2, 0.8, 0.3))
+  .gain(0.4)
+  .spread(lfo(0.2, 0, 1))
+  .out()`,
+	},
+	{
+		section: "Effects",
+		title: "spread — detuned saws (showcase)",
+		description:
+			"Three saws per note, 12 cents apart: a pattern stack added to the pitch makes three lanes, and spread fans them left, center, right — a wide supersaw.",
+		code: `tempo(90)
+const s = seq("c3 g2 a2 f2")
+s.add(p\`[-0.12, 0, 0.12]\`)
+  .saw()
+  .lpf(84, 0.2)
+  .mul(s.gate.adsr(0.01, 0.2, 0.6, 0.3))
+  .gain(0.3)
+  .spread()
+  .out()`,
 	},
 	{
 		section: "Effects",

@@ -60,6 +60,7 @@ The module families:
 
 - `delay({ time, feedback, mix })` — `time` in seconds.
 - `pan({ pos })` — constant-power pan, outputs `l` and `r`.
+- `spread(amount)` — places lane k of n evenly across `[-amount, amount]`, outputs `l` and `r`.
 - `period(pitch)` — seconds per cycle of a pitch in semitones; feed it to `delay`'s `time` to tune an echo or a Karplus-Strong string to a note.
 
 ### Timing and bridge
@@ -337,7 +338,7 @@ The dry signal plus a delayed, attenuated copy of the loop's own output forms th
 
 ## 11. Stereo (two-cable patching)
 
-There is no automatic stereo spread. A mono `x.out()` auto-centers. For placement, `pan` produces `l` and `r` outputs; patch both into the master's `l`/`r` jacks:
+For placement, `pan` produces `l` and `r` outputs. Stereo ports connect by name, so `.out()` wires `l` to `l` and `r` to `r`:
 
 ```js
 tempo(120)
@@ -345,12 +346,26 @@ const s = seq("c3 e3 g3 e3")
 s.tri()
   .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.15))
   .pan(lfo(0.5, -1, 1))
-  .apply((v) => out({ l: v.l, r: v.r }))
+  .out()
 ```
 
-The LFO sweeps the pan position; `apply` unpacks the stereo value and wires both channels into `out`.
+The LFO sweeps the pan position. A connection that would drop a channel, such as `pan(0.5).lpf(79)`, is a loud error.
 
-A bare `.out()` off a stereo source (such as `pan`) is a loud error — it would drop a channel. Route both explicitly.
+`spread(amount)` places the lanes of a wide signal evenly across `[-amount, amount]`: at 1, the first lane is hard left and the last hard right. Per-lane detune is a pattern stack added to the pitch — it makes one lane per offset:
+
+```js
+tempo(90)
+const s = seq("c3 g2 a2 f2")
+s.add(p`[-0.12, 0, 0.12]`)
+  .saw()
+  .lpf(84, 0.2)
+  .mul(s.gate.adsr(0.01, 0.2, 0.6, 0.3))
+  .gain(0.3)
+  .spread()
+  .out()
+```
+
+Three saws per note, 12 cents apart, fanned left, center, right.
 
 ---
 
@@ -380,7 +395,7 @@ The language never silently no-ops. At eval time it throws — naming what was a
 - unconnected required inputs,
 - arity surprises,
 - notation parse errors,
-- a bare stereo `.out()`.
+- a stereo connection that would drop a channel.
 
 ### Common footguns
 
