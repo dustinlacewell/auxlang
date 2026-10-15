@@ -373,9 +373,11 @@ tri(57)
 		section: "Envelopes",
 		title: "ar — default",
 		description:
-			"An attack-release envelope tracks a square gate (an LFO through gt) — the tone holds while the gate is high, then releases.",
-		code: `tri(57)
-  .mul(lfo(2).gt(0).ar())
+			"An attack-release envelope tracks a tempo-locked gate — the tone holds while the gate is high, then releases.",
+		code: `tempo(120)
+const g = seq("[1 ~]*4")
+tri(57)
+  .mul(g.gate.ar())
   .gain(0.35)
   .out()`,
 	},
@@ -384,8 +386,10 @@ tri(57)
 		title: "ar — all params",
 		description:
 			"Soft 80 ms attack, long 300 ms release — each gated note fades in and trails off, a pad-like swell.",
-		code: `tri(57)
-  .mul(lfo(1.5).gt(0).ar(0.08, 0.3))
+		code: `tempo(120)
+const g = seq("[1 ~]*4")
+tri(57)
+  .mul(g.gate.ar(0.08, 0.3))
   .gain(0.35)
   .out()`,
 	},
@@ -394,8 +398,10 @@ tri(57)
 		title: "ar — release modulated",
 		description:
 			"An LFO drags the release 0.05→0.6 s — the tail on each note grows and shrinks as the sweep moves.",
-		code: `tri(57)
-  .mul(lfo(2).gt(0).ar(0.01, lfo(0.2, 0.05, 0.6)))
+		code: `tempo(120)
+const g = seq("[1 ~]*4")
+tri(57)
+  .mul(g.gate.ar(0.01, lfo(0.2, 0.05, 0.6)))
   .gain(0.35)
   .out()`,
 	},
@@ -404,8 +410,10 @@ tri(57)
 		title: "adsr — default",
 		description:
 			"The full envelope on each pulse of a square gate — attack, decay to a held sustain, then release. A rounded organ-ish note.",
-		code: `tri(57)
-  .mul(lfo(1.5).gt(0).adsr())
+		code: `tempo(120)
+const g = seq("[1 ~]*4")
+tri(57)
+  .mul(g.gate.adsr())
   .gain(0.35)
   .out()`,
 	},
@@ -414,8 +422,10 @@ tri(57)
 		title: "adsr — all params",
 		description:
 			"Every stage set: snappy attack, quick decay to a low 0.3 sustain, long release — a plucky note with a tail.",
-		code: `tri(57)
-  .mul(lfo(1.5).gt(0).adsr(0.01, 0.12, 0.3, 0.35))
+		code: `tempo(120)
+const g = seq("[1 ~]*4")
+tri(57)
+  .mul(g.gate.adsr(0.01, 0.12, 0.3, 0.35))
   .gain(0.35)
   .out()`,
 	},
@@ -424,8 +434,10 @@ tri(57)
 		title: "adsr — sustain modulated",
 		description:
 			"An LFO moves the sustain level 0.1→0.9 — the held middle of each note rises and falls between beats.",
-		code: `tri(57)
-  .mul(lfo(1.5).gt(0).adsr(0.01, 0.1, lfo(0.2, 0.1, 0.9), 0.2))
+		code: `tempo(120)
+const g = seq("[1 ~]*4")
+tri(57)
+  .mul(g.gate.adsr(0.01, 0.1, lfo(0.2, 0.1, 0.9), 0.2))
   .gain(0.35)
   .out()`,
 	},
@@ -434,8 +446,10 @@ tri(57)
 		title: "adsr — attack modulated",
 		description:
 			"An LFO stretches the attack 0.002→0.3 s — notes shift from sharp plucks to slow swells and back.",
-		code: `tri(57)
-  .mul(lfo(1.5).gt(0).adsr(lfo(0.2, 0.002, 0.3), 0.1, 0.5, 0.2))
+		code: `tempo(120)
+const g = seq("[1 ~]*4")
+tri(57)
+  .mul(g.gate.adsr(lfo(0.2, 0.002, 0.3), 0.1, 0.5, 0.2))
   .gain(0.35)
   .out()`,
 	},
@@ -729,8 +743,10 @@ sin(69)
 		title: "vca — the canonical patch",
 		description:
 			"Same module as mul and gain, named for the patch: audio in, envelope on the other input. Every note in these docs is this.",
-		code: `sin(hz(330))
-  .vca(lfo(2).gt(0).adsr(0.01, 0.1, 0.6, 0.15))
+		code: `tempo(120)
+const g = seq("[1 ~]*4")
+sin(hz(330))
+  .vca(g.gate.adsr(0.01, 0.1, 0.6, 0.15))
   .gain(0.4)
   .out()`,
 	},
@@ -965,8 +981,10 @@ s.tri()
 		section: "Math",
 		title: "sub — inverted gate (off-beats)",
 		description: "1 − gate flips a gate: the note sounds where the square gate is low — the off-beats.",
-		code: `tri(57)
-  .mul(lfo(2).gt(0).sub(1).ar(0.01, 0.08))
+		code: `tempo(120)
+const g = seq("[1 ~]*4")
+tri(57)
+  .mul(g.gate.sub(1).ar(0.01, 0.08))
   .gain(0.35)
   .out()`,
 	},
