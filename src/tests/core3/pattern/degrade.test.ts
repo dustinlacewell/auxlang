@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { degrade, fastcat, pure, stack } from "@/core3/pattern/combinators";
 import { hash01 } from "@/core3/pattern/random";
 import { rcycle } from "@/core3/pattern/rational";
-import { evSet, queryCycles } from "./helpers";
+import { evSet, queryCycles, sounding } from "./helpers";
 
 describe("hash01", () => {
 	it("is deterministic and in [0,1)", () => {
@@ -33,15 +33,17 @@ describe("degrade", () => {
 		expect(evSet(queryCycles(pat, 0, 50, 1))).not.toEqual(evSet(queryCycles(pat, 0, 50, 2)));
 	});
 
-	it("keeps events at roughly 1 - prob over 200 cycles", () => {
-		const kept = queryCycles(degrade(0.3, pure(1)), 0, 200, 7).length;
+	it("keeps notes at roughly 1 - prob over 200 cycles", () => {
+		const kept = sounding(queryCycles(degrade(0.3, pure(1)), 0, 200, 7)).length;
 		expect(kept / 200).toBeGreaterThan(0.6);
 		expect(kept / 200).toBeLessThan(0.8);
 	});
 
-	it("prob 0 keeps everything; prob 1 drops everything", () => {
-		expect(queryCycles(degrade(0, pure(1)), 0, 20)).toHaveLength(20);
-		expect(queryCycles(degrade(1, pure(1)), 0, 20)).toHaveLength(0);
+	it("prob 0 keeps every note; prob 1 keeps every slot as a rest", () => {
+		expect(sounding(queryCycles(degrade(0, pure(1)), 0, 20))).toHaveLength(20);
+		const all = queryCycles(degrade(1, fastcat([pure(1), pure(2)])), 0, 20);
+		expect(all).toHaveLength(40);
+		expect(all.every((ev) => ev.kind === "rest")).toBe(true);
 	});
 
 	it("rolls once per event cycle: fragments agree with the full query", () => {
@@ -53,7 +55,7 @@ describe("degrade", () => {
 
 	it("distinct AST positions roll independently", () => {
 		const pat2 = stack([degrade(0.5, pure(1)), degrade(0.5, pure(2))]);
-		const evs = queryCycles(pat2, 0, 64, 5);
+		const evs = sounding(queryCycles(pat2, 0, 64, 5));
 		const cyclesOf = (v: number) =>
 			evs
 				.filter((ev) => ev.value === v)
@@ -68,7 +70,7 @@ describe("degrade", () => {
 		// Per-event rolling means some cycles keep 1, 2, or 3.
 		const four = degrade(0.5, fastcat([pure(1), pure(2), pure(3), pure(4)]));
 		const perCycle = new Map<number, number>();
-		for (const ev of queryCycles(four, 0, 64, 11)) {
+		for (const ev of sounding(queryCycles(four, 0, 64, 11))) {
 			const c = rcycle(ev.whole!.begin);
 			perCycle.set(c, (perCycle.get(c) ?? 0) + 1);
 		}
@@ -80,7 +82,7 @@ describe("degrade", () => {
 	it("keeps events at roughly 1 - prob across many events in a sequence", () => {
 		// 4 events/cycle * 64 cycles = 256 events; keep-rate within +/-10% of 0.5.
 		const four = degrade(0.5, fastcat([pure(1), pure(2), pure(3), pure(4)]));
-		const kept = queryCycles(four, 0, 64, 11).length;
+		const kept = sounding(queryCycles(four, 0, 64, 11)).length;
 		const total = 4 * 64;
 		expect(kept / total).toBeGreaterThan(0.4);
 		expect(kept / total).toBeLessThan(0.6);

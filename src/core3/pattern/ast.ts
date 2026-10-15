@@ -23,8 +23,13 @@ export interface Layer {
 }
 
 export type Pat =
-	| { readonly op: "pure"; readonly value: number } // one event spanning each cycle
-	| { readonly op: "silence" }
+	| { readonly op: "pure"; readonly value: number } // one note spanning each cycle
+	| { readonly op: "silence" } // no events at all
+	| { readonly op: "rest" } // one rest event spanning each cycle (`~`)
+	// One tie event per lane 0..lanes-1 spanning each cycle (`_`): continues the note before.
+	| { readonly op: "tie"; readonly lanes: number }
+	// The child's notes become slides (`a_b`): new value, entered without a retrigger.
+	| { readonly op: "slide"; readonly child: Pat }
 	| { readonly op: "fastcat"; readonly children: readonly Pat[] } // equal subdivision of one cycle
 	| { readonly op: "timecat"; readonly children: readonly WChild[] } // weighted subdivision of one cycle
 	| { readonly op: "slowcat"; readonly children: readonly Pat[] } // one child per cycle, round-robin
@@ -45,18 +50,15 @@ export type Pat =
 			readonly rot: number;
 			readonly child: Pat;
 	  }
-	| { readonly op: "degrade"; readonly prob: number; readonly child: Pat } // drop events with probability prob (seeded)
+	| { readonly op: "degrade"; readonly prob: number; readonly child: Pat } // turn events into rests with probability prob (seeded)
 	| { readonly op: "add"; readonly amount: number; readonly child: Pat } // payload arithmetic
 	| { readonly op: "mul"; readonly amount: number; readonly child: Pat }
 	// every(n, f): `transformed` is f(child), applied at build time.
 	// Query picks transformed when cycle % n === 0, else child.
 	| { readonly op: "every"; readonly n: number; readonly child: Pat; readonly transformed: Pat }
-	// Tie markers (from notation `a_b`): flag emitted events.
-	| { readonly op: "tieNext"; readonly child: Pat }
-	| { readonly op: "tiePrev"; readonly child: Pat }
-	// Keep child events whose onset lands in a "true" (nonzero) region of bool.
+	// Child events whose onset lands outside a "true" (nonzero) region of bool become rests.
 	| { readonly op: "mask"; readonly bool: Pat; readonly child: Pat }
-	// Emit an event at each true step of bool, sampling child's value there.
+	// A note at each true step of bool, sampling child's value there; a rest at each false step.
 	| { readonly op: "struct"; readonly bool: Pat; readonly child: Pat }
 	// Sample-and-hold child into n discrete steps per cycle.
 	| { readonly op: "segment"; readonly n: number; readonly child: Pat }

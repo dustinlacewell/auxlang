@@ -6,7 +6,6 @@ import { r } from "@/core3/pattern/rational";
 
 // AST shorthand builders for expected shapes.
 const pure = (value: number): Pat => ({ op: "pure", value });
-const silence = (): Pat => ({ op: "silence" });
 const fastcat = (...children: Pat[]): Pat => ({ op: "fastcat", children });
 const timecat = (...children: [number, Pat][]): Pat => ({
 	op: "timecat",
@@ -26,8 +25,9 @@ const euclid = (k: number, steps: number, rot: number, child: Pat): Pat => ({
 	rot,
 	child,
 });
-const tieNext = (child: Pat): Pat => ({ op: "tieNext", child });
-const tiePrev = (child: Pat): Pat => ({ op: "tiePrev", child });
+const rest = (): Pat => ({ op: "rest" });
+const tie = (lanes: number): Pat => ({ op: "tie", lanes });
+const slide = (child: Pat): Pat => ({ op: "slide", child });
 
 // c4 = 60
 const c4 = 60;
@@ -44,8 +44,8 @@ describe("parse shapes (MANIFESTO §3.3)", () => {
 		expect(parse("c4")).toEqual(pure(c4));
 	});
 
-	it("~ rest -> silence", () => {
-		expect(parse("c4 ~ e4")).toEqual(fastcat(pure(c4), silence(), pure(e4)));
+	it("~ -> a rest step", () => {
+		expect(parse("c4 ~ e4")).toEqual(fastcat(pure(c4), rest(), pure(e4)));
 	});
 
 	it("[a b] subgroup -> fastcat as one step", () => {
@@ -103,25 +103,26 @@ describe("parse shapes (MANIFESTO §3.3)", () => {
 		expect(parse("c4@2 e4")).toEqual(timecat([2, pure(c4)], [1, pure(e4)]));
 	});
 
-	it("bare _ extends previous step's weight by 1", () => {
-		expect(parse("c4 _ e4")).toEqual(timecat([2, pure(c4)], [1, pure(e4)]));
+	it("bare _ -> a tie step after the previous step", () => {
+		expect(parse("c4 _ e4")).toEqual(fastcat(pure(c4), tie(1), pure(e4)));
 	});
 
-	it("a_b tie -> fastcat[tieNext a, tiePrev b]", () => {
-		// As the whole pattern, the tie chain is one step of unit weight, so the
-		// enclosing single-step sequence unwraps to the tie fastcat itself.
-		expect(parse("c4_e4")).toEqual(fastcat(tieNext(pure(c4)), tiePrev(pure(e4))));
+	it("_ after a chord ties every lane", () => {
+		expect(parse("[c4, e4, g4] _")).toEqual(fastcat(stack(pure(c4), pure(e4), pure(g4)), tie(3)));
 	});
 
-	it("a_b tie as one step among several", () => {
-		const tie = fastcat(tieNext(pure(c4)), tiePrev(pure(e4)));
-		expect(parse("c4_e4 g4")).toEqual(fastcat(tie, pure(g4)));
+	it("a_b -> fastcat[a, slide b] as one step", () => {
+		// As the whole pattern, the slide chain is one step of unit weight, so the
+		// enclosing single-step sequence unwraps to the fastcat itself.
+		expect(parse("c4_e4")).toEqual(fastcat(pure(c4), slide(pure(e4))));
 	});
 
-	it("a_b_c chain flags middles both ways", () => {
-		expect(parse("c4_e4_g4")).toEqual(
-			fastcat(tieNext(pure(c4)), tiePrev(tieNext(pure(e4))), tiePrev(pure(g4))),
-		);
+	it("a_b as one step among several", () => {
+		expect(parse("c4_e4 g4")).toEqual(fastcat(fastcat(pure(c4), slide(pure(e4))), pure(g4)));
+	});
+
+	it("a_b_c: every later term slides in", () => {
+		expect(parse("c4_e4_g4")).toEqual(fastcat(pure(c4), slide(pure(e4)), slide(pure(g4))));
 	});
 
 	it("a? -> degrade(0.5)", () => {

@@ -1,7 +1,8 @@
 /**
  * fillTable: one lane of one cycle as contiguous rows — events, rest rows in
- * the gaps, note ids (a tie keeps its note's), the carry from earlier cycles,
- * and the dip marks between touching notes (peeking the next cycle).
+ * the gaps, note ids (a tie keeps its note's; a slide has its own and records
+ * the note it slides from), the carry from earlier cycles, and the dip marks
+ * between touching notes (peeking the next cycle).
  */
 
 import type { Pat } from "@/core3/pattern/ast";
@@ -12,6 +13,7 @@ import {
 	type EventTable,
 	KIND_NOTE,
 	KIND_REST,
+	KIND_SLIDE,
 	KIND_TIE,
 	NO_NOTE,
 	createTable,
@@ -62,10 +64,10 @@ describe("fillTable", () => {
 		expect(rows(t, "value")).toEqual([400, 800, 800, 400]);
 	});
 
-	it("looks back across empty cycles for the carry", () => {
+	it("looks back across rest cycles for the carry value; a rest ends the note", () => {
 		const t = table(p`<5 ~ ~>`.ast, 2);
 		expect(t.carryValue).toBe(5);
-		expect(t.carryNoteId).toBe(0);
+		expect(t.carryNoteId).toBe(NO_NOTE);
 		expect(rows(t, "value")).toEqual([5]);
 	});
 
@@ -77,12 +79,45 @@ describe("fillTable", () => {
 		expect(t.carryNoteId).toBe(NO_NOTE);
 	});
 
-	it("gives a tie its note's id and no dip between them", () => {
-		const t = table(p`c4_e4 g4`.ast, 0);
+	it("gives a tie its note's id and value, with no dip between them", () => {
+		const t = table(p`c4 _ e4`.ast, 0);
 		expect(rows(t, "kind")).toEqual([KIND_NOTE, KIND_TIE, KIND_NOTE]);
-		expect(rows(t, "value")).toEqual([60, 64, 67]);
-		expect(rows(t, "noteId")).toEqual([0, 0, 0.5]);
+		expect(rows(t, "value")).toEqual([60, 60, 64]);
+		expect(rows(t, "noteId")).toEqual([0, 0, 2 / 3]);
 		expect(rows(t, "dipBefore")).toEqual([0, 1, 1]);
+	});
+
+	it("ties a chord in every lane", () => {
+		const pat = voices("packed", undefined, p`[c4, e4] _`.ast);
+		expect(rows(table(pat, 0, 1), "kind")).toEqual([KIND_NOTE, KIND_TIE]);
+		expect(rows(table(pat, 0, 1), "value")).toEqual([64, 64]);
+		expect(rows(table(pat, 0, 1), "noteId")).toEqual([0, 0]);
+	});
+
+	it("ties across the cycle edge to the note before", () => {
+		const t = table(p`<c4 _>`.ast, 1);
+		expect(rows(t, "kind")).toEqual([KIND_TIE]);
+		expect(rows(t, "value")).toEqual([60]);
+		expect(rows(t, "noteId")).toEqual([0]);
+	});
+
+	it("makes a tie after a rest a rest", () => {
+		expect(rows(table(p`~ _ c4`.ast, 0), "kind")).toEqual([KIND_REST, KIND_REST, KIND_NOTE]);
+	});
+
+	it("gives a slide its own note id and the note it slides from, with no dip into it", () => {
+		const t = table(p`c4_e4 g4`.ast, 0);
+		expect(rows(t, "kind")).toEqual([KIND_NOTE, KIND_SLIDE, KIND_NOTE]);
+		expect(rows(t, "value")).toEqual([60, 64, 67]);
+		expect(rows(t, "noteId")).toEqual([0, 0.25, 0.5]);
+		expect(rows(t, "slideFrom")).toEqual([NO_NOTE, 0, NO_NOTE]);
+		expect(rows(t, "dipBefore")).toEqual([0, 1, 1]);
+	});
+
+	it("makes a slide after a rest a note", () => {
+		const t = table(p`~_c4`.ast, 0);
+		expect(rows(t, "kind")).toEqual([KIND_REST, KIND_NOTE]);
+		expect(rows(t, "slideFrom")).toEqual([NO_NOTE, NO_NOTE]);
 	});
 
 	it("keeps one note id for a note crossing the cycle edge, with no dip at the edge", () => {

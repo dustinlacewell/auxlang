@@ -4,10 +4,12 @@
  * no gaps and no overlap: a gap between events is a rest row. Per row:
  *
  *   begin/end   absolute position (floats; exactness lives in `query`)
- *   value       the row's value; a rest row holds the value before it
- *   kind        KIND_REST | KIND_NOTE | KIND_TIE
+ *   value       the row's value; a rest or tie row holds the value before it
+ *   kind        KIND_REST | KIND_NOTE | KIND_TIE | KIND_SLIDE
  *   noteId      onset of the row's own note, in absolute beats; a tie carries
  *               its note's id; NO_NOTE on a rest row
+ *   slideFrom   on a slide row, the id of the note it slides from (the row
+ *               before it); NO_NOTE otherwise
  *   dipBefore   1 when the next row (peeking the next cycle for the last row)
  *               is a different note touching this one
  *
@@ -21,6 +23,7 @@ export const NO_NOTE = -Number.MAX_VALUE;
 export const KIND_REST = 0;
 export const KIND_NOTE = 1;
 export const KIND_TIE = 2;
+export const KIND_SLIDE = 3;
 
 export interface EventTable {
 	/** The cycle the rows cover; NaN before the first fill. */
@@ -31,6 +34,7 @@ export interface EventTable {
 	value: Float64Array;
 	kind: Int8Array;
 	noteId: Float64Array;
+	slideFrom: Float64Array;
 	dipBefore: Int8Array;
 	carryValue: number;
 	carryNoteId: number;
@@ -45,6 +49,7 @@ export function createTable(capacity = 8): EventTable {
 		value: new Float64Array(capacity),
 		kind: new Int8Array(capacity),
 		noteId: new Float64Array(capacity),
+		slideFrom: new Float64Array(capacity),
 		dipBefore: new Int8Array(capacity),
 		carryValue: 0,
 		carryNoteId: NO_NOTE,
@@ -60,6 +65,7 @@ export function ensureCapacity(t: EventTable, rows: number): void {
 	t.value = new Float64Array(capacity);
 	t.kind = new Int8Array(capacity);
 	t.noteId = new Float64Array(capacity);
+	t.slideFrom = new Float64Array(capacity);
 	t.dipBefore = new Int8Array(capacity);
 }
 

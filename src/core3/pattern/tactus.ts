@@ -36,6 +36,8 @@ function structuralTactus(pat: Pat): R {
 	switch (pat.op) {
 		case "pure":
 		case "silence":
+		case "rest":
+		case "tie":
 		case "signal":
 			return R1;
 		case "fastcat":
@@ -65,8 +67,7 @@ function structuralTactus(pat: Pat): R {
 		case "add":
 		case "mul":
 		case "every":
-		case "tieNext":
-		case "tiePrev":
+		case "slide":
 		case "mask":
 		case "clip":
 		case "chunk":

@@ -34,9 +34,14 @@ function structuralWidth(pat: Pat): number {
 		case "silence":
 			return 0;
 		case "pure":
+		case "rest":
 		case "signal":
 		case "segment": // fresh events, one per step, all in lane 0
 			return 1;
+		case "tie":
+			return pat.lanes;
+		case "euclid": // an empty slot is a rest in lane 0
+			return Math.max(1, width(pat.child));
 		case "stack":
 			return sum(pat.children);
 		case "polymeter":
@@ -62,12 +67,10 @@ function structuralWidth(pat: Pat): number {
 		case "late":
 		case "iter":
 		case "ply":
-		case "euclid":
 		case "degrade":
 		case "add":
 		case "mul":
-		case "tieNext":
-		case "tiePrev":
+		case "slide":
 		case "mask":
 		case "clip":
 		case "sometimesBy": // structure from child; transformed only lends values

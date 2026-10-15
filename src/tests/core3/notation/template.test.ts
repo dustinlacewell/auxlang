@@ -7,7 +7,7 @@ import { r } from "@/core3/pattern/rational";
 
 const pure = (value: number): Pat => ({ op: "pure", value });
 const fastcat = (...children: Pat[]): Pat => ({ op: "fastcat", children });
-const silence = (): Pat => ({ op: "silence" });
+const rest = (): Pat => ({ op: "rest" });
 
 const c4 = 60;
 const e4 = 64;
@@ -32,7 +32,7 @@ describe("p tagged template splicing", () => {
 
 	it("splices a P (pattern-in-pattern)", () => {
 		const hook = toP(fastcat(pure(c4), pure(e4)));
-		expect(p`${hook} ~`.ast).toEqual(fastcat(hook.ast, silence()));
+		expect(p`${hook} ~`.ast).toEqual(fastcat(hook.ast, rest()));
 	});
 
 	it("splices an array as a fastcat group", () => {

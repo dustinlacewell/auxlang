@@ -3,7 +3,7 @@
  *
  * Strategy (the desugaring table of MANIFESTO §3.3 is normative):
  *   sequence of steps          -> fastcat  (single step: itself)
- *   ~                          -> silence
+ *   ~                          -> rest
  *   [ .. ]                     -> fastcat (one step)
  *   [ .. , .. ]                -> stack (chord)
  *   < .. >                     -> slowcat
@@ -11,9 +11,9 @@
  *   a*f  a/f                   -> fast(f, a) / slow(f, a)   (f may be rational 3/2)
  *   a!n                        -> n replicated steps
  *   a@w                        -> timecat step of weight w
- *   a _                        -> extends the previous step's weight by 1
- *   a_b                        -> fastcat([tieNext a, tiePrev b]) as one step
- *   a?  a?0.7                  -> degrade(0.5, a) / degrade(0.7, a)  (drop chance)
+ *   a _                        -> a, then a tie step as wide as a (a chord ties in every lane)
+ *   a_b                        -> fastcat([a, slide b]) as one step
+ *   a?  a?0.7                  -> degrade(0.5, a) / degrade(0.7, a)  (rest chance)
  *   a(k,s)  a(k,s,rot)         -> euclid(k,s,rot, a)
  * Modifiers chain left-to-right: c4*2? = degrade(fast(2, c4)).
  *
@@ -29,18 +29,19 @@ import {
 	fastcat,
 	polymeter,
 	pure,
-	silence,
+	rest,
+	slide,
 	slow,
 	slowcat,
 	stack,
-	tieNext,
-	tiePrev,
+	tie,
 	timecat,
 } from "../combinators";
 import { isP } from "../pat-class";
 import type { R } from "../rational";
 import { r } from "../rational";
 import { tactus } from "../tactus";
+import { width } from "../widths";
 import { atomValue, isNumber } from "./note";
 import { type Token, tokenize } from "./tokenize";
 
@@ -96,20 +97,20 @@ class Parser {
 	}
 
 	/**
-	 * One step: a term with postfix modifiers, possibly tie-joined to following
-	 * terms, possibly `@weight`, `!count`, or a bare `_` extend. Pushes one or
-	 * more WStep entries (bang duplicates; extend adds a weight-1 tie/hold).
+	 * One step: a term with postfix modifiers, possibly slide-joined to following
+	 * terms, possibly `@weight`, `!count`, or a bare `_` tie. Pushes one or
+	 * more WStep entries (bang duplicates; `_` adds a tie step).
 	 */
 	private parseStep(steps: WStep[]): void {
 		const t = this.peek()!;
 
-		// Bare `_`: extend previous step's weight by 1.
+		// Bare `_`: a tie step across the previous step's lanes.
 		if (t.kind === "extend") {
 			this.next();
 			const prev = steps[steps.length - 1];
 			if (!prev)
 				throw new Error(`mini-notation: '_' with no preceding step (at position ${t.pos})`);
-			steps[steps.length - 1] = { pat: prev.pat, weight: radd1(prev.weight) };
+			steps.push({ pat: tie(Math.max(1, width(prev.pat))), weight: r(1) });
 			return;
 		}
 
@@ -117,9 +118,9 @@ class Parser {
 		let weight = r(1);
 		let count = 1;
 
-		// Tie chain: a_b(_c)...  -> fastcat of tie-flagged pieces as ONE step.
+		// Slide chain: a_b(_c)...  -> fastcat of a and slides as ONE step.
 		if (this.peek()?.kind === "tie") {
-			pat = this.parseTieChain(pat);
+			pat = this.parseSlideChain(pat);
 		}
 
 		// Postfix modifiers on the (possibly tied) step compose in any order, as in
@@ -144,23 +145,14 @@ class Parser {
 		for (let k = 0; k < count; k++) steps.push({ pat, weight });
 	}
 
-	/** Build a tie chain starting from an already-parsed first term. */
-	private parseTieChain(first: Pat): Pat {
+	/** Build a slide chain starting from an already-parsed first term: each later term slides in. */
+	private parseSlideChain(first: Pat): Pat {
 		const parts: Pat[] = [first];
 		while (this.peek()?.kind === "tie") {
 			this.next();
-			parts.push(this.parseModified());
+			parts.push(slide(this.parseModified()));
 		}
-		// Flag: first gets tieNext; last gets tiePrev; middles get both.
-		const flagged: Pat[] = parts.map((p, idx) => {
-			const isFirst = idx === 0;
-			const isLast = idx === parts.length - 1;
-			let out = p;
-			if (!isLast) out = tieNext(out);
-			if (!isFirst) out = tiePrev(out);
-			return out;
-		});
-		return fastcat(flagged);
+		return fastcat(parts);
 	}
 
 	/** A term plus its `*` / `/` / `?` / `(k,s,rot)` modifiers, chained left-to-right. */
@@ -201,7 +193,7 @@ class Parser {
 		switch (t.kind) {
 			case "rest":
 				this.next();
-				return silence();
+				return rest();
 			case "atom":
 				this.next();
 				return pure(atomValue(t.text, t.pos));
@@ -388,8 +380,6 @@ class Parser {
 }
 
 // --- module-level helpers --------------------------------------------------
-
-const radd1 = (w: R): R => r(w.n + w.d, w.d);
 
 type StepFold = (steps: readonly WStep[], pos: number) => Pat;
 

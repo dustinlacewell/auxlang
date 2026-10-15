@@ -8,14 +8,15 @@ import { describe, expect, it } from "vitest";
 
 import { P } from "@/core3/pattern/pat-class";
 import { r, rtof } from "@/core3/pattern/rational";
-import { queryCycles } from "./helpers";
+import { queryCycles, sounding } from "./helpers";
 
 const notes = () => P.fastcat(60, 62, 64, 65); // four steps
 
 describe("mask", () => {
-	it("keeps only events under a true region", () => {
+	it("keeps events under a true region; the others stay as rests", () => {
 		const evs = queryCycles(notes().mask(P.fastcat(1, 0, 1, 0)).ast, 0, 1);
-		expect(evs.map((e) => e.value)).toEqual([60, 64]);
+		expect(evs.map((e) => e.kind)).toEqual(["note", "rest", "note", "rest"]);
+		expect(sounding(evs).map((e) => e.value)).toEqual([60, 64]);
 	});
 
 	it("all-true mask is the identity", () => {
@@ -29,6 +30,11 @@ describe("struct", () => {
 		const evs = queryCycles(new P({ op: "pure", value: 60 }).struct(P.fastcat(1, 1, 1, 1)).ast, 0, 1);
 		expect(evs.map((e) => e.value)).toEqual([60, 60, 60, 60]);
 		expect(evs.length).toBe(4);
+	});
+
+	it("a false step is a rest, so the slot stays", () => {
+		const evs = queryCycles(new P({ op: "pure", value: 60 }).struct(P.fastcat(1, 0, 1, 0)).ast, 0, 1);
+		expect(evs.map((e) => e.kind)).toEqual(["note", "rest", "note", "rest"]);
 	});
 });
 

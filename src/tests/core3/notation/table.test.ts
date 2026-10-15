@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { silence } from "@/core3/pattern/combinators";
+import { pure, rest, slide, tie } from "@/core3/pattern/combinators";
 import { p } from "@/core3/pattern/notation/template";
 import { P, toP } from "@/core3/pattern/pat-class";
 import { evSet, queryCycles } from "../pattern/helpers";
@@ -19,7 +19,9 @@ const b4 = 71;
 
 const ROWS: [string, P, P][] = [
 	["c4 e4: sequence", p`c4 e4`, P.fastcat(c4, e4)],
-	["~: rest", p`c4 ~`, P.fastcat(c4, silence())],
+	["~: rest", p`c4 ~`, P.fastcat(c4, rest())],
+	["a _: tie", p`c4 _ e4`, P.fastcat(c4, tie(1), e4)],
+	["a_b: slide", p`c4_e4 g4`, P.fastcat(P.fastcat(c4, slide(pure(e4))), g4)],
 	["[a b]: subdivide one step", p`c4 [e4 g4]`, P.fastcat(c4, P.fastcat(e4, g4))],
 	["[a, b]: chord", p`[c4, e4, g4]`, P.stack(c4, e4, g4)],
 	["<a b>: alternate per cycle", p`<c4 e4 g4>`, P.cat(c4, e4, g4)],

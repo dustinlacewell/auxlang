@@ -1,8 +1,14 @@
 /**
- * What a lane holds before cycle `c`: the value and note of the most recent
- * earlier event (MANIFESTO §4.3). Looks back one cycle at a time, at most
- * LOOKBACK_CYCLES; a tie at the head of a found cycle looks further back for
- * its note. Nothing found holds value 0 and no note (NO_NOTE).
+ * What a lane holds before cycle `c` (MANIFESTO §4.3):
+ *
+ *   value   the value of the most recent earlier note or slide; rests and
+ *           ties have no value of their own, so they are passed over
+ *   noteId  the note in force at the end of cycle c - 1: NO_NOTE when that
+ *           cycle ends in a rest or a gap; a tie there is followed back to
+ *           its note
+ *
+ * Both look back at most LOOKBACK_CYCLES cycles. Nothing found holds value 0
+ * and no note (NO_NOTE).
  *
  * The bound stands in for the pattern's period until `pattern/period.ts`
  * exists.
@@ -10,9 +16,10 @@
 
 import type { Pat } from "../ast";
 import type { Ev } from "../event";
+import { r, rlt } from "../rational";
 import { NO_NOTE } from "./event-table";
 import { laneCycle } from "./lane-cycle";
-import { noteIdOf } from "./note-id";
+import { ownNoteId } from "./note-id";
 
 export const LOOKBACK_CYCLES = 16;
 
@@ -21,29 +28,49 @@ export interface Carry {
 	readonly noteId: number;
 }
 
-export const NO_CARRY: Carry = { value: 0, noteId: NO_NOTE };
-
-export function carryBefore(
-	pat: Pat,
-	seed: number,
-	lane: number,
-	c: number,
-	depth = LOOKBACK_CYCLES,
-): Carry {
-	for (let k = 1; k <= depth; k++) {
-		const evs = laneCycle(pat, seed, lane, c - k);
-		if (evs.length === 0) continue;
-		const last = evs[evs.length - 1] as Ev;
-		const earlier = () => carryBefore(pat, seed, lane, c - k, depth - k).noteId;
-		return { value: last.value, noteId: lastNoteId(evs, earlier) };
-	}
-	return NO_CARRY;
+export function carryBefore(pat: Pat, seed: number, lane: number, c: number): Carry {
+	const at = { pat, seed, lane };
+	return { value: valueBefore(at, c, LOOKBACK_CYCLES), noteId: noteAtStart(at, c, LOOKBACK_CYCLES) };
 }
 
-/** Note id of the last event, following ties back to their note. */
-function lastNoteId(evs: readonly Ev[], earlier: () => number): number {
-	let first = evs.length - 1;
-	while (first >= 0 && (evs[first] as Ev).tiePrev === true) first--;
-	if (first < 0) return earlier();
-	return noteIdOf(evs[first] as Ev, NO_NOTE);
+interface Lane {
+	readonly pat: Pat;
+	readonly seed: number;
+	readonly lane: number;
+}
+
+const cycleOf = (at: Lane, c: number): Ev[] => laneCycle(at.pat, at.seed, at.lane, c);
+
+const ownsValue = (ev: Ev): boolean => ev.kind === "note" || ev.kind === "slide";
+
+/** The value of the last note or slide before cycle `c`, looking back `depth` cycles. */
+function valueBefore(at: Lane, c: number, depth: number): number {
+	for (let k = 1; k <= depth; k++) {
+		const evs = cycleOf(at, c - k);
+		for (let i = evs.length - 1; i >= 0; i--) {
+			const ev = evs[i] as Ev;
+			if (ownsValue(ev)) return ev.value;
+		}
+	}
+	return 0;
+}
+
+/** The note in force where cycle `c` starts: the end of cycle `c - 1`. */
+function noteAtStart(at: Lane, c: number, depth: number): number {
+	if (depth <= 0) return NO_NOTE;
+	const evs = cycleOf(at, c - 1);
+	let j = evs.length - 1;
+	const last = evs[j];
+	if (last === undefined || rlt(last.part.end, r(c))) return NO_NOTE;
+	while (true) {
+		const ev = evs[j] as Ev;
+		if (ev.kind === "rest") return NO_NOTE;
+		if (ev.kind !== "tie") return ownNoteId(ev);
+		const before = evs[j - 1];
+		if (before === undefined) {
+			return rlt(r(c - 1), ev.part.begin) ? NO_NOTE : noteAtStart(at, c - 1, depth - 1);
+		}
+		if (rlt(before.part.end, ev.part.begin)) return NO_NOTE;
+		j--;
+	}
 }

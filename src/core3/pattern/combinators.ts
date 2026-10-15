@@ -22,6 +22,15 @@ export const pure = (value: number): Pat => ({ op: "pure", value });
 
 export const silence = (): Pat => ({ op: "silence" });
 
+/** A rest: a step with its gate off. */
+export const rest = (): Pat => ({ op: "rest" });
+
+/** A tie in each of `lanes` lanes: continues the note before it. */
+export const tie = (lanes: number): Pat => ({ op: "tie", lanes: positiveInt(lanes, "tie") });
+
+/** The child's notes become slides: entered from the previous note without a retrigger. */
+export const slide = (child: Pat): Pat => ({ op: "slide", child });
+
 /** Equal subdivision of one cycle. */
 export function fastcat(children: readonly Pat[]): Pat {
 	if (children.length === 0) throw new Error("fastcat: needs at least one child");
@@ -117,10 +126,6 @@ export const mul = (amount: number, child: Pat): Pat => ({ op: "mul", amount, ch
 export function every(n: number, f: (child: Pat) => Pat, child: Pat): Pat {
 	return { op: "every", n: positiveInt(n, "every"), child, transformed: f(child) };
 }
-
-export const tieNext = (child: Pat): Pat => ({ op: "tieNext", child });
-
-export const tiePrev = (child: Pat): Pat => ({ op: "tiePrev", child });
 
 export const mask = (bool: Pat, child: Pat): Pat => ({ op: "mask", bool, child });
 
