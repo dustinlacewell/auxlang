@@ -4,26 +4,37 @@
  * it, then wires the body's output back into the placeholder as a z-edge
  * (read one sample late). Returns the handle to the RESULT, so chaining and
  * `.out()` after loop tap the loop body output with the back-edge in place.
+ *
+ * `loop(init, f)` carries several wires as a record (patch/loop-record).
  */
 
-import type { GNode } from "../graph/node";
-import { getModule } from "../module/define";
 import { evalCtx } from "./context";
 import { wrap } from "./handle";
 import { type Handle, handleData, isHandle } from "./handle-data";
-import { refFromHandle } from "./lift";
+import { loopRecord } from "./loop-record";
+import { feedInto, feedbackPlaceholder } from "./loop-wire";
+import type { WireRecord } from "./wire-record";
 
-export function loop(f: (fed: Handle) => unknown): Handle {
+export function loop(f: (fed: Handle) => unknown): Handle;
+export function loop<K extends string>(
+	init: Readonly<Record<K, number>>,
+	f: (fed: Readonly<Record<K, Handle>>) => unknown,
+): WireRecord<K>;
+export function loop(first: unknown, second?: unknown): Handle | WireRecord<string> {
 	evalCtx("loop()");
-	const z1 = getModule("z1");
-	const placeholder: GNode = { module: "z1", inputs: {}, config: {} };
+	if (second !== undefined) return loopRecord(first, second);
+	return loopWire(first);
+}
 
+function loopWire(f: unknown): Handle {
+	if (typeof f !== "function") {
+		throw new Error("loop(f): f must be a function of the fed-back handle");
+	}
+	const placeholder = feedbackPlaceholder();
 	const result = f(wrap(placeholder));
 	if (!isHandle(result)) {
 		throw new Error("loop(f): f must return a handle (the loop body output to feed back)");
 	}
-
-	const { node, port } = refFromHandle(handleData(result), "loop(f) feedback");
-	placeholder.inputs[z1.defaultIn] = { z: { node, port } };
+	feedInto(placeholder, handleData(result), "loop(f) feedback");
 	return result;
 }

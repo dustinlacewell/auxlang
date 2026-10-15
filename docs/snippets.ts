@@ -88,6 +88,15 @@ loop((fb) =>
   exciter.add(fb.delay({ time: 0.006, feedback: 0, mix: 1 }).lpf({ cutoff: 98 }).mul(0.99)),
 ).gain(0.8).out()`,
 	},
+	// §6.1 feedback: several wires as a record, cross-coupled FM.
+	{
+		id: "manifesto-loop-record",
+		audible: true,
+		code: `loop({ a: 0, b: 0 }, (fb) => ({
+  a: sin(57).mod("pitch", fb.b, 12),
+  b: sin(64).mod("pitch", fb.a, 12),
+})).apply((v) => v.a.add(v.b).gain(0.2).out())`,
+	},
 	// §10 closing patch, real API: pads (packed poly) + acid line (feedback) +
 	// drums (euclid triggers, hat velocity stepped by a counter), stereo pan.
 	{

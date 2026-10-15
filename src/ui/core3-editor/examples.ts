@@ -66,6 +66,14 @@ loop((fb) =>
 ).mul(0.8).out()
 `;
 
+/** loop(init, f): two cross-coupled wires, each fed back one sample late. */
+const crossFm = `// loop() with a record: two sines frequency-modulate each other
+loop({ a: 0, b: 0 }, (fb) => ({
+  a: sin(57).mod("pitch", fb.b, lfo(0.1, 2, 14)),
+  b: sin(64).mod("pitch", fb.a, 12),
+})).apply((v) => v.a.add(v.b).gain(0.2).out())
+`;
+
 /** (e) Poly: a stacked chord pattern sequences all lanes at once. */
 const polyChords = `// polyphony: a [chord] widens the sequencer to one lane per voice
 tempo(90)
@@ -623,6 +631,7 @@ export const EXAMPLES: readonly Example[] = [
 	{ name: "patterns as values", source: patternsAsValues },
 	{ name: "pattern as signal", source: patternAsSignal },
 	{ name: "karplus pluck (loop)", source: karplus },
+	{ name: "cross FM (loop record)", source: crossFm },
 	{ name: "poly chords", source: polyChords },
 	{ name: "drums + counter", source: drums },
 	{ name: "seeded chance", source: seededChance },
