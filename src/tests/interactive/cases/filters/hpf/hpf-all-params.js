@@ -1,3 +1,3 @@
 // hpf - all params
 // Highpass with explicit cutoff and resonance
-saw({ freq: 110 }).hpf({ cutoff: 500, resonance: 0.3 }).out()
+saw(hz(110)).hpf({ cutoff: hz(500), res: 0.3 }).out()

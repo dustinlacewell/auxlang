@@ -3,21 +3,21 @@
 clock(60)
   .seq("c5 e5 g5 c6")
   .apply(s =>
-    sin(
+    sin(hz(
       s
-        .cv
+        .semis2hz()
         .add(
-          sin(s.cv.mult(2))
+          sin(s.add(12))
             .scale({
               from: -1,
               to: 1,
               min: -50,
-              max: 50}))).gain({
-        level: s
-          .gate
-          .adsr({
-            attack: 0.01,
-            decay: 0.3,
-            sustain: 0,
-            release: 0.2})})
+              max: 50}))))
+      .gain(s
+        .gate
+        .adsr({
+          attack: 0.01,
+          decay: 0.3,
+          sustain: 0,
+          release: 0.2}))
       .out())

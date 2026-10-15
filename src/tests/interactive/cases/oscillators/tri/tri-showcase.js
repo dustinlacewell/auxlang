@@ -3,8 +3,8 @@
 clock(60)
   .seq("[c4,e4,g4]")
   .apply(s =>
-    s.cv
+    s
       .tri()
-      .lpf({ cutoff: 800 })
-      .gain({ level: s.gate.adsr({ attack: 0.3, release: 0.5 }) })
+      .lpf(hz(800))
+      .gain(s.gate.adsr({ attack: 0.3, release: 0.5 }))
       .out())
