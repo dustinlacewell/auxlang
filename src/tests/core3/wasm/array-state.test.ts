@@ -83,8 +83,8 @@ function kinds(): Program {
 				n: 0,
 			}),
 			tick: (s, i, o) => {
-				const v =
-					(s.vals as Float64Array)[(s.n as number) % (s.vals as Float64Array).length] + i.in;
+				const vals = s.vals as Float64Array;
+				const v = (vals[(s.n as number) % vals.length] as number) + i.in;
 				const k = (s.n as number) % 3;
 				(s.f64 as Float64Array)[k] = v;
 				o.f64 = (s.f64 as Float64Array)[k] as number;
@@ -104,8 +104,13 @@ function kinds(): Program {
 				o.u8 = (s.u8 as Uint8Array)[k] as number;
 				o.ret = (s.u8c as Uint8ClampedArray)[k] = v;
 				o.u8c = (s.u8c as Uint8ClampedArray)[k] as number;
-				(s.f32 as Float32Array)[(k + 1) % 3] += v;
-				(s.i8 as Int8Array)[(k + 2) % 3]++;
+				const f32 = s.f32 as Float32Array;
+				const i8 = s.i8 as Int8Array;
+				const next = (k + 1) % 3;
+				f32[next] = (f32[next] as number) + v;
+				const last = (k + 2) % 3;
+				i8[last] = (i8[last] as number) + 1;
+				i8[last]++;
 				o.sum =
 					((s.f32 as Float32Array)[0] as number) +
 					((s.i8 as Int8Array)[1] as number) +
