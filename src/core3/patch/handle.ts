@@ -19,6 +19,7 @@ import { bindInput } from "./bind-input";
 import { buildNode } from "./build-node";
 import { connectWhole } from "./connect";
 import { currentSpecs, currentSubpatches } from "./context";
+import { defaultInOf } from "./default-in";
 import { HANDLE, type Handle, type HandleData } from "./handle-data";
 import { withModTerm } from "./mod-terms";
 import { newNode } from "./new-node";
@@ -81,12 +82,13 @@ export function wrap(node: GNode, port?: string, lane?: number): Handle {
 		},
 
 		apply(_t, _thisArg, args) {
+			const defaultIn = defaultInOf(spec);
 			if (args.length !== 1) {
 				throw new Error(
-					`${node.module}(...): calling a handle sets its default input '${spec.defaultIn}' and takes exactly one value`,
+					`${node.module}(...): calling a handle sets its default input '${defaultIn}' and takes exactly one value`,
 				);
 			}
-			return setInput(node, port, lane, spec, spec.defaultIn, args[0]);
+			return setInput(node, port, lane, spec, defaultIn, args[0]);
 		},
 	}) as unknown as Handle;
 }

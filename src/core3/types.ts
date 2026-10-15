@@ -95,7 +95,8 @@ export interface ModulePorts {
 	readonly config?: Record<string, unknown>;
 	/** Names (input or config) filled by positional factory args, in order. */
 	readonly positional?: readonly string[];
-	readonly defaultIn: string;
+	/** The chain target. Absent only on a sub-patch with no inputs, which nothing can chain into. */
+	readonly defaultIn?: string;
 	/**
 	 * The output a whole-module connection reads. Absent on a stereo module
 	 * (`pan`, MANIFESTO §5): it connects by name, and a single-port read of it
@@ -105,6 +106,7 @@ export interface ModulePorts {
 }
 
 export interface ModuleSpec extends ModulePorts {
+	readonly defaultIn: string;
 	/** "map" (default): tick per lane. "reduce": one tick sees all lanes, width collapses to 1. */
 	readonly policy?: "map" | "reduce";
 	/**

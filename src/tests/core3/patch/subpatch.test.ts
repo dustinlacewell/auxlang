@@ -69,6 +69,36 @@ describe("defmod({ patch }): definition", () => {
 	});
 });
 
+describe("defmod({ patch }): a sub-patch with no inputs", () => {
+	const drone = { name: "drone", ins: {}, outs: { out: sig() }, patch: () => ({ out: saw(40) }) };
+
+	it("is a self-contained source: called on its own, it builds its graph", () => {
+		const program = runProgram(() => {
+			defmod(drone as never)()
+				.mul(0.5)
+				.out();
+		});
+		expect(program.nodes.map((n) => n.module)).toContain("saw");
+	});
+
+	it("cannot be chained into, loudly", () => {
+		expect(() =>
+			runEval(() => {
+				defmod(drone as never);
+				saw(41).drone();
+			}),
+		).toThrow(/'drone' has no inputs, so nothing can be chained/);
+	});
+
+	it("still needs at least one output", () => {
+		expect(() =>
+			runEval(() => {
+				defmod({ ...drone, outs: {} } as never);
+			}),
+		).toThrow(/outs must be a record of at least 1 port/);
+	});
+});
+
 describe("defmod({ patch }): loud errors at compile", () => {
 	it("returned keys that differ from outs name both sets", () => {
 		expect(() =>

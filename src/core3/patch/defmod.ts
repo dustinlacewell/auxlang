@@ -148,6 +148,9 @@ function assertWellFormed(spec: WrittenSpec): void {
 	if (typeof spec.tick !== "function") {
 		throw new Error(`defmod('${spec.name}'): tick must be a function`);
 	}
+	if (typeof spec.defaultIn !== "string") {
+		throw new Error(`defmod('${spec.name}'): defaultIn is required (the chain target)`);
+	}
 	if (spec.state !== undefined && typeof spec.state !== "function") {
 		throw new Error(`defmod('${spec.name}'): state must be a function of sampleRate`);
 	}
