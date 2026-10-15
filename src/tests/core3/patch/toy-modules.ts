@@ -83,7 +83,6 @@ export function registerToyModules(): void {
 		ins: { in: sig(0), gain: unit(0.8) },
 		outs: { l: sig(), r: sig() },
 		defaultIn: "in",
-		defaultOut: "l",
 		policy: "reduce",
 		tick: noop,
 	});

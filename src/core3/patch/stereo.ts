@@ -9,13 +9,9 @@ import type { ModuleSpec } from "../types";
 
 export const STEREO_PORTS = ["l", "r"] as const;
 
-/**
- * A source is stereo when it outputs `l` and `r` and has no mono default
- * output: it declares none (`pan`), or its default is one of the pair.
- */
+/** A source is stereo when it outputs `l` and `r` and declares no default output (`pan`, `out`). */
 export function isStereoSource(spec: ModuleSpec): boolean {
-	if (!("l" in spec.outs && "r" in spec.outs)) return false;
-	return spec.defaultOut === undefined || STEREO_PORTS.includes(spec.defaultOut as "l" | "r");
+	return "l" in spec.outs && "r" in spec.outs && spec.defaultOut === undefined;
 }
 
 /** A destination takes stereo when it has both `l` and `r` inputs. */

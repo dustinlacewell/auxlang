@@ -21,6 +21,8 @@
  * −0.12 dB at 30 Hz, time constant ~32 ms — its pole derived from the sample
  * rate in state()) and a peak safety clip (transparent below −1 dBFS, the usual
  * true-peak ceiling; soft knee into ±1 above it).
+ *
+ * A stereo sink: outputs `l` and `r` and no default output (MANIFESTO §5).
  */
 
 /** True when `x` is a finite number (Inf - Inf and NaN - NaN are NaN). */
@@ -66,7 +68,6 @@ defmod({
 	ins: { in: optional(sig(null)), gain: unit(0.8), l: optional(sig(null)), r: optional(sig(null)) },
 	outs: { l: sig(), r: sig() },
 	defaultIn: "in",
-	defaultOut: "l",
 	state: (sr) => ({
 		dcxL: 0,
 		dcyL: 0,

@@ -246,8 +246,32 @@ describe("stereo routing pan → out", () => {
 		expect(Math.abs(rms(l) - rms(r))).toBeLessThan(rms(l) * 0.05); // auto-spread center
 	});
 
-	it("pan declares no default output (MANIFESTO §5)", () => {
+	it("pan and out declare no default output (MANIFESTO §5)", () => {
 		expect(getModule("pan").defaultOut).toBeUndefined();
+		expect(getModule("out").defaultOut).toBeUndefined();
+	});
+
+	it("a module with l/r outputs and a default output is a mono source, read by that port", () => {
+		const { l, r } = render(
+			runProgram(() => {
+				defmod({
+					name: "lean",
+					category: "utils",
+					ins: { in: sig(0) },
+					outs: { l: sig(), r: sig() },
+					defaultIn: "in",
+					defaultOut: "l",
+					tick: (_s, i, o) => {
+						o.l = i.in;
+						o.r = 0;
+					},
+				});
+				sin().lean().lpf(100).out();
+			}),
+			0.25,
+		);
+		expect(rms(l)).toBeGreaterThan(0.01);
+		expect(Math.abs(rms(l) - rms(r))).toBeLessThan(rms(l) * 0.05); // mono: auto-spread center
 	});
 
 	it("a module with no default output and no l/r pair is a loud error when read whole", () => {
