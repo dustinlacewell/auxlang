@@ -20,5 +20,5 @@ export function compileDriver(plan: DriverPlan): Driver {
 	const scope = new DriverScope();
 	const nodes = plan.runs.map((run, i) => emitCallNode(run, i, scope, LOCAL_SLOTS));
 	const body = emitBlockLoop(valueSlots(plan.runs), nodes, emitTapSums(plan.tapsL, plan.tapsR));
-	return scope.instantiate("", body.join("\n"));
+	return scope.instantiate({ shared: "", prelude: "", body: body.join("\n") });
 }

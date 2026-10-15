@@ -4,7 +4,7 @@
  * bridge ones), no other lane shares its state objects, and its tick and
  * helpers print (anything the printer refuses keeps the node at its call
  * site, with every scope binding the attempt made rolled back). Helpers
- * paste once per module into the driver's prelude.
+ * paste once per module into the driver's shared code (driver-scope.ts).
  */
 
 import { hashRandom } from "../../../random/hash-random";
@@ -23,7 +23,7 @@ import { sharedStates } from "./shared-states";
 
 export class Paster {
 	private readonly helpers = new Map<string, PastedHelpers | NotPasteable>();
-	private readonly prelude: string[] = [];
+	private readonly helperLines: string[] = [];
 	private readonly shared: ReadonlySet<object>;
 	private readonly env: PasteEnv;
 
@@ -51,9 +51,9 @@ export class Paster {
 		}
 	}
 
-	/** The pasted helper functions, for the driver's prelude. */
-	preludeSource(): string {
-		return this.prelude.join("\n");
+	/** The pasted helper functions. They use no bound value, so every driver instance shares them. */
+	helperSource(): string {
+		return this.helperLines.join("\n");
 	}
 
 	private tickOf(source: ModuleSource): PasteTick {
@@ -73,7 +73,7 @@ export class Paster {
 		if (pasted === undefined) {
 			try {
 				pasted = pasteHelpers(helpers, this.names, this.trees);
-				this.prelude.push(...pasted.lines);
+				this.helperLines.push(...pasted.lines);
 			} catch (err) {
 				if (!(err instanceof NotPasteable)) throw err;
 				pasted = err;

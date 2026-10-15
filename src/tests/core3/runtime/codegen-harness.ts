@@ -22,10 +22,23 @@ export interface Run {
 /** The interpreter: the reference, ticked one sample at a time. */
 export const INTERPRETER: EngineOptions = {};
 
-/** The generated drivers under test: phase 1 (call sites) and phase 2 (grouped, pasted). */
+/**
+ * The generated drivers under test: phase 1 (call sites), phase 2 (grouped,
+ * pasted), and tier-up switching from phase 1 to phase 2 mid-render. In the
+ * BLOCKS cycle its shadow runs slices 1, 2, 4, 2, 16, 32, 43 (100 samples)
+ * beside blocks 1 to 7 (from 0), and phase 2 takes over at sample 829.
+ */
 export const GENERATED: readonly { readonly label: string; readonly options: EngineOptions }[] = [
 	{ label: "phase 1", options: { codegen: true } },
 	{ label: "phase 2", options: { codegen: true, paste: true } },
+	{
+		label: "tier-up",
+		options: {
+			codegen: true,
+			tierUp: true,
+			tier: { startAfter: 1, fraction: 1 / 2, warmSamples: 100 },
+		},
+	},
 ];
 
 /** Block sizes generated drivers render in, cycled: the worklet quantum, odd sizes, and over BLOCK_MAX. */

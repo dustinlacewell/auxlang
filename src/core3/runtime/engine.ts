@@ -30,6 +30,7 @@ import { buildLaneStates } from "./initial-states";
 import type { NodeRun } from "./node-run";
 import { type OutputLayout, buildOutputLayout, slotOf } from "./output-slots";
 import { selectDriver } from "./select-driver";
+import { shadowCloner } from "./tier/shadow-clone";
 
 export type EngineOptions = DriverOptions;
 
@@ -104,6 +105,14 @@ export class Core3Engine implements Engine {
 				gathers: reduce ? compileReduceGathers(node, i, spec, this.layout) : null,
 			};
 		});
+
+		// Tier-up runs phase 2 on a shadow copy of these values; code optimized
+		// there fits them only if they are copies too (tier/shadow-clone.ts).
+		if (options.tierUp === true) {
+			const copy = shadowCloner();
+			this.bufs = copy(this.bufs) as ValueBuffers;
+			this.runs = copy(this.runs) as NodeRun[];
+		}
 
 		const tapsL = new Int32Array(program.outs.length);
 		const tapsR = new Int32Array(program.outs.length);

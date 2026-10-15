@@ -10,7 +10,7 @@
  */
 
 import type { Driver, DriverPlan } from "../driver";
-import { DriverScope } from "./driver-scope";
+import { DriverScope, type DriverSource } from "./driver-scope";
 import { BLOCK_MAX, blockSlots } from "./group/block-slots";
 import { emitGroup } from "./group/emit-group";
 import { emitGroupTaps } from "./group/emit-group-taps";
@@ -25,6 +25,24 @@ import { PASTE_BUDGET } from "./paste/paste-budget";
 import { Paster } from "./paste/paster";
 
 export function compileGrouped(plan: DriverPlan, budget = GROUP_BUDGET): Driver {
+	const { scope, source } = emitGrouped(plan, budget);
+	return scope.instantiate(source);
+}
+
+/** The grouped driver and a shadow twin over `shadowOf` its bound values (driver-scope.ts). */
+export function compileGroupedTwins(
+	plan: DriverPlan,
+	budget: number,
+	shadowOf: (value: unknown) => unknown,
+): { readonly real: Driver; readonly shadow: Driver } {
+	const { scope, source } = emitGrouped(plan, budget);
+	return scope.instantiateTwins(source, shadowOf);
+}
+
+function emitGrouped(
+	plan: DriverPlan,
+	budget: number,
+): { readonly scope: DriverScope; readonly source: DriverSource } {
 	const scope = new DriverScope();
 	const names = new NameTable();
 	const trees = new ParseCache();
@@ -46,12 +64,15 @@ export function compileGrouped(plan: DriverPlan, budget = GROUP_BUDGET): Driver 
 		emitGroup(groupNames[g] as string, members, pastedIn(members, costs), env),
 	);
 	const taps = names.fresh();
-	const prelude = [
-		env.paster.preludeSource(),
-		...functions,
-		...emitGroupTaps(taps, plan.tapsL, plan.tapsR, block, env.buffer),
-	];
-	return scope.instantiate(prelude.join("\n"), emitChunks(groupNames, taps).join("\n"));
+	const prelude = [...functions, ...emitGroupTaps(taps, plan.tapsL, plan.tapsR, block, env.buffer)];
+	return {
+		scope,
+		source: {
+			shared: env.paster.helperSource(),
+			prelude: prelude.join("\n"),
+			body: emitChunks(groupNames, taps).join("\n"),
+		},
+	};
 }
 
 /** The members that paste within V8's optimizable function size. */

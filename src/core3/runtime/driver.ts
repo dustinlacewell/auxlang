@@ -9,6 +9,7 @@
  */
 
 import type { NodeRun } from "./node-run";
+import type { TierConfig } from "./tier/tier-config";
 
 /** The engine's two value buffers. A driver may swap them (the per-sample flip). */
 export interface ValueBuffers {
@@ -25,8 +26,15 @@ export interface DriverOptions {
 	 * a call site in one function.
 	 */
 	readonly paste?: boolean;
-	/** With paste: the group size budget (codegen/group/group-budget.ts is the default). */
+	/** With paste or tierUp: the group size budget (codegen/group/group-budget.ts is the default). */
 	readonly groupBudget?: number;
+	/**
+	 * With codegen: start on phase 1, warm phase 2 on a shadow copy of the
+	 * state, then switch to it (tier/). Default off.
+	 */
+	readonly tierUp?: boolean;
+	/** With tierUp: the shadow slice and warm point (tier/tier-config.ts is the default). */
+	readonly tier?: TierConfig;
 }
 
 /** What a driver walks: the built node runs and the slots the out-nodes' l/r land in. */
