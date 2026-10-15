@@ -6,6 +6,7 @@
  */
 
 import type { GNode } from "../graph/node";
+import { defaultOutOf } from "../module/default-out";
 import { getModule } from "../module/define";
 import { type SpecTable, resolveSpec } from "../module/resolve";
 
@@ -28,5 +29,5 @@ function ambientPosition(clockNode: GNode | null, module: string, port: string) 
 			`${module} has no clock — set one with tempo(bpm) or connect '${port}' explicitly`,
 		);
 	}
-	return { node: clockNode, port: getModule(clockNode.module).defaultOut };
+	return { node: clockNode, port: defaultOutOf(getModule(clockNode.module), `${module}.${port}`) };
 }

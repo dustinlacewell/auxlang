@@ -7,6 +7,7 @@
 
 import { isGNode } from "../graph/input-kinds";
 import type { InputValue, NodeRef } from "../graph/node";
+import { defaultOutOf } from "../module/default-out";
 import { checkLambda } from "../module/tick-subset/check-lambda";
 import { isUnitTag } from "../units/tag";
 import { type HandleData, handleData, isHandle } from "./handle-data";
@@ -41,7 +42,7 @@ export function lift(value: unknown, where: string): InputValue {
 export function refFromHandle(data: HandleData, where: string): NodeRef {
 	const spec = resolvePatchModule(data.node.module);
 	if (data.port === undefined && isStereoSource(spec)) throw droppedChannelError(spec, where);
-	const port = data.port ?? spec.defaultOut;
+	const port = data.port ?? defaultOutOf(spec, where);
 	return { node: data.node, port, ...(data.lane !== undefined ? { lane: data.lane } : {}) };
 }
 

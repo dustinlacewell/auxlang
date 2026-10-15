@@ -42,7 +42,8 @@ interface DefmodBase<I extends Record<string, PortAnn>, O extends Record<string,
 	readonly config?: Cfg;
 	readonly positional?: readonly string[];
 	readonly defaultIn: keyof I & string;
-	readonly defaultOut: keyof O & string;
+	/** Omitted on a stereo module (outs `l`/`r`), which connects by name. */
+	readonly defaultOut?: keyof O & string;
 	readonly state?: (sampleRate: number) => St;
 	/** Named functions the tick may call, under the same rules as the tick. */
 	readonly helpers?: Readonly<Record<string, (...args: never[]) => unknown>>;

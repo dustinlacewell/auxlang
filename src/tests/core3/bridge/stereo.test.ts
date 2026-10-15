@@ -7,8 +7,10 @@
  * by name (l→l, r→r), and that any connection dropping a channel is a loud error.
  */
 
-import { factory, loop, out, runProgram, seq, tempo } from "@/core3/api";
+import { defmod, factory, loop, out, runProgram, seq, tempo } from "@/core3/api";
+import { getModule } from "@/core3/module/define";
 import { render } from "@/core3/runtime/render";
+import { sig } from "@/core3/types";
 import { describe, expect, it } from "vitest";
 import { rms } from "./helpers";
 
@@ -242,6 +244,29 @@ describe("stereo routing pan → out", () => {
 		);
 		expect(rms(l)).toBeGreaterThan(0.01);
 		expect(Math.abs(rms(l) - rms(r))).toBeLessThan(rms(l) * 0.05); // auto-spread center
+	});
+
+	it("pan declares no default output (MANIFESTO §5)", () => {
+		expect(getModule("pan").defaultOut).toBeUndefined();
+	});
+
+	it("a module with no default output and no l/r pair is a loud error when read whole", () => {
+		expect(() =>
+			runProgram(() => {
+				defmod({
+					name: "twin",
+					category: "utils",
+					ins: { in: sig(0) },
+					outs: { a: sig(), b: sig() },
+					defaultIn: "in",
+					tick: (_s, i, o) => {
+						o.a = i.in;
+						o.b = -i.in;
+					},
+				});
+				sin().mul(sin().twin()).out();
+			}),
+		).toThrow(/'twin' has no default output\. Tap one by name: \[a, b\]/);
 	});
 
 	it("out({ l, r }) object form works as a free function too", () => {

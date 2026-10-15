@@ -6,8 +6,8 @@
  *
  * Stereo module: chained or passed whole, it connects by name (`.out()` wires
  * l→l, r→r). Into a destination without an l/r pair it is a loud error, since
- * one input would drop a channel (patch/stereo.ts). `defaultOut` is set only
- * because the spec contract requires one; no connection reads it.
+ * one input would drop a channel (patch/stereo.ts). It declares no default
+ * output (MANIFESTO §5).
  */
 defmod({
 	name: "pan",
@@ -16,7 +16,6 @@ defmod({
 	ins: { in: sig(0), pos: sig(0) },
 	outs: { l: sig(), r: sig() },
 	defaultIn: "in",
-	defaultOut: "l",
 	positional: ["pos"],
 	tick: (_s, i, o) => {
 		const p = Math.max(-1, Math.min(1, i.pos));

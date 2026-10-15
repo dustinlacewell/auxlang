@@ -19,7 +19,7 @@ export function validateSpec(spec: ModuleSpec): void {
 	if (!(spec.defaultIn in spec.ins)) {
 		throw new Error(`module '${spec.name}': defaultIn '${spec.defaultIn}' is not an input`);
 	}
-	if (!(spec.defaultOut in spec.outs)) {
+	if (spec.defaultOut !== undefined && !(spec.defaultOut in spec.outs)) {
 		throw new Error(`module '${spec.name}': defaultOut '${spec.defaultOut}' is not an output`);
 	}
 	for (const p of spec.positional ?? []) {

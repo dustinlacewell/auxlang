@@ -89,7 +89,12 @@ export interface ModuleSpec {
 	/** Names (input or config) filled by positional factory args, in order. */
 	readonly positional?: readonly string[];
 	readonly defaultIn: string;
-	readonly defaultOut: string;
+	/**
+	 * The output a whole-module connection reads. Absent on a stereo module
+	 * (`pan`, MANIFESTO §5): it connects by name, and a single-port read of it
+	 * is a loud error.
+	 */
+	readonly defaultOut?: string;
 	/** "map" (default): tick per lane. "reduce": one tick sees all lanes, width collapses to 1. */
 	readonly policy?: "map" | "reduce";
 	/**
@@ -138,7 +143,7 @@ export interface SerializedModuleSpec {
 	readonly config?: Record<string, unknown>;
 	readonly positional?: readonly string[];
 	readonly defaultIn: string;
-	readonly defaultOut: string;
+	readonly defaultOut?: string;
 	readonly policy?: "map" | "reduce";
 	readonly state?: string;
 	readonly tick: string;

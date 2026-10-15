@@ -22,7 +22,7 @@ export function serializeSpec(spec: ModuleSpec): SerializedModuleSpec {
 		ins: spec.ins,
 		outs: spec.outs,
 		defaultIn: spec.defaultIn,
-		defaultOut: spec.defaultOut,
+		...(spec.defaultOut !== undefined ? { defaultOut: spec.defaultOut } : {}),
 		tick: spec.source.tick,
 		...(Object.keys(helpers).length > 0 ? { helpers } : {}),
 		...(spec.doc !== undefined ? { doc: spec.doc } : {}),

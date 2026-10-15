@@ -9,9 +9,9 @@ import { SR } from "./helpers";
 /** Reserved wrapper/handle words that must never be a port name. */
 const RESERVED_PORTS = ["apply", "lane", "id", "width", "mod"];
 
-/** Modules whose default output is legitimately NOT "out". */
-const NON_OUT_DEFAULTS: Record<string, string> = {
-	pan: "l",
+/** Modules whose default output is legitimately NOT "out" (undefined: none, a stereo module). */
+const NON_OUT_DEFAULTS: Record<string, string | undefined> = {
+	pan: undefined,
 	out: "l",
 };
 
@@ -43,7 +43,11 @@ describe.each(specs)("contract: %s", (name, spec) => {
 		expect(spec.ins).toHaveProperty(spec.defaultIn);
 	});
 
-	it("defaultOut ∈ outs", () => {
+	it("defaultOut ∈ outs, or absent on a stereo module (outs l and r)", () => {
+		if (spec.defaultOut === undefined) {
+			expect(Object.keys(spec.outs)).toEqual(expect.arrayContaining(["l", "r"]));
+			return;
+		}
 		expect(spec.outs).toHaveProperty(spec.defaultOut);
 	});
 
@@ -59,7 +63,7 @@ describe.each(specs)("contract: %s", (name, spec) => {
 	});
 
 	it("default output is 'out' unless whitelisted (clock/pan/out)", () => {
-		const expected = NON_OUT_DEFAULTS[name] ?? "out";
+		const expected = name in NON_OUT_DEFAULTS ? NON_OUT_DEFAULTS[name] : "out";
 		expect(spec.defaultOut).toBe(expected);
 	});
 
