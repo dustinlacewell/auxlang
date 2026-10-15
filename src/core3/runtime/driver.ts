@@ -20,10 +20,11 @@ export interface DriverOptions {
 	/** Run a generated per-program driver instead of the interpreter. Default off. */
 	readonly codegen?: boolean;
 	/**
-	 * With codegen: paste module ticks inline (default on). Off keeps every
-	 * node at a call site — phase 1's form, for benchmarks and bisecting.
+	 * With codegen: the size budget for pasting module ticks inline
+	 * (codegen/paste/paste-budget.ts is the default). 0 keeps every node at a
+	 * call site — phase 1's form, for benchmarks and bisecting.
 	 */
-	readonly paste?: boolean;
+	readonly pasteBudget?: number;
 }
 
 /** What a driver walks: the built node runs and the slots the out-nodes' l/r land in. */

@@ -12,11 +12,11 @@ import { interpretBlock } from "./interpret-block";
 export function selectDriver(
 	plan: DriverPlan,
 	options: DriverOptions,
-	compile: (plan: DriverPlan, paste: boolean) => Driver = compileDriver,
+	compile: (plan: DriverPlan, budget?: number) => Driver = compileDriver,
 ): Driver {
 	if (!(options.codegen ?? false)) return interpretBlock(plan);
 	try {
-		return compile(plan, options.paste ?? true);
+		return compile(plan, options.pasteBudget);
 	} catch (err) {
 		if (!(err instanceof EvalError)) throw err;
 		console.error(`[core3] codegen blocked, falling back to the interpreter: ${String(err)}`);

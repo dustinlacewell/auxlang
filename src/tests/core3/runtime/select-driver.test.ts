@@ -16,17 +16,17 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("selectDriver", () => {
 	it("codegen off never calls the compiler", () => {
-		const compile = vi.fn<(plan: DriverPlan, paste: boolean) => Driver>();
+		const compile = vi.fn<(plan: DriverPlan, budget?: number) => Driver>();
 		selectDriver(noPlan, { codegen: false }, compile);
 		expect(compile).not.toHaveBeenCalled();
 	});
 
-	it("codegen on returns the compiled driver, pasting unless told not to", () => {
+	it("codegen on returns the compiled driver, passing the paste budget through", () => {
 		const driver: Driver = () => {};
-		const compile = vi.fn((_plan: DriverPlan, _paste: boolean) => driver);
+		const compile = vi.fn((_plan: DriverPlan, _budget?: number) => driver);
 		expect(selectDriver(noPlan, { codegen: true }, compile)).toBe(driver);
-		selectDriver(noPlan, { codegen: true, paste: false }, compile);
-		expect(compile.mock.calls.map((c) => c[1])).toEqual([true, false]);
+		selectDriver(noPlan, { codegen: true, pasteBudget: 0 }, compile);
+		expect(compile.mock.calls.map((c) => c[1])).toEqual([undefined, 0]);
 	});
 
 	it("an EvalError (CSP) falls back to the interpreter and logs", () => {

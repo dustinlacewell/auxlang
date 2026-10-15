@@ -1,5 +1,5 @@
 /**
- * Decides, per node, whether its tick pastes, and pastes it. A node pastes
+ * Pastes a node the size budget chose (choose-pasted.ts). It pastes
  * when its module has checked source text (every module but the exempt
  * bridge ones), no other lane shares its state objects, and its tick and
  * helpers print (anything the printer refuses keeps the node at its call
@@ -16,19 +16,22 @@ import type { NodeCode } from "../node-code";
 import { type PasteEnv, type PasteTick, emitPastedNode } from "./emit-pasted-node";
 import { functionNames } from "./function-names";
 import { NotPasteable } from "./not-pasteable";
-import { ParseCache } from "./parse-cache";
+import type { ParseCache } from "./parse-cache";
 import { type PastedHelpers, pasteHelpers } from "./paste-helpers";
 import { sharedStates } from "./shared-states";
 
 export class Paster {
 	private readonly names = new NameTable();
-	private readonly trees = new ParseCache();
 	private readonly helpers = new Map<string, PastedHelpers | NotPasteable>();
 	private readonly prelude: string[] = [];
 	private readonly shared: ReadonlySet<object>;
 	private readonly env: PasteEnv;
 
-	constructor(runs: readonly NodeRun[], scope: DriverScope) {
+	constructor(
+		runs: readonly NodeRun[],
+		scope: DriverScope,
+		private readonly trees: ParseCache,
+	) {
 		this.shared = sharedStates(runs);
 		this.env = { names: this.names, scope, hashRandom: scope.bind(this.names.fresh(), hashRandom) };
 	}
