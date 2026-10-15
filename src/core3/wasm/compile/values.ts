@@ -14,7 +14,7 @@ export type Kind = "f64" | "bool" | "int";
 /** A value known while compiling: config strings, constants, typeof results. */
 export type StaticValue = number | string | boolean | undefined | null;
 
-/** A reducer's input lanes: an f32 view in linear memory, as the engine's Float32Array. */
+/** A reducer's input lanes: an f64 view in linear memory, as the engine's Float64Array. */
 export interface Lanes {
 	readonly addr: number;
 	readonly length: number;

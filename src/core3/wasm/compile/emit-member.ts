@@ -1,8 +1,8 @@
 /**
  * Field and index reads, and the places a write can go. A tick's state
  * fields, outputs and cache slots are locals; a helper's cache slots are in
- * memory at its hidden base; a reducer's lanes are an f32 view in memory,
- * read the way the engine's Float32Array reads them.
+ * memory at its hidden base; a reducer's lanes are an f64 view in memory,
+ * as the engine's Float64Array.
  */
 
 import type { AnyNode, MemberExpression } from "acorn";
@@ -99,16 +99,13 @@ function cacheTarget(e: FnEmitter, node: MemberExpression): Target | null {
 }
 
 /**
- * `lanes[i]`: the f32 lane promoted to f64. An index that is not an integer
+ * `lanes[i]`: the f64 lane. An index that is not an integer
  * in range reads `undefined`, which is NaN as a number.
  */
 function readLane(e: FnEmitter, lanes: Lanes, property: AnyNode): void {
 	const index = staticOf(e, property);
 	if (index !== null && typeof index.v === "number") {
-		e.code
-			.i32Const(0)
-			.loadF32(lanes.addr + 4 * index.v)
-			.op(OP.f64PromoteF32);
+		e.code.i32Const(0).loadF64(lanes.addr + 8 * index.v);
 		return;
 	}
 	const kind = emitExpr(e, property);
@@ -120,8 +117,8 @@ function readLane(e: FnEmitter, lanes: Lanes, property: AnyNode): void {
 	e.code.get(t).f64Const(lanes.length).op(OP.f64Lt).op(OP.i32And);
 	e.code.get(t).op(OP.f64Trunc).get(t).op(OP.f64Eq).op(OP.i32And);
 	e.enter(OP.if, "f64");
-	e.code.get(t).op(OP.i32TruncF64U).i32Const(2).op(OP.i32Shl);
-	e.code.loadF32(lanes.addr).op(OP.f64PromoteF32);
+	e.code.get(t).op(OP.i32TruncF64U).i32Const(3).op(OP.i32Shl);
+	e.code.loadF64(lanes.addr);
 	e.else();
 	e.code.f64Const(Number.NaN);
 	e.exit();

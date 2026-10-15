@@ -2,7 +2,7 @@
  * The render function: `render(n)` runs n samples of the whole program, the
  * same walk as the engine's drivers (runtime/interpret-block.ts). Per sample:
  * the late slots' flip, every node in program order (a map node's lanes each
- * tick and scatter their outputs; a reducer gathers its input lanes into f32
+ * tick and scatter their outputs; a reducer gathers its input lanes into f64
  * views first), then the out nodes' l/r sums into the f32 output blocks.
  * Mirrored values load before the sample loop and store after it.
  */
@@ -134,7 +134,7 @@ class NodeWalk {
 		});
 	}
 
-	/** A reducer's lane inputs into their f32 views, as the engine's gathers. */
+	/** A reducer's lane inputs into their f64 views, as the engine's gathers. */
 	private gather(i: number): void {
 		const run = this.input.runs[i] as NodeRun;
 		const views = this.input.memory.nodes[i]?.views ?? {};
@@ -148,8 +148,7 @@ class NodeWalk {
 				this.e.code
 					.i32Const(0)
 					.get(from)
-					.op(OP.f32DemoteF64)
-					.storeF32(view + 4 * l);
+					.storeF64(view + 8 * l);
 			}
 		}
 	}

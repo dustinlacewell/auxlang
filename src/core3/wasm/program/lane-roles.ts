@@ -3,7 +3,7 @@
  * function's locals: state fields and outputs are memory mirrors, inputs are
  * what the engine's bindings say (a constant, the value slot of an upstream
  * output this sample, or of any output last sample) and, for a reducer, the
- * f32 view its lanes are gathered into.
+ * f64 view its lanes are gathered into.
  */
 
 import type { AnyNode } from "acorn";

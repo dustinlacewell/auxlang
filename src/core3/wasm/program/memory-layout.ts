@@ -2,10 +2,10 @@
  * Linear memory for one program, fixed at eval from the shapes the engine
  * built (MANIFESTO §5.1): the two output blocks (f32), the value buffer
  * (f64 per slot, as the engine's `cur`), then per node its outputs record,
- * the f32 lane views its reducer inputs are gathered into, and per lane its
+ * the f64 lane views its reducer inputs are gathered into, and per lane its
  * numeric state fields, its math call cache and (seq) its event table.
- * Everything is f64 except the f32 outputs and views, which the JS engine
- * also holds as Float32Arrays.
+ * Everything is f64 except the f32 output blocks, which the JS engine also
+ * holds as Float32Arrays.
  */
 
 import type { NodeRun } from "../../runtime/node-run";
@@ -40,7 +40,7 @@ export interface LaneMemory {
 
 export interface NodeMemory {
 	readonly outs: Readonly<Record<string, number>>;
-	/** Reducer input port → its f32 view. */
+	/** Reducer input port → its f64 view. */
 	readonly views: Readonly<Record<string, number>>;
 	readonly lanes: readonly LaneMemory[];
 }
@@ -73,7 +73,7 @@ export function planMemory(
 		const outs = Object.fromEntries(run.outPorts.map((p) => [p, take(8)]));
 		const views: Record<string, number> = {};
 		for (const port of run.gathers?.ports ?? []) {
-			if (port.view !== null) views[port.name] = take(4 * port.srcLanes);
+			if (port.view !== null) views[port.name] = take(8 * port.srcLanes);
 		}
 		const slots = cacheSlots(sources[i] as ModuleSource);
 		const lanes = run.states.map((state) => ({
