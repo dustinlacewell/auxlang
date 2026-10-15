@@ -96,7 +96,7 @@ loop((fb) =>
 		code: `tempo(126)
 
 // pads: width-3 stack, packed lanes, pattern-modulated cutoff, panned wide
-const padP = p\`{c3,e3,g3} <{a2,c3,e3} {f2,a2,c3}>\`.slow(2)
+const padP = p\`[c3,e3,g3] <[a2,c3,e3] [f2,a2,c3]>\`.slow(2)
 const pad = seq(padP)
 pad.saw()
   .lpf({ cutoff: p\`67 <79 91>\`.slow(2), res: 0.2 })
@@ -179,7 +179,7 @@ seq(hook.rev().every(2, (q) => q.add(7)))
 		id: "guide-poly",
 		audible: true,
 		code: `tempo(90)
-const pad = seq("{c3,e3,g3}")
+const pad = seq("[c3,e3,g3]")
 pad.tri()
   .lpf({ cutoff: 89, res: 0.2 })
   .mul(pad.gate.adsr(0.02, 0.2, 0.7, 0.4))

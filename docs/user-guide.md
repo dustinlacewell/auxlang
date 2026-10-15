@@ -145,13 +145,14 @@ A pattern is either a mini-notation string passed to `seq("...")`, or a `` p`...
 | `c3 e3` | sequence (fastcat) |
 | `~` | rest |
 | `[a b]` | subdivide one step |
+| `[a, b]` | chord: stack (polyphony; widens) |
 | `<a b>` | alternate per cycle |
-| `{a,b}` | stack (polyphony; widens) |
-| `a*2` | repeat within a step |
+| `{a b c, d e}` | polymeter, steps from the first layer |
+| `a*2` / `a/2` | faster / slower within a step |
 | `a!2` | replicate (adds steps) |
-| `a@2` | hold / weight |
+| `a@2` | weight (timecat) |
 | `a _ b` | tie / legato |
-| `a?` / `a?.75` | maybe (degrade) |
+| `a?` / `a?0.7` | maybe: drop with chance 0.5 / 0.7 |
 | `a(3,8)` / `a(3,8,2)` | euclid (with rotation) |
 
 Notes are MIDI: `c4` = 60, `c3` = 48, accidentals `#` and `b`. Bare numbers are MIDI semitones.
@@ -162,7 +163,7 @@ Methods on a `P` value (from `` p`...` ``):
 
 `.fast(n)`, `.slow(n)`, `.rev()`, `.early(a)`, `.late(a)`, `.every(n, q => ...)`, `.iter(n)`, `.ply(n)`, `.euclid(k, steps, rot)`, `.degrade(p)`, `.add(semis)`, `.mul(f)`, `.off(amt, q => ...)`.
 
-Statics: `P.stack`, `P.cat`, `P.fastcat`.
+Statics: `P.stack`, `P.cat`, `P.fastcat`, `P.timecat([2, p], [1, q])`, `P.polymeter`.
 
 ### Splicing
 
@@ -218,11 +219,11 @@ Each drum module takes a trigger at its default input and fires on the pulse.
 
 ## 8. Polyphonic width
 
-A `{a,b,c}` stack widens the seq into one packed lane per voice. Chaining forwards per-lane — each lane becomes its own synth voice — and `out` mixes the lanes with `1/√n` scaling to keep level sane. Width is static: it is fixed at compile time.
+A `[a,b,c]` chord widens the seq into one packed lane per voice. Chaining forwards per-lane — each lane becomes its own synth voice — and `out` mixes the lanes with `1/√n` scaling to keep level sane. Width is static: it is fixed at compile time.
 
 ```js
 tempo(90)
-const pad = seq("{c3,e3,g3}")
+const pad = seq("[c3,e3,g3]")
 pad.tri()
   .lpf({ cutoff: 89, res: 0.2 })
   .mul(pad.gate.adsr(0.02, 0.2, 0.7, 0.4))

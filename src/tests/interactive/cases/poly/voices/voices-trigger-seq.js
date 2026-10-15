@@ -1,6 +1,6 @@
 // voices - trigger seq
 // Melody with root note triggering kick fill
-let s = clock(120).seq("{c3@4,[c4 e4 g4 e4]}")
+let s = clock(120).seq("[c3@4,[c4 e4 g4 e4]]")
 s.saw()
   .lpf(800)
   .gain({ level: s.gate.ar() })

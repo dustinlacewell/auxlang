@@ -1,7 +1,7 @@
 // nativeReverb - showcase
 // Ambient pad with lush reverb
 clock(40)
-  .seq("{c3,e3,g3} {d3,f3,a3}")
+  .seq("[c3,e3,g3] [d3,f3,a3]")
   .apply(s =>
     s.tri()
       .lpf(lfo(0.05, 400, 1200), 0.1)

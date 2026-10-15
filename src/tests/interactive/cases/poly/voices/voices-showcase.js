@@ -1,6 +1,6 @@
 // voices - showcase
 // Sub bass + pad + arp from single pattern
-let s = clock(100).seq("{c2,[c3 <[g3 g4] g3>],[c4 e4 g4 b4]}")
+let s = clock(100).seq("[c2,[c3 <[g3 g4] g3>],[c4 e4 g4 b4]]")
 
 s.voices[1].sin().gain(0.5).out()
 

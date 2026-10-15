@@ -67,10 +67,10 @@ loop((fb) =>
 `;
 
 /** (e) Poly: a stacked chord pattern sequences all lanes at once. */
-const polyChords = `// polyphony: a {stack} widens the sequencer to one lane per voice
+const polyChords = `// polyphony: a [chord] widens the sequencer to one lane per voice
 tempo(90)
 
-const pad = seq("{c3,e3,g3} <{a2,c3,e3} {f2,a2,c3}>")
+const pad = seq("[c3,e3,g3] <[a2,c3,e3] [f2,a2,c3]>")
 const amp = pad.gate.adsr(0.05, 0.1, 1, 0.3).slew(0.015, 0.015)
 pad.tri()
   .lpf({ cutoff: p\`74 <81 89>\`, res: 0.2 })
@@ -136,7 +136,7 @@ back.trig.clap({ decay: 0.22, tone: 0.55 })
   .out()
 
 // ---- dub stab on the and-of-2: Fm7 · Fm7 · Dbmaj7 · Eb9 ----
-const stabSeq = seq(p\`[~ [~ <{f2,ab2,c3,eb3} {f2,ab2,c3,eb3} {f2,ab2,c3,db3} {f2,g2,bb2,db3}>] ~ ~]\`)
+const stabSeq = seq(p\`[~ [~ <[f2,ab2,c3,eb3] [f2,ab2,c3,eb3] [f2,ab2,c3,db3] [f2,g2,bb2,db3]>] ~ ~]\`)
 const stab = stabSeq.saw()
   .bpf({ cutoff: lfo(0.045, 78, 88), res: 0.35 })
   .mul(stabSeq.gate.adsr(0.004, 0.16, 0, 0.1))
@@ -281,7 +281,7 @@ const eightBars = (q, turn) => p\`\${q} \${turn(q)}\`.slow(8)
 
 // ---- harmony: four chords climb, then their mirror image falls ----
 // Dm7 Em7 Fmaj7 G6 | Em7/D Dm7/C Cmaj7/B Dm7/A
-const chords = p\`{a3,c4,d4,f4} {g3,b3,d4,e4} {f3,a3,c4,e4} {g3,b3,d4,e4}\`
+const chords = p\`[a3,c4,d4,f4] [g3,b3,d4,e4] [f3,a3,c4,e4] [g3,b3,d4,e4]\`
 const pad = seq(eightBars(chords, (q) => mirror(q, D4)))
 pad.tri()
   .lpf(lfo(0.05, 71, 85), 0.1)
@@ -375,8 +375,8 @@ ground.tri()
 
 // strings, voiced so every voice moves by step:
 // Dm  A7/C#  Dm/C  G/B  Gm/Bb  A  Gm7  A7
-const strings = seq(p\`{a3,d4,f4} {g3,c#4,e4} {f3,d4,f4} {g3,d4,g4}
-  {g3,d4,g4} {a3,c#4,e4} {bb3,d4,f4} {a3,c#4,g4}\`.slow(8))
+const strings = seq(p\`[a3,d4,f4] [g3,c#4,e4] [f3,d4,f4] [g3,d4,g4]
+  [g3,d4,g4] [a3,c#4,e4] [bb3,d4,f4] [a3,c#4,g4]\`.slow(8))
 strings.tri()
   .lpf(hz(energy.mul(1600).add(400)))
   .mul(strings.gate.adsr(0.6, 0.5, 0.8, 1))
@@ -461,8 +461,8 @@ const swell = rise.mul(rise)
 const dive = slew({ in: sections(0, p\`0!7 [0 -12]\`, 0, 0), rise: 0.001, fall: 0.078 }) // last half bar: down an octave
 
 // ---- harmony: Fmaj9 G9 Em7 Am9 | Fmaj9 G9 Abmaj7 Bb6 | Cadd9 ----
-const chords = seq(p\`<{a3,c4,e4,g4} {b3,d4,f4,a4} {b3,d4,e4,g4} {b3,c4,e4,g4}
-  {a3,c4,e4,g4} {b3,d4,f4,a4} [{ab3,c4,eb4,g4} {bb3,d4,f4,g4}] {c4,d4,e4,g4}>\`)
+const chords = seq(p\`<[a3,c4,e4,g4] [b3,d4,f4,a4] [b3,d4,e4,g4] [b3,c4,e4,g4]
+  [a3,c4,e4,g4] [b3,d4,f4,a4] [[ab3,c4,eb4,g4] [bb3,d4,f4,g4]] [c4,d4,e4,g4]>\`)
 const bass = seq(p\`<f1 g1 e1 a1 f1 g1 [ab1 bb1] c2>\`)
 const groove = mask(1, p\`1!4 0!4\`, 1, 1) // the build drops clap and sub halfway
 

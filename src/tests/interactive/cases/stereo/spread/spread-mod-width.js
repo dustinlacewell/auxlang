@@ -1,7 +1,7 @@
 // spread - modulated width
 // Width sweeps narrow to wide
 clock(60)
-  .seq("{c4,e4,g4}")
+  .seq("[c4,e4,g4]")
   .apply(s =>
     s.saw()
       .lpf(1500)

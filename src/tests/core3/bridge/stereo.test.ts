@@ -93,7 +93,7 @@ describe("stereo routing pan → out", () => {
 		// right. The pan is width-3; out's l/r jacks gather all three lanes.
 		const program = runProgram(() => {
 			tempo(120);
-			const chord = seq("{c4,e4,g4}");
+			const chord = seq("[c4,e4,g4]");
 			const pos = chord.scale(-1, 1, 60, 67); // per-lane pitch → per-lane pos
 			chord
 				.tri()
@@ -112,7 +112,7 @@ describe("stereo routing pan → out", () => {
 		// is hard-left and lane 2 hard-right, tap the out node's channels.
 		const leftHeavy = runProgram(() => {
 			tempo(120);
-			const chord = seq("{c4,e4,g4}");
+			const chord = seq("[c4,e4,g4]");
 			// pos: lane0=-1, lane1=-1, lane2=-1 → all left. Compare against all-right.
 			chord
 				.tri()
@@ -121,7 +121,7 @@ describe("stereo routing pan → out", () => {
 		});
 		const rightHeavy = runProgram(() => {
 			tempo(120);
-			const chord = seq("{c4,e4,g4}");
+			const chord = seq("[c4,e4,g4]");
 			chord
 				.tri()
 				.pan(1)
@@ -149,7 +149,7 @@ describe("stereo routing pan → out", () => {
 			return rms(l) ** 2 + rms(r) ** 2;
 		};
 		const one = power("c4");
-		const four = power("{c4,e4,g4,b4}");
+		const four = power("[c4,e4,g4,b4]");
 		expect(one).toBeGreaterThan(1e-3);
 		expect(10 * Math.log10(four / one)).toBeCloseTo(0, 0); // within ±0.5 dB
 	});

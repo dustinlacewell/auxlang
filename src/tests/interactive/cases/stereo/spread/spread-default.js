@@ -1,7 +1,7 @@
 // spread - defaults
 // 3-voice chord spread L to R
 clock(60)
-  .seq("{c4,e4,g4}")
+  .seq("[c4,e4,g4]")
   .apply(s =>
     s.saw()
       .lpf(1500)

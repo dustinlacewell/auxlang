@@ -35,7 +35,7 @@ describe("seq width from structure", () => {
 
 	it("a chord that only appears in a later cycle widens the node", () => {
 		// 9th alternation is a 3-note stack; a fixed 8-cycle window would miss it.
-		expect(widthOf(p`<c4 c4 c4 c4 c4 c4 c4 c4 {c4,e4,g4}>`)).toBe(3);
+		expect(widthOf(p`<c4 c4 c4 c4 c4 c4 c4 c4 [c4,e4,g4]>`)).toBe(3);
 	});
 
 	it("a 3-note chord under slow(1.4) or slow(800) widens the node to 3", () => {
@@ -49,8 +49,8 @@ describe("seq width from structure", () => {
 	});
 
 	it("normal patterns are unaffected", () => {
-		expect(widthOf(p`{c4,e4,g4}`)).toBe(3);
+		expect(widthOf(p`[c4,e4,g4]`)).toBe(3);
 		expect(widthOf(p`c4 e4 g4`)).toBe(1);
-		expect(widthOf(p`{a4,b4} {c5,d5,e5}`)).toBe(3);
+		expect(widthOf(p`[a4,b4] [c5,d5,e5]`)).toBe(3);
 	});
 });

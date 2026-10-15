@@ -17,13 +17,14 @@ const NOTATION_ROWS = [
 	["c3 e3", "sequence"],
 	["~", "rest"],
 	["[a b]", "subdivide one step"],
+	["[a, b]", "chord (polyphony)"],
 	["<a b>", "alternate per cycle"],
-	["{a,b}", "stack (polyphony)"],
-	["a*2", "repeat within a step"],
+	["{a b c, d e}", "polymeter, steps from the first layer"],
+	["a*2 / a/2", "faster / slower within a step"],
 	["a!2", "replicate (adds steps)"],
-	["a@2", "hold across steps"],
+	["a@2", "weight (one longer step)"],
 	["a _ b", "tie / legato"],
-	["a? / a?.75", "maybe (seeded drop)"],
+	["a? / a?0.7", "maybe: seeded drop, chance 0.5 / 0.7"],
 	["a(3,8) / a(3,8,2)", "euclid, with rotation"],
 ] as const;
 
@@ -173,7 +174,7 @@ export function GuideApp() {
 
 			<Section title="Polyphony">
 				<P>
-					A <C>{"{c3,e3,g3}"}</C> stack widens the seq to three lanes. The whole chain runs per lane
+					A <C>{"[c3,e3,g3]"}</C> chord widens the seq to three lanes. The whole chain runs per lane
 					— one voice each — and <C>out</C> mixes them down.
 				</P>
 				{ex("polyphony")}

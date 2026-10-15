@@ -47,7 +47,7 @@ seq("~ 60 ~ 60").trig.snare().gain(0.7).out()
 seq("60*8").trig.hihat({ decay: 0.04 }).gain(0.4).out()`,
 
 	polyphony: `tempo(90)
-const pad = seq("{c3,e3,g3}")
+const pad = seq("[c3,e3,g3]")
 pad.tri()
   .lpf({ cutoff: 89, res: 0.2 })
   .mul(pad.gate.adsr(0.02, 0.2, 0.7, 0.4))

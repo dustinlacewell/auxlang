@@ -1,7 +1,7 @@
 // spread - all params
 // Narrow width - voices closer to center
 clock(60)
-  .seq("{c4,e4,g4}")
+  .seq("[c4,e4,g4]")
   .apply(s =>
     s.saw()
       .lpf(1500)

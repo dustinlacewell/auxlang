@@ -1,7 +1,7 @@
 // sum - showcase
 // Summed chord with delay
 clock(90)
-  .seq("{c3,e3,g3} {d3,f3,a3}")
+  .seq("[c3,e3,g3] [d3,f3,a3]")
   .apply(s =>
     s.saw()
       .lpf(800, 0.2)

@@ -24,7 +24,8 @@ export const SECTION_GROUPS: readonly {
 			{ name: "Rest" },
 			{ name: "[ Grouping ]" },
 			{ name: "< Alternation >" },
-			{ name: "{ Stacks }" },
+			{ name: "[ Chords, ]" },
+			{ name: "{ Polymeter }" },
 			{ name: "*fast" },
 			{ name: "!replicate" },
 			{ name: "@hold" },
@@ -157,14 +158,14 @@ s.tri()
   .out()`,
 	},
 
-	// -- { Stacks } ----------------------------------------------------------
+	// -- [ Chords, ] ---------------------------------------------------------
 	{
-		section: "{ Stacks }",
+		section: "[ Chords, ]",
 		title: "a chord",
 		description:
-			"Comma-stacks sound simultaneously — a three-voice C-major chord, packed into three poly lanes.",
+			"Commas inside brackets sound together — a three-voice C-major chord, packed into three poly lanes.",
 		code: `tempo(90)
-const s = seq("{c3,e3,g3}")
+const s = seq("[c3,e3,g3]")
 s.tri()
   .lpf({ cutoff: 89, res: 0.2 })
   .mul(s.gate.adsr(0.02, 0.2, 0.7, 0.4))
@@ -172,15 +173,29 @@ s.tri()
   .out()`,
 	},
 	{
-		section: "{ Stacks }",
+		section: "[ Chords, ]",
 		title: "alternating chords",
 		description:
-			"Each stacked step is a chord; alternation inside swaps the harmony every cycle — I chord, then IV.",
+			"Each bracketed step is a chord; alternation inside swaps the harmony every cycle — I chord, then IV.",
 		code: `tempo(90)
-const s = seq("{c3,e3,g3} <{f3,a3,c4} {g3,b3,d4}>")
+const s = seq("[c3,e3,g3] <[f3,a3,c4] [g3,b3,d4]>")
 s.tri()
   .lpf({ cutoff: 89, res: 0.2 })
   .mul(s.gate.adsr(0.02, 0.2, 0.7, 0.4))
+  .gain(0.22)
+  .out()`,
+	},
+
+	// -- { Polymeter } -------------------------------------------------------
+	{
+		section: "{ Polymeter }",
+		title: "three against two",
+		description:
+			"Layers play at the first layer's step rate: the two-note layer runs three steps per cycle, so it starts on a different note each cycle.",
+		code: `tempo(100)
+const s = seq("{c3 e3 g3, c4 d4}")
+s.tri()
+  .mul(s.gate.adsr(0.004, 0.1, 0.4, 0.1))
   .gain(0.22)
   .out()`,
 	},
@@ -304,11 +319,11 @@ s.tri()
 	},
 	{
 		section: "?probability",
-		title: "maybe (75%)",
+		title: "maybe (drop 25%)",
 		description:
-			"A probability suffix sets the keep-chance: c3?.75 survives most cycles, the run stays denser than plain ?.",
+			"A probability suffix sets the drop chance: c3?0.25 survives most cycles, the run stays denser than plain ?.",
 		code: `tempo(120)
-const s = seq("c3?.75 e3?.75 g3?.75 b3?.75")
+const s = seq("c3?0.25 e3?0.25 g3?0.25 b3?0.25")
 s.tri()
   .mul(s.gate.adsr(0.004, 0.08, 0.4, 0.1))
   .gain(0.3)

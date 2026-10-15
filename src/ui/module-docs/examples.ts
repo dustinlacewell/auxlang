@@ -857,9 +857,9 @@ sin()
 		section: "Utils",
 		title: "mix — poly lanes to mono",
 		description:
-			"A stacked chord {c,e,g} is three poly lanes; mix sums them to one lane with 1/√3 scaling — the chord, folded down without clipping.",
+			"A chord [c,e,g] is three poly lanes; mix sums them to one lane with 1/√3 scaling — the chord, folded down without clipping.",
 		code: `tempo(90)
-const s = seq("{c3,e3,g3}")
+const s = seq("[c3,e3,g3]")
 s.tri()
   .mix()
   .gain(0.3)
@@ -871,7 +871,7 @@ s.tri()
 		description:
 			"A five-note stack mixed to mono, then a resonant lowpass sweep — mix is the summing point that lets one filter shape a whole chord.",
 		code: `tempo(80)
-const s = seq("{c3,e3,g3,b3,d4}")
+const s = seq("[c3,e3,g3,b3,d4]")
 s.tri()
   .mix()
   .lpf(lfo(0.2, 67, 102), 0.5)
@@ -938,7 +938,7 @@ noise()
 		description:
 			"Poly lanes fan across the stereo field at constant power — a four-voice chord gets width with no pan in sight.",
 		code: `tempo(90)
-const s = seq("{c2,g2,e3,b3}")
+const s = seq("[c2,g2,e3,b3]")
 s.tri()
   .mul(s.gate.adsr(0.02, 0.1, 0.6, 0.2))
   .gain(0.5)

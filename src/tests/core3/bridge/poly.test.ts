@@ -20,16 +20,16 @@ function build(pattern: string) {
 }
 
 describe("seq poly", () => {
-	it("{c4,e4,g4} is width 3 with one chord tone per lane", () => {
-		const { program, seq: si } = build("{c4,e4,g4}");
+	it("[c4,e4,g4] is width 3 with one chord tone per lane", () => {
+		const { program, seq: si } = build("[c4,e4,g4]");
 		expect(program.nodes[si]?.width).toBe(3);
 		expect(renderTap(program, si, "out", 0, 100)[50]).toBe(60);
 		expect(renderTap(program, si, "out", 1, 100)[50]).toBe(64);
 		expect(renderTap(program, si, "out", 2, 100)[50]).toBe(67);
 	});
 
-	it("{a4,b4} {c5,d5,e5} packs into 3 lanes with no permanently-silent lane", () => {
-		const { program, seq: si } = build("{a4,b4} {c5,d5,e5}");
+	it("[a4,b4] [c5,d5,e5] packs into 3 lanes with no permanently-silent lane", () => {
+		const { program, seq: si } = build("[a4,b4] [c5,d5,e5]");
 		expect(program.nodes[si]?.width).toBe(3);
 		const half = CYCLE / 2;
 		// lanes 0/1 play through both halves: a4->c5, b4->d5

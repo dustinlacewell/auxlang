@@ -1,7 +1,7 @@
 // ar - showcase
 // Chord with slow attack, filter follows amplitude
 clock(45)
-  .seq("{c4,e4,g4} ~ ~ ~")
+  .seq("[c4,e4,g4] ~ ~ ~")
   .apply(s =>
     s.saw()
       .lpf(

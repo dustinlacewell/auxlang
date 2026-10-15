@@ -21,7 +21,7 @@ function build() {
 		tempo(126);
 
 		// --- pads: width-3 stack, packed lanes, pattern-modulated cutoff
-		const padP = p`{c3,e3,g3} <{a2,c3,e3} {f2,a2,c3}>`.slow(2);
+		const padP = p`[c3,e3,g3] <[a2,c3,e3] [f2,a2,c3]>`.slow(2);
 		const pad = seq(padP);
 		pad
 			.saw()
