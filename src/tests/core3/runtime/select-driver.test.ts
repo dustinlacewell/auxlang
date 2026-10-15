@@ -6,25 +6,24 @@
  */
 
 import { numLiteral } from "@/core3/runtime/codegen/js-literal";
-import type { Driver } from "@/core3/runtime/driver";
-import type { NodeRun } from "@/core3/runtime/node-run";
+import type { Driver, DriverPlan } from "@/core3/runtime/driver";
 import { selectDriver } from "@/core3/runtime/select-driver";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const noRuns: readonly NodeRun[] = [];
+const noPlan: DriverPlan = { runs: [], tapsL: new Int32Array(0), tapsR: new Int32Array(0) };
 
 afterEach(() => vi.restoreAllMocks());
 
 describe("selectDriver", () => {
 	it("codegen off never calls the compiler", () => {
-		const compile = vi.fn<(runs: readonly NodeRun[]) => Driver>();
-		selectDriver(noRuns, false, compile);
+		const compile = vi.fn<(plan: DriverPlan) => Driver>();
+		selectDriver(noPlan, false, compile);
 		expect(compile).not.toHaveBeenCalled();
 	});
 
 	it("codegen on returns the compiled driver", () => {
 		const driver: Driver = () => {};
-		expect(selectDriver(noRuns, true, () => driver)).toBe(driver);
+		expect(selectDriver(noPlan, true, () => driver)).toBe(driver);
 	});
 
 	it("an EvalError (CSP) falls back to the interpreter and logs", () => {
@@ -32,7 +31,7 @@ describe("selectDriver", () => {
 		const blocked = () => {
 			throw new EvalError("Refused to evaluate a string as JavaScript");
 		};
-		const driver = selectDriver(noRuns, true, blocked);
+		const driver = selectDriver(noPlan, true, blocked);
 		expect(typeof driver).toBe("function");
 		expect(log).toHaveBeenCalledOnce();
 		expect(String(log.mock.calls[0]?.[0])).toContain("falling back to the interpreter");
@@ -42,7 +41,7 @@ describe("selectDriver", () => {
 		const broken = () => {
 			throw new SyntaxError("generator bug");
 		};
-		expect(() => selectDriver(noRuns, true, broken)).toThrow("generator bug");
+		expect(() => selectDriver(noPlan, true, broken)).toThrow("generator bug");
 	});
 });
 

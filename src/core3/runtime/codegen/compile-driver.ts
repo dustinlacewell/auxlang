@@ -1,27 +1,33 @@
 /**
  * Codegen driver: unrolls the interpreter's node loop into one generated
- * function per program. Each (node, lane) becomes straight-line code —
- * gathers with baked slots, one static tick call site, a baked scatter — over
- * the SAME built runs the interpreter walks (states, ins/outs records,
- * bindings, gathers), so the two drivers share one source of semantics.
- * Only numbers and JSON-quoted keys are baked into the source; every object
- * is passed in through the driver's scope.
+ * block function per program. Each (node, lane) becomes straight-line code —
+ * gathers with baked slots, one static tick call site, a baked scatter —
+ * inside one loop over the block's samples, over the SAME built runs the
+ * interpreter walks (states, ins/outs records, bindings, gathers), so the two
+ * drivers share one source of semantics. Only numbers and JSON-quoted keys
+ * are baked into the source; every object is passed in through the driver's
+ * scope.
  */
 
 import type { LaneBindings } from "../bindings";
-import type { Driver } from "../driver";
+import type { Driver, DriverPlan } from "../driver";
 import type { ReduceGathers } from "../gathers";
 import type { NodeRun } from "../node-run";
 import { DriverScope } from "./driver-scope";
+import { emitBlockLoop } from "./emit-block-loop";
 import { emitLaneGathers } from "./emit-lane-gathers";
 import { emitReduceGathers } from "./emit-reduce-gathers";
 import { emitScatter } from "./emit-scatter";
+import { emitTapSums } from "./emit-tap-sums";
 import { type NodeNames, emitMapTickCall, emitReduceTickCall } from "./emit-tick-call";
 
-export function compileDriver(runs: readonly NodeRun[]): Driver {
+export function compileDriver(plan: DriverPlan): Driver {
 	const scope = new DriverScope();
-	const body = runs.flatMap((run, i) => emitNode(run, i, scope));
-	return scope.instantiate(body.join("\n"));
+	const sample = [
+		...plan.runs.flatMap((run, i) => emitNode(run, i, scope)),
+		...emitTapSums(plan.tapsL, plan.tapsR),
+	];
+	return scope.instantiate(emitBlockLoop(sample).join("\n"));
 }
 
 function emitNode(run: NodeRun, i: number, scope: DriverScope): string[] {

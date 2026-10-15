@@ -1,8 +1,10 @@
 /**
  * The codegen gate: for every site, module-docs, pattern-docs, and doc-snippet
  * example, the generated driver must reproduce the interpreter bit for bit —
- * every output sample, and every lane state after the render. Determinism is
- * a project invariant, so any divergence is a generator bug.
+ * every output sample, and every lane state after the render. The interpreter
+ * ticks per sample; the generated driver renders in uneven blocks, so state
+ * kept in locals must be stored back exactly at every block end. Determinism
+ * is a project invariant, so any divergence is a generator bug.
  */
 
 import "@/core3/modules/all";
@@ -31,36 +33,57 @@ interface Run {
 
 function run(program: Program, codegen: boolean): Run {
 	const registry = withProgramSpecs(getRegistry(), program);
-	return render(new Core3Engine(program, SR, registry, undefined, { codegen }), SAMPLES);
+	return render(new Core3Engine(program, SR, registry, undefined, { codegen }), SAMPLES, codegen);
+}
+
+interface SwapRun extends Run {
+	/** The state migrated at the swap. */
+	readonly swapState: EngineState;
 }
 
 /** Render `before` for 0.5 s, then swap to `after` with its migrated state for 0.5 s. */
-function swapRun(before: Program, after: Program, codegen: boolean): Run {
+function swapRun(before: Program, after: Program, codegen: boolean): SwapRun {
 	const half = SAMPLES / 2;
 	const first = new Core3Engine(before, SR, withProgramSpecs(getRegistry(), before), undefined, {
 		codegen,
 	});
-	const head = render(first, half);
+	const head = render(first, half, codegen);
 	const registry = withProgramSpecs(getRegistry(), after);
-	const second = new Core3Engine(after, SR, registry, first.collectState(), { codegen });
-	const tail = render(second, half);
+	const second = new Core3Engine(after, SR, registry, head.state, { codegen });
+	const tail = render(second, half, codegen);
 	const l = new Float32Array(SAMPLES);
 	const r = new Float32Array(SAMPLES);
 	l.set(head.l);
 	l.set(tail.l, half);
 	r.set(head.r);
 	r.set(tail.r, half);
-	return { l, r, state: tail.state };
+	return { l, r, state: tail.state, swapState: head.state };
 }
 
-function render(engine: Core3Engine, samples: number): Run {
+/**
+ * Block sizes the generated driver renders in, cycled: the worklet quantum
+ * plus odd sizes, so state stored back at block ends is crossed often and at
+ * uneven points.
+ */
+const BLOCKS = [128, 1, 77, 128, 3, 128, 64];
+
+/** The interpreter ticks one sample at a time (the reference); codegen renders in blocks. */
+function render(engine: Core3Engine, samples: number, codegen: boolean): Run {
 	const l = new Float32Array(samples);
 	const r = new Float32Array(samples);
-	const frame = new Float32Array(2);
-	for (let i = 0; i < samples; i++) {
-		engine.tick(frame);
-		l[i] = frame[0] as number;
-		r[i] = frame[1] as number;
+	if (!codegen) {
+		const frame = new Float32Array(2);
+		for (let i = 0; i < samples; i++) {
+			engine.tick(frame);
+			l[i] = frame[0] as number;
+			r[i] = frame[1] as number;
+		}
+		return { l, r, state: engine.collectState() };
+	}
+	for (let at = 0, b = 0; at < samples; b++) {
+		const n = Math.min(BLOCKS[b % BLOCKS.length] as number, samples - at);
+		engine.renderBlock(l, r, at, n);
+		at += n;
 	}
 	return { l, r, state: engine.collectState() };
 }
@@ -120,6 +143,7 @@ s.saw()
 		const gen = swapRun(before, after, true);
 		expect(firstBitDiff(ref.l, gen.l), "first differing left sample").toBe(-1);
 		expect(firstBitDiff(ref.r, gen.r), "first differing right sample").toBe(-1);
+		expect(gen.swapState).toEqual(ref.swapState);
 		expect(gen.state).toEqual(ref.state);
 		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.01);
 	});

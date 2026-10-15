@@ -1,13 +1,15 @@
 /**
- * The core3 engine: a per-sample walk over a compiled Program.
- * One engine, two hosts (offline renderer, AudioWorklet).
+ * The core3 engine: a per-sample walk over a compiled Program, run a block
+ * at a time. One engine, two hosts (offline renderer, AudioWorklet).
  *
  * Build allocates everything: lane states (fresh or migrated), the flat
  * double-buffered output values, reused ins/outs records, compiled input
  * bindings/gathers, hydrated lambdas — then picks the driver that walks them
- * (interpreter, or the generated driver when `codegen` is on). `tick` flips
- * the two buffers (no copy), runs the driver over nodes in program (topo)
- * order, and sums the out-nodes' l/r — it allocates nothing.
+ * (interpreter, or the generated driver when `codegen` is on). `renderBlock`
+ * runs the driver over n samples (per sample: flip the buffers, walk nodes in
+ * program (topo) order, sum the out-nodes' l/r); `tick` is a block of one.
+ * Neither allocates. State and buffers are exact at block boundaries, which
+ * is where `collectState` and swaps happen.
  */
 
 import type {
@@ -21,7 +23,7 @@ import type {
 } from "../types";
 import { compileLaneBindings } from "./bindings";
 import { deepClone } from "./deep-clone";
-import type { Driver } from "./driver";
+import type { Driver, ValueBuffers } from "./driver";
 import { type FeedbackRead, captureFeedback, feedbackReads, restoreFeedback } from "./feedback";
 import { compileReduceGathers } from "./gathers";
 import { buildLaneStates } from "./initial-states";
@@ -40,10 +42,9 @@ export class Core3Engine implements Engine {
 	private readonly identities: readonly KeyedIdentity[];
 	private readonly feedback: readonly FeedbackRead[];
 	private readonly sr: number;
-	private cur: Float64Array;
-	private prv: Float64Array;
-	private readonly outSlotsL: Int32Array;
-	private readonly outSlotsR: Int32Array;
+	private readonly bufs: ValueBuffers;
+	private readonly oneL = new Float32Array(1);
+	private readonly oneR = new Float32Array(1);
 	private count: number;
 	readonly layout: OutputLayout;
 
@@ -57,14 +58,16 @@ export class Core3Engine implements Engine {
 		this.sr = sampleRate;
 		this.count = prev?.sampleCount ?? 0;
 		this.layout = buildOutputLayout(program.nodes, registry);
-		this.cur = new Float64Array(this.layout.size);
-		this.prv = new Float64Array(this.layout.size);
+		this.bufs = {
+			cur: new Float64Array(this.layout.size),
+			prv: new Float64Array(this.layout.size),
+		};
 
 		const specs = program.nodes.map((n) => registry.get(n.module) as ModuleSpec);
 		const laneStates = buildLaneStates(program.nodes, specs, sampleRate, program.seed, prev);
 		this.identities = laneStates.identities;
 		this.feedback = feedbackReads(program.nodes);
-		restoreFeedback(this.feedback, laneStates.paired, this.layout, sampleRate, prev, this.cur);
+		restoreFeedback(this.feedback, laneStates.paired, this.layout, sampleRate, prev, this.bufs.cur);
 
 		this.runs = program.nodes.map((node, i) => {
 			const spec = specs[i] as ModuleSpec;
@@ -104,38 +107,30 @@ export class Core3Engine implements Engine {
 			};
 		});
 
-		this.outSlotsL = new Int32Array(program.outs.length);
-		this.outSlotsR = new Int32Array(program.outs.length);
+		const tapsL = new Int32Array(program.outs.length);
+		const tapsR = new Int32Array(program.outs.length);
 		program.outs.forEach((nodeIndex, j) => {
-			this.outSlotsL[j] = slotOf(this.layout, nodeIndex, "l", 0);
-			this.outSlotsR[j] = slotOf(this.layout, nodeIndex, "r", 0);
+			tapsL[j] = slotOf(this.layout, nodeIndex, "l", 0);
+			tapsR[j] = slotOf(this.layout, nodeIndex, "r", 0);
 		});
 
-		this.driver = selectDriver(this.runs, options.codegen ?? false);
+		this.driver = selectDriver({ runs: this.runs, tapsL, tapsR }, options.codegen ?? false);
 	}
 
 	get sampleCount(): number {
 		return this.count;
 	}
 
-	tick(out: Float32Array): void {
-		const flip = this.prv;
-		this.prv = this.cur;
-		this.cur = flip;
-		const cur = this.cur;
-		this.driver(cur, this.prv, this.sr, this.count / this.sr);
+	/** Advance `n` samples; write l/r into `outL`/`outR` from `offset`. */
+	renderBlock(outL: Float32Array, outR: Float32Array, offset: number, n: number): void {
+		this.driver(this.bufs, outL, outR, offset, n, this.count, this.sr);
+		this.count += n;
+	}
 
-		let sumL = 0;
-		let sumR = 0;
-		const sl = this.outSlotsL;
-		const srr = this.outSlotsR;
-		for (let j = 0; j < sl.length; j++) {
-			sumL += cur[sl[j] as number] as number;
-			sumR += cur[srr[j] as number] as number;
-		}
-		out[0] = sumL;
-		out[1] = sumR;
-		this.count++;
+	tick(out: Float32Array): void {
+		this.renderBlock(this.oneL, this.oneR, 0, 1);
+		out[0] = this.oneL[0] as number;
+		out[1] = this.oneR[0] as number;
 	}
 
 	/** Lane states to carry, minus each lane's scratch (derived data, never carried). */
@@ -145,7 +140,7 @@ export class Core3Engine implements Engine {
 			const key = (this.identities[i] as KeyedIdentity).key;
 			nodes[key] = r.states.map(({ __scratch: _scratch, ...carried }) => deepClone(carried));
 		});
-		const feedback = captureFeedback(this.feedback, this.identities, this.layout, this.cur);
+		const feedback = captureFeedback(this.feedback, this.identities, this.layout, this.bufs.cur);
 		return {
 			nodes,
 			identities: this.identities,
@@ -157,7 +152,7 @@ export class Core3Engine implements Engine {
 
 	/** Read a node's output for the sample just ticked. Test/tap hook, not part of the Engine contract. */
 	peek(node: number, port: string, lane: number): number {
-		return this.cur[slotOf(this.layout, node, port, lane)] as number;
+		return this.bufs.cur[slotOf(this.layout, node, port, lane)] as number;
 	}
 }
 

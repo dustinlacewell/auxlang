@@ -26,9 +26,10 @@ export class DriverScope {
 		return name;
 	}
 
-	/** Compile `body` as the driver `(cur, prv, sr, time) => void` over the bound values. */
+	/** Compile `body` as the block driver (driver.ts's `Driver`) over the bound values. */
 	instantiate(body: string): Driver {
-		const source = `"use strict";\nreturn function driver(cur, prv, sr, time) {\n${body}\n};`;
+		const params = "bufs, outL, outR, offset, n, count, sr";
+		const source = `"use strict";\nreturn function driver(${params}) {\n${body}\n};`;
 		const outer = new Function(...this.names, source) as (...values: unknown[]) => Driver;
 		return outer(...this.values);
 	}

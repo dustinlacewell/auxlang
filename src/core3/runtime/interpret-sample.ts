@@ -1,18 +1,21 @@
 /**
- * The reference driver: an interpreted per-sample walk over the built runs.
- * Every node ticks from the same call site, dispatching on binding/gather
- * kinds per port. The generated driver (codegen/compile-driver) must match
- * this bit for bit; it is also the fallback when codegen is unavailable.
+ * The reference node walk for one sample: an interpreted pass over the built
+ * runs. Every node ticks from the same call site, dispatching on
+ * binding/gather kinds per port. The generated driver (codegen/compile-driver)
+ * must match this bit for bit; interpret-block.ts turns it into the fallback
+ * driver.
  */
 
 import type { ReduceTickFn, TickFn } from "../types";
 import { BIND_CONST, BIND_CUR, BIND_LAMBDA, type LaneBindings } from "./bindings";
-import type { Driver } from "./driver";
 import { GATHER_CONST, GATHER_CUR, GATHER_LAMBDA, type ReduceGathers } from "./gathers";
 import type { LambdaSlot } from "./lambda";
 import type { NodeRun } from "./node-run";
 
-export function interpretSample(runs: readonly NodeRun[]): Driver {
+/** One sample of node work over the flipped buffers, at lambda time `time`. */
+export type SampleWalk = (cur: Float64Array, prv: Float64Array, sr: number, time: number) => void;
+
+export function interpretSample(runs: readonly NodeRun[]): SampleWalk {
 	return (cur, prv, sr, time) => {
 		for (let i = 0; i < runs.length; i++) {
 			const r = runs[i] as NodeRun;

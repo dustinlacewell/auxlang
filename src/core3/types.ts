@@ -234,6 +234,8 @@ export interface EngineState {
 export interface Engine {
 	/** Advance one sample; write [l, r] into out. Allocates nothing. */
 	tick(out: Float32Array): void;
+	/** Advance `n` samples; write l/r into outL/outR from `offset`. Allocates nothing. */
+	renderBlock(outL: Float32Array, outR: Float32Array, offset: number, n: number): void;
 	collectState(): EngineState;
 	readonly sampleCount: number;
 }

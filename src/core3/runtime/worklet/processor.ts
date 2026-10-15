@@ -44,8 +44,12 @@ class Core3Processor extends AudioWorkletProcessor {
 	private fading: Core3Engine | null = null;
 	private fadePos = 0;
 	private readonly fadeLen = Math.max(1, Math.floor((CROSSFADE_MS / 1000) * sampleRate));
-	private readonly frame = new Float32Array(2);
-	private readonly fadeFrame = new Float32Array(2);
+	// Block buffers for the live and fading engines, sized to the render
+	// quantum (128); regrown only if a host hands a longer quantum.
+	private liveL = new Float32Array(128);
+	private liveR = new Float32Array(128);
+	private fadeL = new Float32Array(128);
+	private fadeR = new Float32Array(128);
 	// Opt-in render-quantum instrumentation; null until a "perf" message enables
 	// it, so the hot path pays nothing by default.
 	private meter: QuantumMeter | null = null;
@@ -118,28 +122,32 @@ class Core3Processor extends AudioWorkletProcessor {
 		const meter = this.meter;
 		if (PERF && meter !== null) meter.mark(currentFrame);
 
-		for (let i = 0; i < ch0.length; i++) {
+		const n = ch0.length;
+		this.ensureBlock(n);
+		const engine = this.engine;
+		if (engine !== null) engine.renderBlock(this.liveL, this.liveR, 0, n);
+		// The fade renders only the samples it still has; it ends mid-block.
+		const fading = this.fading;
+		const fadeCount = fading === null ? 0 : Math.min(n, this.fadeLen - this.fadePos);
+		if (fading !== null) fading.renderBlock(this.fadeL, this.fadeR, 0, fadeCount);
+
+		for (let i = 0; i < n; i++) {
 			let l = 0;
 			let r = 0;
-			const engine = this.engine;
 			if (engine !== null) {
-				engine.tick(this.frame);
-				l = this.frame[0] as number;
-				r = this.frame[1] as number;
+				l = this.liveL[i] as number;
+				r = this.liveR[i] as number;
 			}
 			// The fade runs with or without a successor engine: crossfade on
 			// swap (engine set), fade to silence on stop (engine null — the
 			// gNew ramp scales the zero frame, leaving just the fade-out).
-			const fading = this.fading;
-			if (fading !== null) {
-				fading.tick(this.fadeFrame);
+			if (i < fadeCount) {
 				const t = this.fadePos / this.fadeLen;
 				const gNew = Math.sin(t * HALF_PI);
 				const gOld = Math.cos(t * HALF_PI);
-				l = l * gNew + (this.fadeFrame[0] as number) * gOld;
-				r = r * gNew + (this.fadeFrame[1] as number) * gOld;
+				l = l * gNew + (this.fadeL[i] as number) * gOld;
+				r = r * gNew + (this.fadeR[i] as number) * gOld;
 				this.fadePos++;
-				if (this.fadePos >= this.fadeLen) this.fading = null;
 			}
 			if (ch1 !== null) {
 				ch0[i] = l;
@@ -148,6 +156,7 @@ class Core3Processor extends AudioWorkletProcessor {
 				ch0[i] = 0.5 * (l + r);
 			}
 		}
+		if (fading !== null && this.fadePos >= this.fadeLen) this.fading = null;
 
 		if (PERF && meter !== null) {
 			const report = meter.measure(this.meterWarm);
@@ -155,6 +164,14 @@ class Core3Processor extends AudioWorkletProcessor {
 			if (report !== null) this.port.postMessage(report);
 		}
 		return true;
+	}
+
+	private ensureBlock(n: number): void {
+		if (this.liveL.length >= n) return;
+		this.liveL = new Float32Array(n);
+		this.liveR = new Float32Array(n);
+		this.fadeL = new Float32Array(n);
+		this.fadeR = new Float32Array(n);
 	}
 }
 

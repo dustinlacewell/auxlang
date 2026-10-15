@@ -1,13 +1,17 @@
 /**
  * Offline renderer: the headless host for the engine. `render` runs a Program
- * for a duration and returns the stereo result; `renderTap` captures one
- * node output per sample for tests. All allocation happens before the loop.
+ * for a duration in worklet-sized blocks and returns the stereo result;
+ * `renderTap` captures one node output per sample for tests. All allocation
+ * happens before the loop.
  */
 
 import { getRegistry } from "../module/define";
 import type { Program, Registry } from "../types";
 import { Core3Engine, type EngineOptions } from "./engine";
 import { withProgramSpecs } from "./hydrate-specs";
+
+/** Samples per engine block: the AudioWorklet render quantum. */
+const BLOCK = 128;
 
 export interface StereoBuffers {
 	readonly l: Float32Array;
@@ -31,11 +35,8 @@ export function render(
 	);
 	const l = new Float32Array(samples);
 	const r = new Float32Array(samples);
-	const frame = new Float32Array(2);
-	for (let i = 0; i < samples; i++) {
-		engine.tick(frame);
-		l[i] = frame[0] as number;
-		r[i] = frame[1] as number;
+	for (let at = 0; at < samples; at += BLOCK) {
+		engine.renderBlock(l, r, at, Math.min(BLOCK, samples - at));
 	}
 	return { l, r };
 }
