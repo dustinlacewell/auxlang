@@ -12,7 +12,7 @@ import { BIND_CUR } from "../../runtime/bindings";
 import { GATHER_CUR } from "../../runtime/gathers";
 import type { NodeRun } from "../../runtime/node-run";
 import type { ModuleSource } from "../../types";
-import { seqIntrinsics } from "../bridge/seq-intrinsics";
+import { tableIntrinsics } from "../bridge/table-intrinsics";
 import { FnEmitter } from "../compile/fn-emitter";
 import type { Functions } from "../compile/functions";
 import { type HelperSet, helperSet } from "../compile/helper-set";
@@ -118,7 +118,7 @@ class NodeWalk {
 				address: laneMemory.cache,
 			},
 			intrinsics:
-				laneMemory.table === null ? null : seqIntrinsics(laneMemory.table, i, lane, input.fill),
+				laneMemory.table === null ? null : tableIntrinsics(laneMemory.table, i, lane, input.fill),
 			sampleRate: input.sampleRate,
 			width: run.gathers?.width ?? 1,
 		});

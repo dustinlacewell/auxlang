@@ -1,12 +1,14 @@
 /**
  * No runtime strings. A string literal may appear only where it is compared
- * (`cfg.mode === "lp"`, a `case "lp":`) or as a `hashRandom` key (it folds
- * to a number when bound). `typeof` may appear only inside a comparison.
+ * (`cfg.mode === "lp"`, a `case "lp":`), as a `hashRandom` key (it folds
+ * to a number when bound), or naming a table row field
+ * (`__tableRow("end", row)`). `typeof` may appear only inside a comparison.
  * `delete`, `in` and `instanceof` reshape or probe objects and are not
  * allowed.
  */
 
 import type { AnyNode, BinaryExpression, Literal, UnaryExpression } from "acorn";
+import { isRowFieldLiteral } from "./check-table-call";
 import type { SubsetContext } from "./subset-context";
 
 const EQUALITY = new Set(["===", "!==", "==", "!="]);
@@ -20,6 +22,7 @@ export function checkStringLiteral(
 	if (typeof node.value !== "string") return;
 	if (isComparison(parent) || isHashKey(parent, key)) return;
 	if (parent?.type === "SwitchCase" && key === "test") return;
+	if (isRowFieldLiteral(node, parent)) return;
 	if (parent?.type === "ExpressionStatement" && "directive" in parent) return;
 	ctx.fail(node, "string values may appear only in comparisons — runtime strings are not allowed");
 }

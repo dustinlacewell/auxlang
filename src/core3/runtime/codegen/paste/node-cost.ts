@@ -7,6 +7,8 @@
  * source text, lane count and ports.
  */
 
+import type { AnyNode } from "acorn";
+import { TABLE_INTRINSICS } from "../../../module/tick-subset/table-intrinsics";
 import { walk } from "../../../module/tick-subset/walk";
 import type { NodeRun } from "../../node-run";
 import type { ParseCache } from "./parse-cache";
@@ -28,7 +30,7 @@ const BYTES_PER_CALL_PORT = 4;
 const BYTES_PER_PASTED_LANE = 24;
 
 export interface NodeCost {
-	/** Null when the node cannot paste (no checked source). */
+	/** Null when the node cannot paste (no checked source, or a tick that reads its event table). */
 	readonly pasted: number | null;
 	readonly call: number;
 }
@@ -57,8 +59,19 @@ function treeSize(trees: ParseCache, src: string): number | null {
 		return null;
 	}
 	let count = 0;
-	walk(fn.body, () => {
+	let readsTable = false;
+	walk(fn.body, (node) => {
 		count++;
+		if (isTableCall(node)) readsTable = true;
 	});
-	return count;
+	return readsTable ? null : count;
+}
+
+/** The printer does not paste the table intrinsics, so such a tick keeps its call site. */
+function isTableCall(node: AnyNode): boolean {
+	return (
+		node.type === "CallExpression" &&
+		node.callee.type === "Identifier" &&
+		TABLE_INTRINSICS.has(node.callee.name)
+	);
 }

@@ -50,6 +50,8 @@ interface DefmodBase<I extends Record<string, PortAnn>, O extends Record<string,
 	/** Omitted on a stereo module (outs `l`/`r`), which connects by name. */
 	readonly defaultOut?: keyof O & string;
 	readonly state?: (sampleRate: number) => St;
+	/** "pattern": the tick reads `config.pattern` with the table intrinsics (module/tick-subset/table-intrinsics.ts). */
+	readonly reads?: "pattern";
 	/** Named functions the tick may call, under the same rules as the tick. */
 	readonly helpers?: Readonly<Record<string, (...args: never[]) => unknown>>;
 }
@@ -150,6 +152,9 @@ function assertWellFormed(spec: WrittenSpec): void {
 	}
 	if (typeof spec.defaultIn !== "string") {
 		throw new Error(`defmod('${spec.name}'): defaultIn is required (the chain target)`);
+	}
+	if (spec.reads !== undefined && spec.reads !== "pattern") {
+		throw new Error(`defmod('${spec.name}'): reads must be "pattern" or absent`);
 	}
 	if (spec.state !== undefined && typeof spec.state !== "function") {
 		throw new Error(`defmod('${spec.name}'): state must be a function of sampleRate`);

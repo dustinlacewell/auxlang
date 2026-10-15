@@ -11,7 +11,7 @@ import type { ReduceGathers } from "./gathers";
 
 export interface NodeRun {
 	readonly tick: TickFn | ReduceTickFn;
-	/** The module's checked tick and helper text; absent for exempt modules. The generated driver pastes it. */
+	/** The module's checked tick and helper text; absent for a hand-built test spec. The generated driver pastes it. */
 	readonly source: ModuleSource | undefined;
 	readonly config: Record<string, unknown>;
 	readonly laneCount: number;

@@ -1,21 +1,14 @@
 /**
- * read-step: gate, trig, and slide on plain numbers. trig fires on entering a
- * different note (ties belong to their note; rests forget the note; a slide
- * entered from the note it slides from is quiet); the
- * unclocked dip runs from a trig into a high gate; the clocked dip is the
- * window before a marked row ends.
+ * seq's read-step helpers (modules/lib/timing/seq.js): gate, trig, and slide
+ * on plain numbers. trig fires on entering a different note (ties belong to
+ * their note; rests forget the note; a slide entered from the note it slides
+ * from is quiet); the unclocked dip runs from a trig into a high gate; the
+ * clocked dip is the window before a marked row ends. The helpers are built
+ * from the registered source text, the text both backends run.
  */
 
-import {
-	dipBeatsAt,
-	dipLeftAfter,
-	dipSamplesAt,
-	gateOf,
-	heldNoteId,
-	inDipWindow,
-	slideOf,
-	trigOf,
-} from "@/core3/bridge/read-step";
+import "@/core3/modules/all";
+import { getModule } from "@/core3/module/define";
 import {
 	KIND_NOTE,
 	KIND_REST,
@@ -24,6 +17,34 @@ import {
 	NO_NOTE,
 } from "@/core3/pattern/table/event-table";
 import { describe, expect, it } from "vitest";
+
+type Helper = (...args: number[]) => number;
+
+function helper(name: string): Helper {
+	const text = getModule("seq").source?.helpers[name];
+	if (text === undefined) throw new Error(`seq has no helper '${name}'`);
+	return new Function(`"use strict"; return (${text});`)() as Helper;
+}
+
+const trigOf = helper("trigOf");
+const slideOf = helper("slideOf");
+const heldNoteId = helper("heldNoteId");
+const dipLeftAfter = helper("dipLeftAfter");
+const inDipWindow = helper("inDipWindow");
+const gateOf = helper("gateOf");
+const dipSamplesAt = helper("dipSamplesAt");
+const dipBeatsAt = helper("dipBeatsAt");
+
+describe("heldNoteId", () => {
+	it("is NO_NOTE inside a rest, the row's note otherwise", () => {
+		expect(Object.is(heldNoteId(KIND_REST, 0.5), NO_NOTE)).toBe(true);
+		expect(heldNoteId(KIND_TIE, 0.5)).toBe(0.5);
+	});
+
+	it("starts as NO_NOTE in a fresh lane", () => {
+		expect(Object.is(getModule("seq").state?.(48000).noteId, NO_NOTE)).toBe(true);
+	});
+});
 
 describe("trigOf", () => {
 	const none = NO_NOTE;

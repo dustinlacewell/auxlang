@@ -29,6 +29,7 @@ export function serializeSpec(spec: ModuleSpec): SerializedModuleSpec {
 		...(spec.config !== undefined ? { config: spec.config } : {}),
 		...(spec.positional !== undefined ? { positional: spec.positional } : {}),
 		...(spec.policy !== undefined ? { policy: spec.policy } : {}),
+		...(spec.reads !== undefined ? { reads: spec.reads } : {}),
 		...(spec.state !== undefined ? { state: spec.state.toString() } : {}),
 	};
 }

@@ -1,6 +1,3 @@
-import { defmod } from "../patch/defmod";
-import { phasePort, sig, trigPort } from "../types";
-
 /**
  * Clock (MANIFESTO §4.2): integrates a position in bars (cycles) from `bpm`
  * beats per minute and `config.beatsPerBar` beats per bar. Tempo is an input,
@@ -25,13 +22,13 @@ defmod({
 	config: { beatsPerBar: 4 },
 	state: () => ({ pos: 0, lastBeat: -1, lastBar: -1 }),
 	tick: (s, i, o, cfg, sr) => {
-		const beatsPerBar = cfg.beatsPerBar as number;
-		const pos = (s.pos as number) + i.bpm / 60 / sr / beatsPerBar;
+		const beatsPerBar = cfg.beatsPerBar;
+		const pos = s.pos + i.bpm / 60 / sr / beatsPerBar;
 		const bar = Math.floor(pos);
 		const beat = Math.floor(pos * beatsPerBar);
 		o.out = pos;
-		o.beat = beat !== (s.lastBeat as number) ? 1 : 0;
-		o.bar = bar !== (s.lastBar as number) ? 1 : 0;
+		o.beat = beat !== s.lastBeat ? 1 : 0;
+		o.bar = bar !== s.lastBar ? 1 : 0;
 		s.pos = pos;
 		s.lastBeat = beat;
 		s.lastBar = bar;

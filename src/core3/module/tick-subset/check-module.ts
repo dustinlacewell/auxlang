@@ -42,6 +42,7 @@ function sharedCheck(
 		ins: new Set(Object.keys(spec.ins)),
 		outs: new Set(Object.keys(spec.outs)),
 		state: freshState(spec),
+		tables: spec.reads === "pattern",
 	};
 }
 

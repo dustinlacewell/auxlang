@@ -14,7 +14,6 @@ import { bindModuleRandom } from "./bind-random/bind-module-random";
 import { RANDOM_HELPER_PREFIX } from "./bind-random/random-helpers";
 import { buildTick } from "./tick-build/build-tick";
 import { checkModule } from "./tick-subset/check-module";
-import { EXEMPT_MODULES } from "./tick-subset/exempt";
 
 /** A spec as written: `helpers` are functions the tick may call by name. */
 export interface WrittenSpec extends ModuleSpec {
@@ -23,7 +22,6 @@ export interface WrittenSpec extends ModuleSpec {
 
 export function bindModule(written: WrittenSpec): ModuleSpec {
 	const { helpers, ...spec } = written;
-	if (EXEMPT_MODULES.has(spec.name)) return spec;
 	const owner = `defmod('${spec.name}')`;
 	const written_ = sourceOf(written.tick, helpers ?? {}, owner);
 	checkModule(spec, written_);

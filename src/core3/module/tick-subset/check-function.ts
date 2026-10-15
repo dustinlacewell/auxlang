@@ -29,6 +29,8 @@ export interface FunctionCheck {
 	readonly ins: ReadonlySet<string>;
 	readonly outs: ReadonlySet<string>;
 	readonly state: Record<string, unknown>;
+	/** The module declares `reads: "pattern"` (table-intrinsics.ts). */
+	readonly tables: boolean;
 }
 
 export interface CheckedFunction {
@@ -52,6 +54,7 @@ export function checkFunction(check: FunctionCheck): CheckedFunction {
 		ins: check.ins,
 		outs: check.outs,
 		state: check.state,
+		tables: check.tables,
 		fail,
 		calls: [],
 	};

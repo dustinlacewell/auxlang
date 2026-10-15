@@ -110,6 +110,11 @@ export interface ModuleSpec extends ModulePorts {
 	/** "map" (default): tick per lane. "reduce": one tick sees all lanes, width collapses to 1. */
 	readonly policy?: "map" | "reduce";
 	/**
+	 * "pattern": the tick reads `config.pattern` through its lane's event table
+	 * with the table intrinsics (module/tick-subset/table-intrinsics.ts).
+	 */
+	readonly reads?: "pattern";
+	/**
 	 * Fresh state per lane. MUST return plain serializable data (numbers, typed
 	 * arrays, nested plain objects). After construction (or migration) the engine
 	 * injects `state.__lane = laneIndex`, so per-lane modules (seq) know which
@@ -127,8 +132,8 @@ export interface ModuleSpec extends ModulePorts {
 	readonly tick: TickFn | ReduceTickFn;
 	/**
 	 * The authoritative text of `tick` and its helpers, as written. Absent only
-	 * for the modules exempt from the tick subset (module/tick-subset/exempt.ts),
-	 * whose `tick` is the host closure itself.
+	 * on a spec built by hand (a test's own spec), whose `tick` is the host
+	 * closure itself.
 	 */
 	readonly source?: ModuleSource;
 }
@@ -157,6 +162,7 @@ export interface SerializedModuleSpec {
 	readonly defaultIn: string;
 	readonly defaultOut?: string;
 	readonly policy?: "map" | "reduce";
+	readonly reads?: "pattern";
 	readonly state?: string;
 	readonly tick: string;
 	/** Helper name → function source. Present only when the module declares helpers. */

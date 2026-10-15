@@ -1,5 +1,6 @@
 /**
- * Calls. A tick may call `Math.*`, its helpers, and `hashRandom(key)`. No
+ * Calls. A tick may call `Math.*`, its helpers, `hashRandom(key)` and, when
+ * its module reads a pattern, the table intrinsics (table-intrinsics.ts). No
  * method calls (`.push`, `.fill`, ...) and no calls through locals.
  * `Math.random()` and `hashRandom(key)` draw from the module's random state,
  * so they belong to the tick, which owns that state through its first
@@ -9,7 +10,9 @@
 import type { CallExpression } from "acorn";
 import { AUX_MATH_FUNCTIONS } from "../../math/aux-math-functions";
 import { EXACT_HOST_MATH } from "../../math/exact-host-math";
+import { checkTableCall } from "./check-table-call";
 import { type SubsetContext, isBound } from "./subset-context";
+import { TABLE_INTRINSICS } from "./table-intrinsics";
 
 const ONLY = "only Math.*, helpers and hashRandom(key) may be called (no method calls)";
 
@@ -23,6 +26,10 @@ export function checkCall(node: CallExpression, ctx: SubsetContext): void {
 		}
 		if (callee.name === "hashRandom") {
 			checkRandomCall(node, "hashRandom(key)", 1, ctx);
+			return;
+		}
+		if (TABLE_INTRINSICS.has(callee.name)) {
+			checkTableCall(node, callee.name, ctx);
 			return;
 		}
 	}

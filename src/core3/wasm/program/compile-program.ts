@@ -3,13 +3,12 @@
  * checked tick inlined into one `render(n)` function, the helpers and
  * auxlang's math compiled from their JS source into the same module, state
  * in linear memory at a layout fixed from the built states. The module
- * imports `env.fill(node, lane, cycle)` (the seq tables) and exports
+ * imports `env.fill(node, lane, cycle)` (the event tables) and exports
  * `render` and `memory`.
  */
 
 import type { NodeRun } from "../../runtime/node-run";
 import type { ModuleSource } from "../../types";
-import { BRIDGE_SOURCES } from "../bridge/bridge-sources";
 import { FunctionTable } from "../compile/function-table";
 import { Functions } from "../compile/functions";
 import { moduleBytes } from "../encode/module-bytes";
@@ -21,6 +20,8 @@ export interface WasmInput {
 	readonly runs: readonly NodeRun[];
 	/** Each node's module name. */
 	readonly modules: readonly string[];
+	/** Each node's module declares `reads: "pattern"`: its lanes get event tables. */
+	readonly readsPattern: readonly boolean[];
 	readonly tapsL: Int32Array;
 	readonly tapsR: Int32Array;
 	/** The engine's value slot count. */
@@ -35,7 +36,7 @@ export interface CompiledWasm {
 
 export function compileWasm(input: WasmInput): CompiledWasm {
 	const sources = input.runs.map((run, i) => sourceOf(run, input.modules[i] as string));
-	const layout = planMemory(input.runs, input.modules, sources, input.size);
+	const layout = planMemory(input.runs, input.readsPattern, sources, input.size);
 	const table = new FunctionTable(1);
 	const fillType = table.typeIndex([I32, I32, F64], []);
 	const fns = new Functions(table);
@@ -56,7 +57,6 @@ export function compileWasm(input: WasmInput): CompiledWasm {
 }
 
 function sourceOf(run: NodeRun, module: string): ModuleSource {
-	const source = run.source ?? BRIDGE_SOURCES[module];
-	if (source === undefined) throw new Error(`wasm: module '${module}' has no tick source`);
-	return source;
+	if (run.source === undefined) throw new Error(`wasm: module '${module}' has no tick source`);
+	return run.source;
 }

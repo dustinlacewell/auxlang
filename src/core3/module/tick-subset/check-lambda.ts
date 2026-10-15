@@ -16,5 +16,6 @@ export function checkLambda(src: string): void {
 		ins: new Set(),
 		outs: new Set(),
 		state: {},
+		tables: false,
 	});
 }

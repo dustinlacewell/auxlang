@@ -1,8 +1,9 @@
 /**
  * Free names. A tick may name only its parameters, its locals, `Math`, its
- * helpers and `hashRandom` — nothing from the patch or the file around it, so
- * the text alone is the whole machine. `Math` must be read as `Math.name`;
- * helpers and `hashRandom` must be called. Bound text also names the math
+ * helpers, `hashRandom` and the table intrinsics — nothing from the patch or
+ * the file around it, so the text alone is the whole machine. `Math` must be
+ * read as `Math.name`; helpers, `hashRandom` and the intrinsics must be
+ * called (check-call.ts says who may call them). Bound text also names the math
  * call cache, only as a slot (`__mc[3]`, bind-math/cache-names.ts); written
  * text may not (bind-math/rewrite-math.ts rejects it).
  */
@@ -10,6 +11,7 @@
 import type { AnyNode, Identifier } from "acorn";
 import { CACHE_ARRAY, cacheSlotOf } from "../bind-math/cache-names";
 import { type SubsetContext, isBound } from "./subset-context";
+import { TABLE_INTRINSICS } from "./table-intrinsics";
 
 const CONSTANTS = new Set(["undefined", "NaN", "Infinity"]);
 
@@ -28,7 +30,7 @@ export function checkName(
 		if (parent?.type === "MemberExpression" && key === "object" && !parent.computed) return;
 		ctx.fail(node, "Math may only be used as Math.name");
 	}
-	if (ctx.helpers.has(name) || name === "hashRandom") {
+	if (ctx.helpers.has(name) || name === "hashRandom" || TABLE_INTRINSICS.has(name)) {
 		if (parent?.type === "CallExpression" && key === "callee") return;
 		ctx.fail(node, `'${name}' may only be called`);
 	}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import "@/core3/modules/clock";
+import "@/core3/modules/all";
 import { getModule } from "@/core3/module/define";
 import { SR, driver } from "./helpers";
 

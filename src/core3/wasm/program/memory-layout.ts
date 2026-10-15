@@ -3,30 +3,22 @@
  * built (MANIFESTO §5.1): the two output blocks (f32), the value buffer
  * (f64 per slot, as the engine's `cur`), then per node its outputs record,
  * the f64 lane views its reducer inputs are gathered into, and per lane its
- * numeric state fields, its math call cache and (seq) its event table.
- * Everything is f64 except the f32 output blocks, which the JS engine also
- * holds as Float32Arrays.
+ * numeric state fields, its math call cache and (a module that reads a
+ * pattern) its event table. Everything is f64 except the f32 output blocks,
+ * which the JS engine also holds as Float32Arrays.
  */
 
+import { TABLE_ROW_FIELDS } from "../../module/tick-subset/table-intrinsics";
 import type { NodeRun } from "../../runtime/node-run";
 import type { ModuleSource } from "../../types";
 
 /** Samples per render call at most (the AudioWorklet quantum). */
 export const BLOCK_MAX = 128;
 
-/** Rows per seq lane event table. */
+/** Rows per lane event table. */
 export const TABLE_CAPACITY = 256;
 
-/** A table: cycle and count, then each field's rows as f64. */
-export const TABLE_FIELDS = [
-	"begin",
-	"end",
-	"value",
-	"kind",
-	"noteId",
-	"slideFrom",
-	"dipBefore",
-] as const;
+/** A table: cycle and count, then each row field (TABLE_ROW_FIELDS order) as f64 rows. */
 export const TABLE_HEADER = 16;
 
 export interface LaneMemory {
@@ -34,7 +26,7 @@ export interface LaneMemory {
 	readonly state: Readonly<Record<string, number>>;
 	readonly cache: number;
 	readonly cacheSlots: number;
-	/** The seq lane's event table, else null. */
+	/** The lane's event table when its module reads a pattern, else null. */
 	readonly table: number | null;
 }
 
@@ -56,7 +48,7 @@ export interface WasmLayout {
 
 export function planMemory(
 	runs: readonly NodeRun[],
-	modules: readonly string[],
+	readsPattern: readonly boolean[],
 	sources: readonly ModuleSource[],
 	size: number,
 ): WasmLayout {
@@ -80,8 +72,9 @@ export function planMemory(
 			state: Object.fromEntries(numericFields(state).map((f) => [f, take(8)])),
 			cache: take(8 * slots),
 			cacheSlots: slots,
-			table:
-				modules[i] === "seq" ? take(TABLE_HEADER + 8 * TABLE_FIELDS.length * TABLE_CAPACITY) : null,
+			table: readsPattern[i]
+				? take(TABLE_HEADER + 8 * TABLE_ROW_FIELDS.length * TABLE_CAPACITY)
+				: null,
 		}));
 		return { outs, views, lanes };
 	});

@@ -1,9 +1,9 @@
 /**
- * Pastes a node the planner chose. It pastes
- * when its module has checked source text (every module but the exempt
- * bridge ones), no other lane shares its state objects, and its tick and
- * helpers print (anything the printer refuses keeps the node at its call
- * site, with every scope binding the attempt made rolled back). Helpers
+ * Pastes a node the planner chose. It pastes when its module has checked
+ * source text, no other lane shares its state objects, and its tick and
+ * helpers print (anything the printer refuses, such as a table intrinsic,
+ * keeps the node at its call site, with every scope binding the attempt made
+ * rolled back). Helpers
  * paste once per module into one helpers unit (`helperUnit`); helpers that
  * keep math caches paste inside a factory each lane calls (paste-helpers.ts).
  */

@@ -41,6 +41,7 @@ export function buildWasmInput(
 	const input: WasmInput = {
 		runs: parts.runs,
 		modules: program.nodes.map((n) => n.module),
+		readsPattern: program.nodes.map((n) => layered.get(n.module)?.reads === "pattern"),
 		tapsL: taps("l"),
 		tapsR: taps("r"),
 		size: parts.layout.size,

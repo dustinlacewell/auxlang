@@ -26,6 +26,8 @@ export interface SubsetContext {
 	readonly outs: ReadonlySet<string>;
 	/** A fresh state with the engine-injected fields, as the tick will see it. */
 	readonly state: Record<string, unknown>;
+	/** The module declares `reads: "pattern"`: its tick may call the table intrinsics. */
+	readonly tables: boolean;
 	/** Throws the located violation for `node`. */
 	readonly fail: (node: AnyNode, message: string) => never;
 	/** Helper calls seen, for the recursion check. */

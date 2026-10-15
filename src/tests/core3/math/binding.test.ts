@@ -17,7 +17,6 @@ import { mathFunctionNames, mathHelpers } from "@/core3/module/bind-math/math-he
 import { getRegistry } from "@/core3/module/define";
 import { checkFunction } from "@/core3/module/tick-subset/check-function";
 import { checkLambda } from "@/core3/module/tick-subset/check-lambda";
-import { EXEMPT_MODULES } from "@/core3/module/tick-subset/exempt";
 import { walk } from "@/core3/module/tick-subset/walk";
 
 /** Every host-math reach in `text`: a Math member that is not exact, random or a constant, or a `**`. */
@@ -44,7 +43,7 @@ function hostMathIn(text: string): string[] {
 }
 
 describe("math binding", () => {
-	const modules = [...getRegistry().values()].filter((spec) => !EXEMPT_MODULES.has(spec.name));
+	const modules = [...getRegistry().values()];
 
 	it.each(modules.map((spec) => [spec.name, spec] as const))(
 		"%s reaches no host transcendental",
@@ -76,6 +75,7 @@ describe("math binding", () => {
 				ins: new Set(),
 				outs: new Set(),
 				state: {},
+				tables: false,
 			});
 		}
 	});
