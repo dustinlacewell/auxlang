@@ -2,14 +2,14 @@
  * The names a pasted function declares: its parameters and its locals. The
  * printer renames by name, which keeps the source's scoping only when no
  * name means two things — so a local may not reuse a parameter, a helper or
- * a name the printer itself resolves (Math, hashRandom, the constants).
+ * a name the printer itself resolves (Math, the constants).
  */
 
 import type { FunctionNode } from "../../../module/tick-subset/parse-function";
 import { walk } from "../../../module/tick-subset/walk";
 import { refuse } from "./not-pasteable";
 
-const RESOLVED = new Set(["Math", "hashRandom", "undefined", "NaN", "Infinity", "arguments"]);
+const RESOLVED = new Set(["Math", "undefined", "NaN", "Infinity", "arguments"]);
 
 export interface FunctionNames {
 	readonly params: readonly string[];

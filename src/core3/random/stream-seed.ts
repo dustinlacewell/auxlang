@@ -8,7 +8,9 @@
  */
 
 import { fnv1a32 } from "../hash/fnv1a32";
-import { avalanche } from "../pattern/random";
+import { randomFunctions } from "../module/bind-random/random-functions";
+
+const { avalanche } = randomFunctions;
 
 export function streamSeed(seed: number, identity: string, lane: number): number {
 	let h = avalanche((seed | 0) ^ 0x9e3779b9);

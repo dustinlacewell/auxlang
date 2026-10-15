@@ -57,7 +57,7 @@ describe("binding paths", () => {
 			expect(resolvePath(path, a, extras)).toBe(value);
 			const other = resolvePath(path, b, extras);
 			expect(typeof other).toBe(typeof value);
-			if (typeof value === "object" && path.k !== "hash-random") expect(other).not.toBe(value);
+			if (typeof value === "object") expect(other).not.toBe(value);
 		}
 		const code = prepared.primary;
 		if (code === null) throw new Error("no driver code");

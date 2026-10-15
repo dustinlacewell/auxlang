@@ -2,20 +2,16 @@
  * `hashRandom(key, seed)`: a uniform value in [0, 1) that is the same every
  * time the same key comes back under the same seed. Pure; keeps no position,
  * so it is the tool for "the value that belongs to step 7", where a stream
- * (next-random.ts) is the tool for "the next value". Allocates nothing.
+ * (random/lib/next-rng.js) is the tool for "the next value". The host side of
+ * a tick's `hashRandom(key)`: the same random/lib functions, a string key
+ * hashed by fnv1a32 as a tick's string literal key is folded.
  */
 
 import { fnv1a32 } from "../hash/fnv1a32";
-import { avalanche } from "../pattern/random";
+import { randomFunctions } from "../module/bind-random/random-functions";
+
+const { hashKey, hashNumber } = randomFunctions;
 
 export function hashRandom(key: number | string, seed: number): number {
-	const k = typeof key === "number" ? numberKey(key) : fnv1a32(key);
-	return avalanche(avalanche((seed | 0) ^ 0x9e3779b9) ^ k) / 0x100000000;
-}
-
-/** Whole and fractional parts both count, so 1.25 and 1.5 are different keys. */
-function numberKey(key: number): number {
-	const whole = Math.floor(key);
-	const frac = ((key - whole) * 0x100000000) >>> 0;
-	return avalanche(whole | 0) ^ Math.imul(frac, 0xc2b2ae35);
+	return typeof key === "number" ? hashNumber(key, seed) : hashKey(fnv1a32(key), seed);
 }

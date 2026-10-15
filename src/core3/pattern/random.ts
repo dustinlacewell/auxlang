@@ -1,19 +1,13 @@
 /**
  * Deterministic randomness for patterns. All chance in core3 flows through
- * hash01(seed, path, ...ints) — integer avalanche hashing (murmur3 finalizer),
- * identical across threads and directions of time. Never Math.random.
+ * hash01(seed, path, ...ints) — integer avalanche hashing (random/lib's
+ * murmur3 finalizer, the text a tick runs), identical across threads and
+ * directions of time. Never Math.random.
  */
 
-/** murmur3 32-bit finalizer: full avalanche of a 32-bit integer. */
-export function avalanche(h: number): number {
-	let x = h >>> 0;
-	x ^= x >>> 16;
-	x = Math.imul(x, 0x85ebca6b);
-	x ^= x >>> 13;
-	x = Math.imul(x, 0xc2b2ae35);
-	x ^= x >>> 16;
-	return x >>> 0;
-}
+import { randomFunctions } from "../module/bind-random/random-functions";
+
+const { avalanche } = randomFunctions;
 
 /**
  * Uniform [0,1) from (seed, AST path, and any number of trailing integer

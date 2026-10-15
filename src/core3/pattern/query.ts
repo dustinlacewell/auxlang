@@ -11,11 +11,12 @@
  * whole.begin) once per event — scrub-safe, thread-identical.
  */
 
+import { randomFunctions } from "../module/bind-random/random-functions";
 import type { Layer, Pat, PatOp, SignalKind, StepLayer, WChild } from "./ast";
 import { bjorklund } from "./bjorklund";
 import type { Ev, EvKind, Span } from "./event";
 import { isOnset, laneOf, startsHere } from "./event";
-import { avalanche, hash01 } from "./random";
+import { hash01 } from "./random";
 import {
 	type R,
 	R0,
@@ -38,6 +39,8 @@ import { locateStep } from "./step-locate";
 import { inLayer, stepOnsets } from "./step-onsets";
 import { type HistoryPolicy, type HistoryRead, historyVoices } from "./voices/history-voices";
 import { width } from "./widths";
+
+const { avalanche } = randomFunctions;
 
 export interface QueryCtx {
 	readonly seed: number;

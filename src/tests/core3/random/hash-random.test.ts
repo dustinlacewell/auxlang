@@ -12,7 +12,7 @@ import { renderTap } from "@/core3/runtime/render";
 import { sig } from "@/core3/types";
 import { c, pnode } from "../runtime/helpers";
 
-/** The tick's own binding (module/tick-build): one argument, the patch seed implied. */
+/** The tick's own binding (module/bind-random): one argument, the patch seed implied. */
 declare const hashRandom: (key: number | string) => number;
 
 /** Steps through keys 0, 1, 2, … every `hold` samples; outputs each key's value. */

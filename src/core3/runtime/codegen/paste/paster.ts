@@ -8,7 +8,6 @@
  * keep math caches paste inside a factory each lane calls (paste-helpers.ts).
  */
 
-import { hashRandom } from "../../../random/hash-random";
 import type { ModuleSource } from "../../../types";
 import type { NodeRun } from "../../node-run";
 import type { CodeUnit } from "../code-unit";
@@ -36,7 +35,7 @@ export class Paster {
 		private readonly names: NameTable,
 	) {
 		this.shared = sharedStates(runs);
-		this.env = { names: this.names, scope, hashRandom: scope.bind(this.names.fresh(), hashRandom) };
+		this.env = { names: this.names, scope };
 	}
 
 	/** The node pasted inline, or null when it keeps its call site. */

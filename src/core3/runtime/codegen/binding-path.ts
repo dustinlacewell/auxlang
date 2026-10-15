@@ -8,7 +8,6 @@
  */
 
 import { tickFactory } from "../../module/tick-build/tick-factories";
-import { hashRandom } from "../../random/hash-random";
 import type { NodeRun } from "../node-run";
 
 export type BindingPath =
@@ -18,7 +17,6 @@ export type BindingPath =
 	| { readonly k: "state"; readonly node: number; readonly lane: number }
 	| { readonly k: "lambda"; readonly node: number; readonly lane: number; readonly port: number }
 	| { readonly k: "gather-lambda" | "view"; readonly node: number; readonly port: number }
-	| { readonly k: "hash-random" }
 	/** The driver's block buffer (codegen/group/block-slots.ts), one per driver instance. */
 	| { readonly k: "block"; readonly length: number }
 	/** A function of the driver's helpers unit, by index. */
@@ -30,7 +28,6 @@ export function pathIndex(runs: readonly NodeRun[]): Map<unknown, BindingPath> {
 	const add = (value: unknown, path: BindingPath) => {
 		if (value !== null && !index.has(value)) index.set(value, path);
 	};
-	add(hashRandom, { k: "hash-random" });
 	runs.forEach((run, node) => {
 		add(run.tick, { k: "tick", node });
 		const factory = tickFactory(run.tick);
@@ -62,8 +59,6 @@ export function resolvePath(
 	extras: PathExtras,
 ): unknown {
 	switch (path.k) {
-		case "hash-random":
-			return hashRandom;
 		case "block":
 			return extras.block;
 		case "helper":

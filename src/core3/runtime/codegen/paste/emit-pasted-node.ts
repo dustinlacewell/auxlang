@@ -39,8 +39,6 @@ export interface PasteTick {
 export interface PasteEnv {
 	readonly names: NameTable;
 	readonly scope: DriverScope;
-	/** Scope name of `hashRandom`. */
-	readonly hashRandom: string;
 }
 
 /** One lane's inputs: gather lines (run each sample) and port → local. */
@@ -154,7 +152,6 @@ function pasteLane(
 		roles: rolesOf(state, ins, outs, config),
 		fields: frame,
 		helpers,
-		hashRandom: env.hashRandom,
 		exit,
 		cacheSlot: (slot) => frame.cache(slot),
 	};

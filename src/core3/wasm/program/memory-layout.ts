@@ -93,9 +93,10 @@ export function tableRow(table: number, field: number, row: number): number {
 	return table + TABLE_HEADER + 8 * (field * TABLE_CAPACITY + row);
 }
 
+/** The engine's numeric fields count: `__rng` (the stream position), `__seed`, `__lane`. */
 function numericFields(state: Record<string, unknown>): string[] {
 	return Object.keys(state).filter(
-		(f) => !f.startsWith("__") && (typeof state[f] === "number" || typeof state[f] === "boolean"),
+		(f) => typeof state[f] === "number" || typeof state[f] === "boolean",
 	);
 }
 

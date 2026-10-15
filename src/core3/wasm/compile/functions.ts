@@ -1,7 +1,8 @@
 /**
  * Every function the module calls, compiled once on first use: helper
  * specialisations (keyed by set, name and argument shapes), auxlang's math
- * library (one set shared by all modules), and the runtime functions.
+ * and random libraries (one set each, shared by all modules), and the
+ * runtime functions.
  */
 
 import {
@@ -9,6 +10,11 @@ import {
 	mathFunctionNames,
 	mathHelpers,
 } from "../../module/bind-math/math-helpers";
+import {
+	RANDOM_HELPER_PREFIX,
+	randomFunctionNames,
+	randomHelpers,
+} from "../../module/bind-random/random-helpers";
 import type { RawFunction } from "../runtime/raw-function";
 import { roundFunction } from "../runtime/round";
 import { RUNTIME_SOURCES } from "../runtime/runtime-sources";
@@ -28,7 +34,11 @@ const RAW: Readonly<Record<string, () => RawFunction>> = {
 
 export class Functions {
 	private readonly compiled = new Map<string, FnRef>();
-	private readonly math = helperSet("math", mathHelpers(mathFunctionNames()));
+	/** auxlang's libraries, by helper name prefix: one set each, shared by all modules. */
+	private readonly libraries: readonly (readonly [string, HelperSet])[] = [
+		[MATH_HELPER_PREFIX, helperSet("math", mathHelpers(mathFunctionNames()))],
+		[RANDOM_HELPER_PREFIX, helperSet("random", randomHelpers(randomFunctionNames()))],
+	];
 	private readonly runtimeSet = helperSet("runtime", RUNTIME_SOURCES);
 
 	constructor(private readonly table: FunctionTable) {}
@@ -43,7 +53,7 @@ export class Functions {
 	}
 
 	private setFor(set: HelperSet, name: string): HelperSet {
-		return name.startsWith(MATH_HELPER_PREFIX) ? this.math : set;
+		return this.libraries.find(([prefix]) => name.startsWith(prefix))?.[1] ?? set;
 	}
 
 	private helper(set: HelperSet, name: string, shapes: readonly ArgShape[]): FnRef {

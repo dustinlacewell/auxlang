@@ -28,8 +28,6 @@ export interface PasteContext {
 	readonly fields: FieldLocals | null;
 	/** Helper names → their pasted function names. */
 	readonly helpers: ReadonlyMap<string, string>;
-	/** Scope name of `hashRandom`; null in a helper. */
-	readonly hashRandom: string | null;
 	/** Tick: the label a `return` breaks out of. Helper: null, `return` stays. */
 	readonly exit: string | null;
 	/**

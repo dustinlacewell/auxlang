@@ -1,8 +1,9 @@
 /**
  * No runtime strings. A string literal may appear only where it is compared
- * (`cfg.mode === "lp"`, a `case "lp":`), and `typeof` only inside such a
- * comparison. `delete`, `in` and `instanceof` reshape or probe objects and
- * are not allowed.
+ * (`cfg.mode === "lp"`, a `case "lp":`) or as a `hashRandom` key (it folds
+ * to a number when bound). `typeof` may appear only inside a comparison.
+ * `delete`, `in` and `instanceof` reshape or probe objects and are not
+ * allowed.
  */
 
 import type { AnyNode, BinaryExpression, Literal, UnaryExpression } from "acorn";
@@ -17,7 +18,7 @@ export function checkStringLiteral(
 	ctx: SubsetContext,
 ): void {
 	if (typeof node.value !== "string") return;
-	if (isComparison(parent)) return;
+	if (isComparison(parent) || isHashKey(parent, key)) return;
 	if (parent?.type === "SwitchCase" && key === "test") return;
 	if (parent?.type === "ExpressionStatement" && "directive" in parent) return;
 	ctx.fail(node, "string values may appear only in comparisons — runtime strings are not allowed");
@@ -40,6 +41,16 @@ export function checkBinary(node: BinaryExpression, ctx: SubsetContext): void {
 			node,
 			`\`${node.operator}\` is not allowed — shapes are fixed, so there is nothing to probe`,
 		);
+}
+
+/** `hashRandom("kick")`: the key folds to its fnv1a32 hash when bound (bind-random/). */
+function isHashKey(parent: AnyNode | null, key: string | null): boolean {
+	return (
+		parent?.type === "CallExpression" &&
+		key === "arguments" &&
+		parent.callee.type === "Identifier" &&
+		parent.callee.name === "hashRandom"
+	);
 }
 
 function isComparison(parent: AnyNode | null): boolean {

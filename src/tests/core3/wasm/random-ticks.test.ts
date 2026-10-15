@@ -1,0 +1,179 @@
+/**
+ * A tick's randomness on both backends: `Math.random()` (the lane's stream)
+ * and `hashRandom(key)` (number and string keys) render bit-identically on
+ * the interpreter and on WASM, which compile the same random/lib text. A
+ * re-eval that keeps the seed continues each stream on both; one that
+ * rerolls it starts the new seed's streams on both.
+ */
+
+import { describe, expect, it } from "vitest";
+
+import "@/core3/modules/all";
+import { defmod, out, runProgram, seq, tempo } from "@/core3/api";
+import { getRegistry } from "@/core3/module/define";
+import { hashRandom as hostHashRandom } from "@/core3/random/hash-random";
+import { EngineBuild } from "@/core3/runtime/build/engine-build";
+import { Core3Engine } from "@/core3/runtime/engine";
+import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
+import { LiveEngine } from "@/core3/runtime/live-engine";
+import { slotOf } from "@/core3/runtime/output-slots";
+import { prepareProgram } from "@/core3/runtime/prepare/prepare-program";
+import type { EngineState, Program } from "@/core3/types";
+import { sig } from "@/core3/types";
+import { WasmEngine } from "@/core3/wasm/host/wasm-engine";
+import { compileWasm } from "@/core3/wasm/program/compile-program";
+
+/** The tick's own binding: one argument, the patch seed implied. */
+declare const hashRandom: (key: number | string) => number;
+
+const SR = 48000;
+const BLOCK = 128;
+const BLOCKS = 40;
+
+/** A two-lane stream (a chord feeds it), a stepped number key and a string key, all to out. */
+function patch(seed: number): Program {
+	return runProgram(
+		() => {
+			const jitter = defmod({
+				name: "rt.jitter",
+				category: "sources",
+				ins: { in: sig(0) },
+				outs: { out: sig() },
+				defaultIn: "in",
+				defaultOut: "out",
+				tick: (s, i, o) => {
+					o.out = i.in * 0 + Math.random() - 0.5;
+				},
+			});
+			const steps = defmod({
+				name: "rt.steps",
+				category: "utils",
+				ins: { hold: sig(64) },
+				outs: { out: sig(), kick: sig() },
+				defaultIn: "hold",
+				defaultOut: "out",
+				state: () => ({ n: 0 }),
+				tick: (s, i, o) => {
+					const n = s.n as number;
+					s.n = n + 1;
+					o.out = hashRandom(Math.floor(n / i.hold) + 0.25 * (n % 3)) - 0.5;
+					o.kick = hashRandom("kick");
+				},
+			});
+			tempo(120);
+			out(jitter({ in: seq("[c3,e3]") }).mul(0.3));
+			out(steps({ hold: 64 }).mul(0.3));
+		},
+		{ seed },
+	);
+}
+
+interface Pair {
+	readonly program: Program;
+	readonly js: Core3Engine;
+	readonly wasm: WasmEngine;
+}
+
+/** Both backends built for `program`, continuing `prev` when given, from the same built values. */
+function engines(program: Program, prev?: EngineState): Pair {
+	const registry = withProgramSpecs(getRegistry(), program);
+	const js = new Core3Engine(program, SR, registry, prev);
+	const prepared = prepareProgram(program, registry, SR, prev?.identities, {});
+	const parts = new EngineBuild(prepared, registry, prev).finish();
+	if (prev !== undefined) new LiveEngine(parts).handOver(prev);
+	const taps = (port: string) =>
+		Int32Array.from(program.outs, (n) => slotOf(parts.layout, n, port, 0));
+	const compiled = compileWasm({
+		runs: parts.runs,
+		modules: program.nodes.map((n) => n.module),
+		tapsL: taps("l"),
+		tapsR: taps("r"),
+		size: parts.layout.size,
+		sampleRate: SR,
+	});
+	const wasm = new WasmEngine(new WebAssembly.Module(compiled.bytes), compiled, {
+		runs: parts.runs,
+		cur: parts.bufs.cur,
+	});
+	return { program, js, wasm };
+}
+
+/**
+ * Render `BLOCKS` blocks on both, asserting the outputs match sample for
+ * sample and every random output's slot matches at each block end. Returns
+ * those values by `module.port.lane`.
+ */
+function render({ program, js, wasm }: Pair): Record<string, number[]> {
+	const sites = program.nodes.flatMap((n, node) =>
+		n.module.startsWith("rt.")
+			? Object.keys(js.layout.bases[node] ?? {}).flatMap((port) =>
+					n.lanes.map((_, lane) => ({ name: `${n.module}.${port}.${lane}`, node, port, lane })),
+				)
+			: [],
+	);
+	const series: Record<string, number[]> = Object.fromEntries(sites.map((s) => [s.name, []]));
+	const jl = new Float32Array(BLOCK);
+	const jr = new Float32Array(BLOCK);
+	const wl = new Float32Array(BLOCK);
+	const wr = new Float32Array(BLOCK);
+	for (let b = 0; b < BLOCKS; b++) {
+		js.renderBlock(jl, jr, 0, BLOCK);
+		wasm.renderBlock(wl, wr, 0, BLOCK);
+		expect(Array.from(wl)).toEqual(Array.from(jl));
+		expect(Array.from(wr)).toEqual(Array.from(jr));
+		for (const { name, node, port, lane } of sites) {
+			const value = js.peek(node, port, lane);
+			expect(wasm.slot(slotOf(js.layout, node, port, lane))).toBe(value);
+			series[name]?.push(value);
+		}
+	}
+	return series;
+}
+
+const STREAMS = ["rt.jitter.out.0", "rt.jitter.out.1"];
+const HASHES = ["rt.steps.out.0", "rt.steps.kick.0"];
+
+function pick(series: Record<string, number[]>, names: readonly string[]): number[][] {
+	return names.map((n) => series[n] ?? []);
+}
+
+describe("tick randomness on the interpreter and WASM", () => {
+	it("renders bit-identically, each lane its own stream", () => {
+		const series = render(engines(patch(7)));
+		const [lane0, lane1] = pick(series, STREAMS);
+		expect(new Set(lane0).size).toBe(BLOCKS);
+		expect(lane0).not.toEqual(lane1);
+		expect(new Set(series["rt.steps.out.0"]).size).toBeGreaterThan(BLOCKS / 2);
+	});
+
+	it("folds a string key to the host's value for that string", () => {
+		const series = render(engines(patch(7)));
+		expect(series["rt.steps.kick.0"]?.[0]).toBe(hostHashRandom("kick", 7));
+	});
+
+	it("continues every stream across a re-eval that keeps the seed", () => {
+		const before = engines(patch(7));
+		render(before);
+		const reference = engines(patch(7));
+		const fromStart = render(reference);
+		const continued = render(reference);
+
+		const swapped = render(engines(patch(7), before.js.collectState()));
+		expect(swapped).toEqual(continued);
+		expect(pick(swapped, STREAMS)).not.toEqual(pick(fromStart, STREAMS));
+	});
+
+	it("starts the new seed's streams across a re-eval that rerolls it", () => {
+		const before = engines(patch(7));
+		render(before);
+		const swapped = render(engines(patch(8), before.js.collectState()));
+
+		const fresh = engines(patch(8));
+		const freshStart = render(fresh);
+		const freshLater = render(fresh);
+		// Streams restart from the new seed; the hash keys (the step count) carry on.
+		expect(pick(swapped, STREAMS)).toEqual(pick(freshStart, STREAMS));
+		expect(pick(swapped, HASHES)).toEqual(pick(freshLater, HASHES));
+		expect(swapped["rt.steps.kick.0"]?.[0]).toBe(hostHashRandom("kick", 8));
+	});
+});

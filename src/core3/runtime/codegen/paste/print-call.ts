@@ -1,9 +1,9 @@
 /**
- * A call in a pasted function. Three forms paste: a helper (its pasted
- * function name), `Math.<fn>(...)` (host math; `Math.random()` becomes the
- * lane's stream step on the `__rng` local), and `hashRandom(key)` (the bound
- * function, with the `__seed` local as its seed — tick-build/bind-random.ts's
- * rewrite). Anything else is refused.
+ * A call in a pasted function. Two forms paste: a helper (its pasted
+ * function name) and `Math.<fn>(...)` (host math). The text is bound
+ * (module/bind-random/), so a tick's randomness is already helper calls on
+ * its state; a `Math.random()` left over would be the host's and is refused.
+ * Anything else is refused.
  */
 
 import type { CallExpression } from "acorn";
@@ -11,7 +11,6 @@ import { refuse } from "./not-pasteable";
 import type { PasteContext } from "./paste-context";
 import { printExpression } from "./print-expression";
 import { mathMember } from "./print-member";
-import { randomDraw } from "./random-draw";
 
 export function printCall(node: CallExpression, ctx: PasteContext): string {
 	if (node.optional) refuse("optional calls are not pasteable");
@@ -22,7 +21,6 @@ export function printCall(node: CallExpression, ctx: PasteContext): string {
 	if (callee.type === "Identifier" && !ctx.locals.has(callee.name)) {
 		const helper = ctx.helpers.get(callee.name);
 		if (helper !== undefined) return `${helper}(${args.join(", ")})`;
-		if (callee.name === "hashRandom") return hashRandomCall(args, ctx);
 	}
 	if (
 		callee.type === "MemberExpression" &&
@@ -34,27 +32,11 @@ export function printCall(node: CallExpression, ctx: PasteContext): string {
 		callee.property.type === "Identifier"
 	) {
 		const name = callee.property.name;
-		if (name === "random") return randomCall(args, ctx);
+		if (name === "random")
+			refuse("Math.random() is pasteable only once bound to the lane's stream");
 		if (typeof (Math as unknown as Record<string, unknown>)[name] !== "function")
 			refuse(`Math.${name} is not a function`);
 		return `${mathMember(name)}(${args.join(", ")})`;
 	}
-	return refuse("only helpers, Math.* and hashRandom(key) calls are pasteable");
-}
-
-function randomCall(args: readonly string[], ctx: PasteContext): string {
-	if (args.length !== 0 || ctx.fields === null || ctx.roles.state === undefined)
-		refuse("Math.random() is pasteable only as a tick's own draw");
-	return randomDraw(ctx.fields.state("__rng", true));
-}
-
-function hashRandomCall(args: readonly string[], ctx: PasteContext): string {
-	if (
-		args.length !== 1 ||
-		ctx.fields === null ||
-		ctx.roles.state === undefined ||
-		ctx.hashRandom === null
-	)
-		refuse("hashRandom(key) is pasteable only as a tick's own call");
-	return `${ctx.hashRandom}(${args[0]}, ${ctx.fields.state("__seed", false)})`;
+	return refuse("only helpers and Math.* calls are pasteable");
 }

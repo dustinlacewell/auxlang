@@ -1,7 +1,7 @@
 /**
  * A fresh lane state exactly as the engine builds it: the module's own
  * `spec.state(sampleRate)` plus the engine-injected random stream position
- * `__rng` (see random/stream-seed.ts, random/next-random.ts) and an empty
+ * `__rng` (see random/stream-seed.ts, random/lib/next-rng.js) and an empty
  * `__scratch` (see fresh-node-states.ts). A re-eval copies carried values
  * into these states, `__rng` included, so a carried stream continues where
  * it was (hand-over/carry-states.ts).

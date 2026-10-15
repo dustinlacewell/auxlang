@@ -98,7 +98,6 @@ function pasteHelper(helper: string, set: HelperSet): string[] {
 		roles: {},
 		fields: null,
 		helpers: set.pasted,
-		hashRandom: null,
 		exit: null,
 		cacheSlot: null,
 	};
