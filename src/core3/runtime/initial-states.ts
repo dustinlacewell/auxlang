@@ -10,7 +10,8 @@
  * sized from it). A paired node still starts fresh, alone, when its carried
  * state does not fit the fresh state's shape (state-fits.ts) — config is not
  * consulted. A migrated lane keeps its `__rng`, so its random stream
- * continues.
+ * continues — unless its seed changed: then the stream restarts from the new
+ * seed (restartStreamOnNewSeed).
  *
  * The engine injects three per-lane fields after construction, none part of
  * the state's shape: `__lane` (the lane index), `__scratch` (an empty record
@@ -56,6 +57,7 @@ export function buildLaneStates(
 			const carried = prevLanes?.[lane];
 			const fresh = freshLaneState(spec, sampleRate, streamSeed(nodeSeed, streamKey, lane));
 			const state = carried !== undefined && stateFits(carried, fresh) ? deepClone(carried) : fresh;
+			restartStreamOnNewSeed(state, fresh, nodeSeed);
 			state.__lane = lane;
 			state.__scratch = {};
 			state.__seed = nodeSeed;
@@ -63,6 +65,20 @@ export function buildLaneStates(
 		});
 	});
 	return { identities: nodes.map((node, i) => keyed(node, keys[i] as string)), states, paired };
+}
+
+/**
+ * A carried lane whose seed changed (a reroll, or an edited `.seed(n)`) takes
+ * the fresh stream: its randomness follows the new seed at once. Its other
+ * state still carries. Runs before `__seed` is overwritten, so the carried
+ * `__seed` is the old engine's.
+ */
+function restartStreamOnNewSeed(
+	state: Record<string, unknown>,
+	fresh: Record<string, unknown>,
+	seed: number,
+): void {
+	if (state !== fresh && state.__seed !== seed) state.__rng = fresh.__rng;
 }
 
 /**

@@ -10,6 +10,8 @@ import { describe, expect, it } from "vitest";
 import "@/core3/modules/all";
 import { factory, p, runEval, runProgram, seed, seq, tempo } from "@/core3/api";
 import { degrade, pure, stack, withSeed } from "@/core3/pattern/combinators";
+import { getRegistry } from "@/core3/module/define";
+import { Core3Engine } from "@/core3/runtime/engine";
 import { render, renderTap } from "@/core3/runtime/render";
 import { createSeedSession } from "@/core3/runtime/seed-session";
 import type { Program } from "@/core3/types";
@@ -89,6 +91,62 @@ describe("play session seed", () => {
 		expect(session.current()).toBe(1001);
 		session.end();
 		expect(session.current()).toBe(1002);
+	});
+});
+
+describe("a seed change during play", () => {
+	const SAMPLES = 2000;
+
+	function run(engine: Core3Engine, node: number): number[] {
+		const frame = new Float32Array(2);
+		const out: number[] = [];
+		for (let k = 0; k < SAMPLES; k++) {
+			engine.tick(frame);
+			out.push(engine.peek(node, "out", 0));
+		}
+		return out;
+	}
+
+	/** Play `before`, swap to `after` with migrated state; return the noise after the swap. */
+	function swapped(before: Program, after: Program): number[] {
+		const [node] = nodesOf(before, "noise");
+		const first = new Core3Engine(before, 48000, getRegistry());
+		run(first, node as number);
+		const second = new Core3Engine(after, 48000, getRegistry(), first.collectState());
+		return run(second, node as number);
+	}
+
+	/** The first stretch of `program` from a fresh engine. */
+	function fromStart(program: Program): number[] {
+		const [node] = nodesOf(program, "noise");
+		return run(new Core3Engine(program, 48000, getRegistry()), node as number);
+	}
+
+	/** The second stretch of `program` from a fresh engine: the stream continued. */
+	function continued(program: Program): number[] {
+		const [node] = nodesOf(program, "noise");
+		const engine = new Core3Engine(program, 48000, getRegistry());
+		run(engine, node as number);
+		return run(engine, node as number);
+	}
+
+	const hiss = (patchSeed: number, local?: number) =>
+		runProgram(
+			() => {
+				const n = noise();
+				(local === undefined ? n : n.seed(local)).out();
+			},
+			{ seed: patchSeed },
+		);
+
+	it("a reroll restarts module streams at once", () => {
+		expect(swapped(hiss(1), hiss(2))).toEqual(fromStart(hiss(2)));
+		expect(swapped(hiss(1), hiss(1))).toEqual(continued(hiss(1)));
+	});
+
+	it("an edited local .seed(n) restarts that stream; an unchanged one continues", () => {
+		expect(swapped(hiss(1, 3), hiss(1, 4))).toEqual(fromStart(hiss(1, 4)));
+		expect(swapped(hiss(1, 3), hiss(1, 3))).toEqual(continued(hiss(1, 3)));
 	});
 });
 
