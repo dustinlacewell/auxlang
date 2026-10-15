@@ -11,7 +11,7 @@
  * whole.begin) once per event — scrub-safe, thread-identical.
  */
 
-import type { Layer, Pat, PatOp, SignalKind, WChild } from "./ast";
+import type { Layer, Pat, PatOp, SignalKind, StepLayer, WChild } from "./ast";
 import { bjorklund } from "./bjorklund";
 import type { Ev, EvKind, Span } from "./event";
 import { isOnset, laneOf, startsHere } from "./event";
@@ -24,6 +24,7 @@ import {
 	radd,
 	rcmp,
 	rdiv,
+	req,
 	rfloor,
 	rlt,
 	rlte,
@@ -33,6 +34,8 @@ import {
 	rsub,
 	rtof,
 } from "./rational";
+import { locateStep } from "./step-locate";
+import { inLayer, stepOnsets } from "./step-onsets";
 import { width } from "./widths";
 
 export interface QueryCtx {
@@ -72,6 +75,12 @@ function queryCycle(pat: Pat, span: Span, ctx: QueryCtx): Ev[] {
 			return queryTie(pat.lanes, span);
 		case "slide":
 			return querySlide(pat.child, span, descend(ctx, "slide", 0));
+		// No `descend` for steps and compact: they add no randomness, so a pattern
+		// drops the same notes read by time, by steps, or compacted.
+		case "steps":
+			return querySteps(pat.layers, pat.child, span, ctx);
+		case "compact":
+			return query(pat.child, span, ctx).filter((ev) => ev.kind !== "rest");
 		case "fastcat":
 			return queryFastcat(pat.children, span, ctx);
 		case "timecat":
@@ -163,6 +172,8 @@ const OP_CODE: Record<PatOp, number> = {
 	rest: 31,
 	tie: 32,
 	slide: 33,
+	steps: 34, // never descended into (see queryCycle)
+	compact: 35, // never descended into
 };
 
 function descend(ctx: QueryCtx, op: PatOp, index: number): QueryCtx {
@@ -231,6 +242,39 @@ function queryTie(lanes: number, span: Span): Ev[] {
 /** The child's notes become slides; rests and ties keep their kind. */
 function querySlide(child: Pat, span: Span, ctx: QueryCtx): Ev[] {
 	return query(child, span, ctx).map((ev) => (ev.kind === "note" ? { ...ev, kind: "slide" } : ev));
+}
+
+/**
+ * Step `n` (the span's cycle) of each layer: find the child cycle and step it
+ * comes from, and re-time the events starting at that step's onset to span
+ * [n, n+1). Lanes are kept.
+ */
+function querySteps(layers: readonly StepLayer[], child: Pat, span: Span, ctx: QueryCtx): Ev[] {
+	const n = rfloor(span.begin);
+	const whole = { begin: r(n), end: r(n + 1) };
+	const cycles = new Map<number, Ev[]>();
+	const cycleEvents = (c: number): Ev[] => {
+		let evs = cycles.get(c);
+		if (evs === undefined) {
+			evs = query(child, { begin: r(c), end: r(c + 1) }, ctx);
+			cycles.set(c, evs);
+		}
+		return evs;
+	};
+	const out: Ev[] = [];
+	for (const layer of layers) {
+		const source = locateStep(layer.counts, n);
+		if (source === null) continue;
+		const evs = cycleEvents(source.cycle);
+		const at = stepOnsets(evs, layer)[source.index];
+		if (at === undefined) continue;
+		for (const ev of evs) {
+			if (inLayer(ev, layer) && startsHere(ev) && req((ev.whole as Span).begin, at)) {
+				out.push({ ...ev, whole, part: span });
+			}
+		}
+	}
+	return out;
 }
 
 /** The same event as a rest: its slot stays, its gate is off. */

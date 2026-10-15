@@ -22,6 +22,17 @@ export interface Layer {
 	readonly steps: R;
 }
 
+/**
+ * One layer of a `steps` node: the lanes [lo, hi) it owns, and `counts[k]`,
+ * the number of steps (distinct onsets) in cycle k of the child's period
+ * (counts.length cycles).
+ */
+export interface StepLayer {
+	readonly lo: number;
+	readonly hi: number;
+	readonly counts: readonly number[];
+}
+
 export type Pat =
 	| { readonly op: "pure"; readonly value: number } // one note spanning each cycle
 	| { readonly op: "silence" } // no events at all
@@ -30,6 +41,11 @@ export type Pat =
 	| { readonly op: "tie"; readonly lanes: number }
 	// The child's notes become slides (`a_b`): new value, entered without a retrigger.
 	| { readonly op: "slide"; readonly child: Pat }
+	// Re-time by steps (§4.2): in each layer, the nth step spans [n, n+1).
+	// Layers and their per-cycle step counts are fixed at build time.
+	| { readonly op: "steps"; readonly layers: readonly StepLayer[]; readonly child: Pat }
+	// Drop rest events.
+	| { readonly op: "compact"; readonly child: Pat }
 	| { readonly op: "fastcat"; readonly children: readonly Pat[] } // equal subdivision of one cycle
 	| { readonly op: "timecat"; readonly children: readonly WChild[] } // weighted subdivision of one cycle
 	| { readonly op: "slowcat"; readonly children: readonly Pat[] } // one child per cycle, round-robin

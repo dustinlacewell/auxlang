@@ -9,6 +9,7 @@ import {
 	add,
 	chunk,
 	clip,
+	compact,
 	degrade,
 	early,
 	euclid,
@@ -29,6 +30,7 @@ import {
 	slowcat,
 	sometimesBy,
 	stack,
+	steps,
 	struct,
 	timecat,
 	voices,
@@ -135,6 +137,16 @@ export class P {
 
 	always(f: (p: P) => P): P {
 		return this.someBy(1, f);
+	}
+
+	/** Re-time by steps: the nth event, rests and ties included, spans [n, n+1). Stacks count per layer. */
+	steps(): P {
+		return new P(steps(this.ast));
+	}
+
+	/** Drop rests. */
+	compact(): P {
+		return new P(compact(this.ast));
 	}
 
 	/** Assign events to `n` lanes under `policy`; `n` defaults to the structural width. */

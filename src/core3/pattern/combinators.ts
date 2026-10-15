@@ -5,7 +5,10 @@
  */
 
 import type { Pat, SignalKind, VoicePolicy, WChild } from "./ast";
+import { period } from "./period";
 import { type R, r } from "./rational";
+import { stepCounts } from "./step-counts";
+import { stepLayers } from "./step-layers";
 import { tactus } from "./tactus";
 import { width } from "./widths";
 
@@ -30,6 +33,32 @@ export const tie = (lanes: number): Pat => ({ op: "tie", lanes: positiveInt(lane
 
 /** The child's notes become slides: entered from the previous note without a retrigger. */
 export const slide = (child: Pat): Pat => ({ op: "slide", child });
+
+/** The longest period `.steps()` counts at build time, in cycles. */
+export const MAX_STEPS_PERIOD = 4096;
+
+/**
+ * Re-time by steps (§4.2): in each layer, the nth step (rests and ties
+ * included) spans [n, n+1). The step counts of one period are computed here,
+ * so a pattern without a finite period is a loud error.
+ */
+export function steps(child: Pat): Pat {
+	const cycles = period(child);
+	if (cycles === null) {
+		throw new Error(
+			"steps: the pattern has no finite period; its step count depends on randomness (compact() over degrade or ?)",
+		);
+	}
+	if (cycles > MAX_STEPS_PERIOD) {
+		throw new Error(
+			`steps: the pattern repeats only every ${cycles} cycles; steps() counts at most ${MAX_STEPS_PERIOD}`,
+		);
+	}
+	return { op: "steps", layers: stepCounts(child, stepLayers(child), cycles), child };
+}
+
+/** Drop rests. */
+export const compact = (child: Pat): Pat => ({ op: "compact", child });
 
 /** Equal subdivision of one cycle. */
 export function fastcat(children: readonly Pat[]): Pat {

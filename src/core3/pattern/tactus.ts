@@ -39,6 +39,7 @@ function structuralTactus(pat: Pat): R {
 		case "rest":
 		case "tie":
 		case "signal":
+		case "steps": // one step per cycle
 			return R1;
 		case "fastcat":
 			return r(pat.children.length);
@@ -68,6 +69,7 @@ function structuralTactus(pat: Pat): R {
 		case "mul":
 		case "every":
 		case "slide":
+		case "compact":
 		case "mask":
 		case "clip":
 		case "chunk":

@@ -7,21 +7,22 @@
  *           cycle ends in a rest or a gap; a tie there is followed back to
  *           its note
  *
- * Both look back at most LOOKBACK_CYCLES cycles. Nothing found holds value 0
- * and no note (NO_NOTE).
- *
- * The bound stands in for the pattern's period until `pattern/period.ts`
- * exists.
+ * Both look back one period: if a period holds no note, none came earlier.
+ * When randomness picks the rests (`degrade`, `?`), the last note may lie
+ * further back than one period, so the look-back is at least
+ * RANDOM_LOOKBACK_CYCLES. Nothing found holds value 0 and no note (NO_NOTE).
  */
 
 import type { Pat } from "../ast";
 import type { Ev } from "../event";
+import { period } from "../period";
+import { hasRandomKinds } from "../random-kinds";
 import { r, rlt } from "../rational";
 import { NO_NOTE } from "./event-table";
 import { laneCycle } from "./lane-cycle";
 import { ownNoteId } from "./note-id";
 
-export const LOOKBACK_CYCLES = 16;
+export const RANDOM_LOOKBACK_CYCLES = 16;
 
 export interface Carry {
 	readonly value: number;
@@ -30,7 +31,14 @@ export interface Carry {
 
 export function carryBefore(pat: Pat, seed: number, lane: number, c: number): Carry {
 	const at = { pat, seed, lane };
-	return { value: valueBefore(at, c, LOOKBACK_CYCLES), noteId: noteAtStart(at, c, LOOKBACK_CYCLES) };
+	const depth = lookback(pat);
+	return { value: valueBefore(at, c, depth), noteId: noteAtStart(at, c, depth) };
+}
+
+function lookback(pat: Pat): number {
+	const cycles = period(pat);
+	if (cycles !== null && !hasRandomKinds(pat)) return cycles;
+	return Math.max(cycles ?? 0, RANDOM_LOOKBACK_CYCLES);
 }
 
 interface Lane {

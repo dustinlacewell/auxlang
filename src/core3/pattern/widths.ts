@@ -71,6 +71,8 @@ function structuralWidth(pat: Pat): number {
 		case "add":
 		case "mul":
 		case "slide":
+		case "steps":
+		case "compact":
 		case "mask":
 		case "clip":
 		case "sometimesBy": // structure from child; transformed only lends values
