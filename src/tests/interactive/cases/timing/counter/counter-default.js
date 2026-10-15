@@ -1,12 +1,13 @@
 // counter - defaults
-// Count beats
+// Count beats: pitch climbs one semitone per beat, never wraps
 clock(120)
   .apply(c =>
-    counter(c).scale({
+    counter(c.beat)
+      .scale({
         from: 0,
-        to: 8,
-        min: 200,
-        max: 800})
+        to: 12,
+        min: 48,
+        max: 60})
       .saw()
       .gain(0.3)
       .out())

@@ -3,7 +3,6 @@
 clock(60)
   .seq("c4*4 e4*2 g4")
   .apply(s =>
-    s.cv
-      .tri()
-      .gain({ level: s.gate.ar({ attack: 0.01, release: 0.05 }) })
+    s.tri()
+      .gain(s.gate.ar({ attack: 0.01, release: 0.05 }))
       .out())

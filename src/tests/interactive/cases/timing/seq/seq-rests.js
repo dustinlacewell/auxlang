@@ -3,7 +3,6 @@
 clock(120)
   .seq("c4 ~ e4 ~")
   .apply(s =>
-    s.cv
-      .tri()
-      .gain({ level: s.gate.ar() })
+    s.tri()
+      .gain(s.gate.ar())
       .out())

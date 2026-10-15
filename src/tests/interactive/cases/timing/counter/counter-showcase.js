@@ -2,14 +2,14 @@
 // Step sequencer simulation
 clock(120)
   .apply(c =>
-    counter(c).max(8)
+    counter(c.beat, { length: 8 })
       .scale({
         from: 0,
         to: 8,
-        min: 100,
-        max: 500})
-      .quantize({ scale: "major" })
+        min: 48,
+        max: 72})
+      .quantize({ scaleName: "major" })
       .saw()
-      .lpf({ cutoff: 800 })
+      .lpf({ cutoff: hz(800) })
       .gain(0.3)
       .out())
