@@ -1,7 +1,8 @@
 /**
  * Static width (§3.2): how many lanes a pattern needs, computed from its
- * structure — never by querying. `stack` sums, sequences take the max, `every`
- * takes the max of both branches, `off` sums (it is a stack).
+ * structure — never by querying. `stack` and `polymeter` sum, sequences
+ * (`fastcat`, `timecat`, `slowcat`) take the max, `every` takes the max of both
+ * branches, `off` sums (it is a stack).
  *
  * The rules match how `query` numbers lanes: a stack offsets each child's lanes
  * by the widths of the children before it, and every other op keeps its
@@ -38,7 +39,11 @@ function structuralWidth(pat: Pat): number {
 			return 1;
 		case "stack":
 			return sum(pat.children);
+		case "polymeter":
+			return sum(pat.layers.map((layer) => layer.pat));
 		case "fastcat":
+			return max(pat.children);
+		case "timecat":
 			return max(pat.children.map((wc) => wc.pat));
 		case "slowcat":
 			return max(pat.children);

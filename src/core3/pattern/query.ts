@@ -11,7 +11,7 @@
  * whole.begin) once per event — scrub-safe, thread-identical.
  */
 
-import type { Pat, PatOp, SignalKind, WChild } from "./ast";
+import type { Layer, Pat, PatOp, SignalKind, WChild } from "./ast";
 import { bjorklund } from "./bjorklund";
 import type { Ev, Span } from "./event";
 import { isOnset, laneOf } from "./event";
@@ -68,10 +68,14 @@ function queryCycle(pat: Pat, span: Span, ctx: QueryCtx): Ev[] {
 			return [];
 		case "fastcat":
 			return queryFastcat(pat.children, span, ctx);
+		case "timecat":
+			return queryTimecat(pat.children, span, ctx);
 		case "slowcat":
 			return querySlowcat(pat.children, span, ctx);
 		case "stack":
 			return queryStack(pat.children, span, ctx);
+		case "polymeter":
+			return queryPolymeter(pat.layers, span, ctx);
 		case "fast":
 			return queryScaled(pat.factor, pat.child, span, descend(ctx, "fast", 0));
 		case "slow":
@@ -160,6 +164,8 @@ const OP_CODE: Record<PatOp, number> = {
 	signal: 26,
 	chordidx: 27,
 	voices: 28,
+	timecat: 29,
+	polymeter: 30,
 };
 
 function descend(ctx: QueryCtx, op: PatOp, index: number): QueryCtx {
@@ -227,6 +233,24 @@ function queryStack(children: readonly Pat[], span: Span, ctx: QueryCtx): Ev[] {
 	return out;
 }
 
+/**
+ * Layers played together, lanes stacked like `stack`. Each layer runs at the
+ * first layer's steps per cycle, so a layer of `k` steps is sped up by
+ * `steps / k`.
+ */
+function queryPolymeter(layers: readonly Layer[], span: Span, ctx: QueryCtx): Ev[] {
+	const steps = (layers[0] as Layer).steps;
+	const out: Ev[] = [];
+	let offset = 0;
+	layers.forEach((layer, i) => {
+		const factor = rdiv(steps, layer.steps);
+		const evs = queryScaled(factor, layer.pat, span, descend(ctx, "polymeter", i));
+		out.push(...shiftLanes(evs, offset));
+		offset += width(layer.pat);
+	});
+	return out;
+}
+
 function shiftLanes(evs: Ev[], offset: number): Ev[] {
 	return offset === 0 ? evs : evs.map((ev) => ({ ...ev, lane: laneOf(ev) + offset }));
 }
@@ -286,9 +310,14 @@ function querySlots(slots: readonly Slot[], span: Span, ctx: QueryCtx, op: PatOp
 	return out;
 }
 
-function queryFastcat(children: readonly WChild[], span: Span, ctx: QueryCtx): Ev[] {
-	const slots = children.map((wc, i) => ({ pat: wc.pat, weight: wc.weight, pathIndex: i }));
+function queryFastcat(children: readonly Pat[], span: Span, ctx: QueryCtx): Ev[] {
+	const slots = children.map((pat, i) => ({ pat, weight: R1, pathIndex: i }));
 	return querySlots(slots, span, ctx, "fastcat");
+}
+
+function queryTimecat(children: readonly WChild[], span: Span, ctx: QueryCtx): Ev[] {
+	const slots = children.map((wc, i) => ({ pat: wc.pat, weight: wc.weight, pathIndex: i }));
+	return querySlots(slots, span, ctx, "timecat");
 }
 
 function querySlowcat(children: readonly Pat[], span: Span, ctx: QueryCtx): Ev[] {

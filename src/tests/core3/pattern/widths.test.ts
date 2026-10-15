@@ -27,6 +27,14 @@ describe("width rules", () => {
 		expect(width(P.cat(1, chord(), P.stack(4, 5)).ast)).toBe(3);
 	});
 
+	it("timecat takes the max of its children", () => {
+		expect(width(P.timecat([2, chord()], [1, P.stack(4, 5)]).ast)).toBe(3);
+	});
+
+	it("polymeter sums its layers", () => {
+		expect(width(P.polymeter(P.fastcat(1, 2, 3), chord()).ast)).toBe(4);
+	});
+
 	it("every takes the max of both branches", () => {
 		expect(width(P.fastcat(1, 2).every(2, () => chord()).ast)).toBe(3);
 		expect(width(chord().every(2, (q) => q.rev()).ast)).toBe(3);
@@ -68,6 +76,8 @@ describe("query lanes fit the width", () => {
 		["every with a wider branch", P.fastcat(1, 2).every(2, () => chord()), 0, 4],
 		["chunk: a held note rings into the slice", P.fastcat(1).chunk(4, (q) => q.fast(4)), 0, 4],
 		["held note under a stack", P.stack(p`<~ e4>`, p`c4`.slow(2)), 0, 4],
+		["timecat with a chord", P.timecat([2, chord()], [1, 4]), 0, 2],
+		["polymeter of a chord and a line", P.polymeter(P.fastcat(1, 2, 3), P.fastcat(chord(), 5)), 0, 3],
 	];
 
 	for (const [name, pat, from, to] of cases) {

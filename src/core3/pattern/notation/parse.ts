@@ -31,6 +31,7 @@ import {
 	stack,
 	tieNext,
 	tiePrev,
+	timecat,
 } from "../combinators";
 import { isP } from "../pat-class";
 import type { R } from "../rational";
@@ -151,7 +152,7 @@ class Parser {
 			if (!isFirst) out = tiePrev(out);
 			return out;
 		});
-		return fastcat(flagged.map((p) => ({ pat: p, weight: r(1) })));
+		return fastcat(flagged);
 	}
 
 	/** A term plus its `*` / `?` / `(k,s,rot)` modifiers, chained left-to-right. */
@@ -370,16 +371,21 @@ class Parser {
 
 const radd1 = (w: R): R => r(w.n + w.d, w.d);
 
-/** Fold weighted steps into the sequence's Pat. */
+const isUnit = (w: R): boolean => w.n === w.d;
+
+/** Fold weighted steps into the sequence's Pat: fastcat, or timecat when any step is weighted. */
 function foldSteps(steps: readonly WStep[], pos: number): Pat {
 	if (steps.length === 0) throw new Error(`mini-notation: empty sequence (at position ${pos})`);
-	if (steps.length === 1 && steps[0]!.weight.n === steps[0]!.weight.d) return steps[0]!.pat;
-	return fastcat(steps.map((s) => ({ pat: s.pat, weight: s.weight })));
+	if (steps.every((s) => isUnit(s.weight))) {
+		return steps.length === 1 ? steps[0]!.pat : fastcat(steps.map((s) => s.pat));
+	}
+	return timecat(steps.map((s) => [s.weight, s.pat] as const));
 }
 
 /** A `<...>` segment is itself a sequence; slowcat over its steps. */
 function slowcatFromSequence(seq: Pat): Pat {
-	if (seq.op === "fastcat") return slowcat(seq.children.map((c) => c.pat));
+	if (seq.op === "fastcat") return slowcat(seq.children);
+	if (seq.op === "timecat") return slowcat(seq.children.map((c) => c.pat));
 	return slowcat([seq]);
 }
 
@@ -393,7 +399,7 @@ function spliceToPat(value: unknown, pos: number): Pat {
 	if (Array.isArray(value)) {
 		if (value.length === 0)
 			throw new Error(`mini-notation: empty array interpolation (at position ${pos})`);
-		return fastcat(value.map((v) => ({ pat: spliceToPat(v, pos), weight: r(1) })));
+		return fastcat(value.map((v) => spliceToPat(v, pos)));
 	}
 	if (isP(value)) return value.ast;
 	if (isPat(value)) return value;

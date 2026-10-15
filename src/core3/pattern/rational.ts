@@ -41,6 +41,9 @@ export const rdiv = (a: R, b: R): R => {
 	return r(a.n * b.d, a.d * b.n);
 };
 
+/** Least common multiple of two positive rationals: lcm(a/b, c/d) = lcm(a, c) / gcd(b, d). */
+export const rlcm = (a: R, b: R): R => r((a.n / gcd(a.n, b.n)) * b.n, gcd(a.d, b.d));
+
 /** a <=> b : negative, zero, positive */
 export const rcmp = (a: R, b: R): number => a.n * b.d - b.n * a.d;
 export const req = (a: R, b: R): boolean => rcmp(a, b) === 0;

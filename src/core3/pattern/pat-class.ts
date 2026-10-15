@@ -20,6 +20,7 @@ import {
 	mask,
 	mul,
 	ply,
+	polymeter,
 	pure,
 	rev,
 	segment,
@@ -29,6 +30,7 @@ import {
 	sometimesBy,
 	stack,
 	struct,
+	timecat,
 	voices,
 } from "./combinators";
 import type { R } from "./rational";
@@ -170,6 +172,16 @@ export class P {
 	/** Squeezed into one cycle. */
 	static fastcat(...pats: readonly (number | Pat | P)[]): P {
 		return new P(fastcat(pats.map((x) => toP(x).ast)));
+	}
+
+	/** Squeezed into one cycle by weight: `P.timecat([2, a], [1, b])`. */
+	static timecat(...pairs: readonly (readonly [number | R, number | Pat | P])[]): P {
+		return new P(timecat(pairs.map(([weight, x]) => [weight, toP(x).ast] as const)));
+	}
+
+	/** Layers together, each at the first layer's steps per cycle. */
+	static polymeter(...pats: readonly (number | Pat | P)[]): P {
+		return new P(polymeter(pats.map((x) => toP(x).ast)));
 	}
 }
 

@@ -7,10 +7,10 @@ import { r } from "@/core3/pattern/rational";
 // AST shorthand builders for expected shapes.
 const pure = (value: number): Pat => ({ op: "pure", value });
 const silence = (): Pat => ({ op: "silence" });
-const w = (pat: Pat, n = 1, d = 1) => ({ pat, weight: r(n, d) });
-const fastcat = (...children: { pat: Pat; weight: ReturnType<typeof r> }[]): Pat => ({
-	op: "fastcat",
-	children,
+const fastcat = (...children: Pat[]): Pat => ({ op: "fastcat", children });
+const timecat = (...children: [number, Pat][]): Pat => ({
+	op: "timecat",
+	children: children.map(([weight, pat]) => ({ pat, weight: r(weight) })),
 });
 const slowcat = (...children: Pat[]): Pat => ({ op: "slowcat", children });
 const stack = (...children: Pat[]): Pat => ({ op: "stack", children });
@@ -33,8 +33,8 @@ const g4 = 67;
 const a4 = 69;
 
 describe("desugaring table (platonic.md §3.2)", () => {
-	it("sequence within cycle -> weighted fastcat", () => {
-		expect(parse("c4 e4")).toEqual(fastcat(w(pure(c4)), w(pure(e4))));
+	it("sequence within cycle -> fastcat", () => {
+		expect(parse("c4 e4")).toEqual(fastcat(pure(c4), pure(e4)));
 	});
 
 	it("single step -> the step itself (unit weight)", () => {
@@ -42,11 +42,11 @@ describe("desugaring table (platonic.md §3.2)", () => {
 	});
 
 	it("~ rest -> silence", () => {
-		expect(parse("c4 ~ e4")).toEqual(fastcat(w(pure(c4)), w(silence()), w(pure(e4))));
+		expect(parse("c4 ~ e4")).toEqual(fastcat(pure(c4), silence(), pure(e4)));
 	});
 
 	it("[a b] subgroup -> fastcat as one step", () => {
-		expect(parse("c4 [e4 g4]")).toEqual(fastcat(w(pure(c4)), w(fastcat(w(pure(e4)), w(pure(g4))))));
+		expect(parse("c4 [e4 g4]")).toEqual(fastcat(pure(c4), fastcat(pure(e4), pure(g4))));
 	});
 
 	it("<a b> alternate per cycle -> slowcat", () => {
@@ -70,31 +70,31 @@ describe("desugaring table (platonic.md §3.2)", () => {
 	});
 
 	it("a!2 duplicate step -> two steps", () => {
-		expect(parse("c4!2")).toEqual(fastcat(w(pure(c4)), w(pure(c4))));
+		expect(parse("c4!2")).toEqual(fastcat(pure(c4), pure(c4)));
 	});
 
-	it("a@2 weight 2", () => {
-		expect(parse("c4@2 e4")).toEqual(fastcat(w(pure(c4), 2), w(pure(e4))));
+	it("a@2 weight 2 -> timecat", () => {
+		expect(parse("c4@2 e4")).toEqual(timecat([2, pure(c4)], [1, pure(e4)]));
 	});
 
 	it("bare _ extends previous step's weight by 1", () => {
-		expect(parse("c4 _ e4")).toEqual(fastcat(w(pure(c4), 2), w(pure(e4))));
+		expect(parse("c4 _ e4")).toEqual(timecat([2, pure(c4)], [1, pure(e4)]));
 	});
 
 	it("a_b tie -> fastcat[tieNext a, tiePrev b]", () => {
 		// As the whole pattern, the tie chain is one step of unit weight, so the
 		// enclosing single-step sequence unwraps to the tie fastcat itself.
-		expect(parse("c4_e4")).toEqual(fastcat(w(tieNext(pure(c4))), w(tiePrev(pure(e4)))));
+		expect(parse("c4_e4")).toEqual(fastcat(tieNext(pure(c4)), tiePrev(pure(e4))));
 	});
 
 	it("a_b tie as one step among several", () => {
-		const tie = fastcat(w(tieNext(pure(c4))), w(tiePrev(pure(e4))));
-		expect(parse("c4_e4 g4")).toEqual(fastcat(w(tie), w(pure(g4))));
+		const tie = fastcat(tieNext(pure(c4)), tiePrev(pure(e4)));
+		expect(parse("c4_e4 g4")).toEqual(fastcat(tie, pure(g4)));
 	});
 
 	it("a_b_c chain flags middles both ways", () => {
 		expect(parse("c4_e4_g4")).toEqual(
-			fastcat(w(tieNext(pure(c4))), w(tiePrev(tieNext(pure(e4)))), w(tiePrev(pure(g4)))),
+			fastcat(tieNext(pure(c4)), tiePrev(tieNext(pure(e4))), tiePrev(pure(g4))),
 		);
 	});
 
@@ -121,10 +121,10 @@ describe("desugaring table (platonic.md §3.2)", () => {
 
 describe("bare numbers are numeric values", () => {
 	it("integers", () => {
-		expect(parse("0 1 2")).toEqual(fastcat(w(pure(0)), w(pure(1)), w(pure(2))));
+		expect(parse("0 1 2")).toEqual(fastcat(pure(0), pure(1), pure(2)));
 	});
 	it("decimals", () => {
-		expect(parse("0.5 .75")).toEqual(fastcat(w(pure(0.5)), w(pure(0.75))));
+		expect(parse("0.5 .75")).toEqual(fastcat(pure(0.5), pure(0.75)));
 	});
 	it("negative numbers", () => {
 		expect(parse("-3")).toEqual(pure(-3));

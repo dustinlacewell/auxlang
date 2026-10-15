@@ -10,18 +10,27 @@
 
 import type { R } from "./rational";
 
-/** fastcat child with a duration weight (`a@2` => weight 2). */
+/** timecat child with a duration weight (`a@2` => weight 2). */
 export interface WChild {
 	readonly pat: Pat;
 	readonly weight: R;
 }
 
+/** polymeter layer: the layer's own step count, fixed at build time. */
+export interface Layer {
+	readonly pat: Pat;
+	readonly steps: R;
+}
+
 export type Pat =
 	| { readonly op: "pure"; readonly value: number } // one event spanning each cycle
 	| { readonly op: "silence" }
-	| { readonly op: "fastcat"; readonly children: readonly WChild[] } // weighted subdivision of one cycle
+	| { readonly op: "fastcat"; readonly children: readonly Pat[] } // equal subdivision of one cycle
+	| { readonly op: "timecat"; readonly children: readonly WChild[] } // weighted subdivision of one cycle
 	| { readonly op: "slowcat"; readonly children: readonly Pat[] } // one child per cycle, round-robin
 	| { readonly op: "stack"; readonly children: readonly Pat[] } // simultaneous
+	// Simultaneous layers; each plays layers[0].steps of its own steps per cycle.
+	| { readonly op: "polymeter"; readonly layers: readonly Layer[] }
 	| { readonly op: "fast"; readonly factor: R; readonly child: Pat }
 	| { readonly op: "slow"; readonly factor: R; readonly child: Pat }
 	| { readonly op: "rev"; readonly child: Pat } // reverse within each cycle

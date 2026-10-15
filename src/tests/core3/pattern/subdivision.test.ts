@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fastcat, pure, stack, wchild } from "@/core3/pattern/combinators";
+import { fastcat, pure, stack, timecat } from "@/core3/pattern/combinators";
 import { isOnset } from "@/core3/pattern/event";
 import { r, radd, req } from "@/core3/pattern/rational";
 import { queryCycles } from "./helpers";
@@ -61,8 +61,11 @@ describe("fastcat subdivision exactness", () => {
 		});
 	});
 
-	it("weighted fastcat: a@3 b divides the cycle 3/4 + 1/4", () => {
-		const pat = fastcat([wchild(pure(1), 3), pure(2)]);
+	it("timecat: a@3 b divides the cycle 3/4 + 1/4", () => {
+		const pat = timecat([
+			[3, pure(1)],
+			[1, pure(2)],
+		]);
 		const evs = queryCycles(pat, 0, 1);
 		expect(evs).toHaveLength(2);
 		expect(req(evs[0]!.whole!.begin, r(0))).toBe(true);

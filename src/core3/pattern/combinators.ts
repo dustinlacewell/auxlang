@@ -5,7 +5,8 @@
  */
 
 import type { Pat, SignalKind, VoicePolicy, WChild } from "./ast";
-import { type R, R1, r } from "./rational";
+import { type R, r } from "./rational";
+import { tactus } from "./tactus";
 import { width } from "./widths";
 
 const asR = (x: number | R): R => (typeof x === "number" ? r(x) : x);
@@ -21,14 +22,31 @@ export const pure = (value: number): Pat => ({ op: "pure", value });
 
 export const silence = (): Pat => ({ op: "silence" });
 
-/** Weighted fastcat child (`a@2` => weight 2). */
-export const wchild = (pat: Pat, weight: number | R): WChild => ({ pat, weight: asR(weight) });
-
-/** Weighted subdivision of one cycle. Plain Pats get weight 1. */
-export function fastcat(children: readonly (Pat | WChild)[]): Pat {
+/** Equal subdivision of one cycle. */
+export function fastcat(children: readonly Pat[]): Pat {
 	if (children.length === 0) throw new Error("fastcat: needs at least one child");
-	const weighted = children.map((c) => ("op" in c ? { pat: c, weight: R1 } : c));
-	return { op: "fastcat", children: weighted };
+	return { op: "fastcat", children };
+}
+
+/** Weighted subdivision of one cycle: `timecat([[2, a], [1, b]])` gives a two thirds. */
+export function timecat(children: readonly (readonly [number | R, Pat])[]): Pat {
+	if (children.length === 0) throw new Error("timecat: needs at least one child");
+	const weighted: WChild[] = children.map(([weight, pat]) => {
+		const w = asR(weight);
+		if (w.n <= 0) throw new Error(`timecat: weights must be positive, got ${w.n}/${w.d}`);
+		return { pat, weight: w };
+	});
+	return { op: "timecat", children: weighted };
+}
+
+/**
+ * Layers played together, each at the first layer's steps per cycle:
+ * `polymeter([abc, de])` plays d e d, e d e against a b c. A layer's step
+ * count is its tactus.
+ */
+export function polymeter(layers: readonly Pat[]): Pat {
+	if (layers.length === 0) throw new Error("polymeter: needs at least one layer");
+	return { op: "polymeter", layers: layers.map((pat) => ({ pat, steps: tactus(pat) })) };
 }
 
 /** One child per cycle, round-robin. */
