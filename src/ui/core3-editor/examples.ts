@@ -91,6 +91,26 @@ seq("60*8").trig.apply((t) =>
 )
 `;
 
+/** (f2) Seeds: pin the patch seed; hold one part with a local seed. */
+const seededChance = `// seeds: seed(n) pins the dice; delete it and the editor draws a seed
+// at play (shown below the editor, with reroll). The ghost line keeps
+// its own seed, so it stays put when the patch seed changes.
+tempo(120)
+seed(7)
+
+const hook = seq(p\`c4 e4 g4 b4\`.fast(2).degrade(0.4))
+hook.tri()
+  .mul(hook.gate.adsr(0.005, 0.1, 0.3, 0.1))
+  .gain(0.3)
+  .out()
+
+const ghost = seq(p\`c5*8\`.degrade(0.6).seed(3))
+ghost.sin()
+  .mul(ghost.gate.ad(0.002, 0.05))
+  .gain(0.15)
+  .out()
+`;
+
 /** (g) A whole track: dub techno with a 16-bar form, mixed and tuned. */
 const smokeSignal = `// smoke signal — dub techno in F minor, 122 bpm; one cycle = one bar
 tempo(122)
@@ -605,6 +625,7 @@ export const EXAMPLES: readonly Example[] = [
 	{ name: "karplus pluck (loop)", source: karplus },
 	{ name: "poly chords", source: polyChords },
 	{ name: "drums + counter", source: drums },
+	{ name: "seeded chance", source: seededChance },
 ];
 
 /** The patch shown when the editor first loads. */

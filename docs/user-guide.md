@@ -197,6 +197,25 @@ That is the recommended shape.
 
 `?` and `.degrade()` are seeded — the decision is a hash of seed, node-path, and cycle number. They produce the same result every run and are stable under scrubbing.
 
+`seed(n)` sets the patch seed. It is a setting like `tempo()`: once per patch, anywhere in the code. Without it, the editor draws a seed when play starts and keeps it until stop or reroll. The editor shows the seed, so you can pin one you like. `.seed(n)` on a pattern or a module gives that part its own seed, so it stays put when the patch seed changes. Seeds are integers.
+
+```js
+tempo(120)
+seed(7)
+
+const hook = seq(p`c4 e4 g4 b4`.fast(2).degrade(0.4))
+hook.tri()
+  .mul(hook.gate.adsr(0.005, 0.1, 0.3, 0.1))
+  .gain(0.3)
+  .out()
+
+const ghost = seq(p`c5*8`.degrade(0.6).seed(3))
+ghost.sin()
+  .mul(ghost.gate.ad(0.002, 0.05))
+  .gain(0.15)
+  .out()
+```
+
 ---
 
 ## 7. seq, gate, trig, and slide

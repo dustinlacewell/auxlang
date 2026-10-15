@@ -2,7 +2,7 @@
  * The ONE wrapper. A single Proxy over `{ node, port?, lane? }` covering all
  * fluent behavior: chaining to any registered or patch-defined module, output taps, input
  * setters (copy-with-change, setting a port's base), call = set default input,
- * and the reserved methods `out / apply / lane / id / width / mod`.
+ * and the reserved methods `out / apply / lane / id / seed / width / mod`.
  *
  * Unknown string props fail loudly listing what was available; symbols and a
  * small introspection whitelist return undefined so debuggers, JSON.stringify,
@@ -11,6 +11,7 @@
 
 import type { GNode } from "../graph/node";
 import { getRegistry } from "../module/define";
+import { checkSeed } from "../random/check-seed";
 import type { ModuleSpec } from "../types";
 import { bindInput } from "./bind-input";
 import { buildNode } from "./build-node";
@@ -22,7 +23,7 @@ import { rootFromHandle } from "./out";
 import { isPatchModule, resolvePatchModule } from "./resolve";
 
 /** Names the handle claims for itself; module ports may not use them. */
-export const RESERVED_HANDLE_NAMES = new Set(["out", "apply", "lane", "id", "width", "mod"]);
+export const RESERVED_HANDLE_NAMES = new Set(["out", "apply", "lane", "id", "seed", "width", "mod"]);
 
 /** Introspection props that must return undefined instead of erroring. */
 const INTROSPECTION = new Set([
@@ -58,6 +59,7 @@ export function wrap(node: GNode, port?: string, lane?: number): Handle {
 			if (prop === "apply") return <T>(fn: (h: Handle) => T): T => fn(wrap(node, port, lane));
 			if (prop === "lane") return (i: number) => laneHandle(node, port, i, spec);
 			if (prop === "id") return (name: string) => pinned(node, port, lane, name);
+			if (prop === "seed") return (n: number) => seeded(node, port, lane, n);
 			if (prop === "width") return (n: number) => withWidth(node, port, lane, n, spec);
 			if (prop === "mod") {
 				return (input: unknown, signal: unknown, depth: unknown = 1) =>
@@ -103,6 +105,13 @@ function pinned(
 	}
 	const copy = copyNode(node);
 	copy.pin = name;
+	return wrap(copy, port, lane);
+}
+
+/** Value semantics: `.seed(n)` returns a COPY with its own seed (MANIFESTO §7). */
+function seeded(node: GNode, port: string | undefined, lane: number | undefined, n: number): Handle {
+	const copy = copyNode(node);
+	copy.seed = checkSeed(n, `${node.module}.seed(n)`);
 	return wrap(copy, port, lane);
 }
 
@@ -167,6 +176,7 @@ function copyNode(node: GNode): GNode {
 		inputs: { ...node.inputs },
 		config: { ...node.config },
 		...(node.pin !== undefined ? { pin: node.pin } : {}),
+		...(node.seed !== undefined ? { seed: node.seed } : {}),
 		...(node.mods !== undefined ? { mods: node.mods } : {}),
 	};
 }

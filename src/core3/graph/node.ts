@@ -41,6 +41,8 @@ export interface GNode {
 	inputs: Record<string, InputValue>;
 	config: Record<string, unknown>;
 	pin?: string;
+	/** Local seed from `.seed(n)`: replaces the patch seed for this node's randomness. */
+	seed?: number;
 	/** Modulation terms per port, from `.mod(port, signal, depth)`. Compile desugars them. */
 	mods?: Record<string, readonly ModTerm[]>;
 }

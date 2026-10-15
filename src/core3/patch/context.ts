@@ -1,7 +1,8 @@
 /**
  * Eval context — the ONLY mutable state in the patch layer, and it exists
  * only for the duration of one `runEval` call. `out()` pushes roots,
- * `tempo()` sets the ambient clock, factories construct nodes; all of them
+ * `tempo()` sets the ambient clock, `seed()` pins the patch seed, factories
+ * construct nodes; all of them
  * fail loudly outside runEval. `defmod()` is the one scope-aware citizen: a
  * live context routes its registrations into this eval's spec table; outside
  * one it falls through to the realm registry (module/define).
@@ -16,7 +17,10 @@ export interface EvalResult {
 	readonly roots: GNode[];
 	/** Ambient clock: the eval's one tempo(bpm) setting, read when eval has finished. */
 	readonly clock: GNode | null;
+	/** The patch seed: the eval's one seed(n) setting, else the `seed` option, else DEFAULT_SEED. */
 	readonly seed: number;
+	/** True when the patch set its own seed with seed(n); a host's drawn seed then has no effect. */
+	readonly seedPinned: boolean;
 	/** Patch-defined module specs (defmod), scoped to this eval only. */
 	readonly specs: ReadonlyMap<string, ModuleSpec>;
 }
@@ -25,6 +29,7 @@ interface EvalCtx {
 	roots: GNode[];
 	clock: GNode | null;
 	seed: number;
+	seedPinned: boolean;
 	/** Patch-defined module specs (defmod), scoped to this eval only. */
 	specs: Map<string, ModuleSpec>;
 }
@@ -37,6 +42,7 @@ export function runEval(fn: () => void, opts: { seed?: number } = {}): EvalResul
 		roots: [],
 		clock: null,
 		seed: opts.seed ?? DEFAULT_SEED,
+		seedPinned: false,
 		specs: new Map(),
 	};
 	current = ctx;

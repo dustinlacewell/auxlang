@@ -34,6 +34,7 @@ import {
 	struct,
 	timecat,
 	voices,
+	withSeed,
 } from "./combinators";
 import type { R } from "./rational";
 
@@ -78,6 +79,11 @@ export class P {
 
 	degrade(prob = 0.5): P {
 		return new P(degrade(prob, this.ast));
+	}
+
+	/** Local seed: this pattern's randomness no longer follows the patch seed or its position. */
+	seed(n: number): P {
+		return new P(withSeed(n, this.ast));
 	}
 
 	add(amount: number): P {

@@ -127,6 +127,7 @@ function emitNode(node: GNode, r: Resolved): PNode {
 		lanes,
 		config: strippedConfig(node.config),
 		...(node.pin !== undefined ? { pin: node.pin } : {}),
+		...(node.seed !== undefined ? { seed: node.seed } : {}),
 	};
 }
 

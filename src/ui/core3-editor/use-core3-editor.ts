@@ -1,16 +1,20 @@
 /**
- * Core3 editor controller: owns the code, playing state, and the verbatim
- * eval/compile error. `run` evaluates the patch and hands the Program to the
+ * Core3 editor controller: owns the code, playing state, the seed shown, and
+ * the verbatim eval/compile error. `run` evaluates the patch under the play
+ * session's seed (a patch's own seed(n) wins) and hands the Program to the
  * audio host — re-running while playing is a crossfade swap in the worklet,
- * not a restart. `stop` silences. Errors are the language's loud errors,
- * surfaced unmodified. (The graph renders from the code itself via PatchGraph
- * in the embed, so no compiled Program is held here.)
+ * not a restart. `reroll` draws a new session seed and re-runs. `stop`
+ * silences and ends the session, so the next play draws a fresh seed. Errors
+ * are the language's loud errors, surfaced unmodified. (The graph renders
+ * from the code itself via PatchGraph in the embed, so no compiled Program is
+ * held here.)
  */
 
-import { play, stop } from "@/core3/runtime/audio";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { play, playSeed, stop } from "@/core3/runtime/audio";
+import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
 import { useCallback, useState } from "react";
 import { DEFAULT_EXAMPLE } from "./examples";
+import type { ShownSeed } from "./seed-bar";
 import { codeFromUrl } from "./share-url";
 
 interface Core3EditorState {
@@ -18,7 +22,9 @@ interface Core3EditorState {
 	setCode: (code: string) => void;
 	error: string | null;
 	isPlaying: boolean;
+	seed: ShownSeed | null;
 	run: () => Promise<void>;
+	reroll: () => Promise<void>;
 	halt: () => void;
 }
 
@@ -26,22 +32,29 @@ export function useCore3Editor(): Core3EditorState {
 	const [code, setCode] = useState(() => codeFromUrl() ?? DEFAULT_EXAMPLE);
 	const [error, setError] = useState<string | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
+	const [seed, setSeed] = useState<ShownSeed | null>(null);
 
 	const run = useCallback(async () => {
 		try {
-			const compiled = evalPatch(code);
+			const { program, seedPinned } = evaluatePatch(code, { seed: playSeed.current() });
 			setError(null);
-			await play(compiled);
+			await play(program);
+			setSeed({ value: program.seed, pinned: seedPinned });
 			setIsPlaying(true);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : String(err));
 		}
 	}, [code]);
 
+	const reroll = useCallback(async () => {
+		playSeed.reroll();
+		await run();
+	}, [run]);
+
 	const halt = useCallback(() => {
 		stop();
 		setIsPlaying(false);
 	}, []);
 
-	return { code, setCode, error, isPlaying, run, halt };
+	return { code, setCode, error, isPlaying, seed, run, reroll, halt };
 }

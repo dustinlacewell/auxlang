@@ -4,6 +4,7 @@
  * Validation is loud and happens here, at build time.
  */
 
+import { checkSeed } from "../random/check-seed";
 import type { Pat, SignalKind, VoicePolicy, WChild } from "./ast";
 import { period } from "./period";
 import { type R, r } from "./rational";
@@ -146,6 +147,12 @@ export function degrade(prob: number, child: Pat): Pat {
 	if (!(prob >= 0 && prob <= 1)) throw new Error(`degrade: prob must be in [0,1], got ${prob}`);
 	return { op: "degrade", prob, child };
 }
+
+export const withSeed = (seed: number, child: Pat): Pat => ({
+	op: "seed",
+	seed: checkSeed(seed, "pattern .seed(n)"),
+	child,
+});
 
 export const add = (amount: number, child: Pat): Pat => ({ op: "add", amount, child });
 

@@ -94,6 +94,7 @@ loop((fb) =>
 		id: "manifesto-closing",
 		audible: true,
 		code: `tempo(126)
+seed(7)
 
 // pads: width-3 stack, packed lanes, pattern-modulated cutoff, panned wide
 const padP = p\`[c3,e3,g3] <[a2,c3,e3] [f2,a2,c3]>\`.slow(2)
@@ -172,6 +173,25 @@ seq(hook.rev().every(2, (q) => q.add(7)))
   .tri()
   .mul(seq(hook.rev().every(2, (q) => q.add(7))).gate.adsr(0.005, 0.1, 0.4, 0.15))
   .gain(0.3)
+  .out()`,
+	},
+	// Determinism: seed(n) pins the patch seed; .seed(n) holds one pattern.
+	{
+		id: "guide-seed",
+		audible: true,
+		code: `tempo(120)
+seed(7)
+
+const hook = seq(p\`c4 e4 g4 b4\`.fast(2).degrade(0.4))
+hook.tri()
+  .mul(hook.gate.adsr(0.005, 0.1, 0.3, 0.1))
+  .gain(0.3)
+  .out()
+
+const ghost = seq(p\`c5*8\`.degrade(0.6).seed(3))
+ghost.sin()
+  .mul(ghost.gate.ad(0.002, 0.05))
+  .gain(0.15)
   .out()`,
 	},
 	// Poly: a stack widens the seq to one lane per voice.

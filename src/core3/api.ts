@@ -21,6 +21,7 @@ import type { Handle } from "./patch/handle-data";
 import { loop } from "./patch/loop";
 import { out } from "./patch/out";
 import { RESERVED_SCOPE_NAMES } from "./patch/scope-names";
+import { seed } from "./patch/seed";
 import { tempo } from "./patch/tempo";
 import { chord } from "./pattern/chord/chord";
 import { P } from "./pattern/pat-class";
@@ -35,6 +36,7 @@ export { defmod } from "./patch/defmod";
 export { loop } from "./patch/loop";
 export { out } from "./patch/out";
 export { seq } from "./patch/seq";
+export { seed } from "./patch/seed";
 export { tempo } from "./patch/tempo";
 export { compile } from "./compile/compile";
 export { p } from "./pattern/notation/template";
@@ -51,7 +53,8 @@ export function factory(name: string): (...args: unknown[]) => Handle {
 /**
  * Reserved user-scope bindings that are NOT plain module factories. Two kinds:
  * patch-builders and settings (`out` overrides the same-named module with
- * root registration; `tempo` sets the ambient clock), and
+ * root registration; `tempo` sets the ambient clock; `seed` pins the patch
+ * seed), and
  * pure helpers with no module of the same name — including the PortAnn
  * helpers, exposed so `defmod` specs can annotate their ports in patch code.
  * `buildUserScope` layers these over the generated factories; a future module
@@ -61,6 +64,7 @@ export function factory(name: string): (...args: unknown[]) => Handle {
  */
 const RESERVED = {
 	tempo,
+	seed,
 	out,
 	loop,
 	p,

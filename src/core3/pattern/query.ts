@@ -110,6 +110,9 @@ function queryCycle(pat: Pat, span: Span, ctx: QueryCtx): Ev[] {
 			return queryEuclid(pat, span, ctx);
 		case "degrade":
 			return queryDegrade(pat.prob, pat.child, span, ctx);
+		case "seed":
+			// A fresh root: the child queries as a whole pattern would at this seed.
+			return query(pat.child, span, { seed: pat.seed, path: 0 });
 		case "add":
 			return mapValues(pat.child, span, descend(ctx, "add", 0), (v) => v + pat.amount);
 		case "mul":
@@ -177,6 +180,7 @@ const OP_CODE: Record<PatOp, number> = {
 	slide: 33,
 	steps: 34, // never descended into (see queryCycle)
 	compact: 35, // never descended into
+	seed: 36, // never descended into: it starts a fresh path
 };
 
 function descend(ctx: QueryCtx, op: PatOp, index: number): QueryCtx {

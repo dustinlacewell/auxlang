@@ -6,8 +6,10 @@
  */
 
 export const RESERVED_SCOPE_NAMES: ReadonlySet<string> = new Set([
-	// Settings (tempo sets the ambient clock) and patch builders (out overrides its module).
+	// Settings (tempo sets the ambient clock, seed pins the patch seed) and patch
+	// builders (out overrides its module).
 	"tempo",
+	"seed",
 	"out",
 	"loop",
 	"p",

@@ -18,7 +18,7 @@ Two hosts run the same Engine. An offline renderer runs it headless and is what 
 
 ## 2. The pipeline: runEval → collect → expand → compile → Program → engine
 
-`runEval(fn)` binds an eval context `{ roots, clock, seed }`. Inside, module factories, `loop`, and `p` construct pure nodes, `tempo(bpm)` records the ambient clock, shaped `{ module, inputs, config, width, pin? }`. A node's `inputs` reference other node objects directly — **object identity is node identity**, so sharing a variable across two consumers is fan-out, not duplication. `out()` pushes a root onto `roots`. Node IDs are assigned at collection, not construction.
+`runEval(fn, { seed })` binds an eval context `{ roots, clock, seed, seedPinned }`. Inside, module factories, `loop`, and `p` construct pure nodes, shaped `{ module, inputs, config, width, pin?, seed? }`; `tempo(bpm)` records the ambient clock and `seed(n)` pins the seed over the option. A node's `inputs` reference other node objects directly — **object identity is node identity**, so sharing a variable across two consumers is fan-out, not duplication. `out()` pushes a root onto `roots`. Node IDs are assigned at collection, not construction.
 
 `compile(evalResult)` then runs, in order:
 

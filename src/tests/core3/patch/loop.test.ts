@@ -52,7 +52,8 @@ describe("z-less cycle", () => {
 		b.inputs.in = { node: a, port: "out" };
 		const root: GNode = { module: "out", inputs: { in: { node: a, port: "out" } }, config: {} };
 
-		expect(() => compile({ roots: [root], clock: null, seed: 1, specs: new Map() })).toThrow(
+		const evaluated = { roots: [root], clock: null, seed: 1, seedPinned: false, specs: new Map() };
+		expect(() => compile(evaluated)).toThrow(
 			/cycle without a unit delay.*tlpf.*tlpf/s,
 		);
 	});

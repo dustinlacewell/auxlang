@@ -67,6 +67,9 @@ export type Pat =
 			readonly child: Pat;
 	  }
 	| { readonly op: "degrade"; readonly prob: number; readonly child: Pat } // turn events into rests with probability prob (seeded)
+	// Local seed: the child's randomness hashes (seed, path from here, cycle),
+	// whatever the patch seed and wherever the pattern sits.
+	| { readonly op: "seed"; readonly seed: number; readonly child: Pat }
 	| { readonly op: "add"; readonly amount: number; readonly child: Pat } // payload arithmetic
 	| { readonly op: "mul"; readonly amount: number; readonly child: Pat }
 	// every(n, f): `transformed` is f(child), applied at build time.

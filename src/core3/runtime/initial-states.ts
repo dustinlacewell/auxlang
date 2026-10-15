@@ -1,9 +1,10 @@
 /**
  * Per-node per-lane state construction: fresh (fresh-lane-state.ts, with the
- * lane's random stream seeded from (patch seed, migration key, lane)), or
- * migrated from a previous EngineState. The matcher (match.ts) pairs each new
- * node with the old node whose state it takes over — by pin, then place, then
- * kind — so rewiring resets nothing (MANIFESTO §6.2). Keys follow the pairing
+ * lane's random stream seeded from (patch seed, migration key, lane), or from
+ * (local seed, lane) for a node with its own `.seed(n)`), or migrated from a
+ * previous EngineState. The matcher (match.ts) pairs each new node with the
+ * old node whose state it takes over — by pin, then place, then kind — so
+ * rewiring resets nothing (MANIFESTO §6.2). Keys follow the pairing
  * (state-keys.ts). Migration clones, so the old engine's state is never
  * shared. Nothing migrates across a sample-rate change (state buffers are
  * sized from it). A paired node still starts fresh, alone, when its carried
@@ -14,7 +15,8 @@
  * The engine injects three per-lane fields after construction, none part of
  * the state's shape: `__lane` (the lane index), `__scratch` (an empty record
  * a module may fill with data derived from config, such as event tables) and
- * `__seed` (the patch seed, which `hashRandom(key)` in a tick reads). Scratch
+ * `__seed` (the patch seed or the node's local seed, which `hashRandom(key)`
+ * in a tick reads). Scratch
  * is never carried: every engine starts it empty.
  */
 
@@ -48,18 +50,26 @@ export function buildLaneStates(
 		const spec = specs[i] as ModuleSpec;
 		const key = keys[i] as string;
 		const prevLanes = carriedLanes(prev, sampleRate, paired.get(i));
+		const nodeSeed = node.seed ?? seed;
+		const streamKey = node.seed === undefined ? key : LOCAL_SEED_KEY;
 		return node.lanes.map((_, lane) => {
 			const carried = prevLanes?.[lane];
-			const fresh = freshLaneState(spec, sampleRate, streamSeed(seed, key, lane));
+			const fresh = freshLaneState(spec, sampleRate, streamSeed(nodeSeed, streamKey, lane));
 			const state = carried !== undefined && stateFits(carried, fresh) ? deepClone(carried) : fresh;
 			state.__lane = lane;
 			state.__scratch = {};
-			state.__seed = seed;
+			state.__seed = nodeSeed;
 			return state;
 		});
 	});
 	return { identities: nodes.map((node, i) => keyed(node, keys[i] as string)), states, paired };
 }
+
+/**
+ * The stream identity of a node with its own `.seed(n)`: a constant, so code
+ * edits that change the node's identity do not change its randomness (§7).
+ */
+const LOCAL_SEED_KEY = "seed";
 
 /** The previous engine's lanes under the paired old key, unless the sample rate changed (state buffers are sized from it). */
 function carriedLanes(

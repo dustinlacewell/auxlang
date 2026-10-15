@@ -25,10 +25,22 @@ const SCOPE = buildUserScope();
 const SCOPE_NAMES = Object.keys(SCOPE);
 const SCOPE_VALUES = SCOPE_NAMES.map((name) => SCOPE[name]);
 
-export function evalPatch(source: string): Program {
+/** A compiled patch, and whether it pinned its own seed with seed(n). */
+export interface EvaluatedPatch {
+	readonly program: Program;
+	readonly seedPinned: boolean;
+}
+
+/** `seed` is the host's seed (the play session's); a patch's own seed(n) wins. */
+export function evaluatePatch(source: string, opts: { seed?: number } = {}): EvaluatedPatch {
 	const body = `${source}\n//# sourceURL=auxlang://core3-playground`;
 	const patch = new Function(...SCOPE_NAMES, body) as (...args: unknown[]) => void;
-	return withSourceText({ file: "patch", text: source }, () =>
-		compile(runEval(() => patch(...SCOPE_VALUES))),
-	);
+	return withSourceText({ file: "patch", text: source }, () => {
+		const evaluated = runEval(() => patch(...SCOPE_VALUES), opts);
+		return { program: compile(evaluated), seedPinned: evaluated.seedPinned };
+	});
+}
+
+export function evalPatch(source: string, opts: { seed?: number } = {}): Program {
+	return evaluatePatch(source, opts).program;
 }

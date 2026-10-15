@@ -68,6 +68,7 @@ function structuralWidth(pat: Pat): number {
 		case "iter":
 		case "ply":
 		case "degrade":
+		case "seed":
 		case "add":
 		case "mul":
 		case "slide":

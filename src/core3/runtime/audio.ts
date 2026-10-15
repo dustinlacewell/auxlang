@@ -8,6 +8,7 @@
  */
 
 import type { Program } from "../types";
+import { type SeedSession, createSeedSession } from "./seed-session";
 import workletUrl from "./worklet/index.ts?worker&url";
 import type { PerfOverrun, PerfReport, WorkletMessage, WorkletReply } from "./worklet/messages";
 
@@ -66,7 +67,15 @@ export async function play(program: Program): Promise<void> {
 	node.port.postMessage(message);
 }
 
+/**
+ * The play session's seed for patches that do not call `seed(n)`: drawn on
+ * first use, kept across re-evals, ended by `stop()`. Eval with
+ * `{ seed: playSeed.current() }`.
+ */
+export const playSeed: SeedSession = createSeedSession();
+
 export function stop(): void {
+	playSeed.end();
 	if (!host) return;
 	const message: WorkletMessage = { type: "stop" };
 	host.node.port.postMessage(message);

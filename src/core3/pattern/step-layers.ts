@@ -34,6 +34,7 @@ function layersAt(pat: Pat, offset: number): LaneRange[] {
 		case "iter":
 		case "ply":
 		case "degrade":
+		case "seed":
 		case "add":
 		case "mul":
 		case "slide":

@@ -188,6 +188,11 @@ export interface PNode extends Identity {
 	/** Per-lane input sources: lanes[lane][portName]. length === width (1 for reduce). */
 	readonly lanes: readonly Record<string, PortSrc>[];
 	readonly config: Record<string, unknown>;
+	/**
+	 * Local seed from `.seed(n)`. Replaces the patch seed for this node's
+	 * streams and `hashRandom`, and its streams no longer follow its key.
+	 */
+	readonly seed?: number;
 }
 
 export interface Program {

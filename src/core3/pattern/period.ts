@@ -88,6 +88,7 @@ function structuralPeriod(pat: Pat): number | null {
 		case "ply":
 		case "euclid":
 		case "degrade":
+		case "seed":
 		case "add":
 		case "mul":
 		case "clip":
