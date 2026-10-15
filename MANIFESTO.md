@@ -487,8 +487,9 @@ Re-eval is the core interaction, so its rules are part of the language:
   starts fresh only when it is new or its old state no longer fits.
 - The new graph is matched to the running one by **place**: each module is
   matched to the old module of the same type at the same position in the patch
-  (the path of ports and module types from an `out` root), then by type and
-  order among the rest. Matching nodes keep their state. `.id("bass")` pins
+  (the path of ports and module types from an `out` root) and fed by the same
+  kinds of modules; remaining ties go to the candidate with the same constant
+  values, then to code order. Matching nodes keep their state. `.id("bass")` pins
   identity when nothing else can.
 - The clock position is continuous across evals. Patterns pick up mid-cycle.
 - The old and new graphs crossfade equal-power over a short window.
