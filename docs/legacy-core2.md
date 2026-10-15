@@ -11,6 +11,5 @@ and in places described idioms core3 never had. Per the no-backward-compat
 house rule they were removed rather than left to mislead; git history preserves
 them if needed.
 
-WASM-backed heavy DSP on the core3 module contract is backlog
-(`llm/core3-backlog.md`); the retired `wasm-devices.md` documented the core2
-mechanism.
+core3 compiles every module to WASM itself (`src/core3/wasm/`); the retired
+`wasm-devices.md` documented core2's hand-written AssemblyScript devices.

@@ -10,9 +10,9 @@ Three stages, three representations:
 
 - **Eval** builds a pure object graph. Running the patch function constructs plain node objects; nothing executes DSP.
 - **Compile** turns that graph into a serializable `Program`.
-- **An Engine** interprets the `Program` one sample at a time.
+- **An Engine** runs the `Program` one sample at a time.
 
-Two hosts run the same Engine. An offline renderer runs it headless and is what every test uses. An AudioWorklet host runs it for live playback. The Engine is identical in both; only the surrounding I/O differs.
+Two engines run a `Program`, and they agree bit for bit. The interpreter (`Core3Engine`) is the reference: the offline renderer runs it headless, and every test holds the other engine against it. The WASM engine (`src/core3/wasm/`) compiles the whole program to one WebAssembly module and is what the AudioWorklet host plays.
 
 ---
 
@@ -73,9 +73,9 @@ A matched node keeps its state whenever the carried state fits the fresh state's
 
 ## 6. Worklet host
 
-A thin adapter around the same `Core3Engine`. The module registry ships inside the worklet bundle via a direct `import "../modules/all"` — library DSP code lives in the audio thread and is never serialized as strings. Only user lambdas cross the boundary, stringified as `(state, sr, time) => number`.
+The main thread prepares each program (`runtime/prepare/prepare-wasm-program.ts`): it matches it against the running one, compiles it to a WebAssembly module, warms a throwaway instance so the module's code is compiled before the worklet runs it, and plans the carry (which bytes of the old memory the new one takes over). It posts the compiled `Module` with plain data. The module registry ships inside the worklet bundle via a direct `import "../modules/all"`; the worklet builds the program's start values from the same registry.
 
-A graph swap builds a new Engine seeded from the previous `EngineState` and equal-power crossfades over roughly 100 ms, with both engines ticking during the fade. The offline renderer (`render`, `renderTap`) is the same Engine with no worklet attached — which is how everything integration-tests headlessly.
+The worklet host (`runtime/worklet/live-host.ts`) builds the new program a budget at a time while the old one plays: instantiate, write the start values into memory, prefill the seq tables. At a block boundary it swaps: the carry copies along the plan, and an equal-power crossfade runs over roughly 100 ms, with both engines rendering during the fade. The offline renderer (`render`, `renderTap`) is the interpreter with no worklet attached — which is how everything integration-tests headlessly.
 
 ---
 

@@ -556,8 +556,9 @@ Runtime obligations:
   path that does not allocate.
 - **Controls are slots.** Plain numbers are baked in. Controls and dragged
   numbers are read from slots the editor writes.
-- **Backends agree.** The JS backend is the reference. A WASM backend compiles
-  the same tick subset with the same math, and must match it bit for bit.
+- **Backends agree.** The JS interpreter is the reference. The live engine is
+  WASM: it compiles the same tick subset with the same math, and must match the
+  interpreter bit for bit.
 - **Re-eval does not glitch.** A new program is compiled and warmed before the
   swap.
 - **Mixing.** Reducers use equal-power laws. `out` applies 1/√n lane mixdown, a
