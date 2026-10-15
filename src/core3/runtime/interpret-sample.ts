@@ -72,8 +72,7 @@ function tickReduce(
 			const buf = p.kind === GATHER_CUR ? cur : prv;
 			const view = p.view as Float32Array;
 			const base = p.base;
-			const srcLanes = p.srcLanes;
-			for (let l = 0; l < view.length; l++) view[l] = buf[base + (l % srcLanes)] as number;
+			for (let l = 0; l < view.length; l++) view[l] = buf[base + l] as number;
 			ins[p.name] = view;
 		}
 	}

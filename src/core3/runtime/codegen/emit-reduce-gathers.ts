@@ -1,8 +1,8 @@
 /**
  * Reduce-node input gathers: per input port, in spec order. A connected port
- * refills its preallocated lane view with one baked slot read per lane
- * (narrower sources broadcast by lane % srcLanes, resolved at build), then
- * hands the view to the ins record. Constants are baked; lambdas are called.
+ * refills its preallocated lane view (the source's own lanes, never copied
+ * across a wider port's) with one baked slot read per lane, then hands the
+ * view to the ins record. Constants are baked; lambdas are called.
  */
 
 import {
@@ -39,6 +39,6 @@ function emitViewFill(p: PortGather, view: string): string[] {
 	const width = (p.view as Float32Array).length;
 	const lines: string[] = [];
 	for (let l = 0; l < width; l++)
-		lines.push(`${view}[${l}] = ${buf}[${p.base + (l % p.srcLanes)}];`);
+		lines.push(`${view}[${l}] = ${buf}[${p.base + l}];`);
 	return lines;
 }
