@@ -1,0 +1,11 @@
+// clockdiv - defaults
+// A high pluck every beat, a low thump on every 4th (div by 4)
+const c = clock(240)
+sin(84)
+  .mul(c.beat.ad(0.005, 0.08))
+  .gain(0.2)
+  .out()
+sin(48)
+  .mul(clockdiv(c.beat).ad(0.005, 0.3))
+  .gain(0.4)
+  .out()
