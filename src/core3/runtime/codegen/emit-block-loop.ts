@@ -1,22 +1,29 @@
 /**
- * The block loop around one sample's node code: per sample, flip the value
- * buffers and compute the lambda time exactly as the interpreter does
- * (`(count + k) / sr`); after the block, hand the flipped buffers back to the
- * engine. The sample code reads `cur`, `prv`, `time`, `sr` and `k`.
+ * The block function body: load value slots and node state into locals, run
+ * the sample loop, store everything back. Per sample: shift the z-read slots
+ * (value-slots.ts), compute the lambda time exactly as the interpreter does
+ * (`(count + k) / sr`), run every node in program order, sum the taps. The
+ * node code reads `time`, `sr` and `k`.
  */
 
-export function emitBlockLoop(sample: readonly string[]): string[] {
+import type { NodeCode } from "./node-code";
+import { type ValueSlots, emitPrevShift, emitSlotLoads, emitSlotStores } from "./value-slots";
+
+export function emitBlockLoop(
+	slots: ValueSlots,
+	nodes: readonly NodeCode[],
+	taps: readonly string[],
+): string[] {
 	return [
-		"let cur = bufs.cur;",
-		"let prv = bufs.prv;",
+		...emitSlotLoads(slots),
+		...nodes.flatMap((node) => node.before),
 		"for (let k = 0; k < n; k++) {",
-		"const flip = prv;",
-		"prv = cur;",
-		"cur = flip;",
+		...emitPrevShift(slots),
 		"const time = (count + k) / sr;",
-		...sample,
+		...nodes.flatMap((node) => node.sample),
+		...taps,
 		"}",
-		"bufs.cur = cur;",
-		"bufs.prv = prv;",
+		...nodes.flatMap((node) => node.after),
+		...emitSlotStores(slots),
 	];
 }

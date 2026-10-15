@@ -23,7 +23,7 @@ import type {
 } from "../types";
 import { compileLaneBindings } from "./bindings";
 import { deepClone } from "./deep-clone";
-import type { Driver, ValueBuffers } from "./driver";
+import type { Driver, DriverOptions, ValueBuffers } from "./driver";
 import { type FeedbackRead, captureFeedback, feedbackReads, restoreFeedback } from "./feedback";
 import { compileReduceGathers } from "./gathers";
 import { buildLaneStates } from "./initial-states";
@@ -31,10 +31,7 @@ import type { NodeRun } from "./node-run";
 import { type OutputLayout, buildOutputLayout, slotOf } from "./output-slots";
 import { selectDriver } from "./select-driver";
 
-export interface EngineOptions {
-	/** Run a generated per-program driver instead of the interpreter. Default off. */
-	readonly codegen?: boolean;
-}
+export type EngineOptions = DriverOptions;
 
 export class Core3Engine implements Engine {
 	private readonly runs: NodeRun[];
@@ -93,6 +90,8 @@ export class Core3Engine implements Engine {
 			for (const port of Object.keys(spec.ins)) ins[port] = 0;
 			return {
 				tick: spec.tick,
+				source: spec.source,
+				module: spec.name,
 				config: { ...spec.config, ...node.config },
 				laneCount: node.lanes.length,
 				states: laneStates.states[i] as Record<string, unknown>[],
@@ -114,7 +113,7 @@ export class Core3Engine implements Engine {
 			tapsR[j] = slotOf(this.layout, nodeIndex, "r", 0);
 		});
 
-		this.driver = selectDriver({ runs: this.runs, tapsL, tapsR }, options.codegen ?? false);
+		this.driver = selectDriver({ runs: this.runs, tapsL, tapsR }, options);
 	}
 
 	get sampleCount(): number {

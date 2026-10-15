@@ -6,17 +6,17 @@
  */
 
 import { compileDriver } from "./codegen/compile-driver";
-import type { Driver, DriverPlan } from "./driver";
+import type { Driver, DriverOptions, DriverPlan } from "./driver";
 import { interpretBlock } from "./interpret-block";
 
 export function selectDriver(
 	plan: DriverPlan,
-	codegen: boolean,
-	compile: (plan: DriverPlan) => Driver = compileDriver,
+	options: DriverOptions,
+	compile: (plan: DriverPlan, paste: boolean) => Driver = compileDriver,
 ): Driver {
-	if (!codegen) return interpretBlock(plan);
+	if (!(options.codegen ?? false)) return interpretBlock(plan);
 	try {
-		return compile(plan);
+		return compile(plan, options.paste ?? true);
 	} catch (err) {
 		if (!(err instanceof EvalError)) throw err;
 		console.error(`[core3] codegen blocked, falling back to the interpreter: ${String(err)}`);

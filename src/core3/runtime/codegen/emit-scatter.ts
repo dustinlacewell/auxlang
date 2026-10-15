@@ -1,13 +1,13 @@
 /**
  * Output scatter for one (node, lane): each out port's value lands in its
- * baked slot of `cur`, in spec order.
+ * slot's local, in spec order. `value(j)` is the expression for out port j.
  */
 
 import type { NodeRun } from "../node-run";
-import { propKey } from "./js-literal";
+import { slotLocal } from "./name-table";
 
-export function emitScatter(run: NodeRun, outs: string, lane: number): string[] {
+export function emitScatter(run: NodeRun, lane: number, value: (j: number) => string): string[] {
 	return run.outPorts.map(
-		(port, j) => `cur[${(run.outBases[j] as number) + lane}] = ${outs}${propKey(port)};`,
+		(_, j) => `${slotLocal((run.outBases[j] as number) + lane)} = ${value(j)};`,
 	);
 }

@@ -16,6 +16,16 @@ export interface ValueBuffers {
 	prv: Float64Array;
 }
 
+export interface DriverOptions {
+	/** Run a generated per-program driver instead of the interpreter. Default off. */
+	readonly codegen?: boolean;
+	/**
+	 * With codegen: paste module ticks inline (default on). Off keeps every
+	 * node at a call site — phase 1's form, for benchmarks and bisecting.
+	 */
+	readonly paste?: boolean;
+}
+
 /** What a driver walks: the built node runs and the slots the out-nodes' l/r land in. */
 export interface DriverPlan {
 	readonly runs: readonly NodeRun[];

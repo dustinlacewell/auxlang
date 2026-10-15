@@ -5,12 +5,16 @@
  * these same records, so they share one source of semantics.
  */
 
-import type { ReduceTickFn, TickFn } from "../types";
+import type { ModuleSource, ReduceTickFn, TickFn } from "../types";
 import type { LaneBindings } from "./bindings";
 import type { ReduceGathers } from "./gathers";
 
 export interface NodeRun {
 	readonly tick: TickFn | ReduceTickFn;
+	/** The module's checked tick and helper text; absent for exempt modules. The generated driver pastes it. */
+	readonly source: ModuleSource | undefined;
+	/** The module name, for codegen's paste allow-list and diagnostics. Never baked into source. */
+	readonly module: string;
 	readonly config: Record<string, unknown>;
 	readonly laneCount: number;
 	readonly states: Record<string, unknown>[];
