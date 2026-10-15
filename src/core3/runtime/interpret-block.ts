@@ -1,8 +1,7 @@
 /**
  * The reference driver: the interpreted sample walk (interpret-sample.ts)
  * run once per sample of the block, with the buffer flip before each sample
- * and the out-node tap sum after it. It is also the fallback when codegen is
- * unavailable.
+ * and the out-node tap sum after it.
  */
 
 import type { Driver, DriverPlan } from "./driver";

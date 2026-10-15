@@ -4,7 +4,7 @@
  * bound to auxlang's math (bind-math/) and random library (bind-random/),
  * and the tick is rebuilt from that
  * text with its names bound. The bound source text is kept on the spec
- * (`source`): it is what crosses to the worklet and what the codegen pastes.
+ * (`source`): it is what the WASM compiler reads.
  */
 
 import type { ModuleSource, ModuleSpec } from "../types";

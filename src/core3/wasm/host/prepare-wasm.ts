@@ -1,7 +1,7 @@
 /**
  * From a Program to WASM bytes plus the values an instance starts from:
  * the engine is built as the offline host builds it (prepare, then every
- * build step, no codegen), and its runs, slots and taps are compiled.
+ * build step), and its runs, slots and taps are compiled.
  *
  * Against running identities (a re-eval), the program is matched as the JS
  * engine matches it, so each node gets the same migration key, seed and
@@ -36,11 +36,11 @@ export function prepareWasm(
 	running?: readonly KeyedIdentity[],
 ): PreparedWasm {
 	const layered = withProgramSpecs(registry, program);
-	return prepareWasmFrom(prepareProgram(program, layered, sampleRate, running, {}), layered);
+	return prepareWasmFrom(prepareProgram(program, layered, sampleRate, running), layered);
 }
 
 /**
- * From a program prepared for the interpreter (no driver code) and the
+ * From a program prepared for the engine build and the
  * registry with its specs: build it, then compile. The worklet builds the
  * same prepared program into the same start values.
  */
@@ -80,7 +80,7 @@ export function buildWasmInput(
 	running?: readonly KeyedIdentity[],
 ): WasmBuilt {
 	const layered = withProgramSpecs(registry, program);
-	return wasmInputOf(prepareProgram(program, layered, sampleRate, running, {}), layered);
+	return wasmInputOf(prepareProgram(program, layered, sampleRate, running), layered);
 }
 
 function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {

@@ -1,17 +1,18 @@
 /**
  * Worklet message protocol. A swap carries a prepared program
- * (prepare/prepare-program.ts): plain data, made on the main thread. Library
- * module code is bundled into the worklet. Code crosses this boundary only
- * as strings: user-written code riding inside the Program (inline lambdas,
+ * (prepare/host-prepared.ts), made on the main thread: plain data and a
+ * compiled WebAssembly.Module (structured-cloneable). Library module code
+ * is bundled into the worklet. Other code crosses this boundary only as
+ * strings: user-written code riding inside the Program (inline lambdas,
  * PortSrc "l" entries; patch-defined module specs, Program.specs, hydrated
- * per engine by runtime/hydrate-specs) and the generated driver units.
+ * per engine by runtime/hydrate-specs).
  */
 
-import type { PreparedProgram } from "../prepare/prepare-program";
+import type { HostPrepared } from "../prepare/host-prepared";
 
 /** Main thread -> worklet. */
 export type WorkletMessage =
-	| { readonly type: "swap"; readonly prepared: PreparedProgram }
+	| { readonly type: "swap"; readonly prepared: HostPrepared }
 	| { readonly type: "stop" }
 	| { readonly type: "perf"; readonly enabled: boolean };
 

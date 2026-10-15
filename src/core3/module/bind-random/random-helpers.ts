@@ -1,7 +1,7 @@
 /**
  * auxlang's random library (random/lib/) as tick helpers, each named
  * `__random_<name>` (helper-library/helper-library.ts). One text for every
- * backend: the interpreter and the codegen run it as JS, the WASM backend
+ * backend: the interpreter runs it as JS, the WASM backend
  * compiles it, and the host (random-functions.ts) builds it for the pattern
  * engine and the stream seeds.
  */

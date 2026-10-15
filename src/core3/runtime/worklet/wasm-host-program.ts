@@ -1,6 +1,8 @@
 /**
- * A program on the WASM engine (host-program.ts). Its build runs in two
- * stages, a budget per block:
+ * A program on the worklet host (live-host.ts), from its prepared form to
+ * the WASM engine that plays it: built a budget at a time while the old
+ * program plays, swapped in at a block boundary, then rendered. Its build
+ * runs in two stages:
  *
  * 1. the start values: the engine-build steps with no driver
  *    (build/engine-build.ts): lane states, their scratch, the value buffer;
@@ -11,9 +13,11 @@
  *    copies the source lane's tables and fill state instead of filling),
  *    and bind the carry's views (copying once).
  *
- * The swap runs the carry plan: copies only. It carries from the running
- * WASM program the plan was made against (wasm-prepared.ts serials); from
- * any other, or none, the engine starts fresh.
+ * The swap runs the carry plan: copies only. `source` is the program it
+ * will continue at the swap (the host builds one program at a time, so it
+ * is still the one playing then). It carries only from the program the plan
+ * was made against (wasm-prepared.ts serials); from any other, or none, the
+ * engine starts fresh.
  */
 
 import type { Registry } from "../../types";
@@ -28,11 +32,10 @@ import { EngineBuild } from "../build/engine-build";
 import { StepRunner } from "../build/step-runner";
 import { type WasmStep, wasmSteps } from "../build/wasm-steps";
 import type { EngineParts } from "../engine-parts";
-import type { PreparedProgram } from "../prepare/prepare-program";
+import type { HostPrepared } from "../prepare/host-prepared";
 import type { WasmCarry, WasmPrepared } from "../prepare/wasm-prepared";
-import type { HostProgram } from "./host-program";
 
-export class WasmHostProgram implements HostProgram {
+export class WasmHostProgram {
 	private start: EngineBuild | null;
 	private readonly steps: StepRunner<WasmStep>;
 	private source: WasmHostProgram | null;
@@ -41,11 +44,11 @@ export class WasmHostProgram implements HostProgram {
 	private cycles: Float64Array | null = null;
 
 	constructor(
-		readonly prepared: PreparedProgram,
-		readonly wasm: WasmPrepared,
+		readonly prepared: HostPrepared,
 		registry: Registry,
-		source: HostProgram | null,
+		source: WasmHostProgram | null,
 	) {
+		const { wasm } = prepared;
 		this.source = carriesFrom(wasm, source);
 		this.start = new EngineBuild(prepared, registry, undefined);
 		const lanes = tableLanes(wasm.layout).length;
@@ -54,16 +57,25 @@ export class WasmHostProgram implements HostProgram {
 		);
 	}
 
+	get wasm(): WasmPrepared {
+		return this.prepared.wasm;
+	}
+
+	/** True when every build step has run: the next block swaps it in. */
 	get built(): boolean {
 		return this.steps.done;
 	}
 
+	/** Run build steps within `budget` (estimated microseconds). */
 	advance(budget: number): void {
 		if (this.start !== null && !this.start.done) this.start.advance(budget);
 		else this.steps.advance(budget);
 	}
 
-	/** Copy along the plan, then let go of the source, so no program keeps its predecessors. */
+	/**
+	 * The swap block's work: copy along the plan, then let go of the source,
+	 * so no program keeps its predecessors.
+	 */
 	swapIn(): void {
 		const source = this.source;
 		if (source === null) return;
@@ -72,6 +84,7 @@ export class WasmHostProgram implements HostProgram {
 		this.source = null;
 	}
 
+	/** Advance `n` samples; write l/r into `outL`/`outR` from `offset`. Once swapped in. */
 	renderBlock(outL: Float32Array, outR: Float32Array, offset: number, n: number): void {
 		this.live.renderBlock(outL, outR, offset, n);
 	}
@@ -164,7 +177,7 @@ function sourceLane({ sources }: TableCarry, k: number): number {
 }
 
 /** The running program to carry from: the one the plan was made against, still playing. */
-function carriesFrom(wasm: WasmPrepared, source: HostProgram | null): WasmHostProgram | null {
-	if (wasm.carry === null || !(source instanceof WasmHostProgram)) return null;
+function carriesFrom(wasm: WasmPrepared, source: WasmHostProgram | null): WasmHostProgram | null {
+	if (wasm.carry === null || source === null) return null;
 	return source.wasm.serial === wasm.carry.from ? source : null;
 }

@@ -3,8 +3,8 @@
  * auxlang's math in place of host transcendentals, and the math functions
  * they reach join its helpers. Cache slots are numbered across the tick and
  * helpers, so one cache array (cache-names.ts) serves them all. The result is
- * still plain source text, so the interpreter (tick-build) and the codegen
- * paster run the same math.
+ * still plain source text, so the interpreter (tick-build) and the WASM
+ * compiler run the same math.
  */
 
 import type { ModuleSource } from "../../types";

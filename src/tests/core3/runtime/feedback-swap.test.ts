@@ -2,7 +2,7 @@
  * Feedback survives a swap (MANIFESTO §6.2): a z-edge reads its source's
  * previous-sample output, and the new engine gets that sample from the old
  * one, so an unchanged re-eval of a `loop` patch is bit-exact — with the
- * interpreter, the generated driver and WASM.
+ * interpreter and WASM.
  */
 
 import { describe, expect, it } from "vitest";
@@ -10,21 +10,12 @@ import { describe, expect, it } from "vitest";
 import "@/core3/modules/all";
 import { factory, loop, runProgram } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
-import { Core3Engine } from "@/core3/runtime/engine";
 import type { Program } from "@/core3/types";
 import { type Backend, JS_BACKEND, type TestEngine, WASM_BACKEND } from "./backends";
 
 const SR = 48000;
 const HEAD = 3000;
 const TAIL = 2000;
-
-const CODEGEN: Backend = {
-	name: "codegen",
-	create: (program, sampleRate, registry, prev) =>
-		new Core3Engine(program, sampleRate, registry, prev, { codegen: true }),
-	swap: (program, sampleRate, registry, running) =>
-		new Core3Engine(program, sampleRate, registry, running.collectState(), { codegen: true }),
-};
 
 function run(engine: TestEngine, samples: number): number[] {
 	const frame = new Float32Array(2);
@@ -62,7 +53,7 @@ const PATCHES: Record<string, () => Program> = {
 		}),
 };
 
-describe.each([JS_BACKEND, CODEGEN, WASM_BACKEND])(
+describe.each([JS_BACKEND, WASM_BACKEND])(
 	"unchanged re-eval of a loop patch ($name)",
 	(backend) => {
 		for (const [name, patch] of Object.entries(PATCHES)) {

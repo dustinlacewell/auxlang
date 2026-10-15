@@ -7,7 +7,7 @@
 
 import { getRegistry } from "../module/define";
 import type { Program, Registry } from "../types";
-import { Core3Engine, type EngineOptions } from "./engine";
+import { Core3Engine } from "./engine";
 import { withProgramSpecs } from "./hydrate-specs";
 
 /** Samples per engine block: the AudioWorklet render quantum. */
@@ -23,16 +23,9 @@ export function render(
 	seconds: number,
 	sampleRate = 48000,
 	registry: Registry = getRegistry(),
-	options: EngineOptions = {},
 ): StereoBuffers {
 	const samples = Math.round(seconds * sampleRate);
-	const engine = new Core3Engine(
-		program,
-		sampleRate,
-		withProgramSpecs(registry, program),
-		undefined,
-		options,
-	);
+	const engine = new Core3Engine(program, sampleRate, withProgramSpecs(registry, program));
 	const l = new Float32Array(samples);
 	const r = new Float32Array(samples);
 	for (let at = 0; at < samples; at += BLOCK) {

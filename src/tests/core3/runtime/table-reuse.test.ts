@@ -2,23 +2,21 @@
  * A seq whose table key (bridge/table-key.ts) a re-eval leaves unchanged
  * keeps its tables: the WASM prefill copies the old lane's tables and fill
  * state instead of filling (wasm/host/carry/table-carry.ts). Tables are
- * derived data, so a live swap still plays what the offline swap plays, bit
- * for bit, on both backends, whether the key is kept (another node edited,
+ * derived data, so a live swap still plays what the offline interpreter
+ * swap plays, bit for bit, whether the key is kept (another node edited,
  * with packed or stable voices; the patch seed rerolled under a local seed)
- * or not (the pattern, the
- * local seed, the patch seed or the voices policy edited). On WASM a kept
- * key copies tables and no fill looks back, the first fills after the swap
- * included; a changed key copies nothing.
+ * or not (the pattern, the local seed, the patch seed or the voices policy
+ * edited). A kept key copies tables and no fill looks back, the first fills
+ * after the swap included; a changed key copies nothing.
  */
 
 import { CycleQueries } from "@/core3/pattern/table/cycle-queries";
 import { LaneFill } from "@/core3/pattern/table/lane-fill";
-import type { HostOptions } from "@/core3/runtime/prepare/host-options";
 import type { Program } from "@/core3/types";
 import { TableHeap } from "@/core3/wasm/host/table-heap";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { INTERPRETER, SR, firstBitDiff } from "./codegen-harness";
+import { SR, firstBitDiff } from "../wasm/differential-harness";
 import { BLOCK, FADE, Session, offline, slice } from "./live-session";
 
 interface Seq {
@@ -79,11 +77,6 @@ const EDITS: readonly { label: string; before: Seq; after: Seq; kept: boolean }[
 	},
 ];
 
-const BACKENDS: readonly { label: string; options: HostOptions }[] = [
-	{ label: "js", options: INTERPRETER },
-	{ label: "wasm", options: { backend: "wasm" } },
-];
-
 /** Fills that look back for their carry (not the cycle after the last fill), counted from `arm`. */
 function countLookBacks() {
 	const carryInto = LaneFill.prototype.carryInto;
@@ -101,38 +94,35 @@ afterEach(() => {
 });
 
 describe("table reuse across a swap", () => {
-	for (const { label: backend, options } of BACKENDS) {
-		for (const { label, before, after, kept } of EDITS) {
-			it(`${backend}: ${label}: plays what the offline swap plays`, async () => {
-				const copies = vi.spyOn(TableHeap.prototype, "copy");
-				const fills = countLookBacks();
-				const session = new Session(options);
-				await session.play(patch(before));
-				const start = session.untilSwap();
-				session.blocks(Math.ceil((4 * SR) / BLOCK)); // mid cycle 2 (a cycle is 1.6 s)
-				const next = await session.prepare(patch(after));
-				fills.armed = true;
-				session.post(next);
-				const swap = session.untilSwap();
-				session.blocks(Math.ceil((3.4 * SR) / BLOCK)); // two crossings after the swap
-				fills.armed = false;
-				const end = session.l.length;
+	for (const { label, before, after, kept } of EDITS) {
+		it(`${label}: plays what the offline swap plays`, async () => {
+			const copies = vi.spyOn(TableHeap.prototype, "copy");
+			const fills = countLookBacks();
+			const session = new Session();
+			await session.play(patch(before));
+			const start = session.untilSwap();
+			session.blocks(Math.ceil((4 * SR) / BLOCK)); // mid cycle 2 (a cycle is 1.6 s)
+			const next = await session.prepare(patch(after));
+			fills.armed = true;
+			session.post(next);
+			const swap = session.untilSwap();
+			session.blocks(Math.ceil((3.4 * SR) / BLOCK)); // two crossings after the swap
+			fills.armed = false;
+			const end = session.l.length;
 
-				const ref = offline(patch(before), patch(after), swap - start, end - swap, INTERPRETER);
-				const settled = swap + FADE + BLOCK;
-				const settledDiff = (xs: readonly number[], want: Float32Array) =>
-					firstBitDiff(slice(xs, settled, end), want.slice(settled - swap));
-				expect(firstBitDiff(slice(session.l, start, swap), ref.headL), "before").toBe(-1);
-				expect(settledDiff(session.l, ref.tailL), "after: left").toBe(-1);
-				expect(settledDiff(session.r, ref.tailR), "after: right").toBe(-1);
-				expect(session.l.slice(settled).some((x) => Math.abs(x) > 0.01)).toBe(true);
-				if (backend !== "wasm") return;
-				expect(copies.mock.calls.length > 0, "copied").toBe(kept);
-				// A stable-voices carry always reads its voice history, never steps on.
-				if (kept && after.voices === undefined)
-					expect(fills.lookBacks, "fills that look back").toBe(0);
-			}, 30_000);
-		}
+			const ref = offline(patch(before), patch(after), swap - start, end - swap);
+			const settled = swap + FADE + BLOCK;
+			const settledDiff = (xs: readonly number[], want: Float32Array) =>
+				firstBitDiff(slice(xs, settled, end), want.slice(settled - swap));
+			expect(firstBitDiff(slice(session.l, start, swap), ref.headL), "before").toBe(-1);
+			expect(settledDiff(session.l, ref.tailL), "after: left").toBe(-1);
+			expect(settledDiff(session.r, ref.tailR), "after: right").toBe(-1);
+			expect(session.l.slice(settled).some((x) => Math.abs(x) > 0.01)).toBe(true);
+			expect(copies.mock.calls.length > 0, "copied").toBe(kept);
+			// A stable-voices carry always reads its voice history, never steps on.
+			if (kept && after.voices === undefined)
+				expect(fills.lookBacks, "fills that look back").toBe(0);
+		}, 30_000);
 	}
 
 	it("a lane's fill continues another's: the next cycle's fill queries one cycle", () => {

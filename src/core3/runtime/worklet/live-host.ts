@@ -1,8 +1,8 @@
 /**
  * The worklet's engine host, apart from the AudioWorklet API so it runs in
- * tests. A prepared program (prepare/prepare-program.ts) is built a budget
- * at a time after each block (host-program.ts: the JS engine or the WASM
- * engine, by its backend) while the old engine plays (MANIFESTO §8). When
+ * tests. A prepared program (prepare/host-prepared.ts) is built a budget
+ * at a time after each block (wasm-host-program.ts) while the old engine
+ * plays (MANIFESTO §8). When
  * the build is done, the next block starts with the swap: the new engine
  * continues the old one (state, feedback, time)
  * and an equal-power crossfade from old to new runs over 100 ms, rendering
@@ -14,20 +14,20 @@
  * building.
  */
 
-import type { PreparedProgram } from "../prepare/prepare-program";
 import type { Registry } from "../../types";
-import { type HostProgram, hostProgram } from "./host-program";
+import type { HostPrepared } from "../prepare/host-prepared";
+import { WasmHostProgram } from "./wasm-host-program";
 
 const CROSSFADE_MS = 100;
 const HALF_PI = Math.PI / 2;
 
 export class LiveHost {
-	private engine: HostProgram | null = null;
-	private fading: HostProgram | null = null;
+	private engine: WasmHostProgram | null = null;
+	private fading: WasmHostProgram | null = null;
 	private fadePos = 0;
 	private readonly fadeLen: number;
-	private readonly queue: PreparedProgram[] = [];
-	private building: HostProgram | null = null;
+	private readonly queue: HostPrepared[] = [];
+	private building: WasmHostProgram | null = null;
 	private liveL = new Float32Array(128);
 	private liveR = new Float32Array(128);
 	private fadeL = new Float32Array(128);
@@ -47,7 +47,7 @@ export class LiveHost {
 	}
 
 	/** Queue a program to build; it swaps in at the block boundary after its build. */
-	swap(prepared: PreparedProgram): void {
+	swap(prepared: HostPrepared): void {
 		this.queue.push(prepared);
 	}
 
@@ -69,7 +69,7 @@ export class LiveHost {
 		this.build();
 	}
 
-	private swapIn(next: HostProgram): void {
+	private swapIn(next: WasmHostProgram): void {
 		this.building = null;
 		next.swapIn();
 		this.fading = this.engine ?? this.fading; // any engine already fading is dropped here
@@ -84,10 +84,10 @@ export class LiveHost {
 			// The program it will continue at the swap: the swap only ever takes this
 			// one (or none, once a stop fade ends), since builds run one at a time.
 			const source = next.continues ? (this.engine ?? this.fading) : null;
-			this.building = hostProgram(next, this.registry, source);
+			this.building = new WasmHostProgram(next, this.registry, source);
 		}
 		try {
-			this.building.advance(this.building.prepared.build.budget);
+			this.building.advance(this.building.prepared.budget);
 		} catch (err) {
 			this.building = null;
 			this.report(err);

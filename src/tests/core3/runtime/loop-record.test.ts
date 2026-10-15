@@ -96,31 +96,27 @@ describe("loop(init, f): start values", () => {
 			);
 		});
 
-	for (const codegen of [false, true]) {
-		const mode = codegen ? "codegen" : "interpreter";
+	it("the wire reads its start value on sample 0 (interpreter)", () => {
+		const program = decay();
+		const engine = new Core3Engine(program, SR, getRegistry());
+		const wire = program.nodes.findIndex((n) => n.module === "z1");
+		run(engine, 1);
+		expect(engine.peek(wire, "out", 0)).toBe(0.5);
+		run(engine, 1);
+		expect(engine.peek(wire, "out", 0)).toBe(0.25);
+	});
 
-		it(`the wire reads its start value on sample 0 (${mode})`, () => {
-			const program = decay();
-			const engine = new Core3Engine(program, SR, getRegistry(), undefined, { codegen });
-			const wire = program.nodes.findIndex((n) => n.module === "z1");
-			run(engine, 1);
-			expect(engine.peek(wire, "out", 0)).toBe(0.5);
-			run(engine, 1);
-			expect(engine.peek(wire, "out", 0)).toBe(0.25);
-		});
-
-		it(`an unchanged re-eval is bit-exact: a matched wire carries, it does not restart (${mode})`, () => {
-			const build = (prev?: TestEngine) =>
-				new Core3Engine(decay(), SR, getRegistry(), prev?.collectState(), { codegen });
-			const reference = build();
-			run(reference, 40);
-			const expected = run(reference, 40);
-			const head = build();
-			run(head, 40);
-			const got = run(build(head), 40);
-			expect(got.every((v, i) => Object.is(v, expected[i]))).toBe(true);
-		});
-	}
+	it("an unchanged re-eval is bit-exact: a matched wire carries, it does not restart (interpreter)", () => {
+		const build = (prev?: TestEngine) =>
+			new Core3Engine(decay(), SR, getRegistry(), prev?.collectState());
+		const reference = build();
+		run(reference, 40);
+		const expected = run(reference, 40);
+		const head = build();
+		run(head, 40);
+		const got = run(build(head), 40);
+		expect(got.every((v, i) => Object.is(v, expected[i]))).toBe(true);
+	});
 
 	it("an unchanged re-eval is bit-exact on WASM: a matched wire carries, it does not restart", () => {
 		const reference = WASM_BACKEND.create(decay(), SR, getRegistry());

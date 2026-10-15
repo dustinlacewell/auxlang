@@ -3,8 +3,8 @@
  * Each file holds one function that calls the others by plain name. As a
  * helper it is named `<prefix><name>`, with those calls renamed to match, so
  * it can never meet a module's own helper names. The text is ordinary helper
- * text: the interpreter builds it, the codegen pastes it and the WASM
- * backend compiles it like any helper.
+ * text: the interpreter builds it and the WASM backend compiles it like
+ * any helper.
  */
 
 import { type AnyNode, type FunctionDeclaration, parse } from "acorn";

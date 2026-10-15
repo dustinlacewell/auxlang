@@ -3,9 +3,8 @@
  * last arguments and last result in slots of one array, `__mc[slot]`, with
  * slots numbered across a module's tick and helpers. The array persists
  * across calls, so whoever runs the text provides it: build-tick's tick
- * factory and a lambda's wrapper declare it (`cacheArray`), a pasted lane
- * turns each slot into a local, a pasted helper set's factory declares its
- * own. A Float64Array keeps the doubles unboxed. An argument that must be
+ * factory and a lambda's wrapper declare it (`cacheArray`); WASM keeps it
+ * in memory. A Float64Array keeps the doubles unboxed. An argument that must be
  * evaluated once is held in a temp `__mc<site>_x<arg>`, a plain local the
  * rewrite declares at the top of the function.
  */

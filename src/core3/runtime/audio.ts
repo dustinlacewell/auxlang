@@ -1,12 +1,11 @@
 /**
  * Main-thread audio host: owns the AudioContext + AudioWorkletNode pair and
  * the worklet's message port. `play(program)` prepares the program here
- * for the chosen backend (prepare/prepare-for-host.ts: the re-eval match
- * against the last program played, and the generated driver code or the
- * compiled and warmed WASM module) and posts it as a swap; the worklet
- * builds it while the old engine plays, then swaps and crossfades.
- * `setBackend` picks the backend ("js" by default).
- * `stop()` silences it and ends the session: the next play starts fresh.
+ * (prepare/prepare-wasm-program.ts: the re-eval match against the last
+ * program played, and the compiled and warmed WASM module) and posts it as
+ * a swap; the worklet builds it while the old engine plays, then swaps and
+ * crossfades. `stop()` silences it and ends the session: the next play
+ * starts fresh.
  * The worklet bundle is
  * loaded via Vite's `?worker&url` import: Vite bundles it as a separate ES
  * module (worker.format) and returns its URL, in both dev and build. A bare
@@ -16,9 +15,8 @@
 import { getRegistry } from "../module/define";
 import type { Program } from "../types";
 import { withProgramSpecs } from "./hydrate-specs";
-import { type Backend, DEFAULT_BACKEND, type HostOptions } from "./prepare/host-options";
-import { prepareForHost } from "./prepare/prepare-for-host";
-import type { PreparedProgram } from "./prepare/prepare-program";
+import type { HostPrepared } from "./prepare/host-prepared";
+import { prepareWasmProgram } from "./prepare/prepare-wasm-program";
 import { type SeedSession, createSeedSession } from "./seed-session";
 import workletUrl from "./worklet/index.ts?worker&url";
 import type { PerfOverrun, PerfReport, WorkletMessage, WorkletReply } from "./worklet/messages";
@@ -43,22 +41,7 @@ let host: AudioHost | null = null;
 // Beats/sec used to place overruns on the musical grid; set by enablePerf().
 let perfBps = 0;
 // The last program played: the next one matches against it and plans its carry from it.
-let running: PreparedProgram | undefined;
-
-// On the JS backend the worklet runs the generated per-program driver; its
-// build falls back to the interpreter (logged) if the host forbids `new Function`.
-let options: HostOptions = { codegen: true, backend: DEFAULT_BACKEND };
-
-/**
- * Pick the engine the worklet runs from the next play: "js" or "wasm". A
- * change ends the session (stop): one backend cannot continue the other's
- * state.
- */
-export function setBackend(backend: Backend): void {
-	if (backend === (options.backend ?? DEFAULT_BACKEND)) return;
-	stop();
-	options = { ...options, backend };
-}
+let running: HostPrepared | undefined;
 
 async function ensureHost(): Promise<AudioHost> {
 	if (host) return host;
@@ -84,7 +67,7 @@ async function ensureHost(): Promise<AudioHost> {
 	return host;
 }
 
-// Plays prepare one after another (a WASM prepare awaits its compile and
+// Plays prepare one after another (a prepare awaits its compile and
 // warm-up): each matches against the one before and posts in order.
 let plays: Promise<void> = Promise.resolve();
 // Counts stops: a play called before a stop is dropped, not posted after it.
@@ -105,7 +88,7 @@ async function playNext(program: Program, at: number): Promise<void> {
 	const bpm = constantBpm(program);
 	if (bpm > 0) perfBps = bpm / 60;
 	const registry = withProgramSpecs(getRegistry(), program);
-	const prepared = await prepareForHost(program, registry, context.sampleRate, running, options);
+	const prepared = await prepareWasmProgram(program, registry, context.sampleRate, running);
 	if (at !== session) return;
 	running = prepared;
 	const message: WorkletMessage = { type: "swap", prepared };

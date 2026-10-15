@@ -1,7 +1,7 @@
 /**
  * The WASM spike: the spike patch (oscillators, filters, envelopes, seq,
- * out) compiled to one WASM module renders bit-identically to the JS
- * backend (codegen phase 1, the reference): every output sample, and every
+ * out) compiled to one WASM module renders bit-identically to the
+ * interpreter (the reference): every output sample, and every
  * value slot at every block end. A WASM build at another sample rate must
  * differ, so the comparison can fail.
  */
@@ -28,9 +28,7 @@ function wasmEngine(program: Program, sampleRate: number): WasmEngine {
 
 /** The first difference over `seconds`, or null. */
 function firstDifference(program: Program, wasm: WasmEngine, seconds: number): string | null {
-	const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program), undefined, {
-		codegen: true,
-	});
+	const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
 	const jl = new Float32Array(BLOCK);
 	const jr = new Float32Array(BLOCK);
 	const wl = new Float32Array(BLOCK);
@@ -72,7 +70,7 @@ function allSlots(
 describe("WASM spike patch", () => {
 	const program = evalPatch(WASM_SPIKE_PATCH);
 
-	it("renders bit-identically to JS codegen (8 s: both pad chords, every bass note)", () => {
+	it("renders bit-identically to the interpreter (8 s: both pad chords, every bass note)", () => {
 		expect(firstDifference(program, wasmEngine(program, SR), 8)).toBeNull();
 	});
 

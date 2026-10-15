@@ -1,7 +1,7 @@
 /**
  * A reducer's gathered lane view is f64 in WASM, as the engine's
  * Float64Array (runtime/gathers.ts): `out` sums two sine lanes and every
- * value slot matches the JS backend bit for bit, sample by sample. An f32
+ * value slot matches the interpreter bit for bit, sample by sample. An f32
  * view rounds each lane before the sum and differs on the first non-zero
  * sample.
  */
@@ -22,9 +22,7 @@ const PATCH = "tempo(120)\nsin(p`[60, 64]`).out()";
 /** The first value slot that differs, rendering one sample at a time, or null. */
 function firstDifference(samples: number): string | null {
 	const program = evalPatch(PATCH);
-	const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program), undefined, {
-		codegen: true,
-	});
+	const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
 	const prepared = prepareWasm(program, SR);
 	const wasm = new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared);
 	const l = new Float32Array(1);

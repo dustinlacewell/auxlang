@@ -1,8 +1,9 @@
 /**
  * One built node, ready to tick: everything the engine allocates at build for
  * a node (states, reused ins/outs records, compiled bindings or gathers, out
- * slot bases). Both drivers — the interpreter and the generated one — read
- * these same records, so they share one source of semantics.
+ * slot bases). The interpreter ticks these records; the WASM compiler reads
+ * them (wasm/host/prepare-wasm.ts) and writes their states into memory as
+ * its start values, so both share one source of semantics.
  */
 
 import type { ModuleSource, ReduceTickFn, TickFn } from "../types";
@@ -11,7 +12,7 @@ import type { ReduceGathers } from "./gathers";
 
 export interface NodeRun {
 	readonly tick: TickFn | ReduceTickFn;
-	/** The module's checked tick and helper text; absent for a hand-built test spec. The generated driver pastes it. */
+	/** The module's checked tick and helper text; absent for a hand-built test spec. WASM compiles it. */
 	readonly source: ModuleSource | undefined;
 	readonly config: Record<string, unknown>;
 	readonly laneCount: number;

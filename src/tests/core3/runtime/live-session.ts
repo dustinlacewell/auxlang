@@ -1,21 +1,22 @@
 /**
  * A worklet host (worklet/live-host.ts) fed prepared programs the way
  * audio.ts feeds the worklet, recording what it plays, and the offline
- * engines over the same samples to hold it against. Prepared programs cross
- * to the host through structuredClone, as postMessage carries them.
+ * interpreter engines over the same samples to hold it against. Prepared
+ * programs cross to the host through structuredClone, as postMessage
+ * carries them.
  */
 
 import "@/core3/modules/all";
 
 import { getRegistry } from "@/core3/module/define";
-import { Core3Engine, type EngineOptions } from "@/core3/runtime/engine";
+import { BUILD_BUDGET } from "@/core3/runtime/build/build-budget";
+import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
-import type { HostOptions } from "@/core3/runtime/prepare/host-options";
-import { prepareForHost } from "@/core3/runtime/prepare/prepare-for-host";
-import type { PreparedProgram } from "@/core3/runtime/prepare/prepare-program";
+import type { HostPrepared } from "@/core3/runtime/prepare/host-prepared";
+import { prepareWasmProgram } from "@/core3/runtime/prepare/prepare-wasm-program";
 import { LiveHost } from "@/core3/runtime/worklet/live-host";
 import type { Program } from "@/core3/types";
-import { SR } from "./codegen-harness";
+import { SR } from "../wasm/differential-harness";
 
 export const BLOCK = 128;
 export const FADE = SR / 10;
@@ -26,14 +27,15 @@ export class Session {
 	});
 	readonly l: number[] = [];
 	readonly r: number[] = [];
-	running: PreparedProgram | undefined;
+	running: HostPrepared | undefined;
 
-	constructor(private readonly options: HostOptions) {}
+	/** `budget`: the build budget per block the programs carry. */
+	constructor(private readonly budget = BUILD_BUDGET) {}
 
 	/** Prepare against the last program prepared, as audio.ts does. */
-	async prepare(program: Program): Promise<PreparedProgram> {
+	async prepare(program: Program): Promise<HostPrepared> {
 		const registry = withProgramSpecs(getRegistry(), program);
-		const prepared = await prepareForHost(program, registry, SR, this.running, this.options);
+		const prepared = await prepareWasmProgram(program, registry, SR, this.running, this.budget);
 		this.running = prepared;
 		return prepared;
 	}
@@ -42,7 +44,7 @@ export class Session {
 		this.post(await this.prepare(program));
 	}
 
-	post(prepared: PreparedProgram): void {
+	post(prepared: HostPrepared): void {
 		this.host.swap(structuredClone(prepared));
 	}
 
@@ -68,21 +70,9 @@ export class Session {
 	}
 }
 
-/** The offline engines over the same samples: `before` for `head`, then `after` continuing it. */
-export function offline(
-	before: Program,
-	after: Program,
-	head: number,
-	tail: number,
-	options: EngineOptions,
-) {
-	const first = new Core3Engine(
-		before,
-		SR,
-		withProgramSpecs(getRegistry(), before),
-		undefined,
-		options,
-	);
+/** The offline interpreter over the same samples: `before` for `head`, then `after` continuing it. */
+export function offline(before: Program, after: Program, head: number, tail: number) {
+	const first = new Core3Engine(before, SR, withProgramSpecs(getRegistry(), before));
 	const headL = new Float32Array(head);
 	const headR = new Float32Array(head);
 	first.renderBlock(headL, headR, 0, head);
@@ -91,7 +81,6 @@ export function offline(
 		SR,
 		withProgramSpecs(getRegistry(), after),
 		first.collectState(),
-		options,
 	);
 	const tailL = new Float32Array(tail);
 	const tailR = new Float32Array(tail);
