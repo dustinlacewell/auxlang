@@ -185,6 +185,19 @@ s.tri()
   .gain(0.22)
   .out()`,
 	},
+	{
+		section: "[ Chords, ]",
+		title: "voices: stable",
+		description:
+			'.voices("stable") keeps a common tone in its lane across a chord change — C3 stays in one voice into the second chord, G2 into the fourth.',
+		code: `tempo(90)
+const s = seq(p\`<[c3,e3,g3] [a2,c3,f3] [g2,b2,d3] [g2,c3,e3]>\`.voices("stable"))
+s.tri()
+  .lpf({ cutoff: 89, res: 0.2 })
+  .mul(s.gate.adsr(0.02, 0.2, 0.7, 0.4))
+  .gain(0.22)
+  .out()`,
+	},
 
 	// -- { Polymeter } -------------------------------------------------------
 	{
