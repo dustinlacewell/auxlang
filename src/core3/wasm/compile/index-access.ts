@@ -2,32 +2,50 @@
  * An index into an array in memory, evaluated once, and the JS rule for it:
  * an index is valid when it is an integer in [0, length) (-0 is 0). Code that
  * needs the element runs with its address pushed only when the index is
- * valid; JS reads `undefined` and drops the write otherwise.
+ * valid; JS reads `undefined` and drops the write otherwise. An index whose
+ * range (int-range-of.ts) is inside [0, length) needs no check; an int32 one
+ * needs one unsigned compare; an f64 known to be an integer, two compares.
  */
 
 import type { AnyNode } from "acorn";
 import { OP } from "../encode/opcodes";
 import { emitExpr } from "./emit-expression";
+import { emitInt, isInt } from "./emit-int";
 import type { FnEmitter } from "./fn-emitter";
+import { intRange, provenIndex } from "./int-range-of";
 import { staticOf } from "./static-value";
 import type { Address, Kind } from "./values";
 
-/** A constant index, or the local holding a run-time one (an f64, or an i32 for an int). */
+/**
+ * A constant index, or the local holding a run-time one: an i32 (`proven`:
+ * always valid), or an f64 (`integral`: always an integer).
+ */
 export type Index =
 	| { readonly k: "static"; readonly value: number }
-	| { readonly k: "f64" | "int"; readonly local: number };
+	| { readonly k: "int"; readonly local: number; readonly proven: boolean }
+	| { readonly k: "f64"; readonly local: number; readonly integral: boolean };
 
-export function emitIndex(e: FnEmitter, property: AnyNode): Index {
+export function emitIndex(e: FnEmitter, property: AnyNode, length: number): Index {
 	const known = staticOf(e, property);
 	if (known !== null) {
 		if (typeof known.v !== "number") return e.fail(property, "an index must be a number");
 		return { k: "static", value: known.v };
 	}
+	if (isInt(e, property)) {
+		emitInt(e, property);
+		return { k: "int", local: setLocal(e, "int"), proven: provenIndex(e, property, length) };
+	}
+	const integral = intRange(e, property) !== null;
 	const kind = emitExpr(e, property);
 	if (kind === "bool") return e.fail(property, "a boolean is not an index");
+	if (kind === "int") return { k: "int", local: setLocal(e, "int"), proven: false };
+	return { k: "f64", local: setLocal(e, "f64"), integral };
+}
+
+function setLocal(e: FnEmitter, kind: Kind): number {
 	const local = e.local(kind);
 	e.code.set(local);
-	return { k: kind, local };
+	return local;
 }
 
 export function validIndex(index: number, length: number): boolean {
@@ -62,6 +80,11 @@ export function guarded(
 		}
 		return;
 	}
+	if (index.k === "int" && index.proven) {
+		pushElementAddress(e, span, index);
+		valid(span.at.offset);
+		return;
+	}
 	pushValid(e, index, span.length);
 	e.enter(OP.if, result);
 	pushElementAddress(e, span, index);
@@ -81,11 +104,13 @@ export function addressOrTrap(e: FnEmitter, span: Span, index: Index, at: AnyNod
 			return e.fail(at, `index ${index.value} is outside the ${span.length} records`);
 		return { base: span.at.base, offset: span.at.offset + index.value * span.size };
 	}
-	pushValid(e, index, span.length);
-	e.code.op(OP.i32Eqz);
-	e.enter(OP.if);
-	e.code.op(OP.unreachable);
-	e.exit();
+	if (index.k !== "int" || !index.proven) {
+		pushValid(e, index, span.length);
+		e.code.op(OP.i32Eqz);
+		e.enter(OP.if);
+		e.code.op(OP.unreachable);
+		e.exit();
+	}
 	pushElementAddress(e, span, index);
 	const base = e.local("int");
 	e.code.set(base);
@@ -106,7 +131,7 @@ function pushValid(e: FnEmitter, index: Index & { k: "f64" | "int" }, length: nu
 	}
 	e.code.get(t).f64Const(0).op(OP.f64Ge);
 	e.code.get(t).f64Const(length).op(OP.f64Lt).op(OP.i32And);
-	e.code.get(t).op(OP.f64Trunc).get(t).op(OP.f64Eq).op(OP.i32And);
+	if (!index.integral) e.code.get(t).op(OP.f64Trunc).get(t).op(OP.f64Eq).op(OP.i32And);
 }
 
 /** base + index × size, for a valid run-time index; the span's offset goes in the memarg. */

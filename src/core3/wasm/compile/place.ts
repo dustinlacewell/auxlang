@@ -20,7 +20,7 @@ export function placeOf(e: FnEmitter, node: AnyNode): Value | null {
 		return node.property.type === "Identifier" ? fieldOf(owner, node.property.name) : null;
 	const shape = owner.shape;
 	if (shape.k !== "records") return null;
-	const index = emitIndex(e, node.property);
+	const index = emitIndex(e, node.property, shape.length);
 	const span = { at: owner.at, length: shape.length, size: shape.element.size };
 	return inMemory(shape.element, addressOrTrap(e, span, index, node));
 }

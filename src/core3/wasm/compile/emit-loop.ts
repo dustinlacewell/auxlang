@@ -9,30 +9,39 @@
  *       (br $top | test, br_if $top)            -- do...while tests last
  *     end
  *   end
+ *
+ * A `for` counter that is always an int32 (loop-counter.ts) is an i32
+ * local; in the body it carries its narrower body range.
  */
 
-import type { DoWhileStatement, ForStatement, WhileStatement } from "acorn";
+import type { AnyNode, DoWhileStatement, ForStatement, WhileStatement } from "acorn";
 import { OP } from "../encode/opcodes";
+import { emitDeclaration } from "./emit-declaration";
 import { emitDiscard } from "./emit-expression";
+import { emitInt } from "./emit-int";
 import { emitStatement } from "./emit-statement";
 import { emitTest } from "./emit-test";
 import type { FnEmitter } from "./fn-emitter";
+import { type Counter, counterOf } from "./loop-counter";
 import { staticOf } from "./static-value";
+import { intLocal } from "./values";
 
 type Loop = ForStatement | WhileStatement | DoWhileStatement;
 
 export function emitLoop(e: FnEmitter, node: Loop, label: string | null): void {
 	e.within(e.scope.child(), () => {
-		if (node.type === "ForStatement" && node.init !== null && node.init !== undefined) {
-			if (node.init.type === "VariableDeclaration") emitStatement(e, node.init);
-			else emitDiscard(e, node.init);
-		}
+		const counter = node.type === "ForStatement" ? counterOf(e, node) : null;
+		const index = counter === null ? null : declareCounter(e, counter);
+		if (counter === null && node.type === "ForStatement") emitInit(e, node);
 		const exit = e.enter(OP.block);
 		const top = e.enter(OP.loop);
 		if (node.type !== "DoWhileStatement") exitUnless(e, node.test ?? null, exit);
 		const next = e.enter(OP.block);
 		e.labels.push({ name: label, implicit: true, breakAt: exit, continueAt: next });
-		emitStatement(e, node.body);
+		const body = e.scope.child();
+		if (counter !== null && index !== null)
+			body.declare(counter.name, intLocal(index, counter.body));
+		e.within(body, () => emitStatement(e, node.body));
 		e.labels.pop();
 		e.exit();
 		if (node.type === "DoWhileStatement") repeatIf(e, node, top);
@@ -44,6 +53,30 @@ export function emitLoop(e: FnEmitter, node: Loop, label: string | null): void {
 		e.exit();
 		e.exit();
 	});
+}
+
+/** The counter as an i32 local holding its whole range; returns the local. */
+function declareCounter(e: FnEmitter, counter: Counter): number {
+	emitInt(e, counter.init);
+	const index = e.local("int");
+	e.code.set(index);
+	e.scope.declare(counter.name, intLocal(index, counter.range));
+	return index;
+}
+
+/** A `for` init that is not a counter; its declarations see the rest of the loop. */
+function emitInit(e: FnEmitter, node: ForStatement): void {
+	const init = node.init;
+	if (init === null || init === undefined) return;
+	if (init.type === "VariableDeclaration") emitDeclaration(e, init, loopParts(node));
+	else emitDiscard(e, init);
+}
+
+function loopParts(node: ForStatement): AnyNode[] {
+	const parts: AnyNode[] = [node.body];
+	if (node.test !== null && node.test !== undefined) parts.push(node.test);
+	if (node.update !== null && node.update !== undefined) parts.push(node.update);
+	return parts;
 }
 
 /** Leave the loop when `test` is false; a missing or known-true test never leaves. */

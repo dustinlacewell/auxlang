@@ -1,7 +1,8 @@
 /**
  * Binary operators with JS semantics on f64: arithmetic is IEEE (as V8),
  * `%` is the exact remainder (runtime fmod), comparisons are false on NaN,
- * bitwise operators work on ToInt32 of their operands. Both operands are
+ * bitwise operators work on ToInt32 of their operands. Integer operands
+ * take the i32 forms first (int-binary.ts). Otherwise both operands are
  * emitted first, so the conversions can depend on both kinds.
  */
 
@@ -10,6 +11,7 @@ import { OP } from "../encode/opcodes";
 import { toF64, toInt32 } from "./coerce";
 import { emitExpr } from "./emit-expression";
 import type { FnEmitter } from "./fn-emitter";
+import { emitIntBinary } from "./int-binary";
 import type { Kind } from "./values";
 
 /** An emitted operand: its bytes and kind, not yet placed. */
@@ -62,6 +64,8 @@ const BITWISE: Readonly<Record<string, number>> = {
 
 export function emitBinary(e: FnEmitter, node: BinaryExpression): Kind {
 	if (node.left.type === "PrivateIdentifier") return e.fail(node, "private names are not allowed");
+	const int = emitIntBinary(e, node);
+	if (int !== null) return int;
 	const left = e.capture(() => emitExpr(e, node.left));
 	const right = e.capture(() => emitExpr(e, node.right));
 	return combine(e, node.operator, left, right, node);

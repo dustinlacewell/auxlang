@@ -1,7 +1,6 @@
 /**
  * Statements. A known `if` test emits only its live branch. Blocks open a
- * scope; `const` names bound to a known value, an array or a record stay
- * compile-time aliases, everything else gets a fresh local.
+ * scope; a declaration sees the rest of its block (emit-declaration.ts).
  */
 
 import type {
@@ -11,26 +10,35 @@ import type {
 	IfStatement,
 	LabeledStatement,
 	ReturnStatement,
-	VariableDeclarator,
 } from "acorn";
 import { OP } from "../encode/opcodes";
 import { toF64 } from "./coerce";
+import { emitDeclaration } from "./emit-declaration";
 import { emitDiscard, emitExpr } from "./emit-expression";
 import { emitLoop } from "./emit-loop";
 import { emitSwitch } from "./emit-switch";
 import { emitTest } from "./emit-test";
 import type { FnEmitter } from "./fn-emitter";
-import { placeOf } from "./place";
 import { staticOf } from "./static-value";
-import { fixed, local } from "./values";
 
 /**
  * Emit a statement list up to the first statement that never falls through:
  * what follows it is dead, and may not make sense where a branch was folded
  * away (`if (typeof x === "number") return x; const n = x.length;`).
+ * `after`: code that follows the list in the same scope (a switch's later
+ * cases), which a declaration must see too.
  */
-export function emitStatements(e: FnEmitter, list: readonly AnyNode[]): boolean {
-	for (const statement of list) if (emitStatement(e, statement)) return true;
+export function emitStatements(
+	e: FnEmitter,
+	list: readonly AnyNode[],
+	after: readonly AnyNode[] = [],
+): boolean {
+	for (let k = 0; k < list.length; k++) {
+		const statement = list[k] as AnyNode;
+		if (statement.type === "VariableDeclaration")
+			emitDeclaration(e, statement, [...list.slice(k + 1), ...after]);
+		else if (emitStatement(e, statement)) return true;
+	}
 	return false;
 }
 
@@ -42,7 +50,7 @@ export function emitStatement(e: FnEmitter, node: AnyNode, label: string | null 
 				emitDiscard(e, node.expression);
 			return false;
 		case "VariableDeclaration":
-			for (const d of node.declarations) declare(e, d, node.kind === "const");
+			emitDeclaration(e, node, null);
 			return false;
 		case "BlockStatement":
 			return e.within(e.scope.child(), () => emitStatements(e, node.body));
@@ -71,44 +79,6 @@ export function emitStatement(e: FnEmitter, node: AnyNode, label: string | null 
 		default:
 			return e.fail(node, `${node.type} is not supported by the WASM backend`);
 	}
-}
-
-function declare(e: FnEmitter, d: VariableDeclarator, constant: boolean): void {
-	if (d.id.type !== "Identifier") e.fail(d, "declarations must name one variable");
-	const name = d.id.name;
-	if (d.init === null || d.init === undefined) {
-		const index = e.local("f64");
-		e.code.f64Const(Number.NaN).set(index);
-		e.scope.declare(name, local(index, "f64"));
-		return;
-	}
-	if (constant && declareAlias(e, name, d.init)) return;
-	let kind = emitExpr(e, d.init);
-	if (kind === "int") {
-		toF64(e, kind);
-		kind = "f64";
-	}
-	const index = e.local(kind);
-	e.code.set(index);
-	e.scope.declare(name, local(index, kind));
-}
-
-/**
- * A `const` of a known value, an array or a record names it directly; no
- * local. A record at a run-time index keeps the code that finds its address.
- */
-function declareAlias(e: FnEmitter, name: string, init: AnyNode): boolean {
-	const folded = staticOf(e, init);
-	if (folded !== null) {
-		e.scope.declare(name, fixed(folded.v));
-		return true;
-	}
-	const placed = e.capture(() => placeOf(e, init));
-	const value = placed.value;
-	if (value?.k !== "memory" || value.shape.k === "number") return false;
-	e.code.append(placed.bytes);
-	e.scope.declare(name, value);
-	return true;
 }
 
 function emitIf(e: FnEmitter, node: IfStatement): boolean {

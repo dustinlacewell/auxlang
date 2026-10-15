@@ -15,7 +15,7 @@ import { toF64 } from "./coerce";
 import { emitLoad, emitStore } from "./element-io";
 import { emitExpr, emitValue } from "./emit-expression";
 import type { FnEmitter } from "./fn-emitter";
-import { type Index, type Span, emitIndex, guarded } from "./index-access";
+import { type Index, type Span, emitIndex, guarded, validIndex } from "./index-access";
 import { placeOf } from "./place";
 import { staticOf } from "./static-value";
 import type { Address, Kind } from "./values";
@@ -62,7 +62,8 @@ export function targetOf(e: FnEmitter, node: AnyNode): Target {
 		const cache = cacheTarget(e, node);
 		if (cache !== null) return cache;
 		const array = arrayOf(e, node.object);
-		return { k: "element", shape: array.shape, at: array.at, index: emitIndex(e, node.property) };
+		const index = emitIndex(e, node.property, array.shape.length);
+		return { k: "element", shape: array.shape, at: array.at, index };
 	}
 	const value = placeOf(e, node);
 	if (value?.k === "local") return { k: "local", index: value.index, kind: value.kind };
@@ -76,10 +77,7 @@ export function readTarget(e: FnEmitter, t: Target): Kind {
 		e.code.get(t.index);
 		return t.kind;
 	}
-	if (t.k === "element") {
-		readElement(e, t.shape, t.at, t.index, null);
-		return "f64";
-	}
+	if (t.k === "element") return readElement(e, t.shape, t.at, t.index, null);
 	pushBase(e, t.base);
 	e.code.loadF64(t.offset);
 	return "f64";
@@ -91,18 +89,18 @@ export function beginWrite(e: FnEmitter, t: Target): void {
 }
 
 /**
- * After the value (already of the target's kind): store it, leaving it on
- * the stack when `keep`. An element store is skipped at an invalid index,
- * and the expression's value is the number assigned, not the stored one.
+ * After the value (already of `kindToStore`): store it, leaving it on the
+ * stack when `keep`. An element store is skipped at an invalid index, and
+ * the expression's value is the number assigned, not the stored one.
  */
-export function endWrite(e: FnEmitter, t: Target, keep: boolean): void {
+export function endWrite(e: FnEmitter, t: Target, keep: boolean, kind: Kind): void {
 	if (t.k === "local") {
 		if (keep) e.code.tee(t.index);
 		else e.code.set(t.index);
 		return;
 	}
 	if (t.k === "element") {
-		writeElement(e, t, keep);
+		writeElement(e, t, keep, kind === "int" ? "int" : "f64");
 		return;
 	}
 	if (!keep) {
@@ -117,13 +115,18 @@ export function kindOfTarget(t: Target): Kind {
 	return t.k === "local" ? t.kind : "f64";
 }
 
+/** The kind a value of kind `value` is stored as: an array element takes an int as it is. */
+export function kindToStore(t: Target, value: Kind): Kind {
+	return t.k === "element" && value === "int" ? "int" : kindOfTarget(t);
+}
+
 function emitMemberReadOr(e: FnEmitter, node: MemberExpression, orElse: (() => Kind) | null): Kind {
 	if (!node.computed) return emitValue(e, placeOf(e, node), node);
 	const cache = cacheTarget(e, node);
 	if (cache !== null) return readTarget(e, cache);
 	const array = arrayOf(e, node.object);
-	readElement(e, array.shape, array.at, emitIndex(e, node.property), orElse);
-	return "f64";
+	const index = emitIndex(e, node.property, array.shape.length);
+	return readElement(e, array.shape, array.at, index, orElse);
 }
 
 /** The typed array (or reducer lane array) `node` names. */
@@ -138,28 +141,44 @@ function spanOf(shape: ArrayShape, at: Address): Span {
 	return { at, length: shape.length, size: ELEMENT_BYTES[shape.type] };
 }
 
+/** An element always present (no `undefined` branch) reads as an int where its type allows. */
 function readElement(
 	e: FnEmitter,
 	shape: ArrayShape,
 	at: Address,
 	index: Index,
 	orElse: (() => Kind) | null,
-): void {
+): "int" | "f64" {
+	const present = alwaysValid(index, shape.length);
+	let kind: "int" | "f64" = "f64";
 	guarded(
 		e,
 		spanOf(shape, at),
 		index,
 		"f64",
-		(offset) => emitLoad(e, shape.type, offset),
+		(offset) => {
+			kind = emitLoad(e, shape.type, offset, present);
+		},
 		() => {
 			if (orElse === null) e.code.f64Const(Number.NaN);
 			else toF64(e, orElse());
 		},
 	);
+	return kind;
 }
 
-function writeElement(e: FnEmitter, t: Target & { k: "element" }, keep: boolean): void {
-	const value = e.local("f64");
+function alwaysValid(index: Index, length: number): boolean {
+	if (index.k === "static") return validIndex(index.value, length);
+	return index.k === "int" && index.proven;
+}
+
+function writeElement(
+	e: FnEmitter,
+	t: Target & { k: "element" },
+	keep: boolean,
+	kind: "int" | "f64",
+): void {
+	const value = e.local(kind);
 	e.code.set(value);
 	guarded(
 		e,
@@ -168,7 +187,7 @@ function writeElement(e: FnEmitter, t: Target & { k: "element" }, keep: boolean)
 		null,
 		(offset) => {
 			e.code.get(value);
-			emitStore(e, t.shape.type, offset);
+			emitStore(e, t.shape.type, offset, kind);
 		},
 		() => {},
 	);

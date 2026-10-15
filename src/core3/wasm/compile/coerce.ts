@@ -22,8 +22,23 @@ export function toBool(e: FnEmitter, kind: Kind): void {
 	e.code.tee(t).f64Const(0).op(OP.f64Ne).get(t).get(t).op(OP.f64Eq).op(OP.i32And);
 }
 
+/**
+ * Below 2^31 in magnitude ToInt32 is one truncation, inline; the runtime
+ * function wraps the rest (and NaN and the infinities).
+ */
 export function toInt32(e: FnEmitter, kind: Kind): void {
-	if (kind === "f64") e.code.call(e.ctx.calls.runtime("toInt32").index);
+	if (kind !== "f64") return;
+	const x = e.local("f64");
+	e.code
+		.tee(x)
+		.op(OP.f64Abs)
+		.f64Const(2 ** 31)
+		.op(OP.f64Lt);
+	e.enter(OP.if, "int");
+	e.code.get(x).op(OP.i32TruncF64S);
+	e.else();
+	e.code.get(x).call(e.ctx.calls.runtime("toInt32").index);
+	e.exit();
 }
 
 /** Convert for a store into a slot of kind `to`. A number never silently becomes a boolean. */

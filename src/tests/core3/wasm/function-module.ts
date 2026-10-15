@@ -14,10 +14,11 @@ type Exported = (...args: number[]) => number;
 
 export function exportFunctions(
 	pick: (calls: Calls) => Record<string, FnRef>,
+	texts: Readonly<Record<string, string>> = {},
 ): Record<string, Exported> {
 	const table = new FunctionTable(0);
 	const fns = new Functions(table);
-	const refs = pick(fns.calls(helperSet("test", {})));
+	const refs = pick(fns.calls(helperSet("test", texts)));
 	const bytes = moduleBytes({
 		types: table.allTypes(),
 		imports: [],
