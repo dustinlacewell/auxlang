@@ -9,8 +9,13 @@ import type { ModuleSource } from "../../types";
 import { bindRandom } from "./bind-random";
 import { randomHelpers } from "./random-helpers";
 
-export function bindModuleRandom(source: ModuleSource, owner: string): ModuleSource {
-	const { text, uses } = bindRandom(source.tick, `${owner} tick`);
+/** `config`: the module's declared config defaults, which say which config fields are numbers. */
+export function bindModuleRandom(
+	source: ModuleSource,
+	owner: string,
+	config: Readonly<Record<string, unknown>>,
+): ModuleSource {
+	const { text, uses } = bindRandom(source.tick, `${owner} tick`, config);
 	if (uses.size === 0) return source;
 	return { tick: text, helpers: { ...source.helpers, ...randomHelpers(uses) } };
 }

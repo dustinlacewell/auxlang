@@ -27,7 +27,7 @@ export function bindModule(written: WrittenSpec): ModuleSpec {
 	const owner = `defmod('${spec.name}')`;
 	const written_ = sourceOf(written.tick, helpers ?? {}, owner);
 	checkModule(spec, written_);
-	const source = bindModuleRandom(bindModuleMath(written_, owner), owner);
+	const source = bindModuleRandom(bindModuleMath(written_, owner), owner, spec.config ?? {});
 	return { ...spec, tick: buildTick(source, owner), source };
 }
 
