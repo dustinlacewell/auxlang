@@ -91,7 +91,6 @@ export class Core3Engine implements Engine {
 			return {
 				tick: spec.tick,
 				source: spec.source,
-				module: spec.name,
 				config: { ...spec.config, ...node.config },
 				laneCount: node.lanes.length,
 				states: laneStates.states[i] as Record<string, unknown>[],

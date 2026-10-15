@@ -1,10 +1,10 @@
 /**
  * Decides, per node, whether its tick pastes, and pastes it. A node pastes
- * when its module has checked source text, its module is on the paste list,
- * no other lane shares its state objects, and its tick and helpers print
- * (anything the printer refuses keeps the node at its call site, with every
- * scope binding the attempt made rolled back). Helpers paste once per
- * module into the driver's prelude.
+ * when its module has checked source text (every module but the exempt
+ * bridge ones), no other lane shares its state objects, and its tick and
+ * helpers print (anything the printer refuses keeps the node at its call
+ * site, with every scope binding the attempt made rolled back). Helpers
+ * paste once per module into the driver's prelude.
  */
 
 import { hashRandom } from "../../../random/hash-random";
@@ -19,23 +19,6 @@ import { NotPasteable } from "./not-pasteable";
 import { ParseCache } from "./parse-cache";
 import { type PastedHelpers, pasteHelpers } from "./paste-helpers";
 import { sharedStates } from "./shared-states";
-
-/** Modules whose ticks paste; every other node keeps its call site. */
-const PASTED_MODULES: ReadonlySet<string> = new Set([
-	"mul",
-	"vca",
-	"gain",
-	"add",
-	"sin",
-	"saw",
-	"tri",
-	"sqr",
-	"lfo",
-	"lpf",
-	"hpf",
-	"bpf",
-	"notch",
-]);
 
 export class Paster {
 	private readonly names = new NameTable();
@@ -52,7 +35,7 @@ export class Paster {
 
 	/** The node pasted inline, or null when it keeps its call site. */
 	paste(run: NodeRun, i: number): NodeCode | null {
-		if (run.source === undefined || !PASTED_MODULES.has(run.module)) return null;
+		if (run.source === undefined) return null;
 		if (run.states.some((s) => this.shared.has(s))) return null;
 		const mark = this.env.scope.mark();
 		try {

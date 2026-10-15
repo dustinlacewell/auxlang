@@ -1,10 +1,11 @@
 /**
  * The codegen gate: for every site, module-docs, pattern-docs, and doc-snippet
  * example, the generated driver must reproduce the interpreter bit for bit —
- * every output sample, and every lane state after the render. The interpreter
- * ticks per sample; the generated driver renders in uneven blocks, so state
- * kept in locals must be stored back exactly at every block end. Determinism
- * is a project invariant, so any divergence is a generator bug.
+ * every output sample, and every lane state after the render (harness:
+ * codegen-harness.ts). The interpreter ticks per sample; the generated driver
+ * renders in uneven blocks, so state kept in locals must be stored back
+ * exactly at every block end. Determinism is a project invariant, so any
+ * divergence is a generator bug.
  */
 
 import "@/core3/modules/all";
@@ -21,20 +22,9 @@ import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples";
 import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples";
 import { describe, expect, it } from "vitest";
 import { SNIPPETS } from "../../../../docs/snippets";
+import { type Run, SR, expectIdentical, firstBitDiff, render } from "./codegen-harness";
 
-const SR = 48000;
 const SAMPLES = SR; // 1 s
-
-interface Run {
-	readonly l: Float32Array;
-	readonly r: Float32Array;
-	readonly state: EngineState;
-}
-
-function run(program: Program, codegen: boolean): Run {
-	const registry = withProgramSpecs(getRegistry(), program);
-	return render(new Core3Engine(program, SR, registry, undefined, { codegen }), SAMPLES, codegen);
-}
 
 interface SwapRun extends Run {
 	/** The state migrated at the swap. */
@@ -58,52 +48,6 @@ function swapRun(before: Program, after: Program, codegen: boolean): SwapRun {
 	r.set(head.r);
 	r.set(tail.r, half);
 	return { l, r, state: tail.state, swapState: head.state };
-}
-
-/**
- * Block sizes the generated driver renders in, cycled: the worklet quantum
- * plus odd sizes, so state stored back at block ends is crossed often and at
- * uneven points.
- */
-const BLOCKS = [128, 1, 77, 128, 3, 128, 64];
-
-/** The interpreter ticks one sample at a time (the reference); codegen renders in blocks. */
-function render(engine: Core3Engine, samples: number, codegen: boolean): Run {
-	const l = new Float32Array(samples);
-	const r = new Float32Array(samples);
-	if (!codegen) {
-		const frame = new Float32Array(2);
-		for (let i = 0; i < samples; i++) {
-			engine.tick(frame);
-			l[i] = frame[0] as number;
-			r[i] = frame[1] as number;
-		}
-		return { l, r, state: engine.collectState() };
-	}
-	for (let at = 0, b = 0; at < samples; b++) {
-		const n = Math.min(BLOCKS[b % BLOCKS.length] as number, samples - at);
-		engine.renderBlock(l, r, at, n);
-		at += n;
-	}
-	return { l, r, state: engine.collectState() };
-}
-
-/** Index of the first sample whose bits differ; -1 when identical. */
-function firstBitDiff(a: Float32Array, b: Float32Array): number {
-	const ua = new Uint32Array(a.buffer);
-	const ub = new Uint32Array(b.buffer);
-	for (let i = 0; i < ua.length; i++) if (ua[i] !== ub[i]) return i;
-	return -1;
-}
-
-/** Asserts both drivers agree; returns the interpreter's run. */
-function expectIdentical(program: Program): Run {
-	const ref = run(program, false);
-	const gen = run(program, true);
-	expect(firstBitDiff(ref.l, gen.l), "first differing left sample").toBe(-1);
-	expect(firstBitDiff(ref.r, gen.r), "first differing right sample").toBe(-1);
-	expect(gen.state).toEqual(ref.state);
-	return ref;
 }
 
 const CASES: readonly { readonly label: string; readonly code: string }[] = [
