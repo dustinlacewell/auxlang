@@ -10,8 +10,9 @@ import type { WasmMemory } from "../wasm-memory";
 import { CARRY_F64, RUN_WIDTH } from "./carry-run";
 
 export interface CarryViews {
-	/** The old memory the views read; a grown memory needs new views. */
+	/** The old memory the views read and the new one they write; a grown memory needs new views. */
 	readonly source: ArrayBuffer;
+	readonly target: ArrayBuffer;
 	readonly f64From: readonly Float64Array[];
 	readonly f64To: readonly Float64Array[];
 	readonly wordFrom: readonly Int32Array[];
@@ -33,7 +34,17 @@ export function bindCarry(plan: Int32Array, from: WasmMemory, to: WasmMemory): C
 			words.wordTo.push(to.i32.subarray(dst, dst + count));
 		}
 	}
-	return { source: from.f64.buffer as ArrayBuffer, ...views, ...words };
+	return {
+		source: from.f64.buffer as ArrayBuffer,
+		target: to.f64.buffer as ArrayBuffer,
+		...views,
+		...words,
+	};
+}
+
+/** Whether `views` were bound on these very memories (neither has grown since). */
+export function carryCurrent(views: CarryViews, from: WasmMemory, to: WasmMemory): boolean {
+	return views.source === from.f64.buffer && views.target === to.f64.buffer;
 }
 
 export function runCarry(views: CarryViews): void {

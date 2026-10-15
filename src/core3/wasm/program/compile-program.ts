@@ -3,8 +3,9 @@
  * checked tick inlined into one `render(n)` function, the helpers, each
  * signal lambda and auxlang's math compiled from their JS source into the
  * same module, state
- * in linear memory at a layout fixed from the built states. The module
- * imports `env.fill(node, lane, cycle)` (the event tables) and exports
+ * in linear memory at a layout fixed from the built states, the event tables
+ * in a heap above it (layout/table-format.ts). The module imports
+ * `env.fill(node, lane, cycle)` (the miss path, table-enter.ts) and exports
  * `render` and `memory`.
  */
 
@@ -17,6 +18,10 @@ import { F64, I32 } from "../encode/opcodes";
 import { emitRender } from "./emit-render";
 import type { LambdaSources } from "./lambda-sources";
 import { type WasmLayout, planMemory } from "./memory-layout";
+import { ENTER_PARAMS, tableEnter } from "./table-enter";
+
+/** The host's `env.fill` import: the first function index. */
+const FILL = 0;
 
 export interface WasmInput {
 	readonly runs: readonly NodeRun[];
@@ -43,9 +48,10 @@ export function compileWasm(input: WasmInput): CompiledWasm {
 	const layout = planMemory(input.runs, input.readsPattern, sources, input.lambdas, input.size);
 	const table = new FunctionTable(1);
 	const fillType = table.typeIndex([I32, I32, F64], []);
+	const enter = table.add(tableEnter(table.typeIndex(ENTER_PARAMS, []), FILL));
 	const fns = new Functions(table);
 	const render = table.reserve();
-	const body = emitRender({ ...input, sources, memory: layout, fill: 0 }, fns, table);
+	const body = emitRender({ ...input, sources, memory: layout, enter }, fns, table);
 	table.define(render, { type: table.typeIndex([I32], []), locals: body.locals, body: body.body });
 	const bytes = moduleBytes({
 		types: table.allTypes(),

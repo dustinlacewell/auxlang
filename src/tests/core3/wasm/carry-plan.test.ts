@@ -28,7 +28,7 @@ function lane(base: number, aggregates: Record<string, Field> = {}): LaneMemory 
 		__lane: base + 24,
 		__seed: base + 32,
 	};
-	return { state, aggregates, cache: 0, cacheSlots: 0, table: null, lambdas: {} };
+	return { state, aggregates, cache: 0, cacheSlots: 0, tables: null, lambdas: {} };
 }
 
 interface SideSpec {
@@ -49,7 +49,7 @@ function side({
 	rate = 48000,
 }: SideSpec): CarrySide {
 	return {
-		layout: { pages: 1, outL: 0, outR: 512, cur: 1024, count: 1016, size: 4, nodes },
+		layout: { pages: 1, outL: 0, outR: 512, cur: 1024, count: 1016, size: 4, nodes, heap: 2048 },
 		facts: {
 			identities: keys.map((key) => ({ key }) as KeyedIdentity),
 			paired,

@@ -5,15 +5,17 @@
  * outputs record, the f64 lane views its reducer inputs are gathered into,
  * and per lane its numeric state fields, its typed arrays and records
  * (state-layout.ts), its math call cache, (a module that reads a pattern)
- * its event table, and each lambda input's own math cache.
+ * its table slot, and each lambda input's own math cache. The table heap
+ * starts above all of it (layout/table-format.ts, host/table-heap.ts); the
+ * first pages hold each table lane's two tables at their initial size.
  * Everything is f64 except the f32 output blocks, which the JS engine also
  * holds as Float32Arrays, and typed arrays, which keep their element type.
  */
 
-import { TABLE_ROW_FIELDS } from "../../module/tick-subset/table-intrinsics";
 import type { NodeRun } from "../../runtime/node-run";
 import type { ModuleSource } from "../../types";
 import type { Field } from "../layout/state-shape";
+import { INITIAL_ROWS, SLOT_BYTES, tableBytes } from "../layout/table-format";
 import { cacheSlotsIn } from "./cache-slots";
 import type { LambdaSources } from "./lambda-sources";
 import { lambdaText } from "./lambda-text";
@@ -22,11 +24,8 @@ import { planAggregates } from "./state-layout";
 /** Samples per render call at most (the AudioWorklet quantum). */
 export const BLOCK_MAX = 128;
 
-/** Rows per lane event table. */
-export const TABLE_CAPACITY = 256;
-
-/** A table: cycle and count, then each row field (TABLE_ROW_FIELDS order) as f64 rows. */
-export const TABLE_HEADER = 16;
+/** Bytes per memory page. */
+export const PAGE = 65536;
 
 export interface LaneMemory {
 	/** Numeric state field → address. */
@@ -35,8 +34,8 @@ export interface LaneMemory {
 	readonly aggregates: Readonly<Record<string, Field>>;
 	readonly cache: number;
 	readonly cacheSlots: number;
-	/** The lane's event table when its module reads a pattern, else null. */
-	readonly table: number | null;
+	/** The lane's table slot (layout/table-format.ts) when its module reads a pattern, else null. */
+	readonly tables: number | null;
 	/** Lambda input port → its own math cache. */
 	readonly lambdas: Readonly<Record<string, LambdaMemory>>;
 }
@@ -62,6 +61,8 @@ export interface WasmLayout {
 	readonly count: number;
 	readonly size: number;
 	readonly nodes: readonly NodeMemory[];
+	/** Where the table heap starts. */
+	readonly heap: number;
 }
 
 export function planMemory(
@@ -94,19 +95,20 @@ export function planMemory(
 			aggregates: planAggregates(state, take),
 			cache: take(8 * slots),
 			cacheSlots: slots,
-			table: readsPattern[i]
-				? take(TABLE_HEADER + 8 * TABLE_ROW_FIELDS.length * TABLE_CAPACITY)
-				: null,
+			tables: readsPattern[i] ? take(SLOT_BYTES) : null,
 			lambdas: planLambdas(lambdas[i]?.[l] ?? {}, take),
 		}));
 		return { outs, views, lanes };
 	});
-	return { pages: Math.max(1, Math.ceil(top / 65536)), outL, outR, cur, count, size, nodes };
+	const heap = top;
+	const pages = Math.max(1, Math.ceil((heap + initialHeap(nodes)) / PAGE));
+	return { pages, outL, outR, cur, count, size, nodes, heap };
 }
 
-/** A table field's row address. */
-export function tableRow(table: number, field: number, row: number): number {
-	return table + TABLE_HEADER + 8 * (field * TABLE_CAPACITY + row);
+/** Two tables of the initial size per table lane. */
+function initialHeap(nodes: readonly NodeMemory[]): number {
+	const lanes = nodes.flatMap((node) => node.lanes).filter((lane) => lane.tables !== null);
+	return lanes.length * 2 * tableBytes(INITIAL_ROWS);
 }
 
 /**

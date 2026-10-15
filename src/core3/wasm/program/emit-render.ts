@@ -31,8 +31,8 @@ export interface RenderInput {
 	readonly tapsL: Int32Array;
 	readonly tapsR: Int32Array;
 	readonly sampleRate: number;
-	/** The host's table fill import. */
-	readonly fill: number;
+	/** The module's table `enter` function (table-enter.ts). */
+	readonly enter: number;
 }
 
 export interface RenderBody {
