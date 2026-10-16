@@ -8,6 +8,8 @@
  *   __tableCount()          its row count
  *   __tableRow(field, row)  one row's field; `field` is a string literal
  *                           naming one of TABLE_ROW_FIELDS
+ *   __tableField(k, row)    one row's record field k (pattern/record-fields.ts
+ *                           order); k below the field count
  *
  * Each backend binds them: JS to the lane's scratch table
  * (tick-build/bind-table.ts), WASM to memory loads and `env.fill`
@@ -20,6 +22,7 @@ export const TABLE_INTRINSICS: ReadonlyMap<string, number> = new Map([
 	["__tableCycle", 0],
 	["__tableCount", 0],
 	["__tableRow", 2],
+	["__tableField", 2],
 ]);
 
 /** The row fields `__tableRow` reads, in the order the WASM layout stores them. */

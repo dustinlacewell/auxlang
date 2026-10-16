@@ -122,7 +122,8 @@ function continueVoices(f: Fold, group: Group): Ev[] {
 			continue;
 		}
 		const whole = discreteWhole(ev);
-		f.lanes[lane] = ev.kind === "tie" ? tieVoice(f.lanes[lane] as Voice, ev, whole) : noteVoice(ev, whole);
+		const held = f.lanes[lane] as Voice;
+		f.lanes[lane] = ev.kind === "tie" ? tieVoice(held, ev, whole) : noteVoice(ev, whole, held);
 		f.out.push(withLane(ev, lane));
 	}
 	return fresh;
@@ -133,7 +134,7 @@ function placeNotes(f: Fold, notes: readonly Ev[], at: readonly number[], t: R):
 	notes.forEach((ev, i) => {
 		const lane = at[i] as number;
 		steal(f, lane, t);
-		f.lanes[lane] = noteVoice(ev, discreteWhole(ev));
+		f.lanes[lane] = noteVoice(ev, discreteWhole(ev), f.lanes[lane]);
 		f.out.push(withLane(ev, lane));
 	});
 }

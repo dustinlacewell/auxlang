@@ -12,6 +12,9 @@
  *   trig   one sample when the position enters a different note; a slide
  *          entered from the note before it fires nothing
  *   slide  high inside a slide
+ *   fields one output per record field of the pattern (`p.with`), named
+ *          after it; members set from the pattern at eval. Updated with
+ *          `out`, so each holds through rests like `out`
  *
  * State is fixed-shape: the reader's row, note id, gate, dip countdown, last
  * position, and whether it has ticked. The tables are scratch, rebuilt, never
@@ -67,7 +70,13 @@ defmod({
 	category: "timing",
 	doc: "Reads a pattern at a position (default: the clock); outputs value, gate, trig, and slide.",
 	ins: { position: phasePort(0) },
-	outs: { out: semis(0), gate: gatePort(), trig: trigPort(), slide: gatePort() },
+	outs: {
+		out: semis(0),
+		gate: gatePort(),
+		trig: trigPort(),
+		slide: gatePort(),
+		fields: group(sig(0), { open: true }),
+	},
 	defaultIn: "position",
 	defaultOut: "out",
 	positional: ["pattern", "position"],
@@ -146,6 +155,7 @@ defmod({
 		const gate = gateOf(kind, dipLeft, dipWindow);
 
 		o.out = __tableRow("value", row);
+		for (let k = 0; k < o.fields.length; k++) o.fields[k] = __tableField(k, row);
 		o.gate = gate;
 		o.trig = trig;
 		o.slide = slideOf(kind);

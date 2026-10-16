@@ -38,6 +38,7 @@ import {
 	withSeed,
 } from "./combinators";
 import { type R, r } from "./rational";
+import { withRecord } from "./with-record";
 
 export class P {
 	constructor(readonly ast: Pat) {}
@@ -103,6 +104,12 @@ export class P {
 
 	mul(amount: number): P {
 		return new P(mul(amount, this.ast));
+	}
+
+	/** Records: each event gains one value per field, sampled from the field's pattern at the event's onset. */
+	with(fields: Readonly<Record<string, number | Pat | P>>): P {
+		const pats = Object.fromEntries(Object.entries(fields).map(([name, x]) => [name, toP(x).ast]));
+		return new P(withRecord(pats, this.ast));
 	}
 
 	/** Overlay a transformed copy shifted later by `amount`. */

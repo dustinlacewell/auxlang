@@ -18,6 +18,7 @@
 
 import type { Pat } from "../ast";
 import type { Ev } from "../event";
+import { recordFields } from "../record-fields";
 import { type Carry, carryBefore, readsHistory } from "./carry-before";
 import { carryAfter } from "./carry-forward";
 import type { CycleQueries } from "./cycle-queries";
@@ -88,7 +89,7 @@ export class LaneFill {
 	filled(c: number, evs: readonly Ev[]): void {
 		const pat = this.pat as Pat;
 		if (readsHistory(pat) || c !== this.carryCycle || this.carry === null) return;
-		this.carry = carryAfter(this.carry, evs, c, lookbackDepth(pat));
+		this.carry = carryAfter(this.carry, evs, c, lookbackDepth(pat), recordFields(pat));
 		this.carryCycle = c + 1;
 	}
 }

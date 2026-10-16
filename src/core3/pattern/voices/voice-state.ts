@@ -19,6 +19,8 @@ export interface Voice {
 	/** The latest event's whole as it plays: later fragments match `begin`; the lane is free from `end`. */
 	readonly begin: R;
 	readonly end: R;
+	/** The lane's held record fields: each from the latest note that carried it. */
+	readonly fields?: Readonly<Record<string, number>>;
 }
 
 /** A note cut off before its whole ends: its later fragments do not sound. */
@@ -42,9 +44,11 @@ export const emptyState = (n: number): VoiceState => ({
 	onsets: 0,
 });
 
-/** The voice a note or slide starts. */
-export function noteVoice(ev: Ev, whole: Span): Voice {
-	return { from: laneOf(ev), value: ev.value, note: whole.begin, begin: whole.begin, end: whole.end };
+/** The voice a note or slide starts in a lane that held `prev`: it keeps the fields the note does not carry. */
+export function noteVoice(ev: Ev, whole: Span, prev: Voice | null | undefined): Voice {
+	const voice = { from: laneOf(ev), value: ev.value, note: whole.begin, begin: whole.begin, end: whole.end };
+	if (ev.fields === undefined && prev?.fields === undefined) return voice;
+	return { ...voice, fields: { ...prev?.fields, ...ev.fields } };
 }
 
 /** The voice a tie continues, now reaching to the tie's end. */

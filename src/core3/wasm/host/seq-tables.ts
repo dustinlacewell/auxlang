@@ -45,9 +45,9 @@ export class SeqTables {
 		private readonly heap: TableHeap,
 	) {
 		const refs = tableLanes(layout);
-		this.lanes = refs.map(({ node, lane, slot }) => {
+		this.lanes = refs.map(({ node, lane, slot, rowBytes }) => {
 			const run = runs[node] as NodeRun;
-			heap.init(slot);
+			heap.init(slot, rowBytes);
 			return { state: run.states[lane] as Record<string, unknown>, config: run.config, slot };
 		});
 		const index = layout.nodes.map((node) => node.lanes.map(() => -1));

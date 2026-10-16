@@ -10,8 +10,18 @@
 import type { Pat } from "../ast";
 import type { Ev } from "../event";
 import { rtof } from "../rational";
+import { recordFields } from "../record-fields";
+import type { Carry } from "./carry-before";
 import { CycleQueries } from "./cycle-queries";
-import { type EventTable, KIND_NOTE, KIND_REST, NO_NOTE, ensureCapacity, sounds } from "./event-table";
+import {
+	type EventTable,
+	KIND_NOTE,
+	KIND_REST,
+	NO_NOTE,
+	ensureCapacity,
+	ensureFields,
+	sounds,
+} from "./event-table";
 import { LaneFill } from "./lane-fill";
 import { type RowKind, rowKind, setsValue } from "./row-kind";
 
@@ -24,9 +34,11 @@ export function fillTable(
 	fill: LaneFill = new LaneFill(new CycleQueries()),
 ): void {
 	fill.bind(pat, seed, lane);
+	const fieldNames = recordFields(pat);
+	ensureFields(t, fieldNames.length);
 	const carry = fill.carryInto(c);
 	const evs = fill.laneCycle(c);
-	const inForceAtEnd = writeRows(evs, c, carry.value, carry.noteId, t);
+	const inForceAtEnd = writeRows(evs, c, carry, fieldNames, t);
 	fill.filled(c, evs);
 	markDips(t, nextHead(fill.laneCycle(c + 1), c + 1, inForceAtEnd));
 	t.cycle = c;
@@ -39,44 +51,65 @@ const GAP: RowKind = { kind: KIND_REST, noteId: NO_NOTE, slideFrom: NO_NOTE };
 /**
  * Rows for one cycle's sorted events: each event runs until the next one
  * begins (or its part ends); gaps become rest rows. Rest and tie rows hold the
- * value before them. Returns the note in force at the cycle's end (NO_NOTE
- * after a rest or a gap), for the next cycle's ties and slides.
+ * value and record fields before them; a note or slide without a field holds
+ * that field too. Returns the note in force at the cycle's end (NO_NOTE after
+ * a rest or a gap), for the next cycle's ties and slides.
  */
 function writeRows(
 	evs: readonly Ev[],
 	c: number,
-	heldValue: number,
-	noteBefore: number,
+	carry: Carry,
+	fieldNames: readonly string[],
 	t: EventTable,
 ): number {
 	ensureCapacity(t, 2 * evs.length + 1);
 	t.count = 0;
 	let cursor = c;
-	let held = heldValue;
-	let inForce = noteBefore;
+	let held = carry.value;
+	const fields = [...carry.fields];
+	let inForce = carry.noteId;
 	for (let i = 0; i < evs.length; i++) {
 		const ev = evs[i] as Ev;
 		const begin = rtof(ev.part.begin);
 		const next = evs[i + 1];
 		const end = Math.min(rtof(ev.part.end), next === undefined ? c + 1 : rtof(next.part.begin));
 		if (begin > cursor) {
-			pushRow(t, cursor, begin, held, GAP);
+			pushRow(t, cursor, begin, held, fields, GAP);
 			inForce = NO_NOTE;
 		}
 		const row = rowKind(ev, inForce);
-		if (setsValue(row)) held = ev.value;
-		if (end > begin) pushRow(t, begin, end, held, row);
+		if (setsValue(row)) {
+			held = ev.value;
+			takeFields(fields, fieldNames, ev);
+		}
+		if (end > begin) pushRow(t, begin, end, held, fields, row);
 		inForce = row.noteId;
 		cursor = Math.max(cursor, end);
 	}
 	if (cursor < c + 1) {
-		pushRow(t, cursor, c + 1, held, GAP);
+		pushRow(t, cursor, c + 1, held, fields, GAP);
 		inForce = NO_NOTE;
 	}
 	return inForce;
 }
 
-function pushRow(t: EventTable, begin: number, end: number, value: number, row: RowKind): void {
+/** The fields `ev` carries replace the held ones. */
+function takeFields(held: number[], names: readonly string[], ev: Ev): void {
+	if (ev.fields === undefined) return;
+	for (let k = 0; k < names.length; k++) {
+		const value = ev.fields[names[k] as string];
+		if (value !== undefined) held[k] = value;
+	}
+}
+
+function pushRow(
+	t: EventTable,
+	begin: number,
+	end: number,
+	value: number,
+	fields: readonly number[],
+	row: RowKind,
+): void {
 	const i = t.count;
 	t.begin[i] = begin;
 	t.end[i] = end;
@@ -85,6 +118,7 @@ function pushRow(t: EventTable, begin: number, end: number, value: number, row: 
 	t.noteId[i] = row.noteId;
 	t.slideFrom[i] = row.slideFrom;
 	t.dipBefore[i] = 0;
+	for (let k = 0; k < fields.length; k++) (t.fields[k] as Float64Array)[i] = fields[k] as number;
 	t.count = i + 1;
 }
 

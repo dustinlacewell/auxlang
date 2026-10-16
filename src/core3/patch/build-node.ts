@@ -28,6 +28,7 @@ import { evalCtx } from "./context";
 import { handleData, isHandle } from "./handle-data";
 import { isNamedArgs } from "./is-named-args";
 import { newNode } from "./new-node";
+import { bindRecordMembers } from "./record-members";
 
 export function buildNode(
 	spec: ModulePorts,
@@ -56,6 +57,7 @@ export function buildNode(
 	}
 
 	if (chained !== undefined) bindChain(spec, chained, into.inputs);
+	bindRecordMembers(spec, into.config, into.inputs, into.groups);
 	assertGroupPorts(spec, into.inputs, into.groups);
 
 	return {

@@ -5,6 +5,8 @@
  *
  *   lastValue   the value of the cycle's last note or slide; null when it has
  *               none (rests and ties have no value of their own)
+ *   lastField   the same for one record field: the last note or slide that
+ *               carries it
  *   noteAtEnd   the note in force at the cycle's end: NO_NOTE after a rest or
  *               a gap; a tie is followed back to its note; TIED_IN when the
  *               tie reaches back to the cycle's start, so the note comes from
@@ -25,6 +27,16 @@ export function lastValue(evs: readonly Ev[]): number | null {
 	for (let i = evs.length - 1; i >= 0; i--) {
 		const ev = evs[i] as Ev;
 		if (ownsValue(ev)) return ev.value;
+	}
+	return null;
+}
+
+/** Record field `name` of the cycle's last note or slide that carries it; null when none does. */
+export function lastField(evs: readonly Ev[], name: string): number | null {
+	for (let i = evs.length - 1; i >= 0; i--) {
+		const ev = evs[i] as Ev;
+		const value = ev.fields?.[name];
+		if (value !== undefined && ownsValue(ev)) return value;
 	}
 	return null;
 }

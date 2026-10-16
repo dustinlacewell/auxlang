@@ -27,7 +27,7 @@ function table(pat: Pat, cycle: number, lane = 0): EventTable {
 	return t;
 }
 
-type RowField = Exclude<keyof EventTable, "cycle" | "count" | "carryValue" | "carryNoteId">;
+type RowField = Exclude<keyof EventTable, "cycle" | "count" | "carryValue" | "carryNoteId" | "fields">;
 
 const rows = (t: EventTable, field: RowField) => Array.from(t[field].subarray(0, t.count));
 

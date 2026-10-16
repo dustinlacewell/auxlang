@@ -22,6 +22,12 @@ export interface Layer {
 	readonly steps: R;
 }
 
+/** One named field of a `with` node: the pattern its values come from. */
+export interface RecordField {
+	readonly name: string;
+	readonly pat: Pat;
+}
+
 /**
  * One layer of a `steps` node: the lanes [lo, hi) it owns, and `counts[k]`,
  * the number of steps (distinct onsets) in cycle k of the child's period
@@ -77,6 +83,9 @@ export type Pat =
 	| { readonly op: "seed"; readonly seed: number; readonly child: Pat }
 	| { readonly op: "add"; readonly amount: number; readonly child: Pat } // payload arithmetic
 	| { readonly op: "mul"; readonly amount: number; readonly child: Pat }
+	// Records: each child event gains one value per field, sampled from the
+	// field's pattern at the event's onset (absent on a rest). Fields sorted by name.
+	| { readonly op: "with"; readonly fields: readonly RecordField[]; readonly child: Pat }
 	// every(n, f): `transformed` is f(child), applied at build time.
 	// Query picks transformed when cycle % n === 0, else child.
 	| { readonly op: "every"; readonly n: number; readonly child: Pat; readonly transformed: Pat }

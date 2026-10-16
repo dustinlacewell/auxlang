@@ -12,6 +12,8 @@
  *               before it); NO_NOTE otherwise
  *   dipBefore   1 when the next row (peeking the next cycle for the last row)
  *               is a different note touching this one
+ *   fields[k]   record field k (pattern/record-fields.ts order): the value of
+ *               the last note or slide that carried it; held like `value`
  *
  * `carryValue`/`carryNoteId` describe what came before row 0. A table is
  * derived data: rebuilt from (pattern, seed, lane, cycle), never migrated.
@@ -36,6 +38,8 @@ export interface EventTable {
 	noteId: Float64Array;
 	slideFrom: Float64Array;
 	dipBefore: Int8Array;
+	/** One column per record field. */
+	fields: Float64Array[];
 	carryValue: number;
 	carryNoteId: number;
 }
@@ -51,6 +55,7 @@ export function createTable(capacity = 8): EventTable {
 		noteId: new Float64Array(capacity),
 		slideFrom: new Float64Array(capacity),
 		dipBefore: new Int8Array(capacity),
+		fields: [],
 		carryValue: 0,
 		carryNoteId: NO_NOTE,
 	};
@@ -67,6 +72,13 @@ export function ensureCapacity(t: EventTable, rows: number): void {
 	t.noteId = new Float64Array(capacity);
 	t.slideFrom = new Float64Array(capacity);
 	t.dipBefore = new Int8Array(capacity);
+	t.fields = t.fields.map(() => new Float64Array(capacity));
+}
+
+/** Give the table `count` field columns. Contents are not kept when the count changes. */
+export function ensureFields(t: EventTable, count: number): void {
+	if (t.fields.length === count) return;
+	t.fields = Array.from({ length: count }, () => new Float64Array(t.begin.length));
 }
 
 export const sounds = (kind: number): boolean => kind !== KIND_REST;

@@ -15,6 +15,7 @@ import { CycleQueries } from "../pattern/table/cycle-queries";
 import { type EventTable, createTable } from "../pattern/table/event-table";
 import { fillTable } from "../pattern/table/fill-table";
 import { LaneFill } from "../pattern/table/lane-fill";
+import { recordFields } from "../pattern/record-fields";
 import type { ModuleSpec } from "../types";
 
 type TableScratch = {
@@ -57,6 +58,11 @@ export function fillLaneTable(
 	const lane = ((s.__lane as number) | 0) % patternLanes(cfg);
 	const { table, fill } = s.__scratch as TableScratch;
 	fillTable(cfg.pattern as Pat, (cfg.seed as number) | 0, lane, cycle, table, fill);
+}
+
+/** The record field columns of the node's tables (pattern/record-fields.ts). */
+export function recordColumns(cfg: Record<string, unknown>): number {
+	return recordFields(cfg.pattern as Pat).length;
 }
 
 /** The pattern lanes a node's lanes read in turn (at least 1). */

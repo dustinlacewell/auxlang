@@ -69,6 +69,7 @@ function structuralTactus(pat: Pat): R {
 		case "seed":
 		case "add":
 		case "mul":
+		case "with":
 		case "every":
 		case "slide":
 		case "compact":

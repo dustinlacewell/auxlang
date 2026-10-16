@@ -7,6 +7,7 @@
  *   __tableCycle()        →  s.__scratch.table.cycle
  *   __tableCount()        →  s.__scratch.table.count
  *   __tableRow("f", r)    →  s.__scratch.table.f[r]
+ *   __tableField(k, r)    →  s.__scratch.table.fields[k][r]
  *
  * Reads are plain field loads, as fast as the TypeScript tick they replace.
  * Arguments keep their text, so intrinsics and draws inside them are still
@@ -45,6 +46,13 @@ function callEdits(call: CallExpression, state: string, config: string): TextEdi
 			return [{ start: call.start, end: call.end, text: `${table}.cycle` }];
 		case "__tableCount":
 			return [{ start: call.start, end: call.end, text: `${table}.count` }];
+		case "__tableField":
+			if (first === undefined || second === undefined) return [];
+			return [
+				{ start: call.start, end: first.start, text: `${table}.fields[` },
+				{ start: first.end, end: second.start, text: "][" },
+				{ start: second.end, end: call.end, text: "]" },
+			];
 		default:
 			if (first?.type !== "Literal" || second === undefined) return [];
 			return [

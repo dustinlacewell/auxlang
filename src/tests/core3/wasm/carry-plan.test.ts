@@ -40,7 +40,7 @@ function lane(base: number, aggregates: Record<string, Field> = {}): LaneMemory 
 	for (const name of Object.keys(state)) fields[name] = { k: "number" };
 	for (const [name, field] of Object.entries(aggregates)) fields[name] = stateOf(field.shape);
 	const shape: RecordState = { k: "record", fields };
-	return { shape, state, aggregates, cache: 0, cacheSlots: 0, tables: null, lambdas: {} };
+	return { shape, state, aggregates, cache: 0, cacheSlots: 0, tables: null, rowBytes: 0, lambdas: {} };
 }
 
 /** The state shape a hand-built layout shape lays out: the layout without its offsets. */

@@ -16,7 +16,6 @@
 import type { EventTable } from "../../pattern/table/event-table";
 import {
 	INITIAL_ROWS,
-	ROW_BYTES,
 	SLOT_CUR,
 	SLOT_NEXT,
 	SLOT_WANT,
@@ -24,7 +23,10 @@ import {
 	TABLE_COUNT,
 	TABLE_CYCLE,
 	TABLE_HEADER,
+	TABLE_STRIDE,
 	fieldOffset,
+	recordFieldOffset,
+	rowBytes,
 	tableBytes,
 } from "../layout/table-format";
 import { PAGE } from "../program/memory-layout";
@@ -37,13 +39,13 @@ const KIND = fieldOffset("kind") / 8;
 const NOTE_ID = fieldOffset("noteId") / 8;
 const SLIDE_FROM = fieldOffset("slideFrom") / 8;
 const DIP_BEFORE = fieldOffset("dipBefore") / 8;
-const ROW_WORDS = ROW_BYTES / 8;
+const RECORD = recordFieldOffset(0) / 8;
 
 export class TableHeap {
 	private f64: Float64Array;
 	private i32: Int32Array;
 	private top: number;
-	private largest = tableBytes(INITIAL_ROWS);
+	private largest = tableBytes(INITIAL_ROWS, rowBytes(0));
 
 	constructor(
 		private readonly memory: WebAssembly.Memory,
@@ -54,11 +56,14 @@ export class TableHeap {
 		this.i32 = new Int32Array(memory.buffer);
 	}
 
-	/** Point a slot at two fresh empty tables (cycle NaN, as a fresh EventTable); it wants nothing. */
-	init(slot: number): void {
+	/**
+	 * Point a slot at two fresh empty tables (cycle NaN, as a fresh EventTable)
+	 * whose rows are `stride` bytes; it wants nothing.
+	 */
+	init(slot: number, stride: number): void {
 		this.views();
 		for (const which of [SLOT_CUR, SLOT_NEXT]) {
-			const table = this.alloc(INITIAL_ROWS);
+			const table = this.alloc(INITIAL_ROWS, stride);
 			this.i32[(slot + which) / 4] = table;
 			this.f64[(table + TABLE_CYCLE) / 8] = Number.NaN;
 			this.f64[(table + TABLE_COUNT) / 8] = 0;
@@ -70,9 +75,15 @@ export class TableHeap {
 	write(slot: number, which: number, t: EventTable): void {
 		const table = this.tableFor(slot, which, t.count);
 		const f64 = this.f64;
+		const words = this.strideOf(table) / 8;
+		if (words * 8 !== rowBytes(t.fields.length)) {
+			throw new Error(
+				`table heap: a table of ${t.fields.length} record fields does not fit rows of ${words * 8} bytes`,
+			);
+		}
 		f64[(table + TABLE_CYCLE) / 8] = t.cycle;
 		f64[(table + TABLE_COUNT) / 8] = t.count;
-		for (let r = 0, w = (table + TABLE_HEADER) / 8; r < t.count; r++, w += ROW_WORDS) {
+		for (let r = 0, w = (table + TABLE_HEADER) / 8; r < t.count; r++, w += words) {
 			f64[w + BEGIN] = t.begin[r] as number;
 			f64[w + END] = t.end[r] as number;
 			f64[w + VALUE] = t.value[r] as number;
@@ -80,6 +91,8 @@ export class TableHeap {
 			f64[w + NOTE_ID] = t.noteId[r] as number;
 			f64[w + SLIDE_FROM] = t.slideFrom[r] as number;
 			f64[w + DIP_BEFORE] = t.dipBefore[r] as number;
+			for (let k = 0; k < t.fields.length; k++)
+				f64[w + RECORD + k] = (t.fields[k] as Float64Array)[r] as number;
 		}
 	}
 
@@ -93,10 +106,14 @@ export class TableHeap {
 		const source = from.i32[(fromSlot + fromWhich) / 4] as number;
 		const count = from.f64[(source + TABLE_COUNT) / 8] as number;
 		const table = this.tableFor(slot, which, count);
+		const stride = this.strideOf(table);
+		if (from.strideOf(source) !== stride) {
+			throw new Error(`table heap: rows of ${from.strideOf(source)} bytes copied into rows of ${stride}`);
+		}
 		this.f64[(table + TABLE_CYCLE) / 8] = from.f64[(source + TABLE_CYCLE) / 8] as number;
 		this.f64[(table + TABLE_COUNT) / 8] = count;
 		const rows = (source + TABLE_HEADER) / 8;
-		this.f64.set(from.f64.subarray(rows, rows + count * ROW_WORDS), (table + TABLE_HEADER) / 8);
+		this.f64.set(from.f64.subarray(rows, rows + (count * stride) / 8), (table + TABLE_HEADER) / 8);
 	}
 
 	/** Which of the slot's tables holds `cycle`: SLOT_CUR, SLOT_NEXT, or -1 for neither. */
@@ -135,20 +152,27 @@ export class TableHeap {
 		let table = this.i32[(slot + which) / 4] as number;
 		const capacity = this.f64[(table + TABLE_CAPACITY) / 8] as number;
 		if (rows > capacity) {
-			table = this.alloc(Math.max(rows, 2 * capacity));
+			table = this.alloc(Math.max(rows, 2 * capacity), this.strideOf(table));
 			this.i32[(slot + which) / 4] = table;
 		}
 		return table;
 	}
 
-	/** A new table of `rows` rows at the top: its address, its capacity set. */
-	private alloc(rows: number): number {
-		const bytes = tableBytes(rows);
+	/** A table's row stride in bytes. */
+	private strideOf(table: number): number {
+		this.views();
+		return this.f64[(table + TABLE_STRIDE) / 8] as number;
+	}
+
+	/** A new table of `rows` rows of `stride` bytes at the top: its address, its capacity and stride set. */
+	private alloc(rows: number, stride: number): number {
+		const bytes = tableBytes(rows, stride);
 		this.room(bytes);
 		const at = this.top;
 		this.top += bytes;
 		this.largest = Math.max(this.largest, bytes);
 		this.f64[(at + TABLE_CAPACITY) / 8] = rows;
+		this.f64[(at + TABLE_STRIDE) / 8] = stride;
 		return at;
 	}
 

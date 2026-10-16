@@ -7,6 +7,8 @@
  *   signals and `segment` repeat every cycle;
  * - sequences, stacks, `mask`, `struct`, `every(n)`, `chunk(n)`, `iter(n)`
  *   take the least common multiple of their parts (and n);
+ * - `with` takes the least common multiple of its child and its fields
+ *   (field values repeat with their own patterns);
  * - `slowcat` of n children plays each child once every n cycles;
  * - `fast(f)` and `slow(f)` scale the child's period by 1/f and f, rounded
  *   up to whole cycles; `polymeter` layers are sped up the same way;
@@ -77,6 +79,8 @@ function structuralPeriod(pat: Pat): number | null {
 			return lcmOf([pat.bool, pat.child]);
 		case "sometimesBy":
 			return lcmOf([pat.child, pat.transformed]);
+		case "with":
+			return lcmOf([pat.child, ...pat.fields.map((field) => field.pat)]);
 		case "steps":
 			return pat.layers.reduce<number | null>((acc, layer) => lcm(acc, stepsInPeriod(layer.counts)), 1);
 		case "compact":

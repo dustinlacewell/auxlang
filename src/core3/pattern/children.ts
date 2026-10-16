@@ -25,6 +25,8 @@ export function childrenOf(pat: Pat): readonly Pat[] {
 		case "mask":
 		case "struct":
 			return [pat.bool, pat.child];
+		case "with":
+			return [pat.child, ...pat.fields.map((field) => field.pat)];
 		case "slide":
 		case "steps":
 		case "compact":

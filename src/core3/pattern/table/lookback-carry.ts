@@ -5,6 +5,8 @@
  *   value   the value of the most recent earlier note or slide
  *   noteId  the note in force at the end of cycle c - 1, a tie followed back
  *           to its note
+ *   fields  each record field's value from the most recent earlier note or
+ *           slide that carries it
  *
  * Packed lanes are structural, so both look back one period: if a period
  * holds no note, none came earlier. When randomness picks the rests
@@ -16,7 +18,7 @@
  * next cycle can step the carry on instead of looking back (carry-forward.ts):
  *
  *   valueAge   how many cycles back the value's note lies (1: cycle c - 1);
- *              NONE when the window holds no note
+ *              NONE when the window holds no note (fieldAges: the same per field)
  *   noteChain  how many whole cycles of tie the note look-back crossed before
  *              it ended; NONE when it ran out of depth
  */
@@ -25,7 +27,8 @@ import type { Pat } from "../ast";
 import type { Ev } from "../event";
 import { period } from "../period";
 import { hasRandomKinds } from "../random-kinds";
-import { TIED_IN, lastValue, noteAtEnd } from "./cycle-end";
+import { recordFields } from "../record-fields";
+import { TIED_IN, lastField, lastValue, noteAtEnd } from "./cycle-end";
 import { NO_NOTE } from "./event-table";
 
 export const RANDOM_LOOKBACK_CYCLES = 16;
@@ -41,13 +44,26 @@ export interface CarryTrace {
 	readonly noteId: number;
 	readonly valueAge: number;
 	readonly noteChain: number;
+	/** Each record field's held value (recordFields order), found as `value` is. */
+	readonly fields: readonly number[];
+	readonly fieldAges: readonly number[];
 }
 
 export function lookbackCarry(pat: Pat, cycles: LaneCycles, c: number): CarryTrace {
 	const depth = lookbackDepth(pat);
-	const held = valueBefore(cycles, c, depth);
+	const held = heldBefore(cycles, c, depth, lastValue);
 	const note = noteAtStart(cycles, c, depth);
-	return { value: held.value, valueAge: held.age, noteId: note.noteId, noteChain: note.chain };
+	const fields = recordFields(pat).map((name) =>
+		heldBefore(cycles, c, depth, (evs) => lastField(evs, name)),
+	);
+	return {
+		value: held.value,
+		valueAge: held.age,
+		noteId: note.noteId,
+		noteChain: note.chain,
+		fields: fields.map((f) => f.value),
+		fieldAges: fields.map((f) => f.age),
+	};
 }
 
 /** How many cycles the look-back reads. */
@@ -70,10 +86,15 @@ export interface InForce {
 export const NOTHING_HELD: Held = { value: 0, age: NONE };
 export const OUT_OF_DEPTH: InForce = { noteId: NO_NOTE, chain: NONE };
 
-/** The value of the last note or slide before cycle `c`, looking back `depth` cycles. */
-function valueBefore(cycles: LaneCycles, c: number, depth: number): Held {
+/** What `last` reads off the latest cycle before `c` that has it, looking back `depth` cycles. */
+function heldBefore(
+	cycles: LaneCycles,
+	c: number,
+	depth: number,
+	last: (evs: readonly Ev[]) => number | null,
+): Held {
 	for (let k = 1; k <= depth; k++) {
-		const value = lastValue(cycles(c - k));
+		const value = last(cycles(c - k));
 		if (value !== null) return { value, age: k };
 	}
 	return NOTHING_HELD;

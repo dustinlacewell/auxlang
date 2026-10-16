@@ -72,6 +72,7 @@ function structuralWidth(pat: Pat): number {
 		case "seed":
 		case "add":
 		case "mul":
+		case "with": // structure from child; fields only lend values
 		case "slide":
 		case "steps":
 		case "compact":

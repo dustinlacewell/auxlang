@@ -27,6 +27,8 @@ export interface Ev {
 	readonly lane?: number;
 	/** The site of the token that made this event, when it was written in the code (Pat leaves). */
 	readonly site?: number;
+	/** Record field values (`with`); a field is absent where its pattern rests. */
+	readonly fields?: Readonly<Record<string, number>>;
 }
 
 /** The event begins inside this fragment (any kind: rests and ties start steps too). */

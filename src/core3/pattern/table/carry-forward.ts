@@ -2,12 +2,13 @@
  * carryAfter — the look-back carry into cycle c + 1, stepped on from the carry
  * into cycle c and cycle c's own events, with no look-back query. It gives
  * exactly what lookbackCarry(c + 1) gives, the window's cap included: a value
+ * (or record field)
  * whose note falls out of the window is dropped, and a tie chain that runs
  * past the window's depth ends in NO_NOTE (lookback-carry.ts).
  */
 
 import type { Ev } from "../event";
-import { TIED_IN, lastValue, noteAtEnd } from "./cycle-end";
+import { TIED_IN, lastField, lastValue, noteAtEnd } from "./cycle-end";
 import {
 	type CarryTrace,
 	type Held,
@@ -21,18 +22,32 @@ export function carryAfter(
 	evs: readonly Ev[],
 	c: number,
 	depth: number,
+	fieldNames: readonly string[],
 ): CarryTrace {
-	const held = valueAfter(before, evs, depth);
+	const held = heldAfter({ value: before.value, age: before.valueAge }, lastValue(evs), depth);
 	const note = noteAfter(before, evs, c, depth);
-	return { value: held.value, valueAge: held.age, noteId: note.noteId, noteChain: note.chain };
+	const fields = fieldNames.map((name, k) =>
+		heldAfter(
+			{ value: before.fields[k] as number, age: before.fieldAges[k] as number },
+			lastField(evs, name),
+			depth,
+		),
+	);
+	return {
+		value: held.value,
+		valueAge: held.age,
+		noteId: note.noteId,
+		noteChain: note.chain,
+		fields: fields.map((f) => f.value),
+		fieldAges: fields.map((f) => f.age),
+	};
 }
 
-/** Cycle c's last note, else the earlier value one cycle older, while it stays in the window. */
-function valueAfter(before: CarryTrace, evs: readonly Ev[], depth: number): Held {
+/** Cycle c's last value (`last`), else the earlier one a cycle older, while it stays in the window. */
+function heldAfter(before: Held, last: number | null, depth: number): Held {
 	if (depth < 1) return NOTHING_HELD;
-	const value = lastValue(evs);
-	if (value !== null) return { value, age: 1 };
-	const age = before.valueAge + 1;
+	if (last !== null) return { value: last, age: 1 };
+	const age = before.age + 1;
 	return age <= depth ? { value: before.value, age } : NOTHING_HELD;
 }
 

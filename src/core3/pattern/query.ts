@@ -12,7 +12,7 @@
  */
 
 import { randomFunctions } from "../module/bind-random/random-functions";
-import type { Layer, Pat, PatOp, SignalKind, StepLayer, WChild } from "./ast";
+import type { Layer, Pat, PatOp, RecordField, SignalKind, StepLayer, WChild } from "./ast";
 import { bjorklund } from "./bjorklund";
 import type { Ev, EvKind, Span } from "./event";
 import { isOnset, laneOf, startsHere } from "./event";
@@ -123,6 +123,9 @@ function queryCycle(pat: Pat, span: Span, ctx: QueryCtx): Ev[] {
 			return mapValues(pat.child, span, descend(ctx, "add", 0), (v) => v + pat.amount);
 		case "mul":
 			return mapValues(pat.child, span, descend(ctx, "mul", 0), (v) => v * pat.amount);
+		// No `descend` into the child: adding fields does not move its random rolls.
+		case "with":
+			return queryWith(pat.fields, pat.child, span, ctx);
 		case "every":
 			return queryEvery(pat.n, pat.child, pat.transformed, span, ctx);
 		case "mask":
@@ -188,6 +191,7 @@ const OP_CODE: Record<PatOp, number> = {
 	compact: 35, // never descended into
 	seed: 36, // never descended into: it starts a fresh path
 	swing: 37, // never descended into
+	with: 38, // descended into for its fields only
 };
 
 function descend(ctx: QueryCtx, op: PatOp, index: number): QueryCtx {
@@ -549,6 +553,34 @@ function mapValues(child: Pat, span: Span, ctx: QueryCtx, f: (v: number) => numb
 	return query(child, span, ctx).map((ev) => ({ ...ev, value: f(ev.value) }));
 }
 
+/**
+ * Each child event gains the value of each field's event that holds its
+ * onset; a field whose pattern rests (or ties) there is left out. Field i
+ * queries at path index i + 1.
+ */
+function queryWith(fields: readonly RecordField[], child: Pat, span: Span, ctx: QueryCtx): Ev[] {
+	return query(child, span, ctx).map((ev) => {
+		const at = (ev.whole ?? ev.part).begin;
+		const own: Record<string, number> = {};
+		fields.forEach((field, i) => {
+			const value = fieldAt(field.pat, at, descend(ctx, "with", i + 1));
+			if (value !== null) own[field.name] = value;
+		});
+		return Object.keys(own).length === 0 ? ev : { ...ev, fields: { ...ev.fields, ...own } };
+	});
+}
+
+/** The value of `pat`'s note or slide whose whole holds `at`; null when none does. */
+function fieldAt(pat: Pat, at: R, ctx: QueryCtx): number | null {
+	const evs = query(pat, { begin: at, end: radd(at, r(1, 1_000_000)) }, ctx);
+	for (let i = evs.length - 1; i >= 0; i--) {
+		const ev = evs[i] as Ev;
+		const holds = ev.whole === null || rlte(ev.whole.begin, at);
+		if (holds && (ev.kind === "note" || ev.kind === "slide")) return ev.value;
+	}
+	return null;
+}
+
 function queryEvery(n: number, child: Pat, transformed: Pat, span: Span, ctx: QueryCtx): Ev[] {
 	const cycle = rfloor(span.begin);
 	const active = ((cycle % n) + n) % n === 0;
@@ -561,11 +593,21 @@ function queryEvery(n: number, child: Pat, transformed: Pat, span: Span, ctx: Qu
 // Boolean-driven ops, sampling, and continuous signals
 // ---------------------------------------------------------------------------
 
-/** The sounding value of a pattern at a single instant, or null when a rest, a tie, or nothing is there. */
-function sampleAt(pat: Pat, at: R, ctx: QueryCtx): number | null {
+/** The sounding event of a pattern at a single instant, or null when a rest, a tie, or nothing is there. */
+function sampleAt(pat: Pat, at: R, ctx: QueryCtx): Ev | null {
 	const evs = query(pat, { begin: at, end: radd(at, r(1, 1_000_000)) }, ctx);
 	const ev = evs[evs.length - 1];
-	return ev !== undefined && (ev.kind === "note" || ev.kind === "slide") ? ev.value : null;
+	return ev !== undefined && (ev.kind === "note" || ev.kind === "slide") ? ev : null;
+}
+
+/** A fresh note with a sampled event's value and record fields. */
+function sampledNote(base: Pick<Ev, "whole" | "part" | "lane">, sampled: Ev): Ev {
+	return {
+		...base,
+		value: sampled.value,
+		kind: "note",
+		...(sampled.fields !== undefined ? { fields: sampled.fields } : {}),
+	};
 }
 
 /** A bool pattern's "true" mark is any onset with a nonzero value. */
@@ -589,9 +631,9 @@ function queryStruct(bool: Pat, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
 	const out: Ev[] = [];
 	for (const ev of query(bool, span, descend(ctx, "struct", 0))) {
 		if (!startsHere(ev) || ev.whole === null) continue;
-		const value = isOnset(ev) && ev.value !== 0 ? sampleAt(child, ev.part.begin, descend(ctx, "struct", 1)) : null;
+		const sampled = isOnset(ev) && ev.value !== 0 ? sampleAt(child, ev.part.begin, descend(ctx, "struct", 1)) : null;
 		const base = { whole: ev.whole, part: ev.part, ...(ev.lane !== undefined ? { lane: ev.lane } : {}) };
-		out.push(value === null ? { ...base, value: 0, kind: "rest" } : { ...base, value, kind: "note" });
+		out.push(sampled === null ? { ...base, value: 0, kind: "rest" } : sampledNote(base, sampled));
 	}
 	return out;
 }
@@ -606,10 +648,10 @@ function querySegment(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
 		const b = rmax(span.begin, begin);
 		const e = rmin(span.end, end);
 		if (!rlt(b, e)) continue;
-		const value = sampleAt(child, begin, descend(ctx, "segment", 0));
+		const sampled = sampleAt(child, begin, descend(ctx, "segment", 0));
 		const whole = { begin, end };
 		const part = { begin: b, end: e };
-		out.push(value === null ? { whole, part, value: 0, kind: "rest" } : { whole, part, value, kind: "note" });
+		out.push(sampled === null ? { whole, part, value: 0, kind: "rest" } : sampledNote({ whole, part }, sampled));
 	}
 	return out;
 }

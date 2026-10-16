@@ -93,7 +93,7 @@ export class NodeWalk {
 			intrinsics:
 				laneMemory.tables === null
 					? null
-					: tableIntrinsics(laneMemory.tables, i, lane, input.enter),
+					: tableIntrinsics(laneMemory.tables, laneMemory.rowBytes, i, lane, input.enter),
 			sampleRate: input.sampleRate,
 			width,
 		});

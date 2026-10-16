@@ -22,7 +22,8 @@ import type { NodeRun } from "../../runtime/node-run";
 import type { NodePlans } from "../../runtime/specialise/specialise-nodes";
 import { cacheSlotsIn } from "../compile/cache-slots";
 import type { Field } from "../layout/state-shape";
-import { INITIAL_ROWS, SLOT_BYTES, tableBytes } from "../layout/table-format";
+import { recordColumns } from "../../bridge/lane-table";
+import { INITIAL_ROWS, SLOT_BYTES, rowBytes, tableBytes } from "../layout/table-format";
 import type { LambdaSource, LambdaSources } from "./lambda-sources";
 import { planAggregates } from "./state-layout";
 
@@ -43,6 +44,8 @@ export interface LaneMemory {
 	readonly cacheSlots: number;
 	/** The lane's table slot (layout/table-format.ts) when its module reads a pattern, else null. */
 	readonly tables: number | null;
+	/** Its tables' row stride in bytes (layout/table-format.ts `rowBytes`); 0 with no tables. */
+	readonly rowBytes: number;
 	/** Lambda input port → its own math cache. */
 	readonly lambdas: Readonly<Record<string, LambdaMemory>>;
 }
@@ -102,6 +105,7 @@ export function planMemory(
 		for (const g of [...run.groups.ins, ...run.groups.outs]) groups[g.name] = take(8 * g.ports.length);
 		const slots = moduleCacheSlots(irs[i] as ModuleIR);
 		const fields = fieldRebinds(irs[i] as ModuleIR);
+		const stride = readsPattern[i] ? rowBytes(recordColumns(run.config)) : 0;
 		const lanes = run.states.map((state, l) => {
 			const shape = laneShapeOf(state);
 			return {
@@ -115,6 +119,7 @@ export function planMemory(
 				cache: take(8 * slots),
 				cacheSlots: slots,
 				tables: readsPattern[i] ? take(SLOT_BYTES) : null,
+				rowBytes: stride,
 				lambdas: planLambdas(lambdas[i]?.[l] ?? {}, take),
 			};
 		});
@@ -139,7 +144,7 @@ function laneElementRebinds(
 /** Two tables of the initial size per table lane. */
 function initialHeap(nodes: readonly NodeMemory[]): number {
 	const lanes = nodes.flatMap((node) => node.lanes).filter((lane) => lane.tables !== null);
-	return lanes.length * 2 * tableBytes(INITIAL_ROWS);
+	return lanes.reduce((bytes, lane) => bytes + 2 * tableBytes(INITIAL_ROWS, lane.rowBytes), 0);
 }
 
 /**

@@ -27,7 +27,7 @@ export function seedState(cycleBefore: readonly Ev[], n: number): VoiceState {
 		const lane = laneOf(ev) % n;
 		const held = lanes[lane];
 		const whole = discreteWhole(ev);
-		if (ev.kind !== "tie") lanes[lane] = noteVoice(ev, whole);
+		if (ev.kind !== "tie") lanes[lane] = noteVoice(ev, whole, held);
 		else if (held) lanes[lane] = tieVoice(held, ev, whole);
 	}
 	return { ...emptyState(n), lanes: lanes.map((v) => (v !== null && rlt(R0, v.end) ? v : null)) };

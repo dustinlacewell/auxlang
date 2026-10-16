@@ -6,6 +6,8 @@
  *   noteId  the note in force at the end of cycle c - 1: NO_NOTE when that
  *           cycle ends in a rest or a gap; a tie there is followed back to
  *           its note
+ *   fields  each record field as `value`: from the most recent earlier note
+ *           or slide that carries it
  *
  * Packed lanes, and patterns with no voices, look back a window of cycles
  * (lookback-carry.ts).
@@ -17,6 +19,7 @@
 
 import type { Pat } from "../ast";
 import { historyRead } from "../query";
+import { recordFields } from "../record-fields";
 import type { HistoryPolicy } from "../voices/history-voices";
 import { historyCarry } from "./history-carry";
 import { laneCycle } from "./lane-cycle";
@@ -25,6 +28,8 @@ import { type LaneCycles, lookbackCarry } from "./lookback-carry";
 export interface Carry {
 	readonly value: number;
 	readonly noteId: number;
+	/** Each record field's held value, in recordFields order. */
+	readonly fields: readonly number[];
 }
 
 export function carryBefore(
@@ -36,7 +41,9 @@ export function carryBefore(
 ): Carry {
 	if (!readsHistory(pat)) return lookbackCarry(pat, cycles, c);
 	const history = historyRead(pat, pat.policy, { seed, path: 0 });
-	return historyCarry(history, lane, c, () => lookbackCarry(pat, cycles, Math.min(c, 0)));
+	return historyCarry(history, lane, c, recordFields(pat), () =>
+		lookbackCarry(pat, cycles, Math.min(c, 0)),
+	);
 }
 
 type HistoryVoices = Extract<Pat, { op: "voices" }> & { readonly policy: HistoryPolicy };
