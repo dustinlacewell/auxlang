@@ -91,7 +91,10 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 		fileText,
 		input.name,
 	);
-	for (const name of closure.fileNames) assertAuthorNames(closure.helpers[name], `${what} helper '${name}'`);
+	for (const name of closure.fileNames) {
+		const helperText = closure.helpers[name] as string;
+		assertAuthorNames(helperText, `${what} helper '${name}'`);
+	}
 
 	const writes = [...tickWrites(parts.tick, setupLocals)];
 
