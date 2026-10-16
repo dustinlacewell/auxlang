@@ -14,7 +14,7 @@
 import { play, playSeed, stop } from "@/core3/runtime/audio";
 import { EMPTY_SOURCE_MAP, type SourceMap } from "@/core3/source/source-map";
 import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { errorText } from "./error-text";
 import { DEFAULT_EXAMPLE } from "./examples";
 import type { ShownSeed } from "./seed-bar";
@@ -31,6 +31,8 @@ interface Core3EditorState {
 	run: () => Promise<void>;
 	reroll: () => Promise<void>;
 	halt: () => void;
+	/** Turns a number literal's site into a live slot: re-evaluates with it added to slotSites, no restart (a swap). A no-op while stopped. */
+	ensureSlotSite: (site: number) => Promise<void>;
 }
 
 export function useCore3Editor(): Core3EditorState {
@@ -39,21 +41,33 @@ export function useCore3Editor(): Core3EditorState {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [seed, setSeed] = useState<ShownSeed | null>(null);
 	const [sourceMap, setSourceMap] = useState<SourceMap>(EMPTY_SOURCE_MAP);
+	/** Sites dragged into slots this play session; an ordinary run()/reroll() clears it so a literal bakes again. */
+	const slotSitesRef = useRef<Set<number>>(new Set());
+	const codeRef = useRef(code);
+	codeRef.current = code;
+	const isPlayingRef = useRef(isPlaying);
+	isPlayingRef.current = isPlaying;
+
+	const evalAndPlay = useCallback(async (slotSites: ReadonlySet<number>) => {
+		const { program, seedPinned, sourceMap: evaluated } = evaluatePatch(codeRef.current, {
+			seed: playSeed.current(),
+			slotSites,
+		});
+		setError(null);
+		setSourceMap(evaluated);
+		await play(program);
+		setSeed({ value: program.seed, pinned: seedPinned });
+		setIsPlaying(true);
+	}, []);
 
 	const run = useCallback(async () => {
+		slotSitesRef.current = new Set();
 		try {
-			const { program, seedPinned, sourceMap: evaluated } = evaluatePatch(code, {
-				seed: playSeed.current(),
-			});
-			setError(null);
-			setSourceMap(evaluated);
-			await play(program);
-			setSeed({ value: program.seed, pinned: seedPinned });
-			setIsPlaying(true);
+			await evalAndPlay(slotSitesRef.current);
 		} catch (err) {
-			setError(errorText(err, code));
+			setError(errorText(err, codeRef.current));
 		}
-	}, [code]);
+	}, [evalAndPlay]);
 
 	const reroll = useCallback(async () => {
 		playSeed.reroll();
@@ -65,5 +79,19 @@ export function useCore3Editor(): Core3EditorState {
 		setIsPlaying(false);
 	}, []);
 
-	return { code, setCode, error, isPlaying, seed, sourceMap, run, reroll, halt };
+	const ensureSlotSite = useCallback(
+		async (site: number) => {
+			if (!isPlayingRef.current || slotSitesRef.current.has(site)) return;
+			slotSitesRef.current.add(site);
+			try {
+				await evalAndPlay(slotSitesRef.current);
+			} catch (err) {
+				slotSitesRef.current.delete(site);
+				setError(errorText(err, codeRef.current));
+			}
+		},
+		[evalAndPlay],
+	);
+
+	return { code, setCode, error, isPlaying, seed, sourceMap, run, reroll, halt, ensureSlotSite };
 }

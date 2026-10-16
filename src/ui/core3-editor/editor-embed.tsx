@@ -20,6 +20,7 @@ interface EditorEmbedProps {
 	onChange: (code: string) => void;
 	isPlaying: boolean;
 	sourceMap: SourceMap;
+	ensureSlotSite: (site: number) => Promise<void>;
 	onRun: () => void;
 	onStop: () => void;
 }
@@ -82,7 +83,15 @@ function ShareTab({ code }: { code: string }) {
 	);
 }
 
-export function EditorEmbed({ code, onChange, isPlaying, sourceMap, onRun, onStop }: EditorEmbedProps) {
+export function EditorEmbed({
+	code,
+	onChange,
+	isPlaying,
+	sourceMap,
+	ensureSlotSite,
+	onRun,
+	onStop,
+}: EditorEmbedProps) {
 	const [showGraph, setShowGraph] = useState(false);
 	return (
 		<EmbedFrame
@@ -126,6 +135,7 @@ export function EditorEmbed({ code, onChange, isPlaying, sourceMap, onRun, onSto
 				onRun={onRun}
 				onStop={onStop}
 				sourceMap={sourceMap}
+				ensureSlotSite={ensureSlotSite}
 				className="text-xs"
 			/>
 		</EmbedFrame>

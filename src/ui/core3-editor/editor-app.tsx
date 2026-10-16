@@ -11,7 +11,8 @@ import { SeedBar } from "./seed-bar";
 import { useCore3Editor } from "./use-core3-editor";
 
 export function EditorApp() {
-	const { code, setCode, error, isPlaying, seed, sourceMap, run, reroll, halt } = useCore3Editor();
+	const { code, setCode, error, isPlaying, seed, sourceMap, run, reroll, halt, ensureSlotSite } =
+		useCore3Editor();
 
 	return (
 		<SitePage current="editor" onStopAll={halt}>
@@ -20,6 +21,7 @@ export function EditorApp() {
 				onChange={setCode}
 				isPlaying={isPlaying}
 				sourceMap={sourceMap}
+				ensureSlotSite={ensureSlotSite}
 				onRun={() => void run()}
 				onStop={halt}
 			/>
