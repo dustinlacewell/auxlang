@@ -16,14 +16,18 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { glowExtension } from "./live-display/glow-extension";
 import { patternHighlightExtension } from "./live-display/pattern-highlight-extension";
+import { controlWidgetExtension } from "./live-input/control-widget-extension";
+import { numberDragExtension } from "./live-input/number-drag-extension";
 
 interface CodeMirrorProps {
 	value: string;
 	onChange: (value: string) => void;
 	onRun: () => void;
 	onStop: () => void;
-	/** The last successful eval's location tables; read live by the glow/pattern-highlight extensions. */
+	/** The last successful eval's location tables; read live by the glow/pattern-highlight/live-input extensions. */
 	sourceMap: SourceMap;
+	/** Turns a dragged number literal's site into a live slot (live-input/number-drag-extension.ts). */
+	ensureSlotSite: (site: number) => Promise<void>;
 	className?: string;
 }
 
@@ -33,6 +37,7 @@ export function CodeMirror({
 	onRun,
 	onStop,
 	sourceMap,
+	ensureSlotSite,
 	className = "",
 }: CodeMirrorProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -41,12 +46,14 @@ export function CodeMirror({
 	const onRunRef = useRef(onRun);
 	const onStopRef = useRef(onStop);
 	const sourceMapRef = useRef<SourceMap>(EMPTY_SOURCE_MAP);
+	const ensureSlotSiteRef = useRef(ensureSlotSite);
 	const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null);
 
 	onChangeRef.current = onChange;
 	onRunRef.current = onRun;
 	onStopRef.current = onStop;
 	sourceMapRef.current = sourceMap;
+	ensureSlotSiteRef.current = ensureSlotSite;
 
 	useEffect(() => {
 		if (!containerRef.current) return;
@@ -82,6 +89,11 @@ export function CodeMirror({
 					updateListener,
 					glowExtension(() => sourceMapRef.current),
 					patternHighlightExtension(() => sourceMapRef.current),
+					numberDragExtension({
+						sourceMapOf: () => sourceMapRef.current,
+						ensureSlotSite: (site) => ensureSlotSiteRef.current(site),
+					}),
+					controlWidgetExtension(() => sourceMapRef.current),
 				],
 			}),
 			parent: containerRef.current,
