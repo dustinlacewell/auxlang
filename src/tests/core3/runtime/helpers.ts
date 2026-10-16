@@ -24,6 +24,7 @@ export function pnode(
 		upstream?: string;
 		pin?: string;
 		config?: Record<string, unknown>;
+		groups?: Record<string, readonly string[]>;
 	} = {},
 ): PNode {
 	const node: PNode = {
@@ -35,6 +36,7 @@ export function pnode(
 		width: lanes.length,
 		lanes,
 		config: opts.config ?? {},
+		...(opts.groups === undefined ? {} : { groups: opts.groups }),
 	};
 	return opts.pin === undefined ? node : { ...node, pin: opts.pin };
 }

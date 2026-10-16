@@ -35,7 +35,7 @@ export function compileLaneBindings(
 	lane: number,
 ): LaneBindings {
 	const srcs = node.lanes[lane] as Record<string, PortSrc>;
-	const ins = nodePorts(spec).ins;
+	const ins = nodePorts(spec, node.groups).ins;
 	const names = Object.keys(ins);
 	const kinds = new Int8Array(names.length);
 	const offsets = new Int32Array(names.length);

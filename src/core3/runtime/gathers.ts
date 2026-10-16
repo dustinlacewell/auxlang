@@ -47,7 +47,7 @@ export function compileReduceGathers(
 	layout: OutputLayout,
 ): ReduceGathers {
 	const srcs = node.lanes[0] as Record<string, PortSrc>;
-	const ins = nodePorts(spec).ins;
+	const ins = nodePorts(spec, node.groups).ins;
 	const names = Object.keys(ins);
 
 	interface Partial {

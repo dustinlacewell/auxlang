@@ -31,7 +31,7 @@ export function buildOutputLayout(nodes: readonly PNode[], registry: Registry): 
 		}
 		const laneCount = node.lanes.length;
 		const nodeBases: Record<string, number> = {};
-		for (const port of Object.keys(nodePorts(spec).outs)) {
+		for (const port of Object.keys(nodePorts(spec, node.groups).outs)) {
 			nodeBases[port] = size;
 			size += laneCount;
 		}

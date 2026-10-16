@@ -32,7 +32,7 @@ interface Edge {
 function unitOfSource(program: Program, src: { node: number; port: string }): Unit | undefined {
 	const fromNode = program.nodes[src.node];
 	if (!fromNode) return undefined;
-	return nodePorts(programSpec(program, fromNode.module)).outs[src.port]?.unit;
+	return nodePorts(programSpec(program, fromNode.module), fromNode.groups).outs[src.port]?.unit;
 }
 
 function edgesInto(program: Program, node: Program["nodes"][number], to: number): Edge[] {

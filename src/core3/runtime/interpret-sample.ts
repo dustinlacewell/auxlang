@@ -8,6 +8,7 @@
 import type { ReduceTickFn, TickFn } from "../types";
 import { BIND_CONST, BIND_CUR, BIND_LAMBDA, type LaneBindings } from "./bindings";
 import { GATHER_CONST, GATHER_CUR, GATHER_LAMBDA, type ReduceGathers } from "./gathers";
+import type { GroupView } from "./group-view";
 import type { LambdaSlot } from "./lambda";
 import type { NodeRun } from "./node-run";
 
@@ -47,11 +48,34 @@ function tickMap(r: NodeRun, cur: Float64Array, prv: Float64Array, sr: number, t
 			} else v = prv[offsets[j] as number] as number;
 			ins[names[j] as string] = v;
 		}
+		for (const g of r.groups.ins) fillGroupView(g, ins);
+		for (const g of r.groups.outs) placeGroupView(g, outs);
 		(r.tick as TickFn)(r.states[lane] as Record<string, unknown>, ins, outs, r.config, sr);
+		for (const g of r.groups.outs) drainGroupView(g, outs);
 		for (let j = 0; j < outPorts.length; j++) {
 			cur[(outBases[j] as number) + lane] = outs[outPorts[j] as string] as number;
 		}
 	}
+}
+
+/** `i.g[k] = ins[ports[k]]`, before the lane's tick reads the group. */
+function fillGroupView(g: GroupView, ins: Record<string, number>): void {
+	const view = g.view;
+	const ports = g.ports;
+	for (let k = 0; k < ports.length; k++) view[k] = ins[ports[k] as string] as number;
+	ins[g.name] = view as unknown as number;
+}
+
+/** Hand the tick its out-group's view to write `o.g[k] = v` into, before it runs. */
+function placeGroupView(g: GroupView, outs: Record<string, number>): void {
+	outs[g.name] = g.view as unknown as number;
+}
+
+/** `outs[ports[k]] = o.g[k]`, after the tick writes the group, before out slots are read. */
+function drainGroupView(g: GroupView, outs: Record<string, number>): void {
+	const view = g.view;
+	const ports = g.ports;
+	for (let k = 0; k < ports.length; k++) outs[ports[k] as string] = view[k] as number;
 }
 
 function tickReduce(

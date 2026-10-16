@@ -8,9 +8,9 @@
 
 import { nodePorts } from "@/core3/module/node-ports";
 import type { ModuleSpec, PNode } from "../../types";
-import { assertNoPortGroups } from "../assert-no-port-groups";
 import { compileLaneBindings } from "../bindings";
 import { compileReduceGathers } from "../gathers";
+import { groupViews } from "../group-view";
 import type { NodeRun } from "../node-run";
 import type { OutputLayout } from "../output-slots";
 
@@ -21,10 +21,9 @@ export function buildRun(
 	layout: OutputLayout,
 	states: Record<string, unknown>[],
 ): NodeRun {
-	assertNoPortGroups(node, "interpreter");
 	const reduce = spec.policy === "reduce";
 	assertLanes(node, i, reduce);
-	const ports = nodePorts(spec);
+	const ports = nodePorts(spec, node.groups);
 	const outPorts = Object.keys(ports.outs);
 	const bases = layout.bases[i] as Record<string, number>;
 	const outBases = Int32Array.from(outPorts, (port) => bases[port] as number);
@@ -41,6 +40,7 @@ export function buildRun(
 			? null
 			: node.lanes.map((_, lane) => compileLaneBindings(node, i, spec, layout, lane)),
 		gathers: reduce ? compileReduceGathers(node, i, spec, layout) : null,
+		groups: groupViews(spec, ports.groups),
 	};
 }
 

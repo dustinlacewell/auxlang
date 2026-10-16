@@ -9,6 +9,7 @@
 import type { ReduceTickFn, TickFn } from "../types";
 import type { LaneBindings } from "./bindings";
 import type { ReduceGathers } from "./gathers";
+import type { NodeGroupViews } from "./group-view";
 
 export interface NodeRun {
 	readonly tick: TickFn | ReduceTickFn;
@@ -17,7 +18,7 @@ export interface NodeRun {
 	readonly states: Record<string, unknown>[];
 	/** Reused across lanes and samples. */
 	readonly ins: Record<string, number> & Record<string, Float64Array | number>;
-	readonly outs: Record<string, number>;
+	readonly outs: Record<string, number> & Record<string, Float64Array | number>;
 	readonly outPorts: readonly string[];
 	/** outBases[j] + lane = slot of outPorts[j]. */
 	readonly outBases: Int32Array;
@@ -25,4 +26,6 @@ export interface NodeRun {
 	readonly bindings: readonly LaneBindings[] | null;
 	/** Gathers for reduce nodes; null for map. */
 	readonly gathers: ReduceGathers | null;
+	/** Port group views (empty on a group-less module). */
+	readonly groups: NodeGroupViews;
 }
