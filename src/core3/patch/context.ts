@@ -31,6 +31,15 @@ export interface EvalResult {
 	readonly specs: ReadonlyMap<string, ModuleSpec>;
 	/** Patch-defined sub-patch modules (defmod with `patch`), scoped to this eval only. */
 	readonly subpatches: ReadonlyMap<string, SubpatchSpec>;
+	/** Number-literal sites whose bindings compile to live slots (compile/bind-slots.ts). */
+	readonly slotSites?: ReadonlySet<number>;
+}
+
+export interface EvalOptions {
+	/** The host's seed; a patch's own seed(n) wins. */
+	readonly seed?: number;
+	/** Number-literal sites the editor drags: each binding from one becomes a live slot. */
+	readonly slotSites?: ReadonlySet<number>;
 }
 
 interface EvalCtx {
@@ -48,7 +57,7 @@ interface EvalCtx {
 
 let current: EvalCtx | null = null;
 
-export function runEval(fn: () => void, opts: { seed?: number } = {}): EvalResult {
+export function runEval(fn: () => void, opts: EvalOptions = {}): EvalResult {
 	if (current !== null) throw new Error("runEval: nested runEval is not allowed");
 	const ctx: EvalCtx = {
 		roots: [],
@@ -60,7 +69,7 @@ export function runEval(fn: () => void, opts: { seed?: number } = {}): EvalResul
 		scope: null,
 	};
 	run(ctx, fn);
-	return ctx;
+	return opts.slotSites === undefined ? ctx : { ...ctx, slotSites: opts.slotSites };
 }
 
 /**

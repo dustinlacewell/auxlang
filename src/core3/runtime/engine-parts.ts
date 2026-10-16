@@ -8,6 +8,7 @@
 import type { KeyedIdentity } from "../types";
 import type { Driver, ValueBuffers } from "./driver";
 import type { FeedbackRead } from "./feedback";
+import type { SlotDecl } from "./live/live-contract";
 import type { CarryPair } from "./hand-over/carry-states";
 import type { NodeRun } from "./node-run";
 import type { OutputLayout } from "./output-slots";
@@ -23,5 +24,7 @@ export interface EngineParts {
 	readonly feedback: readonly FeedbackRead[];
 	readonly runs: readonly NodeRun[];
 	readonly bufs: ValueBuffers;
+	/** The live slots `bufs.slots` holds, by index (Program.liveSlots). */
+	readonly liveSlots: readonly SlotDecl[];
 	readonly driver: Driver;
 }

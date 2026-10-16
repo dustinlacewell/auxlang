@@ -7,7 +7,7 @@
 
 import { withSourceText } from "../module/source-text";
 import { defmod } from "../patch/defmod";
-import { gatePort, group, optional, phasePort, sig, sigs, trigPort, unit } from "../types";
+import { gatePort, group, optional, phasePort, sig, sigs, slotted, trigPort, unit } from "../types";
 import { hzToSemis, semisToHz } from "../units/pitch";
 import { beats, hz, secs, semis } from "../units/tag";
 import type { LibSource } from "./lib-sources";
@@ -27,6 +27,7 @@ const LIB_SCOPE: Readonly<Record<string, unknown>> = {
 	trigPort,
 	phasePort,
 	optional,
+	slotted,
 	hz,
 	semis,
 	secs,

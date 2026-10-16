@@ -14,7 +14,7 @@
 
 import { compile } from "./compile/compile";
 import { getModule, getRegistry } from "./module/define";
-import { runEval } from "./patch/context";
+import { type EvalOptions, runEval } from "./patch/context";
 import { defmod } from "./patch/defmod";
 import { moduleFactory } from "./patch/factory";
 import type { Handle } from "./patch/handle-data";
@@ -134,6 +134,6 @@ function assertScopeNamesInSync(): void {
 }
 
 /** Convenience: evaluate a patch function and compile it in one step. */
-export function runProgram(fn: () => void, opts: { seed?: number } = {}): Program {
+export function runProgram(fn: () => void, opts: EvalOptions = {}): Program {
 	return compile(runEval(fn, opts));
 }

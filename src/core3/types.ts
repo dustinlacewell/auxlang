@@ -3,6 +3,8 @@
  * See llm/platonic.md (the spec) and llm/platonic-impl.md (track boundaries).
  */
 
+import type { SlotDecl } from "./runtime/live/live-contract";
+
 // ---------------------------------------------------------------------------
 // Units & port annotations (documentation with behavior — NOT a type system)
 // ---------------------------------------------------------------------------
@@ -46,6 +48,17 @@ export interface PortAnn {
 	 * the same side whose members this one copies.
 	 */
 	readonly group?: PortGroup;
+	/**
+	 * A control port (runtime/live/live-contract.ts): a number bound to it
+	 * becomes a live slot the editor writes while the patch plays.
+	 */
+	readonly slot?: SlotRange;
+}
+
+/** A control port's clamp range: each bound is a port whose constant gives it, or a fixed number. */
+export interface SlotRange {
+	readonly min: string | number;
+	readonly max: string | number;
 }
 
 export interface PortGroup {
@@ -65,6 +78,8 @@ export const optional = (ann: PortAnn): PortAnn => ({ ...ann, opt: true });
 export const group = (ann: PortAnn, opts: PortGroup = {}): PortAnn => ({ ...ann, group: { ...opts } });
 /** A signal group set as an array: members `0..n-1`. */
 export const sigs = (def: number | null = 0): PortAnn => group(sig(def));
+/** Make `ann` a control port whose live slot clamps to `range`. */
+export const slotted = (ann: PortAnn, range: SlotRange): PortAnn => ({ ...ann, slot: { ...range } });
 
 // ---------------------------------------------------------------------------
 // Module contract — pure Mealy machines
@@ -215,7 +230,8 @@ export type PortSrc =
 			readonly lane: number;
 			readonly start?: number;
 	  }
-	| { readonly k: "l"; readonly lambda: BoundLambda }; // user lambda (state, sr, time) => number
+	| { readonly k: "l"; readonly lambda: BoundLambda } // user lambda (state, sr, time) => number
+	| { readonly k: "s"; readonly slot: number }; // live slot (index into Program.liveSlots), written while playing
 
 /**
  * A signal lambda bound to auxlang's math (module/bind-math/bind-lambda-math.ts),
@@ -282,6 +298,8 @@ export interface Program {
 	readonly seed: number;
 	/** Patch-defined module specs used by `nodes` (defmod). Present only when non-empty. */
 	readonly specs?: readonly SerializedModuleSpec[];
+	/** The live slots PortSrc "s" entries read, by index (runtime/live). Present only when non-empty. */
+	readonly liveSlots?: readonly SlotDecl[];
 }
 
 // ---------------------------------------------------------------------------
@@ -301,6 +319,8 @@ export interface EngineState {
 	/** The rate the state was built at; a different rate migrates nothing. */
 	readonly sampleRate: number;
 	readonly sampleCount: number;
+	/** [site, value] of each live slot, in slot order; absent with none. A swap carries a value by site. */
+	readonly liveSlots?: readonly (readonly [number, number])[];
 }
 
 export interface Engine {

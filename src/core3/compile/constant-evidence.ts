@@ -9,8 +9,8 @@
  * the order, and following them would loop).
  */
 
-import { isNodeRef } from "../graph/input-kinds";
-import type { GNode } from "../graph/node";
+import { isNodeRef, isSlotInput } from "../graph/input-kinds";
+import type { GNode, InputValue } from "../graph/node";
 import { fnv1a32 } from "../hash/fnv1a32";
 
 /** `order` must be topologically sorted (z-edges cut). */
@@ -29,12 +29,19 @@ export function constantEvidence(order: readonly GNode[]): Map<GNode, number[]> 
 
 function ownEntries(node: GNode): number[] {
 	const inputs = Object.entries(node.inputs)
-		.filter(([, value]) => typeof value === "number")
+		.map(([port, value]) => [port, constantOf(value)] as const)
+		.filter(([, value]) => value !== undefined)
 		.map(([port, value]) => `${node.module}.${port}=${value}`);
 	const config = Object.entries(node.config)
 		.filter(([key]) => !key.startsWith("__"))
 		.map(([key, value]) => `${node.module}#${key}=${JSON.stringify(value, withoutSites)}`);
 	return [...inputs, ...config].map(fnv1a32);
+}
+
+/** A constant input's value; a live slot counts as the constant it starts at. */
+function constantOf(value: InputValue): number | undefined {
+	if (typeof value === "number") return value;
+	return isSlotInput(value) ? value.slot.init : undefined;
 }
 
 /** Pattern leaves carry source sites (pattern/ast.ts); where code sits is not a constant. */

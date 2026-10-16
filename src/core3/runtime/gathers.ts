@@ -21,12 +21,14 @@ export const GATHER_CONST = 0;
 export const GATHER_CUR = 1;
 export const GATHER_PREV = 2;
 export const GATHER_LAMBDA = 3;
+/** A live slot, read as a plain number; `base` is the slot index. */
+export const GATHER_SLOT = 4;
 
 export interface PortGather {
 	readonly name: string;
 	readonly kind: number;
 	readonly constValue: number;
-	/** Slot of (srcNode, port, lane 0); lanes are contiguous from here. */
+	/** Slot of (srcNode, port, lane 0); lanes are contiguous from here. A live slot's index for GATHER_SLOT. */
 	readonly base: number;
 	readonly srcLanes: number;
 	/** Preallocated lane view (length = srcLanes, the source's own width); null for const/lambda. */
@@ -100,6 +102,8 @@ export function compileReduceGathers(
 					srcLanes: 1,
 					lambda: hydrateLambda(src.lambda),
 				};
+			case "s":
+				return { name, kind: GATHER_SLOT, constValue: 0, base: src.slot, srcLanes: 1, lambda: null };
 		}
 	});
 

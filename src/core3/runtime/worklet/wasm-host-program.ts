@@ -13,7 +13,8 @@
  *    copies the source lane's tables and fill state instead of filling),
  *    and bind the carry's views (copying once).
  *
- * The swap runs the carry plan: copies only. `source` is the program it
+ * The swap runs the carry plan: copies only. Then the slot writes that came
+ * while it built (pending-slots.ts) land. `source` is the program it
  * will continue at the swap (the host builds one program at a time, so it
  * is still the one playing then). It carries only from the program the plan
  * was made against (wasm-prepared.ts serials); from any other, or none, the
@@ -34,6 +35,7 @@ import { type WasmStep, wasmSteps } from "../build/wasm-steps";
 import type { EngineParts } from "../engine-parts";
 import type { HostPrepared } from "../prepare/host-prepared";
 import type { WasmCarry, WasmPrepared } from "../prepare/wasm-prepared";
+import { PendingSlots } from "./pending-slots";
 
 export class WasmHostProgram {
 	private start: EngineBuild | null;
@@ -42,11 +44,13 @@ export class WasmHostProgram {
 	private linked: LinkedInstance | null = null;
 	private engine: WasmEngine | null = null;
 	private cycles: Float64Array | null = null;
+	private swapped = false;
 
 	constructor(
 		readonly prepared: HostPrepared,
 		registry: Registry,
 		source: WasmHostProgram | null,
+		private readonly pending = new PendingSlots(prepared.program.liveSlots?.length ?? 0),
 	) {
 		const { wasm } = prepared;
 		this.source = carriesFrom(wasm, source);
@@ -78,10 +82,19 @@ export class WasmHostProgram {
 	 */
 	swapIn(): void {
 		const source = this.source;
-		if (source === null) return;
-		this.live.handOver(source.live.liveState());
-		this.live.releaseCarry();
-		this.source = null;
+		if (source !== null) {
+			this.live.handOver(source.live.liveState());
+			this.live.releaseCarry();
+			this.source = null;
+		}
+		this.pending.flushInto(this.live);
+		this.swapped = true;
+	}
+
+	/** Slot writes: into the engine once swapped in, else held for the swap (pending-slots.ts). */
+	writeSlots(pairs: Float64Array): void {
+		if (this.swapped) this.live.writeSlots(pairs);
+		else this.pending.writeSlots(pairs);
 	}
 
 	/** Advance `n` samples; write l/r into `outL`/`outR` from `offset`. Once swapped in. */
@@ -114,7 +127,7 @@ export class WasmHostProgram {
 
 	private writeValues(): void {
 		const { runs, bufs } = this.parts;
-		initValues(new Float64Array(this.memory.buffer), this.wasm.layout, runs, bufs.cur);
+		initValues(new Float64Array(this.memory.buffer), this.wasm.layout, runs, bufs.cur, bufs.slots);
 	}
 
 	private writeLane(node: number, lane: number): void {
@@ -127,7 +140,7 @@ export class WasmHostProgram {
 		const { layout, facts, carry } = this.wasm;
 		const input = {
 			compiled: { layout },
-			start: { runs, cur: bufs.cur },
+			start: { runs, cur: bufs.cur, slots: bufs.slots },
 			facts,
 			carry: carry?.plan ?? null,
 		};

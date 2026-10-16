@@ -3,16 +3,16 @@
  * function's locals: numeric state fields and outputs are memory mirrors,
  * typed arrays and records stay in memory, inputs are
  * what the engine's bindings say (a constant, the value slot of an upstream
- * output this sample, or of any output last sample, or a lambda's value this
- * sample) and, for a reducer, the f64 view its lanes are gathered into. A
+ * output this sample, or of any output last sample, a lambda's value this
+ * sample, or a live slot's mirror) and, for a reducer, the f64 view its lanes are gathered into. A
  * port group, in or out, is its node's f64 array (group-io.ts fills and
  * drains it), so the element and index rules read and write it. The
  * whole state record, passed to a helper, is state-record.ts.
  */
 
 import type { AnyNode } from "acorn";
-import { BIND_CONST, BIND_CUR, BIND_PREV, type LaneBindings } from "../../runtime/bindings";
-import { GATHER_CONST, GATHER_CUR, GATHER_PREV } from "../../runtime/gathers";
+import { BIND_CONST, BIND_CUR, BIND_PREV, BIND_SLOT, type LaneBindings } from "../../runtime/bindings";
+import { GATHER_CONST, GATHER_CUR, GATHER_PREV, GATHER_SLOT } from "../../runtime/gathers";
 import type { GroupView } from "../../runtime/group-view";
 import type { NodeRun } from "../../runtime/node-run";
 import type { TickRoles } from "../compile/emit-context";
@@ -62,7 +62,7 @@ export function laneInput(
 	return (port, fail) =>
 		groupArray(run.groups.ins, memory, port) ??
 		(run.bindings === null
-			? gathered(run, memory, port, lambdas, fail)
+			? gathered(run, memory, port, slots, lambdas, fail)
 			: bound(run.bindings[lane], port, slots, lambdas, fail));
 }
 
@@ -113,6 +113,7 @@ function bound(
 	if (kind === BIND_CONST) return fixed(b.consts[j] as number);
 	if (kind === BIND_CUR) return local(slots.current(offset), "f64");
 	if (kind === BIND_PREV) return local(slots.previous(offset), "f64");
+	if (kind === BIND_SLOT) return local(slots.live(offset), "f64");
 	return lambdaValue(lambdas, port, fail);
 }
 
@@ -120,12 +121,14 @@ function gathered(
 	run: NodeRun,
 	memory: NodeMemory,
 	port: string,
+	slots: ValueSlots,
 	lambdas: Readonly<Record<string, number>>,
 	fail: Fail,
 ): Value {
 	const p = run.gathers?.ports.find((g) => g.name === port);
 	if (p === undefined) return fail(`unknown input '${port}'`);
 	if (p.kind === GATHER_CONST) return fixed(p.constValue);
+	if (p.kind === GATHER_SLOT) return local(slots.live(p.base), "f64");
 	if (p.kind === GATHER_CUR || p.kind === GATHER_PREV)
 		return inMemory(
 			{ k: "array", type: "f64", length: p.srcLanes },

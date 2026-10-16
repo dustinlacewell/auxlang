@@ -1,7 +1,8 @@
 /**
  * Linear memory for one program, fixed at eval from the shapes the engine
  * built (MANIFESTO §5.1): the two output blocks (f32), the value buffer
- * (f64 per slot, as the engine's `cur`), the sample count, then per node its
+ * (f64 per slot, as the engine's `cur`), the sample count, the live slots
+ * (f64 each, written by the host between renders), then per node its
  * outputs record, the f64 lane views its reducer inputs are gathered into,
  * an f64 array per port group (its members are fixed at eval), and per lane its numeric state fields, its typed arrays and records
  * (state-layout.ts), its math call cache, (a module that reads a pattern)
@@ -72,6 +73,9 @@ export interface WasmLayout {
 	/** The sample count (f64): lambda time is (count + k) / sampleRate. */
 	readonly count: number;
 	readonly size: number;
+	/** The live slots (f64 each, Program.liveSlots order): the host writes them between renders. */
+	readonly slots: number;
+	readonly slotCount: number;
 	readonly nodes: readonly NodeMemory[];
 	/** Where the table heap starts. */
 	readonly heap: number;
@@ -84,6 +88,7 @@ export function planMemory(
 	plans: NodePlans,
 	lambdas: LambdaSources,
 	size: number,
+	slotCount: number,
 ): WasmLayout {
 	let top = 0;
 	const take = (bytes: number): number => {
@@ -95,6 +100,7 @@ export function planMemory(
 	const outR = take(4 * BLOCK_MAX);
 	const cur = take(8 * size);
 	const count = take(8);
+	const slots = take(8 * slotCount);
 	const nodes = runs.map((run, i) => {
 		const outs = Object.fromEntries(run.outPorts.map((p) => [p, take(8)]));
 		const views: Record<string, number> = {};
@@ -127,7 +133,7 @@ export function planMemory(
 	});
 	const heap = top;
 	const pages = Math.max(1, Math.ceil((heap + initialHeap(nodes)) / PAGE));
-	return { pages, outL, outR, cur, count, size, nodes, heap };
+	return { pages, outL, outR, cur, count, size, slots, slotCount, nodes, heap };
 }
 
 const NO_REBINDS: ReadonlySet<string> = new Set();

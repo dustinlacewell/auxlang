@@ -1,6 +1,6 @@
 /**
  * Fill a fresh instance's memory from the engine's built values: the value
- * buffer (with feedback start values) and each node's outputs record
+ * buffer (with feedback start values), the live slots' inits, and each node's outputs record
  * (`initValues`), then each lane's states (numbers, typed arrays and
  * records) and empty math caches, the lane's and each lambda's (NaN, as
  * cache-names.ts) (`initLane`). The worklet runs them as build steps, a lane
@@ -17,8 +17,9 @@ export function initMemory(
 	layout: WasmLayout,
 	runs: readonly NodeRun[],
 	cur: Float64Array,
+	slots: Float64Array,
 ): void {
-	initValues(f64, layout, runs, cur);
+	initValues(f64, layout, runs, cur, slots);
 	layout.nodes.forEach((node, i) => {
 		for (let l = 0; l < node.lanes.length; l++) initLane(f64, layout, runs, i, l);
 	});
@@ -29,8 +30,10 @@ export function initValues(
 	layout: WasmLayout,
 	runs: readonly NodeRun[],
 	cur: Float64Array,
+	slots: Float64Array,
 ): void {
 	f64.set(cur, layout.cur / 8);
+	f64.set(slots, layout.slots / 8);
 	runs.forEach((run, i) => {
 		const node = layout.nodes[i];
 		if (node === undefined) return;

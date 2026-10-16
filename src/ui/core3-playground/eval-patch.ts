@@ -26,6 +26,7 @@ import "@/core3/modules/all";
 import { buildUserScope, compile, runEval } from "@/core3/api";
 import type { Program } from "@/core3/api";
 import { withSourceText } from "@/core3/module/source-text";
+import type { EvalOptions } from "@/core3/patch/context";
 import { TRACE, withActiveSource } from "@/core3/source/active-source";
 import { locateError } from "@/core3/source/located-error";
 import { TRACE_NAME } from "@/core3/source/rewrite/instrument";
@@ -44,8 +45,12 @@ export interface EvaluatedPatch {
 	readonly sourceMap: SourceMap;
 }
 
-/** `seed` is the host's seed (the play session's); a patch's own seed(n) wins. */
-export function evaluatePatch(source: string, opts: { seed?: number } = {}): EvaluatedPatch {
+/**
+ * `seed` is the host's seed (the play session's); a patch's own seed(n) wins.
+ * `slotSites`: number-literal sites (from `sourceMap`) whose bindings become
+ * live slots (Program.liveSlots).
+ */
+export function evaluatePatch(source: string, opts: EvalOptions = {}): EvaluatedPatch {
 	const { code, sourceMap } = rewrite(source, SCOPE_SET);
 	const patch = patchFunction(code, sourceMap);
 	return withSourceText({ file: "patch", text: source }, () =>
@@ -56,7 +61,7 @@ export function evaluatePatch(source: string, opts: { seed?: number } = {}): Eva
 	);
 }
 
-export function evalPatch(source: string, opts: { seed?: number } = {}): Program {
+export function evalPatch(source: string, opts: EvalOptions = {}): Program {
 	return evaluatePatch(source, opts).program;
 }
 

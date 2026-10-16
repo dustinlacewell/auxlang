@@ -2,7 +2,11 @@
  * Discriminators for the InputValue union and for raw GNode objects.
  */
 
-import type { GNode, InputValue, LambdaInput, NodeRef, PatternInput, ZRef } from "./node";
+import type { GNode, InputValue, LambdaInput, NodeRef, PatternInput, SlotInput, ZRef } from "./node";
+
+export function isSlotInput(v: InputValue | undefined): v is SlotInput {
+	return typeof v === "object" && v !== null && "slot" in v;
+}
 
 export function isNodeRef(v: InputValue | undefined): v is NodeRef {
 	return typeof v === "object" && v !== null && "node" in v && "port" in v;

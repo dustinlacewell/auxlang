@@ -20,12 +20,18 @@ export class ValueSlots {
 		private readonly locals: RenderLocals,
 		private readonly cur: number,
 		runs: readonly NodeRun[],
+		private readonly liveBase: number,
 	) {
 		for (const slot of lateSlots(runs)) this.prv.set(slot, e.local("f64"));
 	}
 
 	current(slot: number): number {
 		return this.locals.at(this.cur + 8 * slot);
+	}
+
+	/** Live slot `index`: a mirror, loaded once per render (the host writes it between renders). */
+	live(index: number): number {
+		return this.locals.at(this.liveBase + 8 * index);
 	}
 
 	previous(slot: number): number {

@@ -4,7 +4,7 @@
  * (reeval-identities.ts), each node's seed (a changed seed keeps the fresh
  * random stream), each table node's table key (an unchanged key keeps the
  * tables), the outputs z-edges read and the value slots they sit in,
- * and the rate. A hand-over plans its carry from two of these
+ * the rate, and the live slots' sites. A hand-over plans its carry from two of these
  * (carry-plan.ts); `collectState` names what it reads by them.
  */
 
@@ -25,6 +25,8 @@ export interface EngineFacts {
 	readonly feedback: readonly FeedbackRead[];
 	readonly outputs: OutputLayout;
 	readonly sampleRate: number;
+	/** Each live slot's site (Program.liveSlots order): a swap carries a slot by site. */
+	readonly slotSites: readonly number[];
 }
 
 /** `readsPattern`: per node, whether its module reads a pattern (and so holds tables). */
@@ -37,5 +39,6 @@ export function engineFacts(parts: EngineParts, readsPattern: readonly boolean[]
 		feedback: parts.feedback,
 		outputs: parts.layout,
 		sampleRate: parts.sampleRate,
+		slotSites: parts.liveSlots.map((slot) => slot.site),
 	};
 }

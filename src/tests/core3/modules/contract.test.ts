@@ -14,6 +14,7 @@ const NON_OUT_DEFAULTS: Record<string, string | undefined> = {
 	pan: undefined,
 	spread: undefined,
 	out: undefined,
+	xy: undefined,
 };
 
 const registry = getRegistry();
@@ -44,9 +45,10 @@ describe.each(specs)("contract: %s", (name, spec) => {
 		expect(spec.ins).toHaveProperty(spec.defaultIn);
 	});
 
-	it("defaultOut ∈ outs, or absent on a stereo module (outs l and r)", () => {
+	it("defaultOut ∈ outs, or absent on a stereo module (outs l and r) or a 2-D control (outs x and y)", () => {
 		if (spec.defaultOut === undefined) {
-			expect(Object.keys(spec.outs)).toEqual(expect.arrayContaining(["l", "r"]));
+			const pair = "x" in spec.outs ? ["x", "y"] : ["l", "r"];
+			expect(Object.keys(spec.outs)).toEqual(expect.arrayContaining(pair));
 			return;
 		}
 		expect(spec.outs).toHaveProperty(spec.defaultOut);

@@ -6,26 +6,39 @@
  */
 
 import type { ReduceTickFn, TickFn } from "../types";
-import { BIND_CONST, BIND_CUR, BIND_LAMBDA, type LaneBindings } from "./bindings";
-import { GATHER_CONST, GATHER_CUR, GATHER_LAMBDA, type ReduceGathers } from "./gathers";
+import { BIND_CONST, BIND_CUR, BIND_LAMBDA, BIND_SLOT, type LaneBindings } from "./bindings";
+import { GATHER_CONST, GATHER_CUR, GATHER_LAMBDA, GATHER_SLOT, type ReduceGathers } from "./gathers";
 import type { GroupView } from "./group-view";
 import type { LambdaSlot } from "./lambda";
 import type { NodeRun } from "./node-run";
 
-/** One sample of node work over the flipped buffers, at lambda time `time`. */
-export type SampleWalk = (cur: Float64Array, prv: Float64Array, sr: number, time: number) => void;
+/** One sample of node work over the flipped buffers and the live slots, at lambda time `time`. */
+export type SampleWalk = (
+	cur: Float64Array,
+	prv: Float64Array,
+	slots: Float64Array,
+	sr: number,
+	time: number,
+) => void;
 
 export function interpretSample(runs: readonly NodeRun[]): SampleWalk {
-	return (cur, prv, sr, time) => {
+	return (cur, prv, slots, sr, time) => {
 		for (let i = 0; i < runs.length; i++) {
 			const r = runs[i] as NodeRun;
-			if (r.gathers === null) tickMap(r, cur, prv, sr, time);
-			else tickReduce(r, cur, prv, sr, time);
+			if (r.gathers === null) tickMap(r, cur, prv, slots, sr, time);
+			else tickReduce(r, cur, prv, slots, sr, time);
 		}
 	};
 }
 
-function tickMap(r: NodeRun, cur: Float64Array, prv: Float64Array, sr: number, time: number): void {
+function tickMap(
+	r: NodeRun,
+	cur: Float64Array,
+	prv: Float64Array,
+	slots: Float64Array,
+	sr: number,
+	time: number,
+): void {
 	const bindings = r.bindings as readonly LaneBindings[];
 	const ins = r.ins;
 	const outs = r.outs;
@@ -45,7 +58,8 @@ function tickMap(r: NodeRun, cur: Float64Array, prv: Float64Array, sr: number, t
 			else if (k === BIND_LAMBDA) {
 				const slot = b.lambdas[j] as LambdaSlot;
 				v = slot.fn(slot.state, sr, time);
-			} else v = prv[offsets[j] as number] as number;
+			} else if (k === BIND_SLOT) v = slots[offsets[j] as number] as number;
+			else v = prv[offsets[j] as number] as number;
 			ins[names[j] as string] = v;
 		}
 		for (const g of r.groups.ins) fillGroupView(g, ins);
@@ -82,6 +96,7 @@ function tickReduce(
 	r: NodeRun,
 	cur: Float64Array,
 	prv: Float64Array,
+	slots: Float64Array,
 	sr: number,
 	time: number,
 ): void {
@@ -91,6 +106,7 @@ function tickReduce(
 	for (let j = 0; j < ports.length; j++) {
 		const p = ports[j] as (typeof ports)[number];
 		if (p.kind === GATHER_CONST) ins[p.name] = p.constValue;
+		else if (p.kind === GATHER_SLOT) ins[p.name] = slots[p.base] as number;
 		else if (p.kind === GATHER_LAMBDA) {
 			const slot = p.lambda as LambdaSlot;
 			ins[p.name] = slot.fn(slot.state, sr, time);

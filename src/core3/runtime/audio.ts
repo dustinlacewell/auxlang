@@ -91,6 +91,7 @@ async function playNext(program: Program, at: number): Promise<void> {
 	const registry = withProgramSpecs(getRegistry(), program);
 	const prepared = await prepareWasmProgram(program, registry, context.sampleRate, running);
 	if (at !== session) return;
+	flushSlots();
 	running = prepared;
 	const message: WorkletMessage = { type: "swap", prepared };
 	node.port.postMessage(message);
@@ -105,6 +106,7 @@ export const playSeed: SeedSession = createSeedSession();
 
 export function stop(): void {
 	playSeed.end();
+	dirtySlots.clear();
 	running = undefined;
 	session++;
 	if (!host) return;
@@ -139,12 +141,42 @@ export function disablePerf(): void {
 
 // ---- Live channel (live/live-contract.ts). Stubs: the engine side fills them in. ----
 
-/** Write a slot of the playing program; coalesced to one message per animation frame. */
-export function writeSlot(_index: number, _value: number): void {}
+// Slot writes since the last flush, by slot index; posted once per animation frame.
+const dirtySlots = new Map<number, number>();
+let slotPairs = new Float64Array(0);
+let slotFlushQueued = false;
 
-/** The slots of the program now playing (Program.slots), [] when none. */
+/** Write a slot of the playing program; coalesced to one message per animation frame. */
+export function writeSlot(index: number, value: number): void {
+	if (host === null || running === undefined) return;
+	dirtySlots.set(index, value);
+	if (slotFlushQueued) return;
+	slotFlushQueued = true;
+	requestAnimationFrame(flushSlots);
+}
+
+/** The slots of the last program played (Program.liveSlots), [] when none. */
 export function currentSlots(): readonly SlotDecl[] {
-	return [];
+	return running?.program.liveSlots ?? [];
+}
+
+/**
+ * Post the dirty slots as one SlotWrites. The pairs buffer is reused; the
+ * message copies it (structured clone), so nothing is transferred. Runs
+ * before a swap posts too, so writes indexed by the old program land first.
+ */
+function flushSlots(): void {
+	slotFlushQueued = false;
+	if (host === null || dirtySlots.size === 0) return;
+	if (slotPairs.length < 2 * dirtySlots.size) slotPairs = new Float64Array(2 * dirtySlots.size);
+	let k = 0;
+	for (const [index, value] of dirtySlots) {
+		slotPairs[k++] = index;
+		slotPairs[k++] = value;
+	}
+	dirtySlots.clear();
+	const message: WorkletMessage = { type: "slots", writes: slotPairs.subarray(0, k) };
+	host.node.port.postMessage(message);
 }
 
 /**
