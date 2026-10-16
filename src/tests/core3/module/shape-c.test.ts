@@ -97,11 +97,11 @@ describe("shape C", () => {
 		expect(() => evalPatch(PATCH)).toThrow(/reserved/);
 	});
 
-	it("meta.args naming a setup config param: a positional call after the default input sets config, not a port", () => {
-		const PATCH = `const x = defmod("x", { args: ["mul"] }, ({ sr, mul = 2 }) => {
+	it("meta.args naming a setup config param: a positional call (config before the default input, seq-style) sets both", () => {
+		const PATCH = `const x = defmod("x", { args: ["mul", "in"] }, ({ sr, mul = 2 }) => {
   return ({ in: p = 0 }) => p * mul
 })
-x(3, 10).out()`;
+x(10, 3).out()`;
 		const program = evalPatch(PATCH);
 		const registry = withProgramSpecs(getRegistry(), program);
 		const engine = new Core3Engine(program, SR, registry);

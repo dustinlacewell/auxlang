@@ -75,7 +75,7 @@ describe("lowerModule", () => {
 		"}",
 	].join("\n");
 
-	it("meta.args sets the positional order after the default input", () => {
+	it("meta.args sets the complete positional order; absent args, the default input leads", () => {
 		const fileText = [`defmod("x", { args: ["b"] }, ${argsSetupText})`].join("\n");
 		const source: SourceText = { file: "patch", text: fileText };
 		const lowered = lowerModule({
@@ -86,21 +86,46 @@ describe("lowerModule", () => {
 			library: false,
 		});
 		expect(lowered.defaultIn).toBe("in");
-		expect(lowered.positional).toEqual(["in", "b"]);
+		expect(lowered.positional).toEqual(["b"]);
 	});
 
-	it("meta.args naming the default input is a loud error", () => {
-		const fileText = [`defmod("x", { args: ["in"] }, ${argsSetupText})`].join("\n");
+	it("meta.args naming the default input is allowed, at any slot (not necessarily first)", () => {
+		const fileText = [`defmod("x", { args: ["a", "in", "b"] }, ${argsSetupText})`].join("\n");
 		const source: SourceText = { file: "patch", text: fileText };
-		expect(() =>
-			lowerModule({
-				name: "x",
-				meta: { args: ["in"] },
-				setupText: argsSetupText,
-				file: { text: fileText, program: fileProgram(source) },
-				library: false,
-			}),
-		).toThrow(/default input/);
+		const lowered = lowerModule({
+			name: "x",
+			meta: { args: ["a", "in", "b"] },
+			setupText: argsSetupText,
+			file: { text: fileText, program: fileProgram(source) },
+			library: false,
+		});
+		expect(lowered.positional).toEqual(["a", "in", "b"]);
+	});
+
+	it("meta.args: [] — no input is positional; every input is settable by name only", () => {
+		const fileText = [`defmod("x", { args: [] }, ${argsSetupText})`].join("\n");
+		const source: SourceText = { file: "patch", text: fileText };
+		const lowered = lowerModule({
+			name: "x",
+			meta: { args: [] },
+			setupText: argsSetupText,
+			file: { text: fileText, program: fileProgram(source) },
+			library: false,
+		});
+		expect(lowered.positional).toEqual([]);
+	});
+
+	it("meta.args omitting the default input: it is settable by name only, like any other omitted port", () => {
+		const fileText = [`defmod("x", { args: ["a"] }, ${argsSetupText})`].join("\n");
+		const source: SourceText = { file: "patch", text: fileText };
+		const lowered = lowerModule({
+			name: "x",
+			meta: { args: ["a"] },
+			setupText: argsSetupText,
+			file: { text: fileText, program: fileProgram(source) },
+			library: false,
+		});
+		expect(lowered.positional).toEqual(["a"]);
 	});
 
 	const argsWithConfigSetupText = [
@@ -109,7 +134,7 @@ describe("lowerModule", () => {
 		"}",
 	].join("\n");
 
-	it("meta.args may name a setup config param (not just an input): the old object form's positional, crossing config and port", () => {
+	it("meta.args may name a setup config param (not just an input): omitting the default input makes it name-only", () => {
 		const fileText = [`defmod("x", { args: ["mul"] }, ${argsWithConfigSetupText})`].join("\n");
 		const source: SourceText = { file: "patch", text: fileText };
 		const lowered = lowerModule({
@@ -119,8 +144,22 @@ describe("lowerModule", () => {
 			file: { text: fileText, program: fileProgram(source) },
 			library: false,
 		});
-		expect(lowered.positional).toEqual(["in", "mul"]);
+		expect(lowered.positional).toEqual(["mul"]);
 		expect(lowered.config).toEqual({ mul: 2 });
+	});
+
+	it("meta.args crossing config and port, with the default input not first (seq-style: a config key before the port)", () => {
+		const fileText = [`defmod("x", { args: ["mul", "in"] }, ${argsWithConfigSetupText})`].join("\n");
+		const source: SourceText = { file: "patch", text: fileText };
+		const lowered = lowerModule({
+			name: "x",
+			meta: { args: ["mul", "in"] },
+			setupText: argsWithConfigSetupText,
+			file: { text: fileText, program: fileProgram(source) },
+			library: false,
+		});
+		expect(lowered.defaultIn).toBe("in");
+		expect(lowered.positional).toEqual(["mul", "in"]);
 	});
 
 	it("meta.args naming an unknown name (not an input or a config key) is a loud error", () => {

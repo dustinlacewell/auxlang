@@ -73,7 +73,7 @@ saw(45).mul(0.3).wide().out()`,
 });
 
 describe("defpatch: meta.args", () => {
-	it("sets the positional order after the chained default input", () => {
+	it("meta.args is the complete positional list: naming the default input and the rest, in order", () => {
 		sameSound(
 			`const x = defmod({
   name: "x",
@@ -82,16 +82,38 @@ describe("defpatch: meta.args", () => {
   patch: (i) => ({ out: i.in.add(i.a).add(i.b) }),
 })
 x(saw(48), 1, 5).out()`,
-			`const x = defpatch("x", { args: ["b"] }, ({ in: p, a = 1, b = 2 }) => p.add(a).add(b))
-x(saw(48), 5).out()`,
+			`const x = defpatch("x", { args: ["in", "a", "b"] }, ({ in: p, a = 1, b = 2 }) => p.add(a).add(b))
+x(saw(48), 1, 5).out()`,
 		);
 	});
 
-	it("naming the default input in meta.args is a loud error", () => {
-		expect(() =>
-			evalPatch(`const x = defpatch("x", { args: ["in"] }, ({ in: p, b = 2 }) => p.add(b))
-x().out()`),
-		).toThrow(/default input/);
+	it("without meta.args, every input is positional in declared order, default input first (today's default, unchanged)", () => {
+		sameSound(
+			`const x = defmod({
+  name: "x",
+  ins: { in: sig(0), a: semis(1), b: semis(2) },
+  outs: { out: sig() },
+  patch: (i) => ({ out: i.in.add(i.a).add(i.b) }),
+})
+x(saw(48), 1, 5).out()`,
+			`const x = defpatch("x", ({ in: p, a = 1, b = 2 }) => p.add(a).add(b))
+x(saw(48), 1, 5).out()`,
+		);
+	});
+
+	it("naming the default input in meta.args is allowed: it may sit at any slot, not just first", () => {
+		sameSound(
+			`const x = defmod({
+  name: "x",
+  ins: { in: sig(0), a: semis(1), b: semis(2) },
+  outs: { out: sig() },
+  positional: ["a", "in", "b"],
+  patch: (i) => ({ out: i.in.add(i.a).add(i.b) }),
+})
+x(1, saw(48), 5).out()`,
+			`const x = defpatch("x", { args: ["a", "in", "b"] }, ({ in: p, a = 1, b = 2 }) => p.add(a).add(b))
+x(1, saw(48), 5).out()`,
+		);
 	});
 
 	it("naming an unknown port in meta.args is a loud error", () => {
@@ -99,6 +121,34 @@ x().out()`),
 			evalPatch(`const x = defpatch("x", { args: ["nope"] }, ({ in: p, b = 2 }) => p.add(b))
 x().out()`),
 		).toThrow(/not an input/);
+	});
+
+	it("meta.args: [] — no port is positional; every port must be set by name", () => {
+		sameSound(
+			`const x = defmod({
+  name: "x",
+  ins: { in: sig(0), b: semis(2) },
+  outs: { out: sig() },
+  patch: (i) => ({ out: i.in.add(i.b) }),
+})
+x({ in: saw(48), b: 5 }).out()`,
+			`const x = defpatch("x", { args: [] }, ({ in: p, b = 2 }) => p.add(b))
+x({ in: saw(48), b: 5 }).out()`,
+		);
+	});
+
+	it("meta.args omitting the default input: it is only settable by name, not positionally", () => {
+		sameSound(
+			`const x = defmod({
+  name: "x",
+  ins: { in: sig(0), b: semis(2) },
+  outs: { out: sig() },
+  patch: (i) => ({ out: i.in.add(i.b) }),
+})
+x({ in: saw(48), b: 5 }).out()`,
+			`const x = defpatch("x", { args: ["b"] }, ({ in: p, b = 2 }) => p.add(b))
+x({ in: saw(48), b: 5 }).out()`,
+		);
 	});
 });
 
