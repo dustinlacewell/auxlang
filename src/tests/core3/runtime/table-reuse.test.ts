@@ -25,19 +25,23 @@ interface Seq {
 	readonly local?: number;
 	readonly voices?: "stable";
 	readonly cutoff: number;
+	/** A record field `vel`, played as the seq's level. */
+	readonly vel?: string;
 }
 
 const BASE: Seq = { pattern: "<[c3, e3] _> [e3, g3] b2_d3? [e3 g3]?", patchSeed: 5, cutoff: 70 };
 
-function patch({ pattern, patchSeed, local, voices, cutoff }: Seq): Program {
+function patch({ pattern, patchSeed, local, voices, cutoff, vel }: Seq): Program {
 	const voiced = voices === undefined ? "" : `.voices("${voices}")`;
 	const own = local === undefined ? "" : `.seed(${local})`;
+	const record = vel === undefined ? "" : `.with({ vel: p\`${vel}\` })`;
+	const level = vel === undefined ? "" : "\n  .mul(s.vel)";
 	return evalPatch(`tempo(150)
 seed(${patchSeed})
-const s = seq(p\`${pattern}\`${voiced})${own}
+const s = seq(p\`${pattern}\`${voiced}${record})${own}
 s.tri()
   .lpf(${cutoff}, 0.2)
-  .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.2))
+  .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.2))${level}
   .gain(0.3)
   .out()`);
 }
@@ -69,6 +73,18 @@ const EDITS: readonly { label: string; before: Seq; after: Seq; kept: boolean }[
 		kept: false,
 	},
 	{ label: "patch seed rerolled", before: BASE, after: { ...BASE, patchSeed: 6 }, kept: false },
+	{
+		label: "another node edited, record seq",
+		before: { ...BASE, vel: "1 0.4 0.7" },
+		after: { ...BASE, vel: "1 0.4 0.7", cutoff: 76 },
+		kept: true,
+	},
+	{
+		label: "record field edited",
+		before: { ...BASE, vel: "1 0.4 0.7" },
+		after: { ...BASE, vel: "1 0.4 0.9" },
+		kept: false,
+	},
 	{
 		label: "voices policy changed",
 		before: BASE,

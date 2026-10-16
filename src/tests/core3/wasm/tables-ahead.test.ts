@@ -57,6 +57,12 @@ const chord = () =>
 		s.sin().mul(s.gate).mul(0.1).out();
 	});
 
+/** A record seq: its tables carry two field columns. */
+const record = () =>
+	evalPatch(`tempo(240)
+const s = seq(p\`c3 e3 [g3 b3] <c4 d4>\`.with({ vel: p\`1 0.4 0.7\`, cv2: p\`<0.1 0.2>\` }))
+s.tri().mul(s.gate).mul(s.vel).add(s.cv2.mul(0.1)).mul(0.2).out()`);
+
 const coastline = () =>
 	evalPatch(EXAMPLES.find((e) => e.name.startsWith("coastline"))?.source ?? "");
 
@@ -101,6 +107,7 @@ describe("WASM seq tables: heap and one cycle ahead", () => {
 		["growing", growing(0.2)],
 		["eight-lane chord, budget 4", chord],
 		["coastline", coastline],
+		["record seq", record],
 	] as const)
 		it(`clocked seqs (${name}): no env.fill inside render after the first block, bit-identical`, () => {
 			const program = make();
