@@ -38,7 +38,8 @@ export function inferOuts(tick: ArrowFunctionExpression, moduleName: string): In
 	}
 	assertEndsInReturn(tick, what);
 
-	const edits = returns.flatMap((ret) => editsFor(ret, what));
+	const isExprBody = tick.body.type !== "BlockStatement";
+	const edits = returns.flatMap((ret) => editsFor(ret, what, isExprBody));
 	return { outs: first, edits, outParam };
 }
 
@@ -106,24 +107,34 @@ function assertEndsInReturn(tick: ArrowFunctionExpression, what: string): void {
 	}
 }
 
-/** Wraps each value expression in the return with `__dsp_o.<key> = (` ... `)`, never touching the expression's own span. */
-function editsFor(ret: ReturnStatement, what: string): TextEdit[] {
+/**
+ * Wraps each value expression in the return with `__dsp_o.<key> = (` ... `)`,
+ * never touching the expression's own span. An expression-bodied arrow's
+ * synthetic return (exprBodyAsReturn) has no enclosing braces or `return`
+ * keyword in the source, so its edit wraps the whole thing in a block too —
+ * `=> expr` becomes `=> { __dsp_o.out = (expr); return; }` — keeping the
+ * rewritten source a valid function body.
+ */
+function editsFor(ret: ReturnStatement, what: string, isExprBody: boolean): TextEdit[] {
 	const arg = ret.argument as NonNullable<ReturnStatement["argument"]>;
+	const open = isExprBody ? "{ " : "";
+	const close = isExprBody ? " }" : "";
 	if (arg.type !== "ObjectExpression") {
 		return [
-			{ start: ret.start, end: arg.start, text: "__dsp_o.out = (" },
-			{ start: arg.end, end: ret.end, text: "); return;" },
+			{ start: ret.start, end: arg.start, text: `${open}__dsp_o.out = (` },
+			{ start: arg.end, end: ret.end, text: `); return;${close}` },
 		];
 	}
 	const props = objectProps(arg, what);
 	const edits: TextEdit[] = [];
 	let cursor = ret.start;
 	for (const prop of props) {
-		const opener = cursor === ret.start ? `__dsp_o.${prop.key} = (` : `); __dsp_o.${prop.key} = (`;
+		const opener =
+			cursor === ret.start ? `${open}__dsp_o.${prop.key} = (` : `); __dsp_o.${prop.key} = (`;
 		edits.push({ start: cursor, end: prop.value.start, text: opener });
 		cursor = prop.value.end;
 	}
-	edits.push({ start: cursor, end: ret.end, text: "); return;" });
+	edits.push({ start: cursor, end: ret.end, text: `); return;${close}` });
 	return edits;
 }
 
