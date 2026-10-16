@@ -9,6 +9,7 @@
  */
 
 import type { ArrowFunctionExpression, FunctionExpression, Program } from "acorn";
+import type { StateShape } from "../front/state/state-shape";
 import type { Category, ModuleSource, PortAnn, SourceOrigin } from "../../types";
 import { assertAuthorNames } from "../assert-author-names";
 import { parseFunction } from "../front/parse/parse-function";
@@ -61,6 +62,20 @@ export interface LoweredModule {
 	readonly stateText: string;
 	readonly source: ModuleSource;
 	readonly writes: readonly string[];
+	/** The tick's own AST and setup-local names: `resolveTickWrites` reruns the carry analysis
+	 *  once the real field shapes are known (defineModule, after a trial run of `state`). */
+	readonly tickNode: ArrowFunctionExpression;
+	readonly setupLocals: ReadonlySet<string>;
+}
+
+/** Re-resolves a lowered module's `writes` once the real setup-field shapes are known
+ *  (defineModule, after a trial run of `state`): an alias through an access that can only
+ *  read a number or boolean does not carry the field it reads from. */
+export function resolveTickWrites(
+	lowered: LoweredModule,
+	shapes: ReadonlyMap<string, StateShape>,
+): readonly string[] {
+	return [...tickWrites(lowered.tickNode, lowered.setupLocals, shapes)];
 }
 
 export function lowerModule(input: LowerModuleInput): LoweredModule {
@@ -142,6 +157,8 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 		stateText: state.text,
 		source,
 		writes,
+		tickNode: parts.tick,
+		setupLocals,
 	};
 	return {
 		...result,

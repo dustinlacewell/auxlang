@@ -6,15 +6,25 @@
  * being evaluated right now (module/source-text) supplies the file the
  * lowering reads same-file helpers and consts from; with none, a setup or
  * tick that needs the file throws (lower/helper-closure) naming the fix.
+ *
+ * Lowering alone cannot tell a field that merely holds a number from one
+ * that holds a reference an alias local could carry — that call needs a
+ * real field shape, which only a trial run of `state` can give (lowering
+ * stays pure; this is the impure shell). So `writes` is resolved here, after
+ * `state` is compiled and run once at a trial sample rate and the default
+ * config: `resolveTickWrites` reruns the carry analysis against those shapes.
  */
 
 import { bindSource } from "../module/bind-module";
 import { currentSourceText } from "../module/source-text";
 import { hydrateFn } from "../module/serialize";
+import { laneShapeOf } from "../module/front/state/state-shape-of";
 import { fileProgram } from "../module/lower/file-program";
-import { lowerModule, type LowerModuleMeta } from "../module/lower/lower-module";
+import { lowerModule, resolveTickWrites, type LowerModuleMeta } from "../module/lower/lower-module";
 import type { ReadTime } from "../module/front/module/check-module";
 import type { ModuleSpec } from "../types";
+
+const TRIAL_SAMPLE_RATE = 48000;
 
 export function defineModule(
 	name: string,
@@ -37,6 +47,10 @@ export function defineModule(
 		config: Record<string, unknown>,
 	) => Record<string, unknown>;
 
+	const trialState = state(TRIAL_SAMPLE_RATE, lowered.config ?? {});
+	const shapes = new Map(Object.entries(laneShapeOf(trialState).fields));
+	const writes = resolveTickWrites(lowered, shapes);
+
 	const spec: ModuleSpec = {
 		name: lowered.name,
 		category: lowered.category,
@@ -49,7 +63,7 @@ export function defineModule(
 		...(lowered.policy !== undefined ? { policy: lowered.policy } : {}),
 		...(lowered.reads !== undefined ? { reads: lowered.reads } : {}),
 		...(lowered.doc !== undefined ? { doc: lowered.doc } : {}),
-		writes: lowered.writes,
+		writes,
 		state,
 		tick: (() => {}) as never,
 	};

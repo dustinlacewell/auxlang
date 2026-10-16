@@ -4,44 +4,72 @@
  * (`w = …`, `w++`, `w += …`), when it is the root identifier of an assigned
  * member target (`buf[w] = …`, `rec.x += …`), when it is passed as a call
  * argument (`fill(buf)`, which may mutate it through the callee), or when it
- * is aliased — put in a declaration, a `return`, or an array/object literal,
- * from where another reference could escape with it. A tick local that
- * shadows a setup local of the same name is not that local, so does not
- * count.
+ * is aliased by a declaration (`const v = voices[0]`, `const e = v.env`),
+ * from where a write through the local reaches back into the field. The
+ * tick's own `return` is its output, not an alias site (infer-outs.ts lowers
+ * it to an output write, never an escaping reference), so it is not tracked
+ * here. A declaration aliases a field only when the shape read through the access
+ * chain can hold a reference (alias-shape.ts): a typed-array element or a
+ * record's numeric property is a plain number, never an alias; `shapes`
+ * gives each setup local's trial shape, read once from a real run of setup
+ * (defineModule) — lowering itself has no state to run, so it calls this
+ * with no shapes and the conservative fallback (unknown -> can alias) holds;
+ * `defineModule` re-resolves with the real shapes once setup has run. A tick
+ * local that shadows a setup local of the same name is not that local, so
+ * does not count.
  */
 
 import type {
 	AnyNode,
-	ArrayExpression,
 	ArrowFunctionExpression,
 	AssignmentExpression,
 	CallExpression,
 	Identifier,
-	ObjectExpression,
-	Property,
-	ReturnStatement,
+	MemberExpression,
 	UpdateExpression,
 	VariableDeclarator,
 } from "acorn";
 import type { FunctionNode } from "../front/parse/parse-function";
 import { walk } from "../front/parse/walk";
+import { bindingDeclaredBy, type Binding, type Scopes } from "../front/scope/binding";
 import { resolveBindings } from "../front/scope/resolve-bindings";
+import type { StateShape } from "../front/state/state-shape";
+import { type AccessStep, shapeAtPath, shapeCanAlias } from "./alias-shape";
 
-export function tickWrites(tick: ArrowFunctionExpression, setupLocals: ReadonlySet<string>): ReadonlySet<string> {
+export function tickWrites(
+	tick: ArrowFunctionExpression,
+	setupLocals: ReadonlySet<string>,
+	shapes: ReadonlyMap<string, StateShape> = new Map(),
+): ReadonlySet<string> {
 	const scopes = resolveBindings(tick as unknown as FunctionNode, new Set());
 	const written = new Set<string>();
+	/** Tick-local bindings known to alias a setup field, built forward over the walk. */
+	const aliasOf = new Map<Binding, string>();
 
 	const nameOf = (id: Identifier): string | null => {
 		const resolution = scopes.references.get(id);
-		if (resolution === undefined || resolution.k !== "free") return null;
-		return setupLocals.has(resolution.name) ? resolution.name : null;
+		if (resolution === undefined) return null;
+		if (resolution.k === "free") return setupLocals.has(resolution.name) ? resolution.name : null;
+		if (resolution.k === "binding") return aliasOf.get(resolution.binding) ?? null;
+		return null;
+	};
+
+	/** The setup field `expr` reads from, through a chain of member accesses off an aliasing root. */
+	const fieldReadBy = (expr: AnyNode): string | null => {
+		const { root, path } = chainOf(expr);
+		const field = root.type === "Identifier" ? nameOf(root as Identifier) : null;
+		if (field === null) return null;
+		if (path.length === 0) return field; // a bare alias local or setup field, not narrowed by access
+		const fieldShape = shapes.get(field);
+		const shape = fieldShape === undefined ? null : shapeAtPath(fieldShape, path);
+		return shapeCanAlias(shape) ? field : null;
 	};
 
 	walk(tick.body as AnyNode, (node) => {
 		assignmentTarget(node, nameOf, written);
 		updateTarget(node, nameOf, written);
 		callArguments(node, nameOf, written);
-		aliasSites(node, nameOf, written);
+		aliasDeclarator(node, scopes, fieldReadBy, aliasOf);
 	});
 
 	return written;
@@ -51,6 +79,20 @@ function rootIdentifier(node: AnyNode): Identifier | null {
 	let cur = node;
 	while (cur.type === "MemberExpression") cur = (cur as { object: AnyNode }).object;
 	return cur.type === "Identifier" ? (cur as Identifier) : null;
+}
+
+/** The root expression and the member-access path leading to `expr`, outermost access last. */
+function chainOf(expr: AnyNode): { readonly root: AnyNode; readonly path: readonly AccessStep[] } {
+	const path: AccessStep[] = [];
+	let cur = expr;
+	while (cur.type === "MemberExpression") {
+		const member = cur as MemberExpression;
+		path.unshift(
+			member.computed ? { computed: true } : { computed: false, name: (member.property as Identifier).name },
+		);
+		cur = member.object as AnyNode;
+	}
+	return { root: cur, path };
 }
 
 function assignmentTarget(
@@ -83,41 +125,23 @@ function callArguments(node: AnyNode, nameOf: (id: Identifier) => string | null,
 	}
 }
 
-/** A local put in a declaration init, a `return`, or an array/object literal may escape with another reference to it. */
-function aliasSites(node: AnyNode, nameOf: (id: Identifier) => string | null, written: Set<string>): void {
-	if (node.type === "VariableDeclarator") {
-		const init = (node as VariableDeclarator).init;
-		if (init?.type === "Identifier") {
-			const name = nameOf(init as Identifier);
-			if (name !== null) written.add(name);
-		}
-		return;
-	}
-	if (node.type === "ReturnStatement") {
-		const arg = (node as ReturnStatement).argument;
-		if (arg?.type === "Identifier") {
-			const name = nameOf(arg as Identifier);
-			if (name !== null) written.add(name);
-		}
-		return;
-	}
-	if (node.type === "ArrayExpression") {
-		for (const el of (node as ArrayExpression).elements) {
-			if (el?.type === "Identifier") {
-				const name = nameOf(el as Identifier);
-				if (name !== null) written.add(name);
-			}
-		}
-		return;
-	}
-	if (node.type === "ObjectExpression") {
-		for (const prop of (node as ObjectExpression).properties) {
-			if (prop.type !== "Property") continue;
-			const value = (prop as Property).value;
-			if (value.type === "Identifier") {
-				const name = nameOf(value as Identifier);
-				if (name !== null) written.add(name);
-			}
-		}
-	}
+/**
+ * `const v = <expr>` records `v`'s binding as an alias of the field `<expr>`
+ * reads through, when the read can be a reference — so a later write through
+ * `v` (an assignment, an update, a further alias, a call argument) marks the
+ * field written, same as writing through the field's own name would.
+ */
+function aliasDeclarator(
+	node: AnyNode,
+	scopes: Scopes,
+	fieldReadBy: (expr: AnyNode) => string | null,
+	aliasOf: Map<Binding, string>,
+): void {
+	if (node.type !== "VariableDeclarator") return;
+	const decl = node as VariableDeclarator;
+	if (decl.id.type !== "Identifier" || decl.init === null || decl.init === undefined) return;
+	const field = fieldReadBy(decl.init as AnyNode);
+	if (field === null) return;
+	const binding = bindingDeclaredBy(scopes, decl.id as Identifier);
+	if (binding !== undefined) aliasOf.set(binding, field);
 }
