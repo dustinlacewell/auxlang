@@ -10,8 +10,9 @@
  * calls `preventDefault()` so a drag never falls through to a text
  * selection — `controlTheme` also sets `user-select: none` and
  * `touch-action: none` on `.aux-control` so a touch drag doesn't scroll the
- * page either. The knob draws a pointer line from centre to rim at the
- * value's angle; the xy pad draws a puck at (x, y); both redraw on every
+ * page either. The slider fills from the bottom to the value; the knob draws
+ * a pointer line from centre to rim at the value's angle; the xy pad draws a
+ * puck at (x, y); each redraws on every
  * value change, not just on drag (so a widget reflects an engine-driven
  * value, e.g. the preview eval's init, without needing a drag first).
  */
@@ -56,8 +57,12 @@ function capture(el: HTMLElement, event: PointerEvent): void {
 
 /** Knob angle (degrees, -135 at min .. +135 at max) for a value in [min, max]. */
 export function knobAngle(value: number, min: number, max: number): number {
-	const t = max > min ? clamp((value - min) / (max - min), 0, 1) : 0;
-	return KNOB_MIN_ANGLE + t * (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE);
+	return KNOB_MIN_ANGLE + valueFraction(value, min, max) * (KNOB_MAX_ANGLE - KNOB_MIN_ANGLE);
+}
+
+/** Where a value sits in its range: 0 at min .. 1 at max, clamped; 0 for an empty range. */
+export function valueFraction(value: number, min: number, max: number): number {
+	return max > min ? clamp((value - min) / (max - min), 0, 1) : 0;
 }
 
 /** The xy puck's position within the pad, 0..1 each axis, y measured up from the bottom. */
@@ -67,9 +72,10 @@ export function xyPuckPosition(
 	xRange: { min: number; max: number },
 	yRange: { min: number; max: number },
 ): { left: number; top: number } {
-	const tx = xRange.max > xRange.min ? clamp((x - xRange.min) / (xRange.max - xRange.min), 0, 1) : 0;
-	const ty = yRange.max > yRange.min ? clamp((y - yRange.min) / (yRange.max - yRange.min), 0, 1) : 0;
-	return { left: tx, top: 1 - ty };
+	return {
+		left: valueFraction(x, xRange.min, xRange.max),
+		top: 1 - valueFraction(y, yRange.min, yRange.max),
+	};
 }
 
 function renderSlider(slot: ControlSlot | undefined, onMove: OnMove): HTMLElement {
@@ -81,9 +87,17 @@ function renderSlider(slot: ControlSlot | undefined, onMove: OnMove): HTMLElemen
 	track.className = "aux-control-track";
 	el.appendChild(track);
 
+	let value = slot.decl.init;
+	const draw = () => {
+		track.style.height = `${valueFraction(value, min, max) * 100}%`;
+	};
+	draw();
+
 	const setFromY = (clientY: number, rect: DOMRect) => {
 		const t = clamp(1 - (clientY - rect.top) / rect.height, 0, 1);
-		onMove(slot.slotIndex, min + t * (max - min));
+		value = min + t * (max - min);
+		draw();
+		onMove(slot.slotIndex, value);
 	};
 
 	el.addEventListener("pointerdown", (event) => {

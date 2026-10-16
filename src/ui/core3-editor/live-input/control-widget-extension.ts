@@ -148,11 +148,16 @@ const controlTheme = EditorView.baseTheme({
 		background: "rgba(255,255,255,0.08)",
 		borderRadius: "4px",
 	},
+	// Fills up from the bottom to the value; the top edge is the handle.
 	".aux-control-track": {
+		position: "absolute",
+		left: "0",
+		bottom: "0",
 		width: "100%",
-		height: "100%",
+		boxSizing: "border-box",
 		background: "rgba(96, 165, 250, 0.4)",
-		borderRadius: "4px",
+		borderTop: "2px solid white",
+		borderRadius: "0 0 4px 4px",
 	},
 	".aux-control-knob": {
 		width: "16px",

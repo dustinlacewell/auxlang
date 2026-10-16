@@ -1,5 +1,19 @@
-import { knobAngle, xyPuckPosition } from "@/ui/core3-editor/live-input/render-control";
+import { knobAngle, valueFraction, xyPuckPosition } from "@/ui/core3-editor/live-input/render-control";
 import { describe, expect, it } from "vitest";
+
+describe("valueFraction", () => {
+	it("maps min to 0, max to 1, and between linearly", () => {
+		expect(valueFraction(60, 60, 110)).toBe(0);
+		expect(valueFraction(110, 60, 110)).toBe(1);
+		expect(valueFraction(84, 60, 110)).toBeCloseTo(0.48);
+	});
+
+	it("clamps outside the range; an empty range is 0", () => {
+		expect(valueFraction(-5, 0, 1)).toBe(0);
+		expect(valueFraction(5, 0, 1)).toBe(1);
+		expect(valueFraction(3, 2, 2)).toBe(0);
+	});
+});
 
 describe("knobAngle", () => {
 	it("min maps to -135deg, max to +135deg", () => {
