@@ -10,6 +10,7 @@
 
 import type { AssignmentExpression, UpdateExpression } from "acorn";
 import { OP } from "../encode/opcodes";
+import { emitRebind, isRebind } from "./address-variable";
 import { coerce, toF64 } from "./coerce";
 import { combine } from "./emit-binary";
 import { emitExpr } from "./emit-expression";
@@ -33,6 +34,7 @@ export function emitAssignment(
 	const op = node.operator;
 	if (op === "&&=" || op === "||=" || op === "??=")
 		return e.fail(node, `${op} is not supported by the WASM backend`);
+	if (isRebind(e, node)) return rebind(e, node, keep);
 	const target = targetOf(e, node.left);
 	if (target.k === "local" && target.kind === "int") return stepCounter(e, node, target, keep);
 	beginWrite(e, target);
@@ -65,6 +67,13 @@ export function emitUpdate(e: FnEmitter, node: UpdateExpression, keep: boolean):
 	endWrite(e, target, keep && old === null, kind);
 	if (old !== null) e.code.get(old);
 	return keep ? kind : null;
+}
+
+/** `a = s.b` on an array variable; its value is only ever used as a place (place.ts). */
+function rebind(e: FnEmitter, node: AssignmentExpression, keep: boolean): null {
+	if (keep) return e.fail(node, "an array rebind is used as a number (compiler bug)");
+	emitRebind(e, node);
+	return null;
 }
 
 /** `i += k` / `i -= k` on a loop counter, with an int32 step. */

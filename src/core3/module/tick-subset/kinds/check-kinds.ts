@@ -15,14 +15,8 @@ import { calleesOf } from "@/core3/module/front/types/callees";
 import { type FunctionPlan, planFunction } from "@/core3/module/front/types/function-plan";
 import type { PlanEvent } from "@/core3/module/front/types/plan-events";
 import { NUM, known } from "@/core3/module/front/types/ty";
-import {
-	INTO_BOOLEAN,
-	LAMBDA_BOOLEAN,
-	MIXED,
-	MIXED_RETURNS,
-	STEP_BOOLEAN,
-	STORED,
-} from "./kind-messages";
+import { unify } from "@/core3/module/front/types/unify";
+import { LAMBDA_BOOLEAN, MIXED, MIXED_RETURNS, STEP_BOOLEAN } from "./kind-messages";
 import { classOf, conflict } from "./message-class";
 
 const NO_HELPERS: ReadonlyMap<string, FunctionIR> = new Map();
@@ -54,18 +48,20 @@ function judge(plan: FunctionPlan, judged: Set<FunctionPlan>): void {
 function judgeEvent(ir: FunctionIR, event: Exclude<PlanEvent, { k: "call" }>): void {
 	switch (event.k) {
 		case "store": {
-			const place = classOf(event.place);
-			const value = classOf(event.value);
-			if (place === "num" && value === "bool") ir.fail(event.node, STORED);
-			if (place === "bool" && value === "num") ir.fail(event.node, INTO_BOOLEAN);
+			const message = unify(event.place, event.value);
+			if (message !== null) ir.fail(event.node, message);
 			return;
 		}
-		case "compound":
-			if (classOf(event.place) === "bool") ir.fail(event.node, INTO_BOOLEAN);
+		case "compound": {
+			const message = unify(event.place, NUM);
+			if (message !== null) ir.fail(event.node, message);
 			return;
-		case "step":
-			if (classOf(event.place) === "bool") ir.fail(event.node, STEP_BOOLEAN);
+		}
+		case "step": {
+			const message = classOf(event.place) === "bool" ? STEP_BOOLEAN : unify(event.place, NUM);
+			if (message !== null) ir.fail(event.node, message);
 			return;
+		}
 		case "paths":
 			if (conflict(event.a, event.b)) ir.fail(event.node, MIXED);
 			return;

@@ -1,16 +1,17 @@
 /**
  * The agreement table: each tick snippet either passes the shared checker and
  * renders on WASM bit-identical to the interpreter (accept), or the checker
- * refuses it at eval, before either backend sees it (reject). Rows whose
+ * refuses it, at eval or at build on both engines (reject). Rows whose
  * backends disagree today are `it.fails`; each one flips when the tick front
  * end closes it (card tick-front-end-2026-10-15, step 5).
  */
 
 import "@/core3/modules/all";
 
+import type { Program } from "@/core3/types";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { describe, expect, it } from "vitest";
-import { expectIdentical } from "./differential-harness";
+import { expectIdentical, interpreterRun, wasmRun } from "./differential-harness";
 
 const SAMPLES = 1024;
 
@@ -86,9 +87,19 @@ const AGREED_ACCEPT: readonly Row[] = [
 	accept("an out-of-range read as an exponent", "o.out = 1 ** s.buf[5]"),
 	accept("a boolean index", "o.out = s.buf[i.in > 50] ?? 2"),
 	accept("an out-of-range read into Math", "o.out = Math.sin(s.buf[7]) + Math.max(s.buf[s.n + 3], 1); s.n++"),
+	accept("a typed array in a let, let a = s.buf", "let a = s.buf; a[0] = i.in; o.out = a[0]"),
+	accept("a let rebound to another typed array", "let a = s.a; a = s.b; o.out = a[0]"),
+	accept(
+		"a let rebound on one branch, then written",
+		"let a = s.a; if (i.in > 50) a = s.b; a[s.n % 2] += 1; s.n++; o.out = s.a[0] - s.b[1]",
+	),
+	accept("a rebind read as an array, (a = s.b)[k]", "s.b[1] = i.in; let a = s.a; o.out = (a = s.b)[s.n % 2] - a[1]; s.n++"),
+	accept("a rebind inside an index reads the old array", "s.b[0] = 5; let a = s.a; o.out = a[(a = s.b, 0)] + a[0] * 2"),
+	accept("a rebind inside a written value", "let a = s.a; a[0] = (a = s.b, i.in); o.out = s.a[0] * 10 + s.b[0]"),
+	accept("a config string in a let, let m = cfg.mode",'let m = cfg.mode; o.out = m === "a" ? 1 : 0'),
 ];
 
-/** Forms the checker refuses today, so neither backend runs them. */
+/** Forms the checker refuses, so neither backend runs them. */
 const AGREED_REJECT: readonly Row[] = [
 	reject("an uninitialised let", "let x; x = 1; o.out = x", /every variable needs an initial value/),
 	reject("**=", "let x = 2; x **= 2; o.out = x", /`\*\*=` is not allowed/),
@@ -107,15 +118,16 @@ const AGREED_REJECT: readonly Row[] = [
 	reject("writing the inputs parameter, i = 0", "i = 0; o.out = 1", /assigns to 'i', the tick's inputs record/),
 	reject("writing the outputs parameter, o = 0", "o = 0", /assigns to 'o', the tick's outputs record/),
 	reject("updating the config parameter, cfg++", "cfg++; o.out = 1", /assigns to 'cfg', the tick's config record/),
+	reject("a let rebound to a typed array of another type", "let a = s.a; a = s.buf; o.out = a[0]", /takes only an array or record of the same type and length/),
+	reject("arithmetic on a typed-array let", "let a = s.a; a = s.b; a += 1; o.out = 1", /takes only an array or record of the same type/),
+	reject("a typed array stored in a number let", "let x = 0; x = s.buf; o.out = 1", /an array or record stored where a number is kept/),
+	reject("a written let holding a string", 'let m = cfg.mode; if (i.in > 50) m = cfg.mode; o.out = 1', /strings exist only while compiling/),
 ];
 
 /** Rows the backends disagree on today: each states the agreed outcome. */
 const DISAGREE_ACCEPT: readonly Row[] = [
 	accept("swapping typed-array state, s.a = s.b", "s.a = s.b; o.out = s.a[0]"),
 	accept("the state record in a const, const t = s", "const t = s; t.n++; o.out = t.n % 3"),
-	accept("a typed array in a let, let a = s.buf", "let a = s.buf; a[0] = i.in; o.out = a[0]"),
-	accept("a let rebound to another typed array", "let a = s.a; a = s.b; o.out = a[0]"),
-	accept("a config string in a let, let m = cfg.mode", 'let m = cfg.mode; o.out = m === "a" ? 1 : 0'),
 	accept(
 		"writes through const v = s.voices[k]",
 		"const v = s.voices[s.n % 2]; s.n++; v.x += 1; o.out = s.voices[0].x",
@@ -136,8 +148,18 @@ function expectAccepted(row: Row): void {
 	expectIdentical(evalPatch(patch(row.body, row.helpers)), SAMPLES);
 }
 
+/** Refused at eval (the rules), or at build on both engines (the kind check). */
 function expectRejected(row: Row): void {
-	expect(() => evalPatch(patch(row.body, row.helpers))).toThrow(row.message ?? /./);
+	const message = row.message ?? /./;
+	let program: Program;
+	try {
+		program = evalPatch(patch(row.body, row.helpers));
+	} catch (error) {
+		expect(String(error)).toMatch(message);
+		return;
+	}
+	expect(() => interpreterRun(program, 1)).toThrow(message);
+	expect(() => wasmRun(program, 1)).toThrow(message);
 }
 
 describe("tick forms: both backends agree", () => {

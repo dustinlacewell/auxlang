@@ -21,7 +21,7 @@ import { applyBinary } from "./fold-ops";
 import { rangeOf, union } from "./int-range";
 import type { PlanContext, Position } from "./plan-context";
 import { binaryRange } from "./range-binary";
-import { BOOL, NUM, type Ty, UNKNOWN, emittedClass, emittedTy, int, known } from "./ty";
+import { BOOL, NUM, type Ty, UNKNOWN, emittedClass, emittedTy, int, known, ref } from "./ty";
 import { typeCall } from "./type-call";
 import { typeMember } from "./type-member";
 import { typeUnary } from "./type-unary";
@@ -138,7 +138,7 @@ function typeAssignment(c: PlanContext, node: AssignmentExpression): Ty {
 		return NUM;
 	}
 	c.events.push({ k: "store", node, place, value });
-	return emittedTy(value);
+	return value.k === "ref" ? ref(value.shape) : emittedTy(value);
 }
 
 function typeUpdate(c: PlanContext, node: UpdateExpression): Ty {

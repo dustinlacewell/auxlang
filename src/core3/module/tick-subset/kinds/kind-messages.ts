@@ -4,12 +4,6 @@
  * (`true === 1` is false in JS).
  */
 
-export const STORED =
-	"a boolean stored where a number is kept — JS keeps the boolean (`true === 1` is false); write `cond ? 1 : 0` for a number, or keep the boolean in a `const`/`let` of its own";
-
-export const INTO_BOOLEAN =
-	"a number stored in a boolean variable — a variable keeps the type it starts with; start it as a number (`let x = 0`)";
-
 export const MIXED =
 	"this value is a boolean on one path and a number on another — write `cond ? 1 : 0` for a number";
 

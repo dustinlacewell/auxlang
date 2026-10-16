@@ -1,0 +1,70 @@
+/**
+ * A variable that holds an array or record and is reassigned (`let a = s.a;
+ * a = s.b`): an i32 local holds its address. The plan (front/types/unify.ts)
+ * proves each value it takes has the variable's shape, so one layout reads
+ * them all. A read copies the address when JS evaluates the name, so a
+ * rebind later in the same expression (`a[(a = s.b, 0)]`) leaves it alone.
+ */
+
+import type { AnyNode, AssignmentExpression } from "acorn";
+import { OP } from "../encode/opcodes";
+import type { FnEmitter } from "./fn-emitter";
+import { placeOf } from "./place";
+import { type Address, type MemoryValue, inMemory } from "./values";
+import { referenceWritten } from "./written";
+
+export function declareAddress(e: FnEmitter, name: string, init: AnyNode): void {
+	const held = refAt(e, init);
+	const base = e.local("int");
+	pushAddress(e, held.at);
+	e.code.set(base);
+	e.scope.declare(name, inMemory(held.shape, { base, offset: 0 }));
+}
+
+/** Whether `node` assigns to a variable holding an array or record. */
+export function isRebind(e: FnEmitter, node: AssignmentExpression): boolean {
+	return node.left.type === "Identifier" && e.typeOf(node.left).k === "ref";
+}
+
+/** `a = s.b`: the variable's address local takes the new address. */
+export function emitRebind(e: FnEmitter, node: AssignmentExpression): void {
+	const variable = node.left.type === "Identifier" ? e.scope.lookup(node.left.name) : null;
+	if (node.operator !== "=" || variable?.k !== "memory" || variable.at.base === null)
+		e.fail(node, "an array variable is only ever rebound by a plain `=` (compiler bug)");
+	pushAddress(e, refAt(e, node.right).at);
+	e.code.set(variable.at.base);
+}
+
+/**
+ * What a reassigned array or record variable, or a rebind (`(a = s.b)[0]`),
+ * names now; null for any other node.
+ */
+export function placeOfAddress(e: FnEmitter, node: AnyNode, known: MemoryValue | null): MemoryValue | null {
+	if (node.type === "AssignmentExpression" && isRebind(e, node)) {
+		emitRebind(e, node);
+		return refAt(e, node.left);
+	}
+	const fn = e.ctx.fn;
+	if (node.type !== "Identifier" || known === null || known.at.base === null) return null;
+	if (fn === null || !referenceWritten(fn, node)) return null;
+	const copy = e.local("int");
+	e.code.get(known.at.base).set(copy);
+	return inMemory(known.shape, { base: copy, offset: known.at.offset });
+}
+
+/** The array or record `node` names, emitting the code that finds it. */
+function refAt(e: FnEmitter, node: AnyNode): MemoryValue {
+	const value = placeOf(e, node);
+	if (value?.k !== "memory" || value.shape.k === "number")
+		return e.fail(node, "the plan gives an array or record here, but it names none (compiler bug)");
+	return value;
+}
+
+function pushAddress(e: FnEmitter, at: Address): void {
+	if (at.base === null) {
+		e.code.i32Const(at.offset);
+		return;
+	}
+	e.code.get(at.base);
+	if (at.offset !== 0) e.code.i32Const(at.offset).op(OP.i32Add);
+}
