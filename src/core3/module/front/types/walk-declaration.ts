@@ -1,7 +1,8 @@
 /**
  * `let`, `const` and `var`. A variable never written after its declaration
  * (a `const`, or a `let` with no write sites) of a known value, an array or
- * a record names it directly; of a number, it keeps its initial value's
+ * a record names it directly, and one of a tick's parameter records is that
+ * record (the rules never let it be written, module/roles.ts); of a number, it keeps its initial value's
  * integer range, so a backend may hold it in an integer register. A written
  * variable holds a run-time value of its initial value's type, or the
  * address of an array or record of its initial one's shape; its
@@ -28,6 +29,7 @@ export function walkDeclaration(c: PlanContext, node: VariableDeclaration): void
 
 function declaredTy(init: Ty, unwritten: boolean): Ty {
 	if (init.k === "ref") return ref(init.shape);
+	if (init.k === "role") return init;
 	if (unwritten && init.k === "static") return init;
 	const range = unwritten ? rangeOf(init) : null;
 	return range === null ? emittedTy(init) : int(range);

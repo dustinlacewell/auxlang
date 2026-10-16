@@ -1,8 +1,7 @@
 /**
  * Read one module's tick code once (Stage A): parse the tick and each helper,
- * resolve their names, check the tick, find the helper parameters that take
- * the state record, check the helpers, and refuse recursion in their call
- * graph.
+ * resolve their names, check the tick and the helpers, and refuse recursion
+ * in their call graph.
  */
 
 import type { ModuleSource } from "@/core3/types";
@@ -10,7 +9,6 @@ import { parsePart } from "@/core3/module/front/parse/parse-part";
 import { analyseFunction, resolvePart } from "./analyse-function";
 import { analyseHelpers, resolveHelpers } from "./analyse-helpers";
 import { assertNoRecursion } from "./helper-cycles";
-import { helperStateParams } from "./helper-state-params";
 import type { ModuleFacts, ModuleIR } from "./module-ir";
 
 /** Names a helper may not take: they are the tick's own bindings. */
@@ -24,7 +22,7 @@ export function analyseModule(source: ModuleSource, facts: ModuleFacts): ModuleI
 	const tick = resolvePart(parsePart(tickSite), names);
 	const tickIR = analyseFunction(tick, { ...shared, kind: "tick" });
 	const resolved = resolveHelpers(source.helpers, facts.owner, names, origins);
-	const helpers = analyseHelpers(resolved, shared, helperStateParams(tick, resolved));
+	const helpers = analyseHelpers(resolved, shared);
 	assertNoRecursion(helpers);
 	return { tick: tickIR, helpers };
 }

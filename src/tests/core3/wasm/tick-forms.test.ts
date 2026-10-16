@@ -153,22 +153,6 @@ const stepper = defmod({
 })
 seq("[c3,e3] <g3 a3>").stepper().mul(0.1).out()`;
 
-const STATE_PARAM_MOVES = `tempo(120)
-const moves = defmod({
-  name: "moves",
-  category: "utils",
-  ins: { in: sig(0) },
-  outs: { out: sig() },
-  defaultIn: "in",
-  defaultOut: "out",
-  state: () => ({ n: 0 }),
-  helpers: { f: (a, b) => a.n + b },
-  tick: (s, i, o) => {
-    o.out = f(s, 1) + f(2, s)
-  },
-})
-seq("c3").moves().out()`;
-
 describe("patch-defined ticks on WASM match the interpreter", () => {
 	it("control flow, shadowing, outputs read back or left unwritten", () => {
 		const ref = expectIdentical(evalPatch(CONTROL_FLOW), SR / 4);
@@ -195,13 +179,4 @@ describe("patch-defined ticks on WASM match the interpreter", () => {
 	});
 
 	it.todo("swapped typed-array state references, `s.a = s.b` (WASM: 'this cannot be assigned')");
-});
-
-describe("tick forms the checker refuses on every backend", () => {
-	// The checker runs at eval, before either backend sees the program.
-	it("a helper that takes the state record in different places", () => {
-		expect(() => evalPatch(STATE_PARAM_MOVES)).toThrow(
-			/helper 'f' takes the state record as argument 1 — pass the state record there, once, at every call/,
-		);
-	});
 });

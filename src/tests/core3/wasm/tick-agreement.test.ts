@@ -3,7 +3,7 @@
  * renders on WASM bit-identical to the interpreter (accept), or the checker
  * refuses it, at eval or at build on both engines (reject). Rows whose
  * backends disagree today are `it.fails`; each one flips when the tick front
- * end closes it (card tick-front-end-2026-10-15, step 5).
+ * end closes it (card tick-front-end-2026-10-15, steps 5 to 7).
  */
 
 import "@/core3/modules/all";
@@ -110,6 +110,43 @@ const AGREED_ACCEPT: readonly Row[] = [
 	accept("||= of a boolean in an element, kept", "o.out = (s.buf[s.n % 6] ||= i.in > 3) ? 1 : 0; s.n++"),
 	accept("||= on an element, kept","o.out = (s.buf[s.n % 6] ||= i.in * 2); s.n++"),
 	accept("a config string in a let, let m = cfg.mode", 'let m = cfg.mode; o.out = m === "a" ? 1 : 0'),
+	accept("the state record in a const, const t = s", "const t = s; t.n++; o.out = t.n % 3"),
+	accept(
+		"writes through const v = s.voices[k]",
+		"const v = s.voices[s.n % 2]; s.n++; v.x += 1; o.out = s.voices[0].x",
+	),
+	accept("a record parameter written in a helper", "o.out = bump(s.v)", "bump: (r) => { r.x += 1; return r.x }"),
+	accept(
+		"a typed-array parameter reassigned in a helper",
+		"o.out = pick(s.a, s.b)",
+		"pick: (p, q) => { p = q; return p[0] }",
+	),
+	accept("an alias of a state alias", "const t = s; const u = t; u.n++; o.out = u.n % 3"),
+	accept("a state alias passed to a helper", "const t = s; o.out = bump(t)", "bump: (r) => { r.n += 1; return r.n % 3 }"),
+	accept("an outputs alias", "const q = o; q.out = i.in"),
+	accept("an inputs alias", "const x = i; o.out = x.in"),
+	accept("a config alias", 'const c = cfg; o.out = c.mode === "a" ? 1 : 0'),
+	accept(
+		"a helper taking the state record and one of its records",
+		"o.out = add(s, s.voices[s.n % 2]); s.n++",
+		"add: (r, v) => { v.x += 1; r.acc += v.x; return r.acc }",
+	),
+	accept(
+		"the state record at two arguments of one helper",
+		"o.out = f(s, s); s.acc++",
+		"f: (a, b) => { a.acc += 1; return b.acc }",
+	),
+	accept(
+		"one helper taking a record at a fixed and at a run-time address",
+		"o.out = f(s.v) + f(s.voices[s.n % 2]); s.n++",
+		"f: (r) => { r.x += 0.5; return r.x }",
+	),
+	accept(
+		"a record parameter reassigned in a helper",
+		"o.out = pick(s.voices[0], s.voices[1])",
+		"pick: (p, q) => { p = q; p.x += 1; return p.x }",
+	),
+	accept("a nested record written through a const", "const v = s.v; v.x += i.in; o.out = s.v.x"),
 ];
 
 /** Forms the checker refuses, so neither backend runs them. */
@@ -136,22 +173,36 @@ const AGREED_REJECT: readonly Row[] = [
 	reject("??= on a local", "let x = 0; x ??= i.in; o.out = x", /`\?\?` is allowed only on a direct array element/),
 	reject("a typed array stored in a number let", "let x = 0; x = s.buf; o.out = 1", /an array or record stored where a number is kept/),
 	reject("a written let holding a string", 'let m = cfg.mode; if (i.in > 50) m = cfg.mode; o.out = 1', /strings exist only while compiling/),
+	reject("a state alias adding a field", "const t = s; t.zz = 1; o.out = 1", /adds field 't\.zz'/),
+	reject("a state alias reading a missing field", "const t = s; o.out = t.zz", /unknown state field 'zz'/),
+	reject("writing through an inputs alias", "const x = i; x.in = 1; o.out = 1", /inputs and config are read-only/),
+	reject("an unknown output through an alias", "const q = o; q.zz = 1", /unknown output 'zz'/),
+	reject("reassigning a state alias", "let t = s; t = s; o.out = 1", /assigns to 't', the tick's state record/),
+	reject("a state record stored as a number", "o.out = s", /a parameter record stored/),
+	reject("a helper adding a field to a record", "o.out = f(s.v)", /adds field 'y'/, "f: (r) => { r.y = 1; return 0 }"),
+	reject("a helper reading a missing field", "o.out = f(s)", /unknown field 'zz'/, "f: (r) => r.zz"),
+	reject("a helper indexing the state record", "o.out = f(s)", /fields must be named, not computed/, "f: (r) => r[0]"),
+	reject("a nested missing field", "o.out = s.v.y", /unknown field 'y'/),
+	reject("a typed array in arithmetic", "o.out = s.buf + 1", /an array or record used as a number/),
+	reject("the state record negated", "o.out = -s", /an array or record used as a number/),
+	reject("a field of a number", "const k = i.in; o.out = k.n", /reads field 'n' of a value that is not a record/),
+	reject(
+		"a field of a number, in a helper also given the state record",
+		"o.out = f(s, 1) + f(2, s)",
+		/reads field 'n' of a value that is not a record/,
+		"f: (a, b) => a.n + b",
+	),
+	reject(
+		"a helper array parameter rebound to another type",
+		"o.out = f(s.a, s.buf)",
+		/takes only an array or record of the same type and length/,
+		"f: (p, q) => { p = q; return p[0] }",
+	),
 ];
 
 /** Rows the backends disagree on today: each states the agreed outcome. */
 const DISAGREE_ACCEPT: readonly Row[] = [
 	accept("swapping typed-array state, s.a = s.b", "s.a = s.b; o.out = s.a[0]"),
-	accept("the state record in a const, const t = s", "const t = s; t.n++; o.out = t.n % 3"),
-	accept(
-		"writes through const v = s.voices[k]",
-		"const v = s.voices[s.n % 2]; s.n++; v.x += 1; o.out = s.voices[0].x",
-	),
-	accept("a record parameter written in a helper", "o.out = bump(s.v)", "bump: (r) => { r.x += 1; return r.x }"),
-	accept(
-		"a typed-array parameter reassigned in a helper",
-		"o.out = pick(s.a, s.b)",
-		"pick: (p, q) => { p = q; return p[0] }",
-	),
 ];
 
 function expectAccepted(row: Row): void {

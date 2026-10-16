@@ -10,7 +10,7 @@ import type { UnaryExpression } from "acorn";
 import { applyUnary } from "./fold-ops";
 import { INT32, type Range, fitsI32, includes, rangeOf, safeRange } from "./int-range";
 import type { PlanContext } from "./plan-context";
-import { BOOL, NUM, type Ty, UNKNOWN, int, known } from "./ty";
+import { BOOL, NUM, type Ty, UNKNOWN, int, isStructured, known } from "./ty";
 import { typeExpr } from "./type-expression";
 
 export function typeUnary(c: PlanContext, node: UnaryExpression): Ty {
@@ -25,6 +25,7 @@ export function typeUnary(c: PlanContext, node: UnaryExpression): Ty {
 			return UNKNOWN;
 		default: {
 			const arg = typeExpr(c, node.argument, "value");
+			if (isStructured(arg)) c.events.push({ k: "operand", node });
 			return folded(node.operator, arg, int(unaryRange(node.operator, rangeOf(arg))));
 		}
 	}

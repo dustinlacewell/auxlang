@@ -17,7 +17,7 @@ export function analyseLibrary(
 ): ReadonlyMap<string, FunctionIR> {
 	const names = new Set(Object.keys(texts));
 	const facts = { helpers: names, ins: NONE, outs: NONE, state: {}, tables: false };
-	const helpers = analyseHelpers(resolveHelpers(texts, owner, names), facts, new Map());
+	const helpers = analyseHelpers(resolveHelpers(texts, owner, names), facts);
 	assertNoRecursion(helpers);
 	return helpers;
 }

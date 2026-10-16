@@ -22,7 +22,7 @@ import { rangeOf, union } from "./int-range";
 import { keepsLeft } from "./keeps-left";
 import type { PlanContext, Position } from "./plan-context";
 import { binaryRange } from "./range-binary";
-import { BOOL, NUM, type Ty, UNKNOWN, emittedClass, emittedTy, int, known, ref } from "./ty";
+import { BOOL, NUM, type Ty, UNKNOWN, emittedClass, emittedTy, int, isStructured, known, ref } from "./ty";
 import { typeCall } from "./type-call";
 import { typeMember } from "./type-member";
 import { typeUnary } from "./type-unary";
@@ -87,6 +87,7 @@ function typeName(c: PlanContext, id: Identifier): Ty {
 function typeBinary(c: PlanContext, node: BinaryExpression): Ty {
 	const left = typeExpr(c, node.left, "value");
 	const right = typeExpr(c, node.right, "value");
+	if (isStructured(left) || isStructured(right)) c.events.push({ k: "operand", node });
 	if (node.operator !== "**" && left.k === "static" && right.k === "static")
 		return known(applyBinary(node.operator, left.v, right.v));
 	if (COMPARISONS.has(node.operator)) return BOOL;
@@ -165,8 +166,10 @@ function typeUpdate(c: PlanContext, node: UpdateExpression): Ty {
  * converts what it is given in JS too, so it keeps anything.
  */
 function typePlace(c: PlanContext, target: AnyNode): Ty {
-	const ty = typeExpr(c, target, "value");
-	return target.type === "MemberExpression" && target.computed ? UNKNOWN : ty;
+	if (target.type !== "MemberExpression") return typeExpr(c, target, "value");
+	const ty = typeMember(c, target, true);
+	c.types.set(target, ty);
+	return target.computed ? UNKNOWN : ty;
 }
 
 function typeSequence(c: PlanContext, node: SequenceExpression, pos: Position): Ty {

@@ -2,9 +2,10 @@
  * Writes. A tick writes its locals, its declared outputs, and fields its
  * fresh state already has — never a new field, never an array's length, never
  * its inputs or config, never a role parameter itself (`s = 0`: only one
- * state, inputs, outputs and config record exists). Field writes go through
- * the state parameter by name, so their path can be checked against the real
- * fresh state; elsewhere only indexed writes (`buf[k] = x`) are allowed.
+ * state, inputs, outputs and config record exists). A write through the state
+ * record (or a variable holding it, module/roles.ts) has its path checked
+ * against the real fresh state here; a write through any other record or
+ * array is checked against its type by the plan (front/types/).
  */
 
 import type { AnyNode, MemberExpression } from "acorn";
@@ -43,11 +44,6 @@ export function checkWrite(target: AnyNode, ctx: RuleContext): void {
 	else if (role === "outs") checkOutput(target, hops, ctx);
 	else if (role === "ins" || role === "config")
 		ctx.fail(target, "inputs and config are read-only");
-	else if (hops.some((h) => !h.computed))
-		ctx.fail(
-			target,
-			`writes a field through '${owner}' — write state fields through the state parameter so their shape can be checked`,
-		);
 }
 
 function unwind(target: MemberExpression): { root: AnyNode; hops: Hop[] } {

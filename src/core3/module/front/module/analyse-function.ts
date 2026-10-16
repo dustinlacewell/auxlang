@@ -1,14 +1,13 @@
 /**
  * Analyse one function (a tick, a helper, or a signal lambda): resolve its
  * names, then run every rule on the resolved bindings and list its writes and
- * helper calls. Resolving comes first and apart, so a module can find which
- * helper parameters take the state record before its helpers are checked.
+ * helper calls. Resolving comes first and apart: a set of helpers resolves
+ * each against the whole set's names before any is checked.
  */
 
 import type { ParsedPart } from "@/core3/module/front/parse/parse-part";
 import { applyRules } from "@/core3/module/front/rules/apply-rules";
 import type { FunctionKind, RuleContext } from "@/core3/module/front/rules/rule-context";
-import type { Binding } from "@/core3/module/front/scope/binding";
 import { resolveBindings } from "@/core3/module/front/scope/resolve-bindings";
 import { writeSites } from "@/core3/module/front/scope/writes";
 import type { FunctionIR, ModuleFacts, ResolvedPart } from "./module-ir";
@@ -23,16 +22,11 @@ export function resolvePart(parsed: ParsedPart, helpers: ReadonlySet<string>): R
 	return { ...parsed, scopes: resolveBindings(parsed.node, helpers) };
 }
 
-/** `stateParam`: a helper's parameter that receives the tick's state record. */
-export function analyseFunction(
-	part: ResolvedPart,
-	facts: FunctionFacts,
-	stateParam?: Binding,
-): FunctionIR {
+export function analyseFunction(part: ResolvedPart, facts: FunctionFacts): FunctionIR {
 	const ctx: RuleContext = {
 		...facts,
 		scopes: part.scopes,
-		roles: rolesOf(facts.kind, part.scopes.params, stateParam),
+		roles: rolesOf(facts.kind, part.scopes),
 		fail: part.fail,
 		calls: [],
 	};

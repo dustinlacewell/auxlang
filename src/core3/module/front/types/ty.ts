@@ -51,6 +51,11 @@ export const known = (v: StaticValue): Ty => ({ k: "static", v });
 export const int = (range: Range | null): Ty => (range === null ? NUM : { k: "num", range });
 export const ref = (shape: RefShape, placed = false): Ty => ({ k: "ref", shape, placed });
 
+/** An array or record in state, or a tick's parameter record: never a number. */
+export function isStructured(ty: Ty): boolean {
+	return ty.k === "ref" || ty.k === "role";
+}
+
 /** What a value of this type is at run time: a number, a boolean, or nothing a backend holds. */
 export function emittedClass(ty: Ty): "num" | "bool" | "unknown" {
 	if (ty.k === "num" || ty.k === "bool") return ty.k;

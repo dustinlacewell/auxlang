@@ -5,33 +5,49 @@
  * array's or list's length, an array element at a constant index that is
  * not valid (`undefined`). A list element at a run-time index is placed:
  * nothing under it folds. An integer array's element read by a path at an
- * index proven in bounds has the element type's range.
+ * index proven in bounds has the element type's range. A field no state
+ * has (field-fault.ts) is an event the check refuses.
  */
 
 import type { AnyNode, MemberExpression } from "acorn";
 import { MATH_CONSTANTS } from "@/core3/math/math-constants";
 import { CACHE_ARRAY } from "@/core3/module/bind-math/cache-names";
 import type { ElementType } from "./element-type";
+import type { FieldFault } from "./field-fault";
 import { INT32, type Range, UINT32, rangeOf, within } from "./int-range";
 import type { PlanContext } from "./plan-context";
-import { NUM, type RefShape, type Ty, UNKNOWN, int, known, ref } from "./ty";
+import { NUM, type RecordRef, type RefShape, type Ty, UNKNOWN, int, known, ref } from "./ty";
 import { typeExpr } from "./type-expression";
 import { validIndex } from "./valid-index";
 
-export function typeMember(c: PlanContext, node: MemberExpression): Ty {
-	return node.computed ? typeIndex(c, node) : typeField(c, node);
+/** `write`: the member is the target of an assignment or update. */
+export function typeMember(c: PlanContext, node: MemberExpression, write = false): Ty {
+	return node.computed ? typeIndex(c, node, write) : typeField(c, node, write);
 }
 
-function typeField(c: PlanContext, node: MemberExpression): Ty {
+function typeField(c: PlanContext, node: MemberExpression, write: boolean): Ty {
 	if (node.property.type !== "Identifier") return UNKNOWN;
 	const field = node.property.name;
 	if (isMathName(c, node.object))
 		return MATH_CONSTANTS.has(field) ? known(Math[field as keyof Math] as number) : UNKNOWN;
 	const owner = typeExpr(c, node.object, "value");
+	const fault = fieldFault(owner, field, write);
+	if (fault !== null) c.events.push({ k: "field", node, fault });
 	const path = isPath(c, node.object);
 	const ty = fieldTy(c, owner, field, path);
 	if (path && ty !== UNKNOWN) c.paths.add(node);
 	return ty;
+}
+
+function fieldFault(owner: Ty, field: string, write: boolean): FieldFault | null {
+	if (isRecord(owner)) return Object.hasOwn(owner.shape.fields, field) ? null : { k: "missing", field, write };
+	const constant = owner.k === "static" && (typeof owner.v === "number" || typeof owner.v === "boolean");
+	const scalar = owner.k === "num" || owner.k === "bool" || constant;
+	return scalar ? { k: "scalar", field } : null;
+}
+
+function isRecord(ty: Ty): ty is Ty & { k: "ref"; shape: RecordRef } {
+	return ty.k === "ref" && ty.shape.k === "record";
 }
 
 function fieldTy(c: PlanContext, owner: Ty, field: string, path: boolean): Ty {
@@ -62,13 +78,14 @@ function roleField(c: PlanContext, role: string, field: string): Ty {
 	}
 }
 
-function typeIndex(c: PlanContext, node: MemberExpression): Ty {
+function typeIndex(c: PlanContext, node: MemberExpression, write: boolean): Ty {
 	if (isCacheArray(c, node.object)) {
 		typeExpr(c, node.property, "value");
 		return NUM;
 	}
 	const owner = typeExpr(c, node.object, "value");
 	const index = typeExpr(c, node.property, "value");
+	if (isRecord(owner)) c.events.push({ k: "field", node, fault: { k: "indexed" } });
 	if (owner.k !== "ref" || owner.shape.k === "record") return UNKNOWN;
 	const path = isPath(c, node.object);
 	const constant = path && index.k === "static";

@@ -1,8 +1,9 @@
 /**
  * `let`, `const` and `var` declarations, stored as the plan types them
  * (front/types/walk-declaration.ts). A known value stays a compile-time
- * constant. An array or record is an alias when the variable is never
- * reassigned, else an address in an i32 local (address-variable.ts). A
+ * constant. A tick's parameter record is an alias of it. An array or
+ * record is an alias when the variable is never reassigned, else an
+ * address in an i32 local (address-variable.ts). A
  * variable the plan gives an integer range (an unwritten one, or a loop
  * counter, loop-counter.ts) is an i32 local when the range fits int32, else
  * an i64 local. Any other variable is an f64 or a boolean.
@@ -16,6 +17,7 @@ import { emitInteger } from "./emit-int";
 import type { FnEmitter } from "./fn-emitter";
 import { widthOf } from "./int-width";
 import { placeOf } from "./place";
+import { resolve } from "./resolve";
 import { type Kind, fixed, local } from "./values";
 import { variableWritten } from "./written";
 
@@ -35,6 +37,10 @@ function declare(e: FnEmitter, d: VariableDeclarator): void {
 	const declared = e.typeOf(d.id);
 	if (declared.k === "static") {
 		e.scope.declare(name, fixed(declared.v));
+		return;
+	}
+	if (declared.k === "role") {
+		declareRoleAlias(e, name, d.init);
 		return;
 	}
 	if (declared.k === "ref") {
@@ -61,6 +67,14 @@ function setLocal(e: FnEmitter, kind: Kind): number {
 	const index = e.local(kind);
 	e.code.set(index);
 	return index;
+}
+
+/** `const t = s`: `t` names the tick's parameter record itself; no local. */
+function declareRoleAlias(e: FnEmitter, name: string, init: AnyNode): void {
+	const value = resolve(e, init);
+	if (value?.k !== "role")
+		e.fail(init, "the plan gives a parameter record here, but it names none (compiler bug)");
+	e.scope.declare(name, value);
 }
 
 /**

@@ -7,15 +7,18 @@
  * lane's real state, config, inputs and sample rate, and each helper plan it
  * calls. Where only
  * truthiness counts (`if`, loops, `!`, `&&`/`||` inside them) booleans and
- * numbers may mix. Code a known test leaves dead is not judged.
+ * numbers may mix. Code a known test leaves dead is not judged. The same
+ * walk refuses a field no state has (field-fault.ts) and an array or record
+ * used as a number.
  */
 
 import type { FunctionIR } from "@/core3/module/front/module/module-ir";
 import { calleesOf } from "@/core3/module/front/types/callees";
 import { type FunctionPlan, planFunction } from "@/core3/module/front/types/function-plan";
+import { fieldFaultMessage } from "@/core3/module/front/types/field-fault";
 import type { PlanEvent } from "@/core3/module/front/types/plan-events";
 import { NUM, known } from "@/core3/module/front/types/ty";
-import { unify } from "@/core3/module/front/types/unify";
+import { STRUCTURED_OPERAND, unify } from "@/core3/module/front/types/unify";
 import { LAMBDA_BOOLEAN, MIXED, MIXED_RETURNS, STEP_BOOLEAN } from "./kind-messages";
 import { classOf, conflict } from "./message-class";
 
@@ -65,6 +68,11 @@ function judgeEvent(ir: FunctionIR, event: Exclude<PlanEvent, { k: "call" }>): v
 		case "paths":
 			if (conflict(event.a, event.b)) ir.fail(event.node, MIXED);
 			return;
+		case "field":
+			ir.fail(event.node, fieldFaultMessage(event.fault));
+			return;
+		case "operand":
+			ir.fail(event.node, STRUCTURED_OPERAND);
 	}
 }
 
