@@ -13,6 +13,7 @@
  */
 
 import { validateSpec } from "../../module/define";
+import { positionalArgs } from "../../module/positional-args";
 import type { Category, PortAnn } from "../../types";
 import { currentSubpatches, evalCtx } from "../context";
 import { assertNoReservedPorts } from "../handle";
@@ -20,7 +21,7 @@ import { assertEvalNameFree, assertRootNameFree } from "../name-free";
 import { registerSubpatch } from "./registry";
 import type { SubpatchSpec } from "./subpatch-spec";
 
-const KEYS = new Set(["name", "doc", "category", "ins", "outs", "patch"]);
+const KEYS = new Set(["name", "doc", "category", "ins", "outs", "patch", "positional"]);
 
 export function defineSubpatch(written: Readonly<Record<string, unknown>>): SubpatchSpec {
 	const spec = subpatchSpec(written);
@@ -41,13 +42,14 @@ function subpatchSpec(written: Readonly<Record<string, unknown>>): SubpatchSpec 
 	const outs = portRecord(name, "outs", written.outs, 1);
 	assertNoOptionalIns(name, ins);
 	const inNames = Object.keys(ins);
+	const positional = positionalArgs(inNames, written.positional as readonly string[] | undefined, `defmod('${name}')`);
 	return {
 		name,
 		...(typeof written.doc === "string" ? { doc: written.doc } : {}),
 		category: (written.category as Category | undefined) ?? "utils",
 		ins,
 		outs,
-		positional: inNames,
+		positional,
 		...(inNames.length > 0 ? { defaultIn: inNames[0] } : {}),
 		...defaultOut(outs),
 		patch: written.patch as SubpatchSpec["patch"],

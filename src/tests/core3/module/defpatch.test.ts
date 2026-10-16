@@ -73,18 +73,32 @@ saw(45).mul(0.3).wide().out()`,
 });
 
 describe("defpatch: meta.args", () => {
-	it("sets the positional order", () => {
+	it("sets the positional order after the chained default input", () => {
 		sameSound(
-			`const filt = defmod({
-  name: "filt",
-  ins: { in: sig(0), cutoff: semis(84) },
+			`const x = defmod({
+  name: "x",
+  ins: { in: sig(0), a: semis(1), b: semis(2) },
   outs: { out: sig() },
-  patch: (i) => ({ out: i.in.lpf(i.cutoff) }),
+  patch: (i) => ({ out: i.in.add(i.a).add(i.b) }),
 })
-filt(saw(48), 70).out()`,
-			`const filt = defpatch("filt", { args: ["in", "cutoff"] }, ({ cutoff = 84, in: x = 0 }) => x.lpf(cutoff))
-filt(saw(48), 70).out()`,
+x(saw(48), 1, 5).out()`,
+			`const x = defpatch("x", { args: ["b"] }, ({ in: p, a = 1, b = 2 }) => p.add(a).add(b))
+x(saw(48), 5).out()`,
 		);
+	});
+
+	it("naming the default input in meta.args is a loud error", () => {
+		expect(() =>
+			evalPatch(`const x = defpatch("x", { args: ["in"] }, ({ in: p, b = 2 }) => p.add(b))
+x().out()`),
+		).toThrow(/default input/);
+	});
+
+	it("naming an unknown port in meta.args is a loud error", () => {
+		expect(() =>
+			evalPatch(`const x = defpatch("x", { args: ["nope"] }, ({ in: p, b = 2 }) => p.add(b))
+x().out()`),
+		).toThrow(/not an input/);
 	});
 });
 

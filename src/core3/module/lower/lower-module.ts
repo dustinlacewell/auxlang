@@ -19,6 +19,7 @@ import { findSetup } from "./find-setup";
 import { helperClosure } from "./helper-closure";
 import { inferOuts } from "./infer-outs";
 import { inferPorts } from "./infer-ports";
+import { positionalArgs } from "../positional-args";
 import { setupParts } from "./setup-parts";
 import { stateText } from "./state-text";
 import { tickText } from "./tick-text";
@@ -136,7 +137,7 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 
 	const ins = ports.ins;
 	const defaultIn = ports.order[0];
-	const positional = input.meta.args ?? ports.order.slice(defaultIn === undefined ? 0 : 1);
+	const positional = positionalArgs(ports.order, input.meta.args, what);
 	const defaultOut = outs.outs.includes("out") ? "out" : undefined;
 
 	const config: Record<string, unknown> = { ...(input.meta.config ?? {}) };

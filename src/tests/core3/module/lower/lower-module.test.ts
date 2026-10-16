@@ -61,12 +61,46 @@ describe("lowerModule", () => {
 		expect(Object.keys(lowered.ins)).toEqual(["in", "time"]);
 		expect(Object.keys(lowered.outs)).toEqual(["out"]);
 		expect(lowered.defaultIn).toBe("in");
-		expect(lowered.positional).toEqual(["time"]);
+		expect(lowered.positional).toEqual(["in", "time"]);
 		expect([...lowered.writes].sort()).toEqual(["buf", "w"]);
 
 		// `defmod(` is at line 3; the tick arrow it returns starts at line 6.
 		expect(lowered.source.origins?.tick).toEqual({ file: "patch", line: 6 });
 		expect(lowered.source.helpers.wrapIndex).toBeDefined();
+	});
+
+	const argsSetupText = [
+		"({ sr }) => {",
+		"  return ({ in: p = 0, a = 1, b = 2 }) => p + a + b",
+		"}",
+	].join("\n");
+
+	it("meta.args sets the positional order after the default input", () => {
+		const fileText = [`defmod("x", { args: ["b"] }, ${argsSetupText})`].join("\n");
+		const source: SourceText = { file: "patch", text: fileText };
+		const lowered = lowerModule({
+			name: "x",
+			meta: { args: ["b"] },
+			setupText: argsSetupText,
+			file: { text: fileText, program: fileProgram(source) },
+			library: false,
+		});
+		expect(lowered.defaultIn).toBe("in");
+		expect(lowered.positional).toEqual(["in", "b"]);
+	});
+
+	it("meta.args naming the default input is a loud error", () => {
+		const fileText = [`defmod("x", { args: ["in"] }, ${argsSetupText})`].join("\n");
+		const source: SourceText = { file: "patch", text: fileText };
+		expect(() =>
+			lowerModule({
+				name: "x",
+				meta: { args: ["in"] },
+				setupText: argsSetupText,
+				file: { text: fileText, program: fileProgram(source) },
+				library: false,
+			}),
+		).toThrow(/default input/);
 	});
 
 	it("feeding `source` into bindSource: the lowered echo is accepted", () => {

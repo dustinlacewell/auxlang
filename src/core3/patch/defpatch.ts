@@ -58,8 +58,9 @@ export function defpatch(
 		name,
 		...(meta.doc !== undefined ? { doc: meta.doc } : {}),
 		category: meta.cat ?? "utils",
-		ins: orderedIns(ports.ins, meta.args, name),
+		ins: ports.ins,
 		outs: outAnn,
+		...(meta.args !== undefined ? { positional: meta.args } : {}),
 		patch: (ins: Readonly<Record<string, Handle>>) => wrapOut(fn(ins)),
 	});
 	return moduleFactory(spec);
@@ -80,30 +81,6 @@ function locateFn(name: string, fn: PatchFn): ArrowFunctionExpression {
 		if (found !== null) return asArrow(found.setup, name);
 	}
 	return asArrow(parseFunction(fnText, `defpatch '${name}'`).node, name);
-}
-
-/**
- * A sub-patch's positional order is its `ins` record's own key order
- * (subpatch/define-subpatch derives `positional` from it, taking no separate
- * field); `meta.args` reorders the inferred ports to match.
- */
-function orderedIns(
-	ins: Readonly<Record<string, PortAnn>>,
-	args: readonly string[] | undefined,
-	name: string,
-): Record<string, PortAnn> {
-	if (args === undefined) return { ...ins };
-	const missing = args.find((port) => !(port in ins));
-	if (missing !== undefined) {
-		throw new Error(`defpatch('${name}'): meta.args names '${missing}', which is not an input`);
-	}
-	const extra = Object.keys(ins).find((port) => !args.includes(port));
-	if (extra !== undefined) {
-		throw new Error(`defpatch('${name}'): meta.args is missing input '${extra}'`);
-	}
-	const ordered: Record<string, PortAnn> = {};
-	for (const port of args) ordered[port] = ins[port] as PortAnn;
-	return ordered;
 }
 
 /**
