@@ -57,15 +57,18 @@ interface CallEdits {
 	readonly numberKey: AnyNode | null;
 }
 
+const NONE: CallEdits = { edits: [], numberKey: null };
+
 function callEdits(call: CallExpression, state: string, uses: Set<string>): CallEdits {
 	if (isMathRandom(call.callee) && call.arguments.length === 0) {
 		uses.add("nextRng");
 		const draw = `((${state}.__rng = ${helper("nextRng")}(${state}.__rng)) / 4294967295)`;
 		return { edits: [{ start: call.start, end: call.end, text: draw }], numberKey: null };
 	}
+	// Only a well-formed call is bound; any other stays as written for the front end to refuse.
 	const key = call.arguments[0];
-	if (call.callee.type !== "Identifier" || call.callee.name !== "hashRandom" || key === undefined)
-		return { edits: [], numberKey: null };
+	if (call.callee.type !== "Identifier" || call.callee.name !== "hashRandom") return NONE;
+	if (key === undefined || call.arguments.length !== 1 || key.type === "SpreadElement") return NONE;
 	const callee = { start: call.callee.start, end: call.callee.end };
 	const seed = `, ${state}.__seed`;
 	if (key.type === "Literal" && typeof key.value === "string") {

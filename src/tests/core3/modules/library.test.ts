@@ -1,14 +1,15 @@
 /**
  * The built-in library obeys the tick subset like any patch module: every
  * registered module carries its source text, and that text passes the
- * checker.
+ * checker. A library module's tick is read on first use, not at import, so
+ * this is where a fault in it shows.
  */
 
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
 import { getRegistry } from "@/core3/module/define";
-import { checkModule } from "@/core3/module/front/module/check-module";
+import { specIR } from "@/core3/module/front/module/spec-ir";
 
 const modules = [...getRegistry().values()];
 
@@ -20,9 +21,8 @@ describe("built-in library", () => {
 	it.each(modules.map((spec) => [spec.name, spec] as const))(
 		"%s passes the tick subset",
 		(_name, spec) => {
-			const source = spec.source;
-			expect(source).toBeDefined();
-			if (source !== undefined) expect(() => checkModule(spec, source)).not.toThrow();
+			expect(spec.source).toBeDefined();
+			expect(() => specIR(spec)).not.toThrow();
 		},
 	);
 });

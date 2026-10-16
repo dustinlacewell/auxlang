@@ -1,10 +1,12 @@
 /**
  * From the spec `defmod` receives to the spec the engine runs. The tick and
- * helpers are read back as source text, checked against the tick subset,
- * bound to auxlang's math (bind-math/) and random library (bind-random/),
- * and the tick is rebuilt from that
- * text with its names bound. The bound source text is kept on the spec
- * (`source`): it is what the WASM compiler reads.
+ * helpers are read back as source text and bound to auxlang's math
+ * (bind-math/) and random library (bind-random/), and the tick is rebuilt
+ * from that text with its names bound. The bound text is kept on the spec
+ * (`source`) and read once by the front end, against the tick subset; the
+ * result is kept with the spec (front/module/check-module.ts): build reads
+ * that result, never the text. Binding keeps the parts' lines, so a loud
+ * error names the line the author wrote.
  */
 
 import type { ModuleSource, ModuleSpec, SourceOrigin } from "../types";
@@ -14,21 +16,23 @@ import { bindModuleRandom } from "./bind-random/bind-module-random";
 import { RANDOM_HELPER_PREFIX } from "./bind-random/random-helpers";
 import { locateInSource } from "./source-text";
 import { buildTick } from "./tick-build/build-tick";
-import { checkModule } from "./front/module/check-module";
+import { type ReadTime, checkModule } from "./front/module/check-module";
 
 /** A spec as written: `helpers` are functions the tick may call by name. */
 export interface WrittenSpec extends ModuleSpec {
 	readonly helpers?: Readonly<Record<string, (...args: never[]) => unknown>>;
 }
 
-export function bindModule(written: WrittenSpec): ModuleSpec {
+/** `read`: when the front end reads the bound text (front/module/check-module.ts). */
+export function bindModule(written: WrittenSpec, read: ReadTime): ModuleSpec {
 	const { helpers, ...spec } = written;
 	const owner = `defmod('${spec.name}')`;
 	const written_ = sourceOf(written.tick, helpers ?? {}, owner);
-	checkModule(spec, written_);
 	const bound = bindModuleRandom(bindModuleMath(written_, owner), owner, spec.config ?? {});
 	const source = withOrigins(bound, written_);
-	return { ...spec, tick: buildTick(source, owner), source };
+	const result = { ...spec, tick: buildTick(source, owner), source };
+	checkModule(result, source, read);
+	return result;
 }
 
 /** Where the written parts start in the file being evaluated; binding keeps their lines. */

@@ -63,6 +63,7 @@ function power(node: BinaryExpression): { fn: string; args: readonly AnyNode[] }
 	return { fn: "pow", args: [node.left, node.right] };
 }
 
+/** Only a well-formed call is bound; any other stays as written for the front end to refuse. */
 function auxCall(node: CallExpression): { fn: string; args: readonly AnyNode[] } | null {
 	const callee = node.callee;
 	if (
@@ -70,12 +71,12 @@ function auxCall(node: CallExpression): { fn: string; args: readonly AnyNode[] }
 		callee.computed ||
 		callee.object.type !== "Identifier" ||
 		callee.object.name !== "Math" ||
-		callee.property.type !== "Identifier" ||
-		!AUX_MATH_FUNCTIONS.has(callee.property.name)
+		callee.property.type !== "Identifier"
 	)
 		return null;
-	if (node.arguments.some((a) => a.type === "SpreadElement"))
-		throw new Error(`Math.${callee.property.name}: spread arguments are not supported`);
+	const arity = AUX_MATH_FUNCTIONS.get(callee.property.name);
+	if (arity === undefined || node.arguments.length !== arity) return null;
+	if (node.arguments.some((a) => a.type === "SpreadElement")) return null;
 	return { fn: callee.property.name, args: node.arguments };
 }
 

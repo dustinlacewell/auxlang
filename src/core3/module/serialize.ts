@@ -9,9 +9,25 @@
  */
 
 import type { ModuleSpec, ReduceTickFn, SerializedModuleSpec, TickFn } from "../types";
+import type { ModuleIR } from "./front/module/module-ir";
+import { keepIR, keptIR } from "./front/module/kept-ir";
 import { buildTick } from "./tick-build/build-tick";
 
+/**
+ * The IR of the spec each serialized spec came from, by identity: a spec
+ * hydrated on the main thread from that very object keeps it
+ * (front/module/spec-ir.ts). A copy (the worklet's) finds nothing.
+ */
+const carried = new WeakMap<SerializedModuleSpec, ModuleIR>();
+
 export function serializeSpec(spec: ModuleSpec): SerializedModuleSpec {
+	const serialized = serializedOf(spec);
+	const ir = keptIR(spec);
+	if (ir !== undefined) carried.set(serialized, ir);
+	return serialized;
+}
+
+function serializedOf(spec: ModuleSpec): SerializedModuleSpec {
 	if (spec.source === undefined) {
 		throw new Error(`module '${spec.name}' has no source text and cannot cross to the engine`);
 	}
@@ -49,7 +65,10 @@ export function hydrateSpec(s: SerializedModuleSpec): ModuleSpec {
 				) => Record<string, unknown>)
 			: undefined;
 	const { tick: _t, state: _s, helpers: _h, origins: _o, ...rest } = s;
-	return { ...rest, tick, source, ...(state !== undefined ? { state } : {}) };
+	const spec: ModuleSpec = { ...rest, tick, source, ...(state !== undefined ? { state } : {}) };
+	const ir = carried.get(s);
+	if (ir !== undefined) keepIR(spec, ir);
+	return spec;
 }
 
 const TRIAL_SAMPLE_RATE = 48000;

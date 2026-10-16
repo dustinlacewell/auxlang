@@ -57,6 +57,9 @@ const FORBIDDEN: readonly [string, string, RegExp][] = [
 	["unknown input", "o.out = i.nope;", /unknown input 'nope'/],
 	["unknown output", "o.nope = 1;", /unknown output 'nope'/],
 	["hashRandom with a seed", "o.out = hashRandom(1, 2);", /hashRandom\(key\) takes one argument/],
+	["Math.random with an argument", "o.out = Math.random(1);", /Math\.random\(\) takes no arguments/],
+	["auxlang math with two arguments", "o.out = Math.sin(1, 2);", /Math\.sin takes one argument/],
+	["auxlang math with none", "o.out = Math.atan2();", /Math\.atan2 takes 2 arguments/],
 	["a free host global", "o.out = globalThis.x;", /'globalThis' is not defined here/],
 ];
 

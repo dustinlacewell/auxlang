@@ -110,11 +110,11 @@ export function defmod(spec: object): (...args: unknown[]) => Handle {
 	return moduleFactory(bound);
 }
 
-/** Root-scope write: contract checks, then the tick check and build, then the realm registry. */
+/** Root-scope write (the library, at import): contract checks, the tick build, the realm registry; the tick is read on first use. */
 function registerRootSpec(written: WrittenSpec): ModuleSpec {
 	assertRootNameFree(written.name);
 	validateSpec(written);
-	const bound = bindModule(written);
+	const bound = bindModule(written, "first use");
 	registerSpec(bound);
 	return bound;
 }
@@ -126,7 +126,7 @@ function registerEvalSpec(written: WrittenSpec): ModuleSpec {
 	validateSpec(written);
 	assertNoReservedPorts(written);
 	assertJsonConfig(written.name, written.config);
-	const bound = bindModule(written);
+	const bound = bindModule(written, "now");
 	ctx.specs.set(bound.name, bound);
 	return bound;
 }
