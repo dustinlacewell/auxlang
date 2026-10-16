@@ -1,7 +1,8 @@
 /**
  * The agreement table: each tick snippet either passes the shared checker and
  * renders on WASM bit-identical to the interpreter (accept), or the checker
- * refuses it, at eval or at build on both engines (reject).
+ * refuses it, at eval or at build on both engines (reject). Rows whose
+ * backends disagree today are `it.fails` until a step closes them.
  */
 
 import "@/core3/modules/all";
@@ -220,6 +221,12 @@ const AGREED_REJECT: readonly Row[] = [
 	),
 ];
 
+/** Rows the backends disagree on today: each states the agreed outcome. */
+const DISAGREE_ACCEPT: readonly Row[] = [
+	// The plan takes a record into an element of an array of records; WASM has no pointer per element.
+	accept("a record stored into an array of records", "s.voices[0] = s.voices[1]; s.voices[0].x += 1; o.out = s.voices[1].x"),
+];
+
 function expectAccepted(row: Row): void {
 	expectIdentical(evalPatch(patch(row.body, row.helpers)), SAMPLES);
 }
@@ -241,4 +248,8 @@ function expectRejected(row: Row): void {
 describe("tick forms: both backends agree", () => {
 	for (const row of AGREED_ACCEPT) it(`accept: ${row.what}`, () => expectAccepted(row));
 	for (const row of AGREED_REJECT) it(`reject: ${row.what}`, () => expectRejected(row));
+});
+
+describe("tick forms the backends disagree on today", () => {
+	for (const row of DISAGREE_ACCEPT) it.fails(`accept: ${row.what}`, () => expectAccepted(row));
 });
