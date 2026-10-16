@@ -89,6 +89,7 @@ export function interactiveTestsPlugin(): Plugin {
 			if (id === VIRTUAL_MODULE_ID) {
 				return RESOLVED_VIRTUAL_MODULE_ID;
 			}
+			return undefined;
 		},
 
 		load(id) {
@@ -96,6 +97,7 @@ export function interactiveTestsPlugin(): Plugin {
 				const tests = loadAllTests();
 				return `export default ${JSON.stringify(tests, null, 2)};`;
 			}
+			return undefined;
 		},
 
 		handleHotUpdate({ file, server }) {
@@ -107,6 +109,7 @@ export function interactiveTestsPlugin(): Plugin {
 					return [mod];
 				}
 			}
+			return undefined;
 		},
 
 		configureServer(server) {

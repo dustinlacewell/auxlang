@@ -18,7 +18,7 @@ import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples";
 import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples";
 import { expect, it } from "vitest";
-import { SNIPPETS } from "../../../../docs/snippets";
+import { SNIPPETS } from "../snippets";
 
 const SR = 48000;
 const SAMPLES = SR / 4;

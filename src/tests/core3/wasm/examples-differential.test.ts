@@ -25,7 +25,7 @@ import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples";
 import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples";
 import { SKELETON as MODULE_CODE_SKELETON } from "@/ui/site/module-code/rules";
 import { describe, expect, it } from "vitest";
-import { SNIPPETS } from "../../../../docs/snippets";
+import { SNIPPETS } from "../snippets";
 import {
 	type Run,
 	SR,

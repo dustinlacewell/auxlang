@@ -50,8 +50,8 @@ defmod({
 	defaultOut: "out",
 	policy: "reduce",
 	tick: (_s, ins, o, _cfg, _sr, width) => {
-		const a = ins.a as Float32Array;
-		const b = ins.b as Float32Array;
+		const a = ins.a as Float64Array;
+		const b = ins.b as Float64Array;
 		o.w = width as number;
 		o.aLen = a.length;
 		o.bLen = b.length;

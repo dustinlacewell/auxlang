@@ -1,4 +1,4 @@
-import type { PlaybackState } from "@/ui/audio/types";
+import type { PlaybackState } from "@/ui/design/playback-state";
 
 interface StatusIndicatorProps {
 	status: PlaybackState;

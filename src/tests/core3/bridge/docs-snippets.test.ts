@@ -1,5 +1,5 @@
 /**
- * The doc snippets (docs/snippets.ts) — every runnable block in README.md,
+ * The doc snippets (src/tests/core3/snippets.ts) — every runnable block in README.md,
  * MANIFESTO.md, and docs/user-guide.md — must never rot: each is a real core3
  * patch, so it must compile through the eval path and render 2 s finite and
  * bounded. `audible` snippets must additionally clear 0.005 RMS. This is the
@@ -10,7 +10,7 @@
 import { render } from "@/core3/runtime/render";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { describe, expect, it } from "vitest";
-import { SNIPPETS } from "../../../../docs/snippets";
+import { SNIPPETS } from "../snippets";
 import { allFinite, maxAbs, rms } from "./helpers";
 
 describe("docs snippets", () => {

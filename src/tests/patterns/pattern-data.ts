@@ -4,9 +4,9 @@
  */
 
 import rawTests from "virtual:pattern-tests";
-import type { PatternExample } from "@/ui/test-suite/shared/types";
+import type { PatternTestDefinition } from "./vite-plugin";
 
-export type { PatternExample };
+export type PatternExample = PatternTestDefinition;
 
 export const tests: PatternExample[] = rawTests;
 

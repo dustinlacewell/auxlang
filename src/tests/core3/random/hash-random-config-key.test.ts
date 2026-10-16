@@ -100,7 +100,7 @@ describe("hashRandom with a config key", () => {
 		const program: Program = runProgram(
 			() => {
 				const node = keyed("hk.number", { index: 3, mode: "a" }, (s, i, o, c) => {
-					o.out = i.in * 0 + hashRandom((c.index as number) + (c.mode === "a" ? 0 : 1));
+					o.out = (i.in as number) * 0 + hashRandom((c.index as number) + (c.mode === "a" ? 0 : 1));
 				})();
 				out(node({}));
 			},

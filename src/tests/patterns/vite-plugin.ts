@@ -37,7 +37,7 @@ const CASES_DIR = join(__dirname, "cases");
 const VIRTUAL_MODULE_ID = "virtual:pattern-tests";
 const RESOLVED_VIRTUAL_MODULE_ID = "\0" + VIRTUAL_MODULE_ID;
 
-interface PatternTestDefinition {
+export interface PatternTestDefinition {
 	id: string;
 	category: string;
 	name: string;
@@ -107,6 +107,7 @@ export function patternTestsPlugin(): Plugin {
 			if (id === VIRTUAL_MODULE_ID) {
 				return RESOLVED_VIRTUAL_MODULE_ID;
 			}
+			return undefined;
 		},
 
 		load(id) {
@@ -114,6 +115,7 @@ export function patternTestsPlugin(): Plugin {
 				const tests = loadAllTests();
 				return `export default ${JSON.stringify(tests, null, 2)};`;
 			}
+			return undefined;
 		},
 
 		handleHotUpdate({ file, server }) {
@@ -125,6 +127,7 @@ export function patternTestsPlugin(): Plugin {
 					return [mod];
 				}
 			}
+			return undefined;
 		},
 
 		configureServer(server) {
