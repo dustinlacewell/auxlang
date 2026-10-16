@@ -3,7 +3,8 @@
  * an f64, a typed array its elements in their own type, a record its fields
  * at fixed offsets, an array of records equal-shaped records at a stride.
  * Offsets are from the start of the enclosing record (for a lane's
- * top-level fields, from address 0). Every size is a multiple of 8.
+ * top-level fields, from address 0). Every size is a multiple of 8. A
+ * rebound field reaches its value through a pointer slot (`Field`).
  */
 
 import type { ElementType } from "../../module/front/types/element-type";
@@ -32,9 +33,16 @@ export interface RecordsShape {
 	readonly element: RecordShape;
 }
 
+/**
+ * A field's own storage at `offset`. A rebound field (front/scope/field-rebinds.ts)
+ * also has an i32 `pointer` slot (same base, 8 bytes) holding the absolute
+ * address of the value it names now: its own storage until the code rebinds
+ * it to another value of its shape.
+ */
 export interface Field {
 	readonly offset: number;
 	readonly shape: Shape;
+	readonly pointer?: number | undefined;
 }
 
 /** A shape that is not a number: what a name can stand for while compiling. */

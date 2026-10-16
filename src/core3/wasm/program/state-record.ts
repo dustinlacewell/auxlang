@@ -45,9 +45,19 @@ function recordShape(
 	const fields: Record<string, Field> = {};
 	for (const [name, addr] of numbers)
 		fields[name] = { offset: addr - address, shape: { k: "number" } };
-	for (const [name, f] of aggregates) fields[name] = { offset: f.offset - address, shape: f.shape };
-	const size = Math.max(0, ...Object.values(fields).map((f) => f.offset + sizeOf(f.shape)));
+	for (const [name, f] of aggregates) fields[name] = moved(f, address);
+	const size = Math.max(0, ...Object.values(fields).map(fieldEnd));
 	return { k: "record", size, fields };
+}
+
+/** `f` with its offsets counted from `address`. */
+function moved(f: Field, address: number): Field {
+	const offset = f.offset - address;
+	return f.pointer === undefined ? { offset, shape: f.shape } : { offset, shape: f.shape, pointer: f.pointer - address };
+}
+
+function fieldEnd(f: Field): number {
+	return Math.max(f.offset + sizeOf(f.shape), f.pointer === undefined ? 0 : f.pointer + 8);
 }
 
 function lowest(addresses: readonly number[]): number {

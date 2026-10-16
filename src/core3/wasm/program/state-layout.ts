@@ -17,28 +17,33 @@ import type { Field, RecordShape, RecordsShape, Shape } from "../layout/state-sh
 const NUMBER: Shape = { k: "number" };
 const SCRATCH = "__scratch";
 
-/** A lane's non-scalar top-level fields, each placed by `take(bytes)` (an 8-aligned address). */
+/**
+ * A lane's non-scalar top-level fields, each placed by `take(bytes)` (an
+ * 8-aligned address); a field named in `rebound` also takes its pointer slot.
+ */
 export function planAggregates(
 	state: Record<string, unknown>,
+	rebound: ReadonlySet<string>,
 	take: (bytes: number) => number,
 ): Record<string, Field> {
 	const fields: Record<string, Field> = {};
 	for (const [name, value] of Object.entries(state)) {
 		if (name === SCRATCH) continue;
-		const shape = shapeOf(value, name);
+		const shape = shapeOf(value, name, rebound);
 		if (shape.k === "number") continue;
-		fields[name] = { offset: take(sizeOf(shape)), shape };
+		const offset = take(sizeOf(shape));
+		fields[name] = rebound.has(name) ? { offset, shape, pointer: take(8) } : { offset, shape };
 	}
 	return fields;
 }
 
 /** `value`'s memory shape; `path` names it in the error when it has none. */
-export function shapeOf(value: unknown, path: string): Shape {
+function shapeOf(value: unknown, path: string, rebound: ReadonlySet<string>): Shape {
 	if (typeof value === "number") return NUMBER;
 	const type = elementTypeOf(value);
 	if (type !== null) return { k: "array", type, length: (value as ArrayLike<number>).length };
-	if (Array.isArray(value)) return recordsShape(value, path);
-	if (isRecord(value)) return recordShape(value, path);
+	if (Array.isArray(value)) return recordsShape(value, path, rebound);
+	if (isRecord(value)) return recordShape(value, path, rebound);
 	throw new Error(
 		`wasm: state field '${path}' has no memory form — state holds numbers, typed arrays, records and arrays of records`,
 	);
@@ -58,25 +63,32 @@ export function sizeOf(shape: Shape): number {
 	}
 }
 
-function recordShape(value: Record<string, unknown>, path: string): RecordShape {
+/** Each field at its offset; a rebound array or record field's pointer slot right after its storage. */
+function recordShape(value: Record<string, unknown>, path: string, rebound: ReadonlySet<string>): RecordShape {
 	const fields: Record<string, Field> = {};
 	let size = 0;
 	for (const [name, v] of Object.entries(value)) {
-		const shape = shapeOf(v, `${path}.${name}`);
-		fields[name] = { offset: size, shape };
+		const shape = shapeOf(v, `${path}.${name}`, rebound);
+		const offset = size;
 		size += sizeOf(shape);
+		if (shape.k === "number" || !rebound.has(name)) {
+			fields[name] = { offset, shape };
+			continue;
+		}
+		fields[name] = { offset, shape, pointer: size };
+		size += 8;
 	}
 	return { k: "record", size, fields };
 }
 
 /** A non-empty array of records that all have the first one's shape. */
-function recordsShape(list: readonly unknown[], path: string): RecordsShape {
+function recordsShape(list: readonly unknown[], path: string, rebound: ReadonlySet<string>): RecordsShape {
 	const first = list[0];
 	if (!isRecord(first)) throw new Error(`wasm: state field '${path}' is not an array of records`);
-	const element = recordShape(first, `${path}[0]`);
+	const element = recordShape(first, `${path}[0]`, rebound);
 	const key = JSON.stringify(element);
 	list.forEach((item, k) => {
-		if (!isRecord(item) || JSON.stringify(recordShape(item, `${path}[${k}]`)) !== key)
+		if (!isRecord(item) || JSON.stringify(recordShape(item, `${path}[${k}]`, rebound)) !== key)
 			throw new Error(`wasm: state field '${path}' holds records of differing shapes`);
 	});
 	return { k: "records", length: list.length, element };

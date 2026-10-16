@@ -13,6 +13,7 @@
  */
 
 import type { ModuleIR } from "../../module/front/module/module-ir";
+import { fieldRebinds } from "../../module/front/scope/field-rebinds";
 import type { NodeRun } from "../../runtime/node-run";
 import { cacheSlotsIn } from "../compile/cache-slots";
 import type { Field } from "../layout/state-shape";
@@ -29,7 +30,7 @@ export const PAGE = 65536;
 export interface LaneMemory {
 	/** Numeric state field → address. */
 	readonly state: Readonly<Record<string, number>>;
-	/** Typed array, record and array-of-records state fields, at absolute addresses. */
+	/** Typed array, record and array-of-records state fields, at absolute addresses (rebound ones with a pointer slot). */
 	readonly aggregates: Readonly<Record<string, Field>>;
 	readonly cache: number;
 	readonly cacheSlots: number;
@@ -88,9 +89,10 @@ export function planMemory(
 			if (port.view !== null) views[port.name] = take(8 * port.srcLanes);
 		}
 		const slots = moduleCacheSlots(irs[i] as ModuleIR);
+		const rebound = fieldRebinds(irs[i] as ModuleIR);
 		const lanes = run.states.map((state, l) => ({
 			state: Object.fromEntries(numericFields(state).map((f) => [f, take(8)])),
-			aggregates: planAggregates(state, take),
+			aggregates: planAggregates(state, rebound, take),
 			cache: take(8 * slots),
 			cacheSlots: slots,
 			tables: readsPattern[i] ? take(SLOT_BYTES) : null,

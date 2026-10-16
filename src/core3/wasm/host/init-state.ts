@@ -6,9 +6,16 @@
  * ahead anyway (touch-pages.ts).
  */
 
-import type { Shape } from "../layout/state-shape";
+import type { Field, Shape } from "../layout/state-shape";
+import { pointHome } from "./codec/field-address";
 
-export function writeState(memory: ArrayBuffer, at: number, shape: Shape, value: unknown): void {
+/** A field of the record at `base`: its value in its own storage, a rebound field's slot pointing there. */
+export function initField(memory: ArrayBuffer, base: number, field: Field, value: unknown): void {
+	pointHome(memory, base, field);
+	writeState(memory, base + field.offset, field.shape, value);
+}
+
+function writeState(memory: ArrayBuffer, at: number, shape: Shape, value: unknown): void {
 	switch (shape.k) {
 		case "number": {
 			const x = Number(value);
@@ -21,7 +28,7 @@ export function writeState(memory: ArrayBuffer, at: number, shape: Shape, value:
 		case "record": {
 			const record = value as Record<string, unknown>;
 			for (const [name, field] of Object.entries(shape.fields))
-				writeState(memory, at + field.offset, field.shape, record[name]);
+				initField(memory, at, field, record[name]);
 			return;
 		}
 		case "records": {

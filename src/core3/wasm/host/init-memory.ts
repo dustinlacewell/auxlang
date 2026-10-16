@@ -10,7 +10,7 @@
 
 import type { NodeRun } from "../../runtime/node-run";
 import type { WasmLayout } from "../program/memory-layout";
-import { writeState } from "./init-state";
+import { initField } from "./init-state";
 
 export function initMemory(
 	f64: Float64Array,
@@ -50,7 +50,7 @@ export function initLane(
 	const state = (runs[node] as NodeRun).states[l] as Record<string, unknown>;
 	for (const [field, addr] of Object.entries(lane.state)) f64[addr / 8] = Number(state[field]);
 	for (const [name, field] of Object.entries(lane.aggregates))
-		writeState(f64.buffer as ArrayBuffer, field.offset, field.shape, state[name]);
+		initField(f64.buffer as ArrayBuffer, 0, field, state[name]);
 	f64.fill(Number.NaN, lane.cache / 8, lane.cache / 8 + lane.cacheSlots);
 	for (const lambda of Object.values(lane.lambdas))
 		f64.fill(Number.NaN, lambda.cache / 8, lambda.cache / 8 + lambda.cacheSlots);

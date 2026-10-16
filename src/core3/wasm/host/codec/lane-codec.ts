@@ -9,7 +9,7 @@
 import type { Field } from "../../layout/state-shape";
 import type { LaneMemory } from "../../program/memory-layout";
 import { shapeKeys } from "../carry/lane-fits";
-import { readShape, writeShape } from "./shape-codec";
+import { readField, writeField } from "./shape-codec";
 
 const SCRATCH = "__scratch";
 const STREAM = "__rng";
@@ -19,7 +19,7 @@ export function readLane(memory: ArrayBuffer, lane: LaneMemory): Record<string, 
 	for (const [name, at] of Object.entries(lane.state))
 		state[name] = new Float64Array(memory, at, 1)[0];
 	for (const [name, field] of Object.entries(lane.aggregates))
-		if (name !== SCRATCH) state[name] = readShape(memory, field.offset, field.shape);
+		if (name !== SCRATCH) state[name] = readField(memory, 0, field);
 	return state;
 }
 
@@ -34,7 +34,6 @@ export function writeLane(
 		new Float64Array(memory, lane.state[name] as number, 1)[0] = Number(carried[name]);
 	}
 	for (const name of shapeKeys(lane.aggregates)) {
-		const field = lane.aggregates[name] as Field;
-		writeShape(memory, field.offset, field.shape, carried[name]);
+		writeField(memory, 0, lane.aggregates[name] as Field, carried[name]);
 	}
 }

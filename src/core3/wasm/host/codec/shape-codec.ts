@@ -2,14 +2,27 @@
  * One state value between memory and JS, by its shape (layout/state-shape.ts):
  * a number as an f64, a typed array as its raw bytes (every bit kept), a
  * record field by field, an array of records element by element. Reads copy
- * (a new typed array, a new record); writes write every byte, zeros included.
+ * (a new typed array, a new record) and follow a rebound field's pointer;
+ * writes write every byte, zeros included, into the field's own storage.
  */
 
 import { ELEMENT_ARRAYS } from "../../layout/element-array";
 import { ELEMENT_BYTES } from "../../layout/element-type";
-import type { Shape } from "../../layout/state-shape";
+import type { Field, Shape } from "../../layout/state-shape";
+import { pointHome, valueAddress } from "./field-address";
 
-export function readShape(memory: ArrayBuffer, at: number, shape: Shape): unknown {
+/** A field of the record at `base`: the value it names now, through its pointer when rebound. */
+export function readField(memory: ArrayBuffer, base: number, field: Field): unknown {
+	return readShape(memory, valueAddress(memory, base, field), field.shape);
+}
+
+/** A field of the record at `base`, written into its own storage, a rebound field pointed back there. */
+export function writeField(memory: ArrayBuffer, base: number, field: Field, value: unknown): void {
+	pointHome(memory, base, field);
+	writeShape(memory, base + field.offset, field.shape, value);
+}
+
+function readShape(memory: ArrayBuffer, at: number, shape: Shape): unknown {
 	switch (shape.k) {
 		case "number":
 			return new Float64Array(memory, at, 1)[0];
@@ -19,10 +32,7 @@ export function readShape(memory: ArrayBuffer, at: number, shape: Shape): unknow
 		}
 		case "record":
 			return Object.fromEntries(
-				Object.entries(shape.fields).map(([name, f]) => [
-					name,
-					readShape(memory, at + f.offset, f.shape),
-				]),
+				Object.entries(shape.fields).map(([name, f]) => [name, readField(memory, at, f)]),
 			);
 		case "records":
 			return Array.from({ length: shape.length }, (_, k) =>
@@ -31,7 +41,7 @@ export function readShape(memory: ArrayBuffer, at: number, shape: Shape): unknow
 	}
 }
 
-export function writeShape(memory: ArrayBuffer, at: number, shape: Shape, value: unknown): void {
+function writeShape(memory: ArrayBuffer, at: number, shape: Shape, value: unknown): void {
 	switch (shape.k) {
 		case "number":
 			new Float64Array(memory, at, 1)[0] = Number(value);
@@ -44,8 +54,7 @@ export function writeShape(memory: ArrayBuffer, at: number, shape: Shape, value:
 		}
 		case "record": {
 			const record = value as Record<string, unknown>;
-			for (const [name, f] of Object.entries(shape.fields))
-				writeShape(memory, at + f.offset, f.shape, record[name]);
+			for (const [name, f] of Object.entries(shape.fields)) writeField(memory, at, f, record[name]);
 			return;
 		}
 		case "records": {
