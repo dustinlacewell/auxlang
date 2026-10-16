@@ -15,6 +15,7 @@
  */
 
 import type { Registry } from "../../types";
+import { type MonitorRegion, setRegionFrame } from "../live/monitor-region";
 import type { HostPrepared } from "../prepare/host-prepared";
 import { PendingSlots } from "./pending-slots";
 import { WasmHostProgram } from "./wasm-host-program";
@@ -78,9 +79,24 @@ export class LiveHost {
 		this.engine = null;
 	}
 
-	/** One block: swap in a built engine, render and mix, then spend the build budget. */
-	render(outL: Float32Array, outR: Float32Array, n: number): void {
+	/** The live engine's monitor region; null with none (live/monitor-region.ts). */
+	get monitor(): MonitorRegion | null {
+		return this.engine?.monitor ?? null;
+	}
+
+	/** The live engine's program serial (prepare/wasm-prepared.ts); 0 with none. */
+	get serial(): number {
+		return this.engine?.wasm.serial ?? 0;
+	}
+
+	/**
+	 * One block: swap in a built engine, render and mix, then spend the build
+	 * budget. `frame`: the block's first sample frame, for the monitor's onsets.
+	 */
+	render(outL: Float32Array, outR: Float32Array, n: number, frame = 0): void {
 		if (this.building?.built === true) this.swapIn(this.building);
+		const region = this.monitor;
+		if (region !== null) setRegionFrame(region, frame);
 		this.ensureBlock(n);
 		this.mix(outL, outR, n);
 		this.build();

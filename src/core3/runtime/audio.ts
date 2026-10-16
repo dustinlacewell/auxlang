@@ -15,7 +15,10 @@
 import { getRegistry } from "../module/define";
 import type { Program } from "../types";
 import { withProgramSpecs } from "./hydrate-specs";
+import { BUILD_BUDGET } from "./build/build-budget";
 import type { MonitorFrame, SlotDecl, Watch } from "./live/live-contract";
+import { MonitorReceiver } from "./live/monitor-receiver";
+import { watchList } from "./live/watch-list";
 import type { HostPrepared } from "./prepare/host-prepared";
 import { prepareWasmProgram } from "./prepare/prepare-wasm-program";
 import { type SeedSession, createSeedSession } from "./seed-session";
@@ -56,7 +59,9 @@ async function ensureHost(): Promise<AudioHost> {
 	node.port.onmessage = (e: MessageEvent<WorkletReply>) => {
 		if (e.data.type === "error") throw new Error(`core3 worklet: ${e.data.message}`);
 		if (e.data.type === "perf") reportPerf(e.data, context.sampleRate);
+		if (e.data.type === "monitor") receiveFrame(e.data, node.port);
 	};
+	if (monitors.active) postMonitor(node.port, true);
 	// An exception thrown INSIDE process() (not caught by swap's fence) kills the
 	// processor without a message-port reply; surface it loudly instead of
 	// letting the audio die in silence.
@@ -89,10 +94,19 @@ async function playNext(program: Program, at: number): Promise<void> {
 	const bpm = constantBpm(program);
 	if (bpm > 0) perfBps = bpm / 60;
 	const registry = withProgramSpecs(getRegistry(), program);
-	const prepared = await prepareWasmProgram(program, registry, context.sampleRate, running);
+	const monitor = monitors.active;
+	const prepared = await prepareWasmProgram(
+		program,
+		registry,
+		context.sampleRate,
+		running,
+		BUILD_BUDGET,
+		monitor,
+	);
 	if (at !== session) return;
 	flushSlots();
 	running = prepared;
+	if (monitor) monitors.posted(prepared.wasm.serial, watchList(prepared.program, registry));
 	const message: WorkletMessage = { type: "swap", prepared };
 	node.port.postMessage(message);
 }
@@ -179,20 +193,63 @@ function flushSlots(): void {
 	host.node.port.postMessage(message);
 }
 
+// The editor's monitor listeners and the watches of each monitored program posted.
+const monitors = new MonitorReceiver();
+
 /**
  * Listen to monitor frames. The listener reads the frame synchronously; its
  * buffer goes back to the worklet when the listener returns. Returns an
- * unsubscribe function. The monitor runs only while a listener is attached.
+ * unsubscribe function. The monitor runs only while a listener is attached:
+ * programs played then are built with it. A program already playing
+ * unmonitored when the first listener attaches is played again, monitored
+ * (a re-eval of itself: its state carries on).
  */
 export function onMonitor(
-	_listener: (frame: MonitorFrame, watches: readonly Watch[]) => void,
+	listener: (frame: MonitorFrame, watches: readonly Watch[]) => void,
 ): () => void {
-	return () => {};
+	if (monitors.add(listener)) {
+		if (host) postMonitor(host.node.port, true);
+		if (running !== undefined && !running.monitor) void play(running.program).catch(console.error);
+	}
+	return () => {
+		if (monitors.remove(listener) && host) postMonitor(host.node.port, false);
+	};
 }
 
-/** The engine sample frame now leaving the speakers (AudioContext output timestamp). */
+/**
+ * The sample frame now leaving the speakers, on the AudioContext's frame
+ * clock (the clock onset frames are on: worklet `currentFrame`):
+ *
+ *   frame = contextTime × sampleRate
+ *
+ * with contextTime from `getOutputTimestamp()`, else
+ * `currentTime - outputLatency` where the browser has no output timestamp.
+ * 0 before the audio host exists.
+ */
 export function audibleFrame(): number {
-	return 0;
+	if (!host) return 0;
+	const { context } = host;
+	const stamp =
+		typeof context.getOutputTimestamp === "function"
+			? context.getOutputTimestamp().contextTime
+			: undefined;
+	const time = stamp ?? context.currentTime - (context.outputLatency ?? 0);
+	return time * context.sampleRate;
+}
+
+function postMonitor(port: MessagePort, enabled: boolean): void {
+	const message: WorkletMessage = { type: "monitor", enabled };
+	port.postMessage(message);
+}
+
+/** Hand the frame to the listeners, then its buffer back to the worklet. */
+function receiveFrame(frame: MonitorFrame, port: MessagePort): void {
+	try {
+		monitors.receive(frame);
+	} finally {
+		const back: WorkletMessage = { type: "monitor-return", buffer: frame.buffer };
+		port.postMessage(back, [frame.buffer]);
+	}
 }
 
 /** Best-effort constant tempo of a program's clock node, else 0 (unknown). */

@@ -8,7 +8,7 @@
  * per engine by runtime/hydrate-specs).
  */
 
-import type { SlotWrites } from "../live/live-contract";
+import type { MonitorFrame, MonitorReturn, SlotWrites } from "../live/live-contract";
 import type { HostPrepared } from "../prepare/host-prepared";
 
 /** Main thread -> worklet. */
@@ -16,7 +16,9 @@ export type WorkletMessage =
 	| { readonly type: "swap"; readonly prepared: HostPrepared }
 	| { readonly type: "stop" }
 	| { readonly type: "perf"; readonly enabled: boolean }
-	| SlotWrites;
+	| SlotWrites
+	| { readonly type: "monitor"; readonly enabled: boolean }
+	| MonitorReturn;
 
 /** A single missed-deadline event: how long the quantum took and when. */
 export interface PerfOverrun {
@@ -40,4 +42,7 @@ export interface PerfReport {
 }
 
 /** Worklet -> main thread. Build failures must be loud, not swallowed. */
-export type WorkletReply = { readonly type: "error"; readonly message: string } | PerfReport;
+export type WorkletReply =
+	| { readonly type: "error"; readonly message: string }
+	| PerfReport
+	| MonitorFrame;

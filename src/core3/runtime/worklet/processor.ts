@@ -7,7 +7,9 @@
 
 import { getRegistry } from "../../module/define";
 import { LiveHost } from "./live-host";
+import type { HostPrepared } from "../prepare/host-prepared";
 import type { WorkletMessage, WorkletReply } from "./messages";
+import { MonitorWriter } from "./monitor-writer";
 import { QuantumMeter } from "./quantum-meter";
 
 declare const sampleRate: number;
@@ -37,6 +39,8 @@ class Core3Processor extends AudioWorkletProcessor {
 	// it, so the hot path pays nothing by default.
 	private meter: QuantumMeter | null = null;
 	private meterWarm = true;
+	// Monitor frames to the editor (monitor-writer.ts); posts only while enabled.
+	private readonly monitor = new MonitorWriter(this.port, sampleRate);
 
 	constructor() {
 		super();
@@ -44,10 +48,18 @@ class Core3Processor extends AudioWorkletProcessor {
 	}
 
 	private handle(message: WorkletMessage): void {
-		if (message.type === "swap") this.host.swap(message.prepared);
+		if (message.type === "swap") this.swap(message.prepared);
 		else if (message.type === "stop") this.host.stop();
 		else if (message.type === "slots") this.host.writeSlots(message.writes);
+		else if (message.type === "monitor") this.monitor.enable(message.enabled);
+		else if (message.type === "monitor-return") this.monitor.giveBack(message.buffer);
 		else if (PERF) this.setPerf(message.enabled);
+	}
+
+	/** Size the monitor's buffers for the program here, never in process(). */
+	private swap(prepared: HostPrepared): void {
+		this.monitor.reserve(prepared.wasm.layout.monitor?.watches ?? 0);
+		this.host.swap(prepared);
 	}
 
 	private setPerf(enabled: boolean): void {
@@ -73,8 +85,9 @@ class Core3Processor extends AudioWorkletProcessor {
 		if (PERF && meter !== null) meter.mark(currentFrame);
 
 		const n = ch0.length;
-		if (ch1 !== null) this.host.render(ch0, ch1, n);
+		if (ch1 !== null) this.host.render(ch0, ch1, n, currentFrame);
 		else this.renderMono(ch0, n);
+		this.monitor.afterBlock(this.host.monitor, this.host.serial, currentFrame + n);
 
 		if (PERF && meter !== null) {
 			const report = meter.measure(this.meterWarm);
@@ -86,7 +99,7 @@ class Core3Processor extends AudioWorkletProcessor {
 
 	private renderMono(ch0: Float32Array, n: number): void {
 		if (this.monoR.length < n) this.monoR = new Float32Array(n);
-		this.host.render(ch0, this.monoR, n);
+		this.host.render(ch0, this.monoR, n, currentFrame);
 		for (let i = 0; i < n; i++) ch0[i] = 0.5 * ((ch0[i] as number) + (this.monoR[i] as number));
 	}
 }

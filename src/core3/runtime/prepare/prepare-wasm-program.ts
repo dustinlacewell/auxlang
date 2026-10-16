@@ -5,6 +5,7 @@
  * (wasm/host/prepare-wasm.ts), compiled to a Module, warmed on a throwaway
  * instance (warm-module.ts), and the hand-over's carry plan and table carry
  * from the running program (wasm/host/carry-plan.ts, carry/table-carry.ts).
+ * With `monitor`, the program is built with the monitor (runtime/live/).
  *
  * The worklet builds the same prepared program into the same start values
  * (worklet/wasm-host-program.ts), so the layout fits them.
@@ -28,9 +29,10 @@ export async function prepareWasmProgram(
 	sampleRate: number,
 	running: HostPrepared | undefined,
 	budget = BUILD_BUDGET,
+	monitor = false,
 ): Promise<HostPrepared> {
 	const from = running?.wasm ?? null;
-	const base = prepareProgram(program, registry, sampleRate, from?.facts.identities);
+	const base = prepareProgram(program, registry, sampleRate, from?.facts.identities, monitor);
 	const prepared = prepareWasmFrom(base, registry);
 	const module = await WebAssembly.compile(prepared.compiled.bytes);
 	await warmModule(module, prepared);
