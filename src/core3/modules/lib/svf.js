@@ -17,48 +17,36 @@ for (const [name, mode, doc] of [
 	["bpf", "bp", "Band-pass filter."],
 	["notch", "notch", "Notch filter — cuts a band, passes the rest."],
 ]) {
-	defmod({
-		name,
-		category: "filters",
-		doc,
-		ins: { in: sig(0), cutoff: semis(84), res: unit(0) },
-		outs: { out: sig() },
-		defaultIn: "in",
-		defaultOut: "out",
-		positional: ["cutoff", "res"],
-		config: { mode },
-		state: () => ({ ic1: 0, ic2: 0, lastCut: -1, lastRes: -1, a1: 0, a2: 0, a3: 0, k: 0 }),
-		helpers: { semisToHz },
-		tick: (s, i, o, cfg, sr) => {
-			const cutoff = i.cutoff;
-			const res = i.res;
-			if (cutoff !== s.lastCut || res !== s.lastRes) {
-				const freq = Math.min(semisToHz(cutoff), 0.49 * sr);
-				const g = Math.tan((Math.PI * freq) / sr);
-				const k = 1 / (0.5 + res * 9.5);
-				const a1 = 1 / (1 + g * (g + k));
-				s.k = k;
-				s.a1 = a1;
-				s.a2 = g * a1;
-				s.a3 = g * (g * a1);
-				s.lastCut = cutoff;
-				s.lastRes = res;
+	defmod(name, { cat: "filters", doc, config: { mode } }, ({ sr, mode }) => {
+		let ic1 = 0
+		let ic2 = 0
+		let lastCut = -1
+		let lastRes = -1
+		let a1 = 0
+		let a2 = 0
+		let a3 = 0
+		let k = 0
+		return ({ in: x = 0, cutoff = semis(84), res = unit(0) }) => {
+			if (cutoff !== lastCut || res !== lastRes) {
+				const freq = Math.min(semisToHz(cutoff), 0.49 * sr)
+				const g = Math.tan((Math.PI * freq) / sr)
+				k = 1 / (0.5 + res * 9.5)
+				a1 = 1 / (1 + g * (g + k))
+				a2 = g * a1
+				a3 = g * (g * a1)
+				lastCut = cutoff
+				lastRes = res
 			}
-			const ic1 = s.ic1;
-			const ic2 = s.ic2;
-			const a1 = s.a1;
-			const a2 = s.a2;
-			const a3 = s.a3;
-			const v0 = i.in;
-			const v3 = v0 - ic2;
-			const v1 = a1 * ic1 + a2 * v3;
-			const v2 = ic2 + a2 * ic1 + a3 * v3;
-			s.ic1 = 2 * v1 - ic1;
-			s.ic2 = 2 * v2 - ic2;
-			const lp = v2;
-			const bp = v1;
-			const hp = v0 - s.k * v1 - v2;
-			o.out = cfg.mode === "lp" ? lp : cfg.mode === "hp" ? hp : cfg.mode === "bp" ? bp : lp + hp; // notch
-		},
-	});
+			const v0 = x
+			const v3 = v0 - ic2
+			const v1 = a1 * ic1 + a2 * v3
+			const v2 = ic2 + a2 * ic1 + a3 * v3
+			ic1 = 2 * v1 - ic1
+			ic2 = 2 * v2 - ic2
+			const lp = v2
+			const bp = v1
+			const hp = v0 - k * v1 - v2
+			return mode === "lp" ? lp : mode === "hp" ? hp : mode === "bp" ? bp : lp + hp // notch
+		}
+	})
 }
