@@ -17,7 +17,7 @@ import { OP } from "../encode/opcodes";
 
 export interface TickSite {
 	readonly fn: FunctionIR;
-	/** The tick's plan for this lane (lane-root.ts). */
+	/** The tick's plan for this lane (runtime/specialise/specialise-nodes.ts). */
 	readonly plan: FunctionPlan;
 	readonly owner: string;
 	readonly calls: Calls;

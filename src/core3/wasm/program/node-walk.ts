@@ -6,8 +6,7 @@
  */
 
 import type { ModuleIR } from "../../module/front/module/module-ir";
-import { calleesOf } from "../../module/front/types/callees";
-import { tickPlan } from "../../module/front/types/function-plan";
+import type { FunctionPlan } from "../../module/front/types/function-plan";
 import { GATHER_CUR } from "../../runtime/gathers";
 import type { NodeRun } from "../../runtime/node-run";
 import { tableIntrinsics } from "../bridge/table-intrinsics";
@@ -19,7 +18,6 @@ import type { RenderInput } from "./emit-render";
 import { emitTick } from "./emit-tick";
 import { emitLambdaInputs } from "./lambda-inputs";
 import { laneRoles } from "./lane-roles";
-import { laneRoot } from "./lane-root";
 import type { RenderLocals } from "./render-locals";
 import type { ValueSlots } from "./value-slots";
 
@@ -76,10 +74,9 @@ export class NodeWalk {
 		);
 		const ir = this.ir(i);
 		const width = run.gathers?.width ?? 1;
-		const root = laneRoot(run, memory, lane, input.sampleRate, width);
 		emitTick(e, {
 			fn: ir.tick,
-			plan: tickPlan(ir.tick, root, calleesOf(ir.helpers)),
+			plan: this.plan(i, lane),
 			owner: `${module} tick (node ${i} lane ${lane})`,
 			calls: this.site.fns.calls(this.set(i)),
 			roles: laneRoles(e, run, memory, lane, slots, (addr) => locals.at(addr), lambdas),
@@ -131,6 +128,13 @@ export class NodeWalk {
 		const ir = this.site.input.irs[i];
 		if (ir === undefined) throw new Error(`wasm: no module reading for node ${i}`);
 		return ir;
+	}
+
+	/** The lane's tick plan, specialised at build (runtime/specialise/specialise-nodes.ts). */
+	private plan(i: number, lane: number): FunctionPlan {
+		const plan = this.site.input.plans[i]?.[lane];
+		if (plan === undefined) throw new Error(`wasm: no tick plan for node ${i} lane ${lane}`);
+		return plan;
 	}
 
 	private set(i: number): HelperSet {

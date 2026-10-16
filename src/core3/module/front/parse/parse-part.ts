@@ -7,6 +7,7 @@
 
 import type { Node as AcornNode } from "acorn";
 import { locateInSource } from "@/core3/module/source-text";
+import type { SourceOrigin } from "@/core3/types";
 import { type FunctionNode, parseFunction } from "./parse-function";
 import { violation } from "./violation";
 
@@ -19,6 +20,8 @@ export interface PartSite {
 	/** `tick`, `helper 'step'`, `lambda`. */
 	readonly part: string;
 	readonly src: string;
+	/** Where the text starts in its file, recorded when it was written (types.ts `ModuleSource.origins`). */
+	readonly origin?: SourceOrigin | undefined;
 }
 
 export interface ParsedPart {
@@ -27,7 +30,8 @@ export interface ParsedPart {
 }
 
 export function parsePart(site: PartSite): ParsedPart {
-	const located = { owner: site.owner, part: site.part, origin: locateInSource(site.src) };
+	const origin = site.origin ?? locateInSource(site.src);
+	const located = { owner: site.owner, part: site.part, origin };
 	const fail: Fail = (node, message) => {
 		throw violation(located, node.loc?.start.line ?? 1, message);
 	};

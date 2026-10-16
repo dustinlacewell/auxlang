@@ -11,6 +11,7 @@
 
 import type { ModuleIR } from "../../module/front/module/module-ir";
 import type { NodeRun } from "../../runtime/node-run";
+import type { NodePlans } from "../../runtime/specialise/specialise-nodes";
 import { FunctionTable } from "../compile/function-table";
 import { Functions } from "../compile/functions";
 import { moduleBytes } from "../encode/module-bytes";
@@ -31,6 +32,8 @@ export interface WasmInput {
 	readonly readsPattern: readonly boolean[];
 	/** Each node's module, as the front end reads it (module/front/module/spec-ir.ts). */
 	readonly irs: readonly ModuleIR[];
+	/** Each node lane's tick plan (runtime/specialise/specialise-nodes.ts). */
+	readonly plans: NodePlans;
 	/** Each node lane's signal lambdas (lambda-sources.ts). */
 	readonly lambdas: LambdaSources;
 	readonly tapsL: Int32Array;

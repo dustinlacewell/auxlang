@@ -143,6 +143,18 @@ export interface ModuleSpec extends ModulePorts {
 export interface ModuleSource {
 	readonly tick: string;
 	readonly helpers: Readonly<Record<string, string>>;
+	/**
+	 * Where each part (`tick`, `helper 'step'`) starts in the file it was
+	 * written in, when that file was being evaluated: a loud error found at
+	 * build then names the file line, as one found at eval does.
+	 */
+	readonly origins?: Readonly<Record<string, SourceOrigin>>;
+}
+
+/** A 1-based file line in a library file or the patch. */
+export interface SourceOrigin {
+	readonly file: string;
+	readonly line: number;
 }
 
 export type Registry = ReadonlyMap<string, ModuleSpec>;
@@ -168,6 +180,8 @@ export interface SerializedModuleSpec {
 	readonly tick: string;
 	/** Helper name → function source. Present only when the module declares helpers. */
 	readonly helpers?: Readonly<Record<string, string>>;
+	/** ModuleSource `origins`. Present only when a part was found in its file. */
+	readonly origins?: Readonly<Record<string, SourceOrigin>>;
 }
 
 // ---------------------------------------------------------------------------

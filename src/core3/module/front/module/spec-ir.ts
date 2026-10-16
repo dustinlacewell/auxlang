@@ -1,6 +1,8 @@
 /**
  * A spec's bound tick and helpers (types.ts `ModuleSpec.source`), read once
- * per spec and kept with it: what the WASM compiler emits from. Read on first
+ * per spec and kept with it: what every engine specialises at build
+ * (front/types/specialise.ts) and the WASM compiler emits from. Its loud
+ * errors name the module as `defmod` did. Read on first
  * use, not when the spec is built, so the worklet's spec hydrate does no
  * extra work.
  */
@@ -16,7 +18,7 @@ export function specIR(spec: ModuleSpec): ModuleIR {
 	const known = read.get(spec);
 	if (known !== undefined) return known;
 	if (spec.source === undefined) throw new Error(`module '${spec.name}' has no tick source`);
-	const ir = analyseModule(spec.source, moduleFacts(spec, `module '${spec.name}'`));
+	const ir = analyseModule(spec.source, moduleFacts(spec, `defmod('${spec.name}')`));
 	read.set(spec, ir);
 	return ir;
 }

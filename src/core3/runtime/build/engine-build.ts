@@ -74,6 +74,11 @@ export class EngineBuild {
 		return this.parts();
 	}
 
+	/** Each node's spec, as the patch's specs layer over the registry; once laid out. */
+	get nodeSpecs(): readonly ModuleSpec[] {
+		return this.specs;
+	}
+
 	/** The built engine's parts; only once `done`. */
 	parts(): EngineParts {
 		if (this.built === null) throw new Error("engine build: not done");

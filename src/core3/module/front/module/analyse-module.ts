@@ -19,9 +19,11 @@ const RESERVED_HELPER_NAMES = new Set(["Math", "hashRandom", "undefined", "NaN",
 export function analyseModule(source: ModuleSource, facts: ModuleFacts): ModuleIR {
 	const names = helperNames(source, facts.owner);
 	const shared = { ...facts, helpers: names };
-	const tick = resolvePart(parsePart({ ...facts, part: "tick", src: source.tick }), names);
+	const origins = source.origins ?? {};
+	const tickSite = { ...facts, part: "tick", src: source.tick, origin: origins.tick };
+	const tick = resolvePart(parsePart(tickSite), names);
 	const tickIR = analyseFunction(tick, { ...shared, kind: "tick" });
-	const resolved = resolveHelpers(source.helpers, facts.owner, names);
+	const resolved = resolveHelpers(source.helpers, facts.owner, names, origins);
 	const helpers = analyseHelpers(resolved, shared, helperStateParams(tick, resolved));
 	assertNoRecursion(helpers);
 	return { tick: tickIR, helpers };

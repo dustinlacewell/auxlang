@@ -1,17 +1,33 @@
 /**
  * The tick subset keeps booleans apart from numbers (tick-subset/kinds/) and
- * gives every variable an initial value, for every backend: each refusal is
- * a loud error at eval naming the module (or lambda) and the patch line;
- * booleans in their own variables and mixed in tests still pass.
+ * gives every variable an initial value, for every backend. A missing initial
+ * value, a boolean state field and a lambda's refusals are loud errors at
+ * eval; a kind refusal in a tick is a loud error at build, on both engines,
+ * since it depends on the instance (module/front/types/specialise.ts). Each
+ * names the module (or lambda) and the patch line; booleans in their own
+ * variables and mixed in tests still pass.
  */
 
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
+import { getRegistry } from "@/core3/module/define";
+import { Core3Engine } from "@/core3/runtime/engine";
+import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
+import type { Program } from "@/core3/types";
+import { prepareWasm } from "@/core3/wasm/host/prepare-wasm";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 
-/** A patch defining module `t`; the tick body is on patch line 11. */
-function patch(body: string, helpers = "", state = "{ n: 0, buf: new Float32Array(2) }"): string {
+const SR = 48000;
+
+/** A patch defining module `t`; the tick body is on patch line 12. */
+function patch(
+	body: string,
+	helpers = "",
+	state = "{ n: 0, buf: new Float32Array(2) }",
+	config = '{ on: true, mode: "a" }',
+	use = "t().out()",
+): string {
 	return [
 		"const t = defmod({",
 		'  name: "t",',
@@ -20,15 +36,30 @@ function patch(body: string, helpers = "", state = "{ n: 0, buf: new Float32Arra
 		"  outs: { out: sig() },",
 		'  defaultIn: "in",',
 		'  defaultOut: "out",',
-		'  config: { on: true, mode: "a" },',
+		`  config: ${config},`,
 		`  state: () => (${state}),`,
 		`  helpers: { ${helpers} },`,
 		"  tick: (s, i, o, c) => {",
 		`    ${body}`,
 		"  },",
 		"})",
-		"t().out()",
+		use,
 	].join("\n");
+}
+
+/** Build `program` on the interpreter and on WASM; each must throw `error`. */
+function expectBuildsToThrow(program: Program, error: RegExp): void {
+	expect(() => new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program))).toThrow(
+		error,
+	);
+	expect(() => prepareWasm(program, SR)).toThrow(error);
+}
+
+function expectBuilds(program: Program): void {
+	expect(
+		() => new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program)),
+	).not.toThrow();
+	expect(() => prepareWasm(program, SR)).not.toThrow();
 }
 
 const ALLOWED: readonly [string, string][] = [
@@ -40,6 +71,11 @@ const ALLOWED: readonly [string, string][] = [
 	["a boolean stored in a typed array", "s.buf[0] = i.in > 0; o.out = s.buf[0];"],
 	["a boolean compared with a number", "o.out = (i.in > 0) === 1 ? 1 : 0;"],
 	["a helper returning booleans", "o.out = pos(i.in) ? 1 : 0;"],
+	// The unpatched input is the constant 0: the instance folds the number arm away.
+	[
+		"a ?: kept as both when a constant input picks one arm",
+		"const v = i.in > 0 ? 1 : false; o.out = v ? 1 : 0;",
+	],
 ];
 
 const HELPERS =
@@ -71,7 +107,7 @@ const REJECTED: readonly [string, string, RegExp][] = [
 	["++ on a boolean", "let on = true; on++; o.out = 0;", /\+\+\/-- need a number variable/],
 	[
 		"a ?: kept as both",
-		"const v = i.in > 0 ? 1 : false; o.out = v ? 1 : 0;",
+		"const v = s.n > 0 ? 1 : false; o.out = v ? 1 : 0;",
 		/this value is a boolean on one path and a number on another/,
 	],
 	[
@@ -84,29 +120,41 @@ const REJECTED: readonly [string, string, RegExp][] = [
 		"const v = s.buf[s.n] ?? false; o.out = v ? 1 : 0;",
 		/this value is a boolean on one path and a number on another/,
 	],
-	[
-		"a let with no initial value",
-		"let x; x = 1; o.out = x;",
-		/every variable needs an initial value/,
-	],
 ];
 
 describe("tick subset: booleans and initial values", () => {
 	for (const [what, body] of ALLOWED)
 		it(`allows ${what}`, () => {
-			expect(() => evalPatch(patch(body, HELPERS))).not.toThrow();
+			expectBuilds(evalPatch(patch(body, HELPERS)));
 		});
 
 	for (const [what, body, error] of REJECTED)
-		it(`rejects ${what}, naming the module and line`, () => {
-			expect(() => evalPatch(patch(body, HELPERS))).toThrow(
+		it(`rejects ${what} at build on both engines, naming the module and line`, () => {
+			expectBuildsToThrow(
+				evalPatch(patch(body, HELPERS)),
 				new RegExp(`defmod\\('t'\\): tick at patch line 12: ${error.source}`),
 			);
 		});
 
-	it("rejects a helper returning booleans and numbers, at its line", () => {
-		expect(() => evalPatch(patch("o.out = mixed(i.in) ? 1 : 0;", HELPERS))).toThrow(
+	it("rejects a helper returning booleans and numbers at build, at its line", () => {
+		expectBuildsToThrow(
+			evalPatch(patch("o.out = mixed(i.in) ? 1 : 0;", HELPERS)),
 			/defmod\('t'\): helper 'mixed' at patch line 10: it returns booleans and numbers/,
+		);
+	});
+
+	it("rejects at build a form only a non-default config selects", () => {
+		const config = (use: string) => patch("o.out = c.on;", "", "{ n: 0 }", "{ on: 0 }", use);
+		expectBuilds(evalPatch(config("t().out()")));
+		expectBuildsToThrow(
+			evalPatch(config("t({ on: true }).out()")),
+			/defmod\('t'\): tick at patch line 12: a boolean stored where a number is kept/,
+		);
+	});
+
+	it("rejects a let with no initial value at eval", () => {
+		expect(() => evalPatch(patch("let x; x = 1; o.out = x;", HELPERS))).toThrow(
+			/defmod\('t'\): tick at patch line 12: every variable needs an initial value/,
 		);
 	});
 

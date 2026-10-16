@@ -15,7 +15,7 @@ export function serializeSpec(spec: ModuleSpec): SerializedModuleSpec {
 	if (spec.source === undefined) {
 		throw new Error(`module '${spec.name}' has no source text and cannot cross to the engine`);
 	}
-	const helpers = spec.source.helpers;
+	const { helpers, origins } = spec.source;
 	return {
 		name: spec.name,
 		category: spec.category,
@@ -25,6 +25,7 @@ export function serializeSpec(spec: ModuleSpec): SerializedModuleSpec {
 		...(spec.defaultOut !== undefined ? { defaultOut: spec.defaultOut } : {}),
 		tick: spec.source.tick,
 		...(Object.keys(helpers).length > 0 ? { helpers } : {}),
+		...(origins !== undefined ? { origins } : {}),
 		...(spec.doc !== undefined ? { doc: spec.doc } : {}),
 		...(spec.config !== undefined ? { config: spec.config } : {}),
 		...(spec.positional !== undefined ? { positional: spec.positional } : {}),
@@ -35,7 +36,11 @@ export function serializeSpec(spec: ModuleSpec): SerializedModuleSpec {
 }
 
 export function hydrateSpec(s: SerializedModuleSpec): ModuleSpec {
-	const source = { tick: s.tick, helpers: s.helpers ?? {} };
+	const source = {
+		tick: s.tick,
+		helpers: s.helpers ?? {},
+		...(s.origins !== undefined ? { origins: s.origins } : {}),
+	};
 	const tick = buildTick(source, `module '${s.name}'`);
 	const state =
 		s.state !== undefined
@@ -43,7 +48,7 @@ export function hydrateSpec(s: SerializedModuleSpec): ModuleSpec {
 					sampleRate: number,
 				) => Record<string, unknown>)
 			: undefined;
-	const { tick: _t, state: _s, helpers: _h, ...rest } = s;
+	const { tick: _t, state: _s, helpers: _h, origins: _o, ...rest } = s;
 	return { ...rest, tick, source, ...(state !== undefined ? { state } : {}) };
 }
 

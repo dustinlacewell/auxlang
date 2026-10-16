@@ -6,6 +6,7 @@
 
 import { parsePart } from "@/core3/module/front/parse/parse-part";
 import type { Binding } from "@/core3/module/front/scope/binding";
+import type { SourceOrigin } from "@/core3/types";
 import { type FunctionFacts, analyseFunction, resolvePart } from "./analyse-function";
 import type { FunctionIR, ResolvedPart } from "./module-ir";
 
@@ -13,10 +14,13 @@ export function resolveHelpers(
 	texts: Readonly<Record<string, string>>,
 	owner: string,
 	names: ReadonlySet<string>,
+	origins: Readonly<Record<string, SourceOrigin>> = {},
 ): Map<string, ResolvedPart> {
 	const resolved = new Map<string, ResolvedPart>();
-	for (const [name, src] of Object.entries(texts))
-		resolved.set(name, resolvePart(parsePart({ owner, part: `helper '${name}'`, src }), names));
+	for (const [name, src] of Object.entries(texts)) {
+		const part = `helper '${name}'`;
+		resolved.set(name, resolvePart(parsePart({ owner, part, src, origin: origins[part] }), names));
+	}
 	return resolved;
 }
 

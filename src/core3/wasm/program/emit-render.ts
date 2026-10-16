@@ -11,6 +11,7 @@ import { BIND_CUR } from "../../runtime/bindings";
 import { GATHER_CUR } from "../../runtime/gathers";
 import type { ModuleIR } from "../../module/front/module/module-ir";
 import type { NodeRun } from "../../runtime/node-run";
+import type { NodePlans } from "../../runtime/specialise/specialise-nodes";
 import { FnEmitter } from "../compile/fn-emitter";
 import type { FunctionTable } from "../compile/function-table";
 import type { Functions } from "../compile/functions";
@@ -27,6 +28,8 @@ export interface RenderInput {
 	readonly modules: readonly string[];
 	/** Each node's module, as the front end read it. */
 	readonly irs: readonly ModuleIR[];
+	/** Each node lane's tick plan. */
+	readonly plans: NodePlans;
 	readonly lambdas: LambdaSources;
 	readonly memory: WasmLayout;
 	readonly tapsL: Int32Array;

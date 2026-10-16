@@ -7,11 +7,12 @@
  * (`source`): it is what the WASM compiler reads.
  */
 
-import type { ModuleSource, ModuleSpec } from "../types";
+import type { ModuleSource, ModuleSpec, SourceOrigin } from "../types";
 import { bindModuleMath } from "./bind-math/bind-module-math";
 import { MATH_HELPER_PREFIX } from "./bind-math/math-helpers";
 import { bindModuleRandom } from "./bind-random/bind-module-random";
 import { RANDOM_HELPER_PREFIX } from "./bind-random/random-helpers";
+import { locateInSource } from "./source-text";
 import { buildTick } from "./tick-build/build-tick";
 import { checkModule } from "./tick-subset/check-module";
 
@@ -25,8 +26,21 @@ export function bindModule(written: WrittenSpec): ModuleSpec {
 	const owner = `defmod('${spec.name}')`;
 	const written_ = sourceOf(written.tick, helpers ?? {}, owner);
 	checkModule(spec, written_);
-	const source = bindModuleRandom(bindModuleMath(written_, owner), owner, spec.config ?? {});
+	const bound = bindModuleRandom(bindModuleMath(written_, owner), owner, spec.config ?? {});
+	const source = withOrigins(bound, written_);
 	return { ...spec, tick: buildTick(source, owner), source };
+}
+
+/** Where the written parts start in the file being evaluated; binding keeps their lines. */
+function withOrigins(bound: ModuleSource, written: ModuleSource): ModuleSource {
+	const origins: Record<string, SourceOrigin> = {};
+	const find = (part: string, text: string) => {
+		const origin = locateInSource(text);
+		if (origin !== null) origins[part] = origin;
+	};
+	find("tick", written.tick);
+	for (const [name, text] of Object.entries(written.helpers)) find(`helper '${name}'`, text);
+	return Object.keys(origins).length === 0 ? bound : { ...bound, origins };
 }
 
 const RESERVED_PREFIXES = [MATH_HELPER_PREFIX, RANDOM_HELPER_PREFIX];

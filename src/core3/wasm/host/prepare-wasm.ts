@@ -15,7 +15,8 @@ import { EngineBuild } from "../../runtime/build/engine-build";
 import { withProgramSpecs } from "../../runtime/hydrate-specs";
 import { slotOf } from "../../runtime/output-slots";
 import { type PreparedProgram, prepareProgram } from "../../runtime/prepare/prepare-program";
-import type { KeyedIdentity, ModuleSpec, Program, Registry } from "../../types";
+import { specialiseNodes } from "../../runtime/specialise/specialise-nodes";
+import type { KeyedIdentity, Program, Registry } from "../../types";
 import { type CompiledWasm, type WasmInput, compileWasm } from "../program/compile-program";
 import { lambdaSources } from "../program/lambda-sources";
 import { type CarrySide, planCarry } from "./carry-plan";
@@ -86,14 +87,17 @@ export function buildWasmInput(
 
 function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 	const { program, sampleRate } = prepared;
-	const parts = new EngineBuild(prepared, layered, undefined).finish();
+	const build = new EngineBuild(prepared, layered, undefined);
+	const parts = build.finish();
 	const taps = (port: string) =>
 		Int32Array.from(program.outs, (n) => slotOf(parts.layout, n, port, 0));
 	const input: WasmInput = {
 		runs: parts.runs,
 		modules: program.nodes.map((n) => n.module),
 		readsPattern: program.nodes.map((n) => layered.get(n.module)?.reads === "pattern"),
-		irs: program.nodes.map((n) => specIR(specOf(layered, n.module))),
+		// A spec with no tick text fails loudly here, before the plans skip it.
+		irs: build.nodeSpecs.map(specIR),
+		plans: specialiseNodes(parts.runs, build.nodeSpecs, sampleRate),
 		lambdas: lambdaSources(program.nodes),
 		tapsL: taps("l"),
 		tapsR: taps("r"),
@@ -102,10 +106,4 @@ function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 	};
 	const facts = engineFacts(parts, input.readsPattern);
 	return { input, start: { runs: parts.runs, cur: parts.bufs.cur }, facts };
-}
-
-function specOf(layered: Registry, module: string): ModuleSpec {
-	const spec = layered.get(module);
-	if (spec === undefined) throw new Error(`wasm: unknown module '${module}'`);
-	return spec;
 }
