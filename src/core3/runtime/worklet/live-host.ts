@@ -120,21 +120,26 @@ export class LiveHost {
 	}
 
 	private build(): void {
-		if (this.building === null) {
-			const next = this.queue.shift();
-			if (next === undefined) return;
-			// The program it will continue at the swap: the swap only ever takes this
-			// one (or none, once a stop fade ends), since builds run one at a time.
-			const source = next.prepared.continues ? (this.engine ?? this.fading) : null;
-			this.building = new WasmHostProgram(next.prepared, this.registry, source, next.slots);
-		}
+		const next = this.building === null ? this.queue.shift() : undefined;
+		const serial = next?.prepared.wasm.serial ?? this.building?.wasm.serial;
+		if (serial === undefined) return;
+		// A throw anywhere in a build (starting it included) fails that program
+		// only; escaping process() would kill the processor.
 		try {
-			this.building.advance(this.building.prepared.budget);
+			const building = next === undefined ? this.building : this.start(next);
+			this.building = building;
+			building?.advance(building.prepared.budget);
 		} catch (err) {
-			const { serial } = this.building.wasm;
 			this.building = null;
 			this.report(err, serial);
 		}
+	}
+
+	private start(next: Queued): WasmHostProgram {
+		// The program it will continue at the swap: the swap only ever takes this
+		// one (or none, once a stop fade ends), since builds run one at a time.
+		const source = next.prepared.continues ? (this.engine ?? this.fading) : null;
+		return new WasmHostProgram(next.prepared, this.registry, source, next.slots);
 	}
 
 	private mix(outL: Float32Array, outR: Float32Array, n: number): void {
