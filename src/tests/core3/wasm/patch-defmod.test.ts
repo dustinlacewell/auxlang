@@ -9,25 +9,21 @@ import { describe, expect, it } from "vitest";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { compareBlocks } from "./block-differential";
 
-const PATCH = `const grain = defmod({
-  name: "grain",
-  category: "effects",
-  ins: { in: sig(0), rate: sig(3), depth: sig(0.5) },
-  outs: { out: sig() },
-  defaultIn: "in",
-  defaultOut: "out",
-  config: { taps: 3 },
-  state: () => ({ phase: 0, ring: new Float32Array(64), at: 0 }),
-  helpers: { frac: (x) => x - Math.floor(x) },
-  tick: (s, i, o, c, sr) => {
-    s.phase = frac(s.phase + i.rate / sr);
-    s.ring[s.at] = i.in;
-    s.at = (s.at + 1) % s.ring.length;
-    let echo = 0;
-    for (let k = 1; k <= c.taps; k++) echo += s.ring[s.at - 16 * k] ?? s.ring[s.at + 64 - 16 * k] ?? 0;
-    const wobble = Math.sin(2 * Math.PI * s.phase) * i.depth;
-    o.out = i.in * (1 - wobble) + 0.2 * echo + 0.01 * (Math.random() - 0.5);
-  },
+const PATCH = `function frac(x) { return x - Math.floor(x) }
+
+const grain = defmod("grain", { cat: "effects", args: ["rate", "depth"] }, ({ sr, taps = 3 }) => {
+  let phase = 0
+  const ring = new Float32Array(64)
+  let at = 0
+  return ({ in: x = 0, rate = 3, depth = 0.5 }) => {
+    phase = frac(phase + rate / sr)
+    ring[at] = x
+    at = (at + 1) % ring.length
+    let echo = 0
+    for (let k = 1; k <= taps; k++) echo += ring[at - 16 * k] ?? ring[at + 64 - 16 * k] ?? 0
+    const wobble = Math.sin(2 * Math.PI * phase) * depth
+    return x * (1 - wobble) + 0.2 * echo + 0.01 * (Math.random() - 0.5)
+  }
 })
 
 tempo(110)
