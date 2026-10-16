@@ -25,25 +25,23 @@ import type { FnEmitter } from "./fn-emitter";
 type Loop = ForStatement | WhileStatement | DoWhileStatement;
 
 export function emitLoop(e: FnEmitter, node: Loop, label: string | null): void {
-	e.within(e.scope.child(), () => {
-		if (node.type === "ForStatement") emitInit(e, node);
-		const exit = e.enter(OP.block);
-		const top = e.enter(OP.loop);
-		if (node.type !== "DoWhileStatement") exitUnless(e, node.test ?? null, exit);
-		const next = e.enter(OP.block);
-		e.labels.push({ name: label, implicit: true, breakAt: exit, continueAt: next });
-		e.within(e.scope.child(), () => emitStatement(e, node.body));
-		e.labels.pop();
-		e.exit();
-		if (node.type === "DoWhileStatement") repeatIf(e, node, top);
-		else {
-			if (node.type === "ForStatement" && node.update !== null && node.update !== undefined)
-				emitDiscard(e, node.update);
-			e.br(top);
-		}
-		e.exit();
-		e.exit();
-	});
+	if (node.type === "ForStatement") emitInit(e, node);
+	const exit = e.enter(OP.block);
+	const top = e.enter(OP.loop);
+	if (node.type !== "DoWhileStatement") exitUnless(e, node.test ?? null, exit);
+	const next = e.enter(OP.block);
+	e.labels.push({ name: label, implicit: true, breakAt: exit, continueAt: next });
+	emitStatement(e, node.body);
+	e.labels.pop();
+	e.exit();
+	if (node.type === "DoWhileStatement") repeatIf(e, node, top);
+	else {
+		if (node.type === "ForStatement" && node.update !== null && node.update !== undefined)
+			emitDiscard(e, node.update);
+		e.br(top);
+	}
+	e.exit();
+	e.exit();
 }
 
 function emitInit(e: FnEmitter, node: ForStatement): void {

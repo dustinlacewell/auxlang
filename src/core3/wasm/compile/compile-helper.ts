@@ -101,17 +101,17 @@ function bindParams(
 	ir.node.params.forEach((param, k) => {
 		if (param.type !== "Identifier") return e.fail(param, "parameters must be plain names");
 		const shape: ArgShape = shapes[k] ?? { k: "static", value: undefined };
-		if (shape.k === "run") e.scope.declare(param.name, local(next++, shape.kind));
+		if (shape.k === "run") e.bind(param, local(next++, shape.kind));
 		else if (shape.k === "static" && paramWritten(ir, k)) {
 			const kind = emitStatic(e, shape.value, param);
 			const index = e.local(kind);
 			e.code.set(index);
-			e.scope.declare(param.name, local(index, kind));
-		} else if (shape.k === "static") e.scope.declare(param.name, fixed(shape.value));
+			e.bind(param, local(index, kind));
+		} else if (shape.k === "static") e.bind(param, fixed(shape.value));
 		else {
 			const at = { base: shape.dynamic ? next++ : null, offset: shape.offset };
 			const held = inMemory(shape.shape, at);
-			e.scope.declare(param.name, paramWritten(ir, k) ? addressLocal(e, held) : held);
+			e.bind(param, paramWritten(ir, k) ? addressLocal(e, held) : held);
 		}
 	});
 }

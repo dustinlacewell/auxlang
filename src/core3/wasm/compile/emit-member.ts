@@ -203,12 +203,9 @@ function pushBase(e: FnEmitter, base: number | null): void {
 
 /** `__mc[slot]`: a local in a tick, memory in a helper. */
 function cacheTarget(e: FnEmitter, node: MemberExpression): Target | null {
-	if (
-		node.object.type !== "Identifier" ||
-		node.object.name !== CACHE_ARRAY ||
-		e.scope.lookup(CACHE_ARRAY) !== undefined
-	)
-		return null;
+	if (node.object.type !== "Identifier") return null;
+	const name = e.resolution(node.object);
+	if (name?.k !== "global" || name.name !== CACHE_ARRAY) return null;
 	const slot = e.fold(node.property);
 	if (slot === null || typeof slot.v !== "number") return e.fail(node, "cache slots are constants");
 	const cache = e.ctx.cache;

@@ -10,7 +10,6 @@ import type { CacheAccess, Calls, Intrinsics, TickRoles } from "../compile/emit-
 import { emitDiscard } from "../compile/emit-expression";
 import { emitStatements } from "../compile/emit-statement";
 import type { FnEmitter } from "../compile/fn-emitter";
-import { Scope } from "../compile/scope";
 import { type Role, type Value, fixed, local } from "../compile/values";
 import { paramWritten } from "../compile/written";
 import { OP } from "../encode/opcodes";
@@ -42,7 +41,8 @@ export function emitTick(e: FnEmitter, site: TickSite): void {
 		intrinsics: site.intrinsics,
 		ret: { k: "exit", depth: exit },
 	};
-	e.within(paramScope(e, site), () => {
+	e.unbound(() => {
+		bindParams(e, site);
 		const body = site.fn.node.body;
 		if (body.type === "BlockStatement") emitStatements(e, body.body);
 		else emitDiscard(e, body);
@@ -51,19 +51,17 @@ export function emitTick(e: FnEmitter, site: TickSite): void {
 }
 
 /** The sample rate and width are constants, or f64 locals when the tick reassigns them. */
-function paramScope(e: FnEmitter, site: TickSite): Scope {
-	const scope = new Scope();
+function bindParams(e: FnEmitter, site: TickSite): void {
 	site.fn.node.params.forEach((param, k) => {
 		if (param.type !== "Identifier") return e.fail(param, "tick parameters must be plain names");
 		const role = ROLES[k];
 		if (role !== undefined) {
-			scope.declare(param.name, { k: "role", role });
+			e.bind(param, { k: "role", role });
 			return;
 		}
 		const value = k === 4 ? site.sampleRate : site.width;
-		scope.declare(param.name, paramWritten(site.fn, k) ? numberLocal(e, value) : fixed(value));
+		e.bind(param, paramWritten(site.fn, k) ? numberLocal(e, value) : fixed(value));
 	});
-	return scope;
 }
 
 function numberLocal(e: FnEmitter, value: number): Value {

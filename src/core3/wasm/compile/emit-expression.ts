@@ -29,7 +29,7 @@ function emitNode(e: FnEmitter, node: AnyNode): Kind {
 	if (folded !== null) return emitStatic(e, folded.v, node);
 	switch (node.type) {
 		case "Identifier":
-			return emitValue(e, e.scope.lookup(node.name), node);
+			return emitValue(e, e.valueOf(node), node);
 		case "MemberExpression":
 			return emitMemberRead(e, node);
 		case "UnaryExpression":

@@ -6,7 +6,7 @@
  * rebind later in the same expression (`a[(a = s.b, 0)]`) leaves it alone.
  */
 
-import type { AnyNode, AssignmentExpression } from "acorn";
+import type { AnyNode, AssignmentExpression, Identifier } from "acorn";
 import { OP } from "../encode/opcodes";
 import type { FnEmitter } from "./fn-emitter";
 import { placeOf } from "./place";
@@ -17,8 +17,8 @@ import { referenceWritten } from "./written";
 /** The operators that store an array or record: `=`, and `&&=` (an array or record is truthy). */
 export const REBINDS: ReadonlySet<string> = new Set(["=", "&&="]);
 
-export function declareAddress(e: FnEmitter, name: string, init: AnyNode): void {
-	e.scope.declare(name, addressLocal(e, refAt(e, init)));
+export function declareAddress(e: FnEmitter, id: Identifier, init: AnyNode): void {
+	e.bind(id, addressLocal(e, refAt(e, init)));
 }
 
 /** `held` with its address in a fresh i32 local, for a variable or helper parameter that is rebound. */
@@ -36,7 +36,7 @@ export function isRebind(e: FnEmitter, node: AssignmentExpression): boolean {
 
 /** `a = s.b`: the variable's address local takes the new address. */
 export function emitRebind(e: FnEmitter, node: AssignmentExpression): void {
-	const variable = node.left.type === "Identifier" ? e.scope.lookup(node.left.name) : null;
+	const variable = node.left.type === "Identifier" ? e.valueOf(node.left) : null;
 	if (!REBINDS.has(node.operator) || variable?.k !== "memory" || variable.at.base === null)
 		e.fail(node, "an array variable is only ever rebound by `=` or `&&=` (compiler bug)");
 	pushAddress(e, refAt(e, node.right).at);

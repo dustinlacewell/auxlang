@@ -41,7 +41,7 @@ export function emitStatement(e: FnEmitter, node: AnyNode, label: string | null 
 			emitDeclaration(e, node);
 			return false;
 		case "BlockStatement":
-			return e.within(e.scope.child(), () => emitStatements(e, node.body));
+			return emitStatements(e, node.body);
 		case "EmptyStatement":
 			return false;
 		case "IfStatement":

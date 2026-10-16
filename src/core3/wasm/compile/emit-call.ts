@@ -23,12 +23,11 @@ export function emitCall(e: FnEmitter, node: CallExpression): Kind | "void" {
 		callee.type === "MemberExpression" &&
 		!callee.computed &&
 		callee.object.type === "Identifier" &&
-		callee.object.name === "Math" &&
-		e.scope.lookup("Math") === undefined &&
+		e.resolution(callee.object)?.k === "math" &&
 		callee.property.type === "Identifier"
 	)
 		return emitMathCall(e, callee.property.name, node);
-	if (callee.type !== "Identifier" || e.scope.lookup(callee.name) !== undefined)
+	if (callee.type !== "Identifier" || e.resolution(callee)?.k === "binding")
 		return e.fail(node, "only Math.*, helpers and intrinsics may be called");
 	const args = plainArgs(e, node);
 	const intrinsic = e.ctx.intrinsics?.call(e, callee.name, args, node) ?? null;
@@ -72,7 +71,7 @@ function emitHelperCall(e: FnEmitter, name: string, args: readonly Expression[])
 /** A tick's own state record as an argument: the helper reads and writes it in memory. */
 function stateArg(e: FnEmitter, arg: Expression): StateRecord | null {
 	if (arg.type !== "Identifier") return null;
-	const value = e.scope.lookup(arg.name);
+	const value = e.valueOf(arg);
 	if (value?.k !== "role" || value.role !== "state" || e.ctx.roles === null) return null;
 	return e.ctx.roles.stateRecord(arg);
 }

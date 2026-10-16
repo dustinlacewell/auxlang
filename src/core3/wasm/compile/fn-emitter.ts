@@ -1,19 +1,21 @@
 /**
  * One WebAssembly function under construction: its code, its locals, the
- * names in scope, and the control depth that `break`, `continue` and
- * `return` branch against. Depths are absolute: opening a block gives it
- * depth + 1, and a branch to absolute depth d from depth D is `br (D - d)`.
+ * value each variable and parameter holds, and the control depth that
+ * `break`, `continue` and `return` branch against. Depths are absolute:
+ * opening a block gives it depth + 1, and a branch to absolute depth d from
+ * depth D is `br (D - d)`. Names mean what the front end resolved them to
+ * (module/front/scope/resolve-bindings.ts): values are kept by binding.
  */
 
-import type { AnyNode } from "acorn";
+import type { AnyNode, Identifier } from "acorn";
+import { type Binding, type Resolution, bindingDeclaredBy } from "../../module/front/scope/binding";
 import type { FunctionPlan } from "../../module/front/types/function-plan";
 import { type Range, rangeOf } from "../../module/front/types/int-range";
 import type { Folded, Ty } from "../../module/front/types/ty";
 import { CodeBuffer } from "../encode/code-buffer";
 import { F64, I32, I64, OP } from "../encode/opcodes";
 import type { EmitContext } from "./emit-context";
-import { Scope } from "./scope";
-import type { Kind } from "./values";
+import type { Kind, Value } from "./values";
 
 /**
  * A statement `break`/`continue` can leave. `implicit`: a loop or switch,
@@ -32,17 +34,14 @@ export const valueType = (kind: Kind): number =>
 export class FnEmitter {
 	code = new CodeBuffer();
 	depth = 0;
-	scope: Scope;
 	readonly labels: LabelTarget[] = [];
 	private readonly localTypes: number[] = [];
+	private bound = new Map<Binding, Value>();
 
 	constructor(
 		readonly params: readonly number[],
 		public ctx: EmitContext,
-		scope: Scope = new Scope(),
-	) {
-		this.scope = scope;
-	}
+	) {}
 
 	/** The value types of the locals after the parameters. */
 	get locals(): readonly number[] {
@@ -89,15 +88,34 @@ export class FnEmitter {
 		}
 	}
 
-	/** Run `emit` with `scope` in force. */
-	within<T>(scope: Scope, emit: () => T): T {
-		const outer = this.scope;
-		this.scope = scope;
+	/** Run `emit` with no variable bound: one tick's names never reach another's. */
+	unbound<T>(emit: () => T): T {
+		const outer = this.bound;
+		this.bound = new Map();
 		try {
 			return emit();
 		} finally {
-			this.scope = outer;
+			this.bound = outer;
 		}
+	}
+
+	/** What the front end resolved the name reference `id` to. */
+	resolution(id: Identifier): Resolution | undefined {
+		return this.ctx.fn?.scopes.references.get(id);
+	}
+
+	/** The value of the variable or parameter the reference `id` names. */
+	valueOf(id: Identifier): Value | undefined {
+		const r = this.resolution(id);
+		return r?.k === "binding" ? this.bound.get(r.binding) : undefined;
+	}
+
+	/** The variable or parameter `id` declares holds `value` from here on. */
+	bind(id: Identifier, value: Value): void {
+		const fn = this.ctx.fn;
+		const binding = fn === null ? undefined : bindingDeclaredBy(fn.scopes, id);
+		if (binding === undefined) return this.fail(id, "a name the front end did not bind (compiler bug)");
+		this.bound.set(binding, value);
 	}
 
 	/** The node's value when it is known while compiling, from this function's plan. */

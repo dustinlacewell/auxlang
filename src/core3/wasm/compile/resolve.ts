@@ -16,7 +16,7 @@ import { type MemoryValue, type Value, fixed, inMemory, local, throughPointer } 
 
 /** The value `node` names, when it is a name or a field; null for anything else. */
 export function resolve(e: FnEmitter, node: AnyNode): Value | null {
-	if (node.type === "Identifier") return e.scope.lookup(node.name) ?? null;
+	if (node.type === "Identifier") return e.valueOf(node) ?? null;
 	if (node.type === "MemberExpression") return resolveMember(e, node);
 	return null;
 }
@@ -40,13 +40,13 @@ function lengthOf(shape: Shape, field: string): Value | null {
 }
 
 function resolveMember(e: FnEmitter, node: MemberExpression): Value | null {
-	const owner = node.object.type === "Identifier" ? e.scope.lookup(node.object.name) : undefined;
+	const owner = node.object.type === "Identifier" ? e.valueOf(node.object) : undefined;
 	const parent = owner ?? (node.object.type === "MemberExpression" ? resolve(e, node.object) : null);
 	if (node.computed) return parent?.k === "memory" ? recordAtConstant(e, parent, node.property) : null;
 	if (node.property.type !== "Identifier") return null;
 	const field = node.property.name;
 	if (owner === undefined && node.object.type === "Identifier") {
-		const isMath = node.object.name === "Math";
+		const isMath = e.resolution(node.object)?.k === "math";
 		return isMath && MATH_CONSTANTS.has(field) ? fixed(Math[field as keyof Math] as number) : null;
 	}
 	if (parent === null || parent === undefined) return null;

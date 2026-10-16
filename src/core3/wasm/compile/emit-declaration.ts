@@ -9,7 +9,7 @@
  * an i64 local. Any other variable is an f64 or a boolean.
  */
 
-import type { AnyNode, VariableDeclaration, VariableDeclarator } from "acorn";
+import type { AnyNode, Identifier, VariableDeclaration, VariableDeclarator } from "acorn";
 import { declareAddress } from "./address-variable";
 import { toF64 } from "./coerce";
 import { emitExpr } from "./emit-expression";
@@ -27,32 +27,32 @@ export function emitDeclaration(e: FnEmitter, node: VariableDeclaration): void {
 
 function declare(e: FnEmitter, d: VariableDeclarator): void {
 	if (d.id.type !== "Identifier") e.fail(d, "declarations must name one variable");
-	const name = d.id.name;
+	const id = d.id;
 	if (d.init === null || d.init === undefined) {
 		const index = e.local("f64");
 		e.code.f64Const(Number.NaN).set(index);
-		e.scope.declare(name, local(index, "f64"));
+		e.bind(id, local(index, "f64"));
 		return;
 	}
-	const declared = e.typeOf(d.id);
+	const declared = e.typeOf(id);
 	if (declared.k === "static") {
-		e.scope.declare(name, fixed(declared.v));
+		e.bind(id, fixed(declared.v));
 		return;
 	}
 	if (declared.k === "role") {
-		declareRoleAlias(e, name, d.init);
+		declareRoleAlias(e, id, d.init);
 		return;
 	}
 	if (declared.k === "ref") {
 		const fn = e.ctx.fn;
-		if (fn !== null && variableWritten(fn, d.id)) declareAddress(e, name, d.init);
-		else declareAlias(e, name, d.init);
+		if (fn !== null && variableWritten(fn, id)) declareAddress(e, id, d.init);
+		else declareAlias(e, id, d.init);
 		return;
 	}
-	const width = widthOf(e.range(d.id));
+	const width = widthOf(e.range(id));
 	if (width !== null) {
 		emitInteger(e, d.init, width);
-		e.scope.declare(name, local(setLocal(e, width), width));
+		e.bind(id, local(setLocal(e, width), width));
 		return;
 	}
 	let kind = emitExpr(e, d.init);
@@ -60,7 +60,7 @@ function declare(e: FnEmitter, d: VariableDeclarator): void {
 		toF64(e, kind);
 		kind = "f64";
 	}
-	e.scope.declare(name, local(setLocal(e, kind), kind));
+	e.bind(id, local(setLocal(e, kind), kind));
 }
 
 function setLocal(e: FnEmitter, kind: Kind): number {
@@ -70,20 +70,20 @@ function setLocal(e: FnEmitter, kind: Kind): number {
 }
 
 /** `const t = s`: `t` names the tick's parameter record itself; no local. */
-function declareRoleAlias(e: FnEmitter, name: string, init: AnyNode): void {
+function declareRoleAlias(e: FnEmitter, id: Identifier, init: AnyNode): void {
 	const value = resolve(e, init);
 	if (value?.k !== "role")
 		e.fail(init, "the plan gives a parameter record here, but it names none (compiler bug)");
-	e.scope.declare(name, value);
+	e.bind(id, value);
 }
 
 /**
  * An array or record variable never reassigned names it directly; no local.
  * A record at a run-time index keeps the code that finds its address.
  */
-function declareAlias(e: FnEmitter, name: string, init: AnyNode): void {
+function declareAlias(e: FnEmitter, id: Identifier, init: AnyNode): void {
 	const value = placeOf(e, init);
 	if (value?.k !== "memory" || value.shape.k === "number")
 		e.fail(init, "the plan gives an array or record here, but it names none (compiler bug)");
-	e.scope.declare(name, value);
+	e.bind(id, value);
 }
