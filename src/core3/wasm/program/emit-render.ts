@@ -2,7 +2,8 @@
  * The render function: `render(n)` runs n samples of the whole program, the
  * same walk as the engine's drivers (runtime/interpret-block.ts). Per sample:
  * the late slots' flip, the lambda time, every node in program order
- * (node-walk.ts), then the out nodes' l/r sums into the f32 output blocks.
+ * (node-walk.ts) with the monitor's steps around it when monitored
+ * (emit-monitor.ts), then the out nodes' l/r sums into the f32 output blocks.
  * Mirrored values (the sample count among them) load before the sample loop
  * and store after it.
  */
@@ -10,6 +11,7 @@
 import { BIND_CUR } from "../../runtime/bindings";
 import { GATHER_CUR } from "../../runtime/gathers";
 import type { ModuleIR } from "../../module/front/module/module-ir";
+import type { MonitorPlan } from "../../runtime/live/monitor-plan";
 import type { NodeRun } from "../../runtime/node-run";
 import type { NodePlans } from "../../runtime/specialise/specialise-nodes";
 import { FnEmitter } from "../compile/fn-emitter";
@@ -17,6 +19,7 @@ import type { FunctionTable } from "../compile/function-table";
 import type { Functions } from "../compile/functions";
 import { helperSet } from "../compile/helper-set";
 import { I32, OP } from "../encode/opcodes";
+import { MonitorEmitter } from "./emit-monitor";
 import type { LambdaSources } from "./lambda-sources";
 import type { WasmLayout } from "./memory-layout";
 import { NodeWalk } from "./node-walk";
@@ -37,6 +40,8 @@ export interface RenderInput {
 	readonly sampleRate: number;
 	/** The module's table `enter` function (table-enter.ts). */
 	readonly enter: number;
+	/** The monitor's plan (emit-monitor.ts); null: no monitor steps. */
+	readonly monitor: MonitorPlan | null;
 }
 
 export interface RenderBody {
@@ -63,11 +68,15 @@ export function emitRender(input: RenderInput, fns: Functions, table: FunctionTa
 	const count = locals.at(input.memory.count);
 	const slots = new ValueSlots(e, locals, input.memory.cur, input.runs, input.memory.slots);
 	const walk = new NodeWalk({ e, input, fns, table, locals, slots, time });
+	const monitor =
+		input.monitor === null ? null : new MonitorEmitter(e, input.monitor, input.memory, locals, slots);
 	e.depth = 2;
 	const sample = e.capture(() => {
 		slots.emitFlip();
 		if (hasLambdas(input.memory)) emitTime(e, count, k, input.sampleRate, time);
+		monitor?.before();
 		input.runs.forEach((_, i) => walk.node(i));
+		monitor?.after();
 		emitTaps(e, input, slots, k);
 	});
 	e.depth = 0;

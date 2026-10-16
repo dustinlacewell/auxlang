@@ -23,11 +23,13 @@
  * render and after the table work, never inside `render`.
  */
 
+import { type MonitorRegion, initRegion } from "../../runtime/live/monitor-region";
 import { type SlotTarget, applySlotWrites, isSlotIndex } from "../../runtime/live/slot-target";
 import type { NodeRun } from "../../runtime/node-run";
 import { slotOf } from "../../runtime/output-slots";
 import type { Engine, EngineState } from "../../types";
 import type { CompiledWasm } from "../program/compile-program";
+import type { MonitorMemory } from "../program/memory-layout";
 import type { CarrySide } from "./carry-plan";
 import { type CarryViews, bindCarry, carryCurrent, runCarry } from "./carry/run-carry";
 import type { EngineFacts } from "./engine-facts";
@@ -76,6 +78,7 @@ export class WasmEngine implements Engine, SlotTarget {
 	private readonly tables: SeqTables;
 	private carrySource: WasmMemory | null = null;
 	private carryViews: CarryViews | null = null;
+	private region: MonitorRegion | null = null;
 
 	private readonly fillBudget: number;
 
@@ -101,6 +104,13 @@ export class WasmEngine implements Engine, SlotTarget {
 		);
 		link.tables = this.tables;
 		this.syncViews();
+		this.region = monitorRegion(this.views.f64, layout.monitor);
+		if (this.region !== null) initRegion(this.region);
+	}
+
+	/** The monitor region in this instance's memory; null when not monitored. Re-read after each block: a grow moves it. */
+	get monitor(): MonitorRegion | null {
+		return this.region;
 	}
 
 	/** This engine as the next program's carry plan sees it. */
@@ -258,9 +268,15 @@ export class WasmEngine implements Engine, SlotTarget {
 		if (this.views.f64.buffer === this.memory.buffer) return;
 		this.views = memoryViews(this.memory.buffer);
 		this.f32 = new Float32Array(this.memory.buffer);
+		if (this.region !== null) this.region = monitorRegion(this.views.f64, this.prepared.compiled.layout.monitor);
 		const source = this.carrySource;
 		if (this.carryViews === null || source === null) return;
 		const plan = this.prepared.carry as Int32Array;
 		this.carryViews = source.f64.length > 0 ? bindCarry(plan, source, this.views) : null;
 	}
+}
+
+/** The monitor region over `f64` (the instance's memory), when the layout has one. */
+function monitorRegion(f64: Float64Array, memory: MonitorMemory | null): MonitorRegion | null {
+	return memory === null ? null : { f64, at: memory.at / 8, watches: memory.watches };
 }

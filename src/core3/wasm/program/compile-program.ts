@@ -4,12 +4,14 @@
  * signal lambda and auxlang's math compiled from their JS source into the
  * same module, state
  * in linear memory at a layout fixed from the built states, the event tables
- * in a heap above it (layout/table-format.ts). The module imports
+ * in a heap above it (layout/table-format.ts), and, when monitored, the
+ * monitor's steps around each sample (emit-monitor.ts). The module imports
  * `env.fill(node, lane, cycle)` (the miss path, table-enter.ts) and exports
  * `render` and `memory`.
  */
 
 import type { ModuleIR } from "../../module/front/module/module-ir";
+import type { MonitorPlan } from "../../runtime/live/monitor-plan";
 import type { NodeRun } from "../../runtime/node-run";
 import type { NodePlans } from "../../runtime/specialise/specialise-nodes";
 import { FunctionTable } from "../compile/function-table";
@@ -43,6 +45,8 @@ export interface WasmInput {
 	/** The program's live slot count (Program.liveSlots). */
 	readonly slotCount: number;
 	readonly sampleRate: number;
+	/** What the monitor reads (runtime/live/monitor-plan.ts); null: no monitor, no region. */
+	readonly monitor: MonitorPlan | null;
 }
 
 export interface CompiledWasm {
@@ -59,6 +63,7 @@ export function compileWasm(input: WasmInput): CompiledWasm {
 		input.lambdas,
 		input.size,
 		input.slotCount,
+		input.monitor?.targets.length ?? null,
 	);
 	const table = new FunctionTable(1);
 	const fillType = table.typeIndex([I32, I32, F64], []);

@@ -1,0 +1,129 @@
+/**
+ * The reference monitor: the interpreter engine (engine.ts) built for the
+ * monitored program (monitored-program.ts), run a sample at a time with the
+ * monitor's steps (monitor-plan.ts) around each sample, into its own region
+ * (monitor-region.ts). The WASM engine's monitor (wasm/program/emit-monitor.ts)
+ * must match it bit for bit. For tests and reference only: the worklet runs
+ * WASM.
+ */
+
+import { laneTable } from "../../bridge/lane-table";
+import { NO_NOTE } from "../../pattern/table/event-table";
+import type { Program, Registry } from "../../types";
+import { EngineBuild } from "../build/engine-build";
+import type { EngineParts } from "../engine-parts";
+import { LiveEngine } from "../live-engine";
+import type { NodeRun } from "../node-run";
+import { prepareProgram } from "../prepare/prepare-program";
+import { specialiseNodes } from "../specialise/specialise-nodes";
+import {
+	LEVEL_HITS,
+	LEVEL_LAST,
+	LEVEL_MAX,
+	LEVEL_MIN,
+	LEVEL_PEAK,
+	LEVEL_STRIDE,
+	ONSET_CAPACITY,
+	ONSET_FRAME,
+	ONSET_SITE,
+	ONSET_STRIDE,
+	ONSET_WATCH,
+	type Watch,
+} from "./live-contract";
+import { type MonitorPlan, type MonitorTarget, READER_NOTE, READER_ROW, monitorPlan } from "./monitor-plan";
+import {
+	type MonitorRegion,
+	REGION_FRAME,
+	REGION_LEVELS,
+	REGION_ONSETS,
+	initRegion,
+	onsetsStart,
+	regionWords,
+} from "./monitor-region";
+import { watchList } from "./watch-list";
+
+export class InterpretedMonitor {
+	readonly watches: readonly Watch[];
+	readonly region: MonitorRegion;
+	private readonly engine: LiveEngine;
+	private readonly parts: EngineParts;
+	private readonly plan: MonitorPlan;
+	/** Each target's reader's held note id before the sample. */
+	private readonly held: Float64Array;
+
+	/** `registry`: the base registry with the program's specs. */
+	constructor(program: Program, sampleRate: number, registry: Registry) {
+		const prepared = prepareProgram(program, registry, sampleRate, undefined, true);
+		const build = new EngineBuild(prepared, registry, undefined);
+		this.parts = build.finish();
+		specialiseNodes(this.parts.runs, build.nodeSpecs, sampleRate);
+		this.engine = new LiveEngine(this.parts);
+		this.watches = watchList(prepared.program, registry);
+		this.plan = monitorPlan(this.watches, this.parts.runs, this.parts.layout);
+		this.held = new Float64Array(this.watches.length);
+		this.region = { f64: new Float64Array(regionWords(this.watches.length)), at: 0, watches: this.watches.length };
+		initRegion(this.region);
+	}
+
+	/** Advance `n` samples, a sample at a time, monitoring each. */
+	renderBlock(outL: Float32Array, outR: Float32Array, offset: number, n: number): void {
+		for (let k = 0; k < n; k++) {
+			this.before();
+			this.engine.renderBlock(outL, outR, offset + k, 1);
+			this.after();
+		}
+	}
+
+	private before(): void {
+		this.plan.targets.forEach((t, w) => {
+			if (t.reader >= 0) this.held[w] = this.readerState(t)[READER_NOTE] as number;
+		});
+	}
+
+	private after(): void {
+		const cur = this.parts.bufs.cur;
+		this.plan.targets.forEach((t, w) => levelStep(this.region, w, cur[t.slot] as number));
+		this.plan.targets.forEach((t, w) => {
+			if (t.reader >= 0) this.onsetStep(t, w);
+		});
+		const { f64, at } = this.region;
+		f64[at + REGION_FRAME] = (f64[at + REGION_FRAME] as number) + 1;
+	}
+
+	private onsetStep(t: MonitorTarget, w: number): void {
+		const state = this.readerState(t);
+		const note = state[READER_NOTE] as number;
+		if (note === this.held[w] || note === NO_NOTE) return;
+		const column = laneTable(state).fields[t.siteColumn] as Float64Array;
+		const site = column[state[READER_ROW] as number] as number;
+		if (site >= 0) recordOnset(this.region, w, site);
+	}
+
+	private readerState(t: MonitorTarget): Record<string, unknown> {
+		return (this.parts.runs[t.reader] as NodeRun).states[0] as Record<string, unknown>;
+	}
+}
+
+/** One sample of watch `w`'s level summary. */
+function levelStep(region: MonitorRegion, w: number, x: number): void {
+	const f64 = region.f64;
+	const at = region.at + REGION_LEVELS + w * LEVEL_STRIDE;
+	const last = f64[at + LEVEL_LAST] as number;
+	f64[at + LEVEL_HITS] = (f64[at + LEVEL_HITS] as number) + (last < 0.5 && x >= 0.5 ? 1 : 0);
+	f64[at + LEVEL_LAST] = x;
+	f64[at + LEVEL_MIN] = Math.min(f64[at + LEVEL_MIN] as number, x);
+	f64[at + LEVEL_MAX] = Math.max(f64[at + LEVEL_MAX] as number, x);
+	f64[at + LEVEL_PEAK] = Math.max(f64[at + LEVEL_PEAK] as number, Math.abs(x));
+}
+
+/** An onset of watch `w` at the current frame, kept while the frame has room. */
+function recordOnset(region: MonitorRegion, w: number, site: number): void {
+	const f64 = region.f64;
+	const count = f64[region.at + REGION_ONSETS] as number;
+	if (count >= ONSET_CAPACITY) return;
+	const at = region.at + onsetsStart(region.watches) + count * ONSET_STRIDE;
+	f64[at + ONSET_WATCH] = w;
+	f64[at + ONSET_SITE] = site;
+	f64[at + ONSET_FRAME] = f64[region.at + REGION_FRAME] as number;
+	f64[region.at + REGION_ONSETS] = count + 1;
+}

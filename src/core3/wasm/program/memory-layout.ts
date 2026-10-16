@@ -6,7 +6,8 @@
  * outputs record, the f64 lane views its reducer inputs are gathered into,
  * an f64 array per port group (its members are fixed at eval), and per lane its numeric state fields, its typed arrays and records
  * (state-layout.ts), its math call cache, (a module that reads a pattern)
- * its table slot, and each lambda input's own math cache. The table heap
+ * its table slot, and each lambda input's own math cache; then, only when
+ * monitored, the monitor region (runtime/live/monitor-region.ts). The table heap
  * starts above all of it (layout/table-format.ts, host/table-heap.ts); the
  * first pages hold each table lane's two tables at their initial size.
  * Everything is f64 except the f32 output blocks, which the JS engine also
@@ -19,6 +20,7 @@ import type { RecordState } from "../../module/front/state/state-shape";
 import { laneShapeOf } from "../../module/front/state/state-shape-of";
 import { elementRebinds } from "../../module/front/types/element-rebinds";
 import type { FunctionPlan } from "../../module/front/types/function-plan";
+import { regionWords } from "../../runtime/live/monitor-region";
 import type { NodeRun } from "../../runtime/node-run";
 import type { NodePlans } from "../../runtime/specialise/specialise-nodes";
 import { cacheSlotsIn } from "../compile/cache-slots";
@@ -77,8 +79,16 @@ export interface WasmLayout {
 	readonly slots: number;
 	readonly slotCount: number;
 	readonly nodes: readonly NodeMemory[];
+	/** The monitor region (runtime/live/monitor-region.ts); null when not monitored. */
+	readonly monitor: MonitorMemory | null;
 	/** Where the table heap starts. */
 	readonly heap: number;
+}
+
+export interface MonitorMemory {
+	/** The region's byte address. */
+	readonly at: number;
+	readonly watches: number;
 }
 
 export function planMemory(
@@ -89,6 +99,7 @@ export function planMemory(
 	lambdas: LambdaSources,
 	size: number,
 	slotCount: number,
+	monitorWatches: number | null = null,
 ): WasmLayout {
 	let top = 0;
 	const take = (bytes: number): number => {
@@ -131,9 +142,13 @@ export function planMemory(
 		});
 		return { outs, views, groups, lanes };
 	});
+	const monitor =
+		monitorWatches === null
+			? null
+			: { at: take(8 * regionWords(monitorWatches)), watches: monitorWatches };
 	const heap = top;
 	const pages = Math.max(1, Math.ceil((heap + initialHeap(nodes)) / PAGE));
-	return { pages, outL, outR, cur, count, size, slots, slotCount, nodes, heap };
+	return { pages, outL, outR, cur, count, size, slots, slotCount, nodes, monitor, heap };
 }
 
 const NO_REBINDS: ReadonlySet<string> = new Set();

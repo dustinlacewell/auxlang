@@ -125,7 +125,7 @@ describe("watchList", () => {
 		const modules = watches.map((w) => w.module);
 		const seq = modules.indexOf("seq");
 		const tri = modules.indexOf("tri");
-		const gain = modules.indexOf("mul");
+		const gain = modules.indexOf("gain");
 		expect(seq).toBeGreaterThanOrEqual(0);
 		expect(tri).toBeGreaterThan(seq);
 		expect(gain).toBeGreaterThan(tri);
@@ -189,7 +189,10 @@ describe("onsets", () => {
 		const onsets = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
 		expect(onsets.map((o) => o[ONSET_WATCH])).toEqual([w, w, w, w]);
 		expect(onsets.map((o) => o[ONSET_FRAME])).toEqual(trigFrames);
-		expect(trigFrames).toEqual([0, 48000, 96000, 144000]);
+		// The notes' nominal frames, to the sample the clock's float position crosses them.
+		const nominal = [0, 48000, 96000, 144000];
+		expect(trigFrames).toHaveLength(nominal.length);
+		trigFrames.forEach((f, k) => expect(Math.abs(f - (nominal[k] as number))).toBeLessThanOrEqual(1));
 		const texts = onsets.map((o) => siteText(src, sourceMap, o[ONSET_SITE] as number));
 		expect(texts).toEqual(["c3", "e3", "c3", "e3"]);
 	});

@@ -48,7 +48,7 @@ export function laneTable(s: Record<string, unknown>): EventTable {
 
 /**
  * Refill the lane's table with the rows of `cycle`. It reads the config's
- * pattern, seed and pattern lanes, and nothing else (table-key.ts).
+ * pattern, seed, pattern lanes and site flag, and nothing else (table-key.ts).
  */
 export function fillLaneTable(
 	s: Record<string, unknown>,
@@ -57,12 +57,29 @@ export function fillLaneTable(
 ): void {
 	const lane = ((s.__lane as number) | 0) % patternLanes(cfg);
 	const { table, fill } = s.__scratch as TableScratch;
-	fillTable(cfg.pattern as Pat, (cfg.seed as number) | 0, lane, cycle, table, fill);
+	fillTable(cfg.pattern as Pat, (cfg.seed as number) | 0, lane, cycle, table, fill, hasSites(cfg));
 }
 
-/** The record field columns of the node's tables (pattern/record-fields.ts). */
+/**
+ * The field columns of the node's tables: its pattern's record fields
+ * (pattern/record-fields.ts), then the site column when it has one.
+ */
 export function recordColumns(cfg: Record<string, unknown>): number {
-	return recordFields(cfg.pattern as Pat).length;
+	return recordFields(cfg.pattern as Pat).length + (hasSites(cfg) ? 1 : 0);
+}
+
+/**
+ * The node's tables carry each row's source site (pattern/table/fill-table.ts),
+ * set on a monitored seq (runtime/live/monitored-program.ts).
+ */
+export function hasSites(cfg: Record<string, unknown>): boolean {
+	return cfg.sites === 1;
+}
+
+/** The field column holding the rows' sites; the node's tables must have one. */
+export function siteColumn(cfg: Record<string, unknown>): number {
+	if (!hasSites(cfg)) throw new Error("siteColumn: the node's tables carry no sites");
+	return recordColumns(cfg) - 1;
 }
 
 /** The pattern lanes a node's lanes read in turn (at least 1). */

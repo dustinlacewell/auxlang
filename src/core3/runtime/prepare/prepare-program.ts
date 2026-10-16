@@ -12,13 +12,17 @@ import type { KeyedIdentity, ModuleSpec, Program, Registry } from "../../types";
 import { buildRun } from "../build/build-run";
 import { nodeBuildCost } from "../build/step-costs";
 import { feedbackReads } from "../feedback";
+import { monitoredProgram } from "../live/monitored-program";
 import { freshNodeStates } from "../fresh-node-states";
 import { buildOutputLayout } from "../output-slots";
 import { reevalIdentities } from "../reeval-identities";
 
 export interface PreparedProgram {
+	/** As given, or monitored (live/monitored-program.ts) when `monitor`. */
 	readonly program: Program;
 	readonly sampleRate: number;
+	/** Built with a monitor (runtime/live/): the WASM program gets its region and steps. */
+	readonly monitor: boolean;
 	/** Prepared against a running program: the engine takes over its state and time at the swap. */
 	readonly continues: boolean;
 	readonly identities: readonly KeyedIdentity[];
@@ -29,11 +33,13 @@ export interface PreparedProgram {
 }
 
 export function prepareProgram(
-	program: Program,
+	given: Program,
 	registry: Registry,
 	sampleRate: number,
 	running: readonly KeyedIdentity[] | undefined,
+	monitor = false,
 ): PreparedProgram {
+	const program = monitor ? monitoredProgram(given, registry) : given;
 	const { identities, paired } = reevalIdentities(program.nodes, running);
 	const layout = buildOutputLayout(program.nodes, registry);
 	feedbackReads(program.nodes);
@@ -46,6 +52,7 @@ export function prepareProgram(
 	return {
 		program,
 		sampleRate,
+		monitor,
 		continues: running !== undefined,
 		identities,
 		paired: [...paired],

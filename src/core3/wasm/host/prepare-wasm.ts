@@ -13,6 +13,8 @@ import { getRegistry } from "../../module/define";
 import { specIR } from "../../module/front/module/spec-ir";
 import { EngineBuild } from "../../runtime/build/engine-build";
 import { withProgramSpecs } from "../../runtime/hydrate-specs";
+import { monitorPlan } from "../../runtime/live/monitor-plan";
+import { watchList } from "../../runtime/live/watch-list";
 import { slotOf } from "../../runtime/output-slots";
 import { type PreparedProgram, prepareProgram } from "../../runtime/prepare/prepare-program";
 import { specialiseNodes } from "../../runtime/specialise/specialise-nodes";
@@ -36,9 +38,10 @@ export function prepareWasm(
 	sampleRate: number,
 	registry: Registry = getRegistry(),
 	running?: readonly KeyedIdentity[],
+	monitor = false,
 ): PreparedWasm {
 	const layered = withProgramSpecs(registry, program);
-	return prepareWasmFrom(prepareProgram(program, layered, sampleRate, running), layered);
+	return prepareWasmFrom(prepareProgram(program, layered, sampleRate, running, monitor), layered);
 }
 
 /**
@@ -104,6 +107,9 @@ function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 		size: parts.layout.size,
 		slotCount: parts.bufs.slots.length,
 		sampleRate,
+		monitor: prepared.monitor
+			? monitorPlan(watchList(program, layered), parts.runs, parts.layout)
+			: null,
 	};
 	const facts = engineFacts(parts, input.readsPattern);
 	return {
