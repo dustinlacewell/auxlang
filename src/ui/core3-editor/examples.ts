@@ -144,6 +144,50 @@ seq("60*8").trig.apply((t) =>
 )
 `;
 
+/** Mixer: named channels summed with per-channel levels. */
+const namedMixer = `// mixer: named channels summed, each with its own level
+tempo(110)
+
+const lead = seq("c4 e4 g4 b4")
+const bass = seq("c2 ~ g1 ~")
+const drums = seq("60*4")
+
+const leadVoice = lead.tri().mul(lead.gate.adsr(0.005, 0.1, 0.4, 0.1))
+const bassVoice = bass.sin().mul(bass.gate.adsr(0.01, 0.2, 0.7, 0.2))
+const kickVoice = drums.trig.kick()
+
+mixer({ lead: leadVoice, bass: bassVoice, drums: kickVoice })
+  .level({ lead: 0.3, bass: 0.5, drums: 0.8 })
+  .mod("level.lead", lfo(0.2), 0.15)
+  .out()
+`;
+
+/** Signal splicing: a pattern switches a filter cutoff between live cables. */
+const signalSplice = `// signal splicing: a pattern of signals switches a knob between live cables
+tempo(110)
+
+const s = seq("c2 c2 c2 c2")
+const wobble = lfo(0.3, 60, 96)
+s.saw()
+  .lpf({ cutoff: p\`\${wobble} 80\` })
+  .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.1))
+  .mul(0.3)
+  .out()
+`;
+
+/** Pattern records: a field pattern rides alongside the note pattern. */
+const patternRecords = `// pattern records: a velocity field rides alongside the note pattern
+tempo(120)
+
+const s = seq(p\`c3 e3 g3 b3\`.with({ vel: p\`1 0.4 0.7 0.5\` }))
+s.tri()
+  .lpf({ cutoff: 86, res: 0.2 })
+  .mul(s.gate.adsr(0.005, 0.1, 0.4, 0.15))
+  .mul(s.vel)
+  .mul(0.3)
+  .out()
+`;
+
 /** (f2) Seeds: pin the patch seed; hold one part with a local seed. */
 const seededChance = `// seeds: seed(n) pins the dice; delete it and the editor draws a seed
 // at play (shown below the editor, with reroll). The ghost line keeps
@@ -687,6 +731,9 @@ export const EXAMPLES: readonly Example[] = [
 	{ name: "wide saws (detune + spread)", source: wideSaws },
 	{ name: "drums + counter", source: drums },
 	{ name: "seeded chance", source: seededChance },
+	{ name: "named mixer", source: namedMixer },
+	{ name: "signal splicing", source: signalSplice },
+	{ name: "pattern records", source: patternRecords },
 ];
 
 /** The patch shown when the editor first loads. */

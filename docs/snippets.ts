@@ -149,6 +149,51 @@ seq("~ 60 ~ 60").trig.snare().out()
 lfo(9).gt(0.7).apply((tg) => tg.hihat().mul(counter(tg).seq(p\`1 0.6 0.8 0.5\`.steps())).gain(0.8).out())`,
 	},
 
+	// mixer: named channels summed, each with its own level.
+	{
+		id: "guide-mixer",
+		audible: true,
+		code: `tempo(110)
+
+const lead = seq("c4 e4 g4 b4")
+const bass = seq("c2 ~ g1 ~")
+
+const leadVoice = lead.tri().mul(lead.gate.adsr(0.005, 0.1, 0.4, 0.1))
+const bassVoice = bass.sin().mul(bass.gate.adsr(0.01, 0.2, 0.7, 0.2))
+
+mixer({ lead: leadVoice, bass: bassVoice })
+  .level({ lead: 0.3, bass: 0.5 })
+  .out()`,
+	},
+	// signal splicing: a pattern of signals switches a knob between live cables.
+	{
+		id: "guide-signal-splice",
+		audible: true,
+		code: `tempo(110)
+
+const s = seq("c2 c2 c2 c2")
+const wobble = lfo(0.3, 60, 96)
+s.saw()
+  .lpf({ cutoff: p\`\${wobble} 80\` })
+  .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.1))
+  .gain(0.3)
+  .out()`,
+	},
+	// pattern records: a velocity field rides alongside the note pattern.
+	{
+		id: "guide-pattern-records",
+		audible: true,
+		code: `tempo(120)
+
+const s = seq(p\`c3 e3 g3 b3\`.with({ vel: p\`1 0.4 0.7 0.5\` }))
+s.tri()
+  .lpf({ cutoff: 86, res: 0.2 })
+  .mul(s.gate.adsr(0.005, 0.1, 0.4, 0.15))
+  .mul(s.vel)
+  .gain(0.3)
+  .out()`,
+	},
+
 	// -- USER GUIDE -----------------------------------------------------------
 	// Fundamentals: a chain reads left to right.
 	{
