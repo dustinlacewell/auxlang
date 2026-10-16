@@ -14,6 +14,7 @@ import type { PlanContext } from "./plan-context";
 import type { PlanEvent } from "./plan-events";
 import { int } from "./ty";
 import { typeExpr } from "./type-expression";
+import { typeNumeric } from "./type-numeric";
 import { walkDeclaration } from "./walk-declaration";
 
 export type WalkBody = (c: PlanContext, body: ForStatement["body"]) => void;
@@ -25,7 +26,7 @@ export function walkFor(c: PlanContext, node: ForStatement, walkBody: WalkBody):
 		return;
 	}
 	walkInitAndTest(c, node);
-	const update = held(c, () => typeExpr(c, node.update as NonNullable<ForStatement["update"]>, "loose"));
+	const update = held(c, () => typeExpr(c, node.update as NonNullable<ForStatement["update"]>, "effect"));
 	declareCounter(c, shape);
 	walkBody(c, node.body);
 	c.events.push(...update);
@@ -34,13 +35,13 @@ export function walkFor(c: PlanContext, node: ForStatement, walkBody: WalkBody):
 function walkPlain(c: PlanContext, node: ForStatement, walkBody: WalkBody): void {
 	walkInitAndTest(c, node);
 	walkBody(c, node.body);
-	if (node.update) typeExpr(c, node.update, "loose");
+	if (node.update) typeExpr(c, node.update, "effect");
 }
 
 function walkInitAndTest(c: PlanContext, node: ForStatement): void {
 	if (node.init?.type === "VariableDeclaration") walkDeclaration(c, node.init);
-	else if (node.init) typeExpr(c, node.init, "loose");
-	if (node.test) typeExpr(c, node.test, "loose");
+	else if (node.init) typeExpr(c, node.init, "effect");
+	if (node.test) typeNumeric(c, node.test, "test");
 }
 
 /** Runs `walk` and takes back the events it recorded. */

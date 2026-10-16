@@ -10,22 +10,22 @@ import type { UnaryExpression } from "acorn";
 import { applyUnary } from "./fold-ops";
 import { INT32, type Range, fitsI32, includes, rangeOf, safeRange } from "./int-range";
 import type { PlanContext } from "./plan-context";
-import { BOOL, NUM, type Ty, UNKNOWN, int, isStructured, known } from "./ty";
+import { BOOL, NUM, type Ty, UNKNOWN, int, known } from "./ty";
 import { typeExpr } from "./type-expression";
+import { typeNumeric } from "./type-numeric";
 
 export function typeUnary(c: PlanContext, node: UnaryExpression): Ty {
 	switch (node.operator) {
 		case "typeof":
 			return typeOfType(c, node);
 		case "!":
-			return folded(node.operator, typeExpr(c, node.argument, "loose"), BOOL);
+			return folded(node.operator, typeNumeric(c, node.argument, "test"), BOOL);
 		case "void":
-			return folded(node.operator, typeExpr(c, node.argument, "loose"), NUM);
+			return folded(node.operator, typeExpr(c, node.argument, "effect"), NUM);
 		case "delete":
 			return UNKNOWN;
 		default: {
-			const arg = typeExpr(c, node.argument, "value");
-			if (isStructured(arg)) c.events.push({ k: "operand", node });
+			const arg = typeNumeric(c, node.argument, "value");
 			return folded(node.operator, arg, int(unaryRange(node.operator, rangeOf(arg))));
 		}
 	}
@@ -53,7 +53,7 @@ function folded(op: string, arg: Ty, otherwise: Ty): Ty {
 
 function typeOfType(c: PlanContext, node: UnaryExpression): Ty {
 	const arg = node.argument;
-	const ty = typeExpr(c, arg, "loose");
+	const ty = typeExpr(c, arg, "effect");
 	if (ty.k === "static") return known(typeof ty.v);
 	if (c.elements.has(arg)) return known("number");
 	if (!c.paths.has(arg)) return UNKNOWN;

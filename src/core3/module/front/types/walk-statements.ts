@@ -9,6 +9,7 @@
 import type { AnyNode, IfStatement, ReturnStatement, SwitchStatement } from "acorn";
 import type { PlanContext } from "./plan-context";
 import { typeExpr } from "./type-expression";
+import { typeNumeric } from "./type-numeric";
 import { walkDeclaration } from "./walk-declaration";
 import { walkFor } from "./walk-for";
 
@@ -21,7 +22,7 @@ export function walkStatements(c: PlanContext, list: readonly AnyNode[]): boolea
 function walkStatement(c: PlanContext, node: AnyNode): boolean {
 	switch (node.type) {
 		case "ExpressionStatement":
-			typeExpr(c, node.expression, "loose");
+			typeExpr(c, node.expression, "effect");
 			return false;
 		case "VariableDeclaration":
 			walkDeclaration(c, node);
@@ -34,12 +35,12 @@ function walkStatement(c: PlanContext, node: AnyNode): boolean {
 			walkFor(c, node, walkStatement);
 			return false;
 		case "WhileStatement":
-			typeExpr(c, node.test, "loose");
+			typeNumeric(c, node.test, "test");
 			walkStatement(c, node.body);
 			return false;
 		case "DoWhileStatement":
 			walkStatement(c, node.body);
-			typeExpr(c, node.test, "loose");
+			typeNumeric(c, node.test, "test");
 			return false;
 		case "SwitchStatement":
 			walkSwitch(c, node);
@@ -59,7 +60,7 @@ function walkStatement(c: PlanContext, node: AnyNode): boolean {
 }
 
 function walkIf(c: PlanContext, node: IfStatement): boolean {
-	const test = typeExpr(c, node.test, "loose");
+	const test = typeNumeric(c, node.test, "test");
 	if (test.k === "static") {
 		const live = test.v ? node.consequent : node.alternate;
 		return live !== null && live !== undefined && walkStatement(c, live);
@@ -70,13 +71,13 @@ function walkIf(c: PlanContext, node: IfStatement): boolean {
 }
 
 function walkSwitch(c: PlanContext, node: SwitchStatement): void {
-	typeExpr(c, node.discriminant, "value");
-	for (const k of node.cases) if (k.test) typeExpr(c, k.test, "value");
+	typeNumeric(c, node.discriminant, "value");
+	for (const k of node.cases) if (k.test) typeNumeric(c, k.test, "value");
 	for (const k of node.cases) walkStatements(c, k.consequent);
 }
 
 function walkReturn(c: PlanContext, node: ReturnStatement): void {
 	const arg = node.argument;
-	const ty = arg === null || arg === undefined ? null : typeExpr(c, arg, "value");
+	const ty = arg === null || arg === undefined ? null : typeNumeric(c, arg, "value");
 	c.returns.push({ at: node, ty });
 }

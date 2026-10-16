@@ -14,8 +14,8 @@ import type { PlanEvent, Returned } from "./plan-events";
 import type { TickRoot } from "./tick-root";
 import type { Ty } from "./ty";
 
-/** `value`: the value is kept or used. `loose`: only its truthiness counts, or nothing. */
-export type Position = "value" | "loose";
+/** `value`: the value is kept or used. `test`: only its truthiness counts. `effect`: nothing does. */
+export type Position = "value" | "test" | "effect";
 
 export class PlanContext {
 	readonly types = new Map<AnyNode, Ty>();

@@ -25,6 +25,7 @@ import { binaryRange } from "./range-binary";
 import { BOOL, NUM, type Ty, UNKNOWN, emittedClass, emittedTy, int, isStructured, known, ref } from "./ty";
 import { typeCall } from "./type-call";
 import { typeMember } from "./type-member";
+import { typeNumeric } from "./type-numeric";
 import { typeUnary } from "./type-unary";
 
 const COMPARISONS = new Set(["<", ">", "<=", ">=", "===", "==", "!==", "!="]);
@@ -85,9 +86,8 @@ function typeName(c: PlanContext, id: Identifier): Ty {
 }
 
 function typeBinary(c: PlanContext, node: BinaryExpression): Ty {
-	const left = typeExpr(c, node.left, "value");
-	const right = typeExpr(c, node.right, "value");
-	if (isStructured(left) || isStructured(right)) c.events.push({ k: "operand", node });
+	const left = typeNumeric(c, node.left, "value");
+	const right = typeNumeric(c, node.right, "value");
 	if (node.operator !== "**" && left.k === "static" && right.k === "static")
 		return known(applyBinary(node.operator, left.v, right.v));
 	if (COMPARISONS.has(node.operator)) return BOOL;
@@ -99,11 +99,15 @@ function shiftOf(ty: Ty): number | null {
 	return ty.k === "static" && typeof ty.v === "number" ? (ty.v | 0) & 31 : null;
 }
 
-/** A known left side picks the branch; otherwise two booleans give a boolean, anything else a number. */
+/**
+ * A known left side picks the branch; otherwise two booleans give a boolean,
+ * anything else a number. The left side is always tested; the right side
+ * is computed on unless nothing counts.
+ */
 function typeLogical(c: PlanContext, node: LogicalExpression, pos: Position): Ty {
-	const left = typeExpr(c, node.left, pos);
-	if (left.k === "static") return keepsLeft(node.operator, left.v) ? left : typeExpr(c, node.right, pos);
-	const right = typeExpr(c, node.right, pos);
+	const left = typeNumeric(c, node.left, pos === "effect" ? "test" : pos);
+	if (left.k === "static") return keepsLeft(node.operator, left.v) ? left : branch(c, node.right, pos);
+	const right = branch(c, node.right, pos);
 	if (pos === "value") c.events.push({ k: "paths", node, a: left, b: right });
 	// Only an array element at an invalid index is nullish at run time: `??` gives a number.
 	// An integer element's range proves its index valid, so the left side is the result.
@@ -112,12 +116,17 @@ function typeLogical(c: PlanContext, node: LogicalExpression, pos: Position): Ty
 }
 
 function typeConditional(c: PlanContext, node: ConditionalExpression, pos: Position): Ty {
-	const test = typeExpr(c, node.test, "loose");
-	if (test.k === "static") return typeExpr(c, test.v ? node.consequent : node.alternate, pos);
-	const a = typeExpr(c, node.consequent, pos);
-	const b = typeExpr(c, node.alternate, pos);
+	const test = typeNumeric(c, node.test, "test");
+	if (test.k === "static") return branch(c, test.v ? node.consequent : node.alternate, pos);
+	const a = branch(c, node.consequent, pos);
+	const b = branch(c, node.alternate, pos);
 	if (pos === "value") c.events.push({ k: "paths", node, a, b });
 	return joined(a, b);
+}
+
+/** One of two paths, known or not: computed on where its value or truthiness counts. */
+function branch(c: PlanContext, node: AnyNode, pos: Position): Ty {
+	return pos === "effect" ? typeExpr(c, node, pos) : typeNumeric(c, node, pos);
 }
 
 /**
@@ -144,13 +153,15 @@ function typeAssignment(c: PlanContext, node: AssignmentExpression, pos: Positio
 /**
  * `a &&= b`, `a ||= b`, `a ??= b`: `a = b` when the test on `a` passes, else
  * `a` stays. A known `a` picks the branch, as for `&&`/`||`/`??`. The result
- * is one of the two, so it mixes them like the logical operator.
+ * is one of the two, so it mixes them like the logical operator: where it
+ * counts, an array or record on either path is used as a number.
  */
 function typeLogicalAssignment(c: PlanContext, node: AssignmentExpression, place: Ty, pos: Position): Ty {
 	const current = c.types.get(node.left) ?? UNKNOWN;
 	if (current.k === "static" && keepsLeft(node.operator.slice(0, -1), current.v)) return current;
 	const value = typeExpr(c, node.right, "value");
 	c.events.push({ k: "store", node, place, value });
+	if (pos !== "effect" && (isStructured(current) || isStructured(value))) c.events.push({ k: "operand", node });
 	if (current.k === "static") return emittedTy(value);
 	if (pos === "value") c.events.push({ k: "paths", node, a: current, b: value });
 	return emittedClass(current) === "bool" && emittedClass(value) === "bool" ? BOOL : NUM;
@@ -176,7 +187,7 @@ function typeSequence(c: PlanContext, node: SequenceExpression, pos: Position): 
 	const all = node.expressions;
 	let last: Ty = UNKNOWN;
 	all.forEach((x, k) => {
-		last = typeExpr(c, x, k === all.length - 1 ? pos : "loose");
+		last = k === all.length - 1 ? branch(c, x, pos) : typeExpr(c, x, "effect");
 	});
 	return emittedTy(last);
 }

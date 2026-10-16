@@ -18,6 +18,7 @@ import { INT32, type Range, UINT32, rangeOf, within } from "./int-range";
 import type { PlanContext } from "./plan-context";
 import { NUM, type RecordRef, type RefShape, type Ty, UNKNOWN, int, known, ref } from "./ty";
 import { typeExpr } from "./type-expression";
+import { typeNumeric } from "./type-numeric";
 import { validIndex } from "./valid-index";
 
 /** `write`: the member is the target of an assignment or update. */
@@ -80,11 +81,11 @@ function roleField(c: PlanContext, role: string, field: string): Ty {
 
 function typeIndex(c: PlanContext, node: MemberExpression, write: boolean): Ty {
 	if (isCacheArray(c, node.object)) {
-		typeExpr(c, node.property, "value");
+		typeNumeric(c, node.property, "value");
 		return NUM;
 	}
 	const owner = typeExpr(c, node.object, "value");
-	const index = typeExpr(c, node.property, "value");
+	const index = typeNumeric(c, node.property, "value");
 	if (isRecord(owner)) c.events.push({ k: "field", node, fault: { k: "indexed" } });
 	if (owner.k !== "ref" || owner.shape.k === "record") return UNKNOWN;
 	const path = isPath(c, node.object);

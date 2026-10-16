@@ -14,7 +14,7 @@ import { PlanContext } from "./plan-context";
 import type { PlanEvent, Returned } from "./plan-events";
 import type { TickRoot } from "./tick-root";
 import { type Folded, type Ty, emittedClass, emittedTy, known } from "./ty";
-import { typeExpr } from "./type-expression";
+import { typeNumeric } from "./type-numeric";
 import { walkStatements } from "./walk-statements";
 
 export interface FunctionPlan {
@@ -49,7 +49,7 @@ export function planFunction(
 	bindParams(c, params);
 	const body = ir.node.body;
 	if (body.type === "BlockStatement") walkStatements(c, body.body);
-	else c.returns.push({ at: body, ty: typeExpr(c, body, "value") });
+	else c.returns.push({ at: body, ty: typeNumeric(c, body, "value") });
 	return finished(c, params);
 }
 

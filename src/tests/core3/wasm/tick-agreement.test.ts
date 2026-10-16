@@ -204,6 +204,13 @@ const AGREED_REJECT: readonly Row[] = [
 	reject("a nested missing field", "o.out = s.v.y", /unknown field 'y'/),
 	reject("a typed array in arithmetic", "o.out = s.buf + 1", /an array or record used as a number/),
 	reject("the state record negated", "o.out = -s", /an array or record used as a number/),
+	reject("a logical assignment of an array used as a number", "o.out = (s.a ||= s.b)", /an array or record used as a number/),
+	reject("a kept pick between arrays", "const t = i.in > 50 ? s.a : s.b; o.out = t[0]", /an array or record used as a number/),
+	reject("a known pick of an array", "o.out = (1 && s.a)[0]", /an array or record used as a number/),
+	reject("an array tested", "if (s.a) o.out = 1", /an array or record used as a number/),
+	reject("an array as an index", "o.out = s.buf[s.a]", /an array or record used as a number/),
+	reject("the last of a comma expression, an array", "o.out = (0, s.a)", /an array or record used as a number/),
+	reject("a helper returning an array", "o.out = f(s.a)[0]", /an array or record used as a number/, "f: (p) => p"),
 	reject("a field of a number", "const k = i.in; o.out = k.n", /reads field 'n' of a value that is not a record/),
 	reject(
 		"a field of a number, in a helper also given the state record",
