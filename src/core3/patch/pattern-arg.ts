@@ -11,7 +11,14 @@ import { isP } from "../pattern/pat-class";
 /** `src`: where a mini-notation string was written, so its tokens carry their sites. */
 export function patternAst(value: unknown, where: string, src?: NotationSource): Pat {
 	if (typeof value === "string") return parseNotation([value], [], src);
-	if (isP(value)) return value.ast;
+	if (isP(value)) {
+		if (value.palette !== undefined) {
+			throw new Error(
+				"a pattern with signals inside works as an input value (e.g. lpf({ cutoff: p`...` })); seq() of it is not built yet",
+			);
+		}
+		return value.ast;
+	}
 	if (isPatData(value)) return value;
 	throw new Error(
 		`${where}: expected a pattern (mini-notation string, p\`...\`, or Pat data), got ${describe(value)}`,

@@ -11,11 +11,15 @@
  */
 
 import { activeTemplateSource } from "../../source/active-source";
-import { toP } from "../pat-class";
-import type { P } from "../pat-class";
-import { parseNotation } from "./parse";
+import { P } from "../pat-class";
+import { parseNotationWithPalette } from "./parse";
 
-/** In a patch under eval, the template's tokens carry their sites (MANIFESTO §10.1). */
+/**
+ * In a patch under eval, the template's tokens carry their sites (MANIFESTO
+ * §10.1). Splicing a signal makes a palette P (pattern/palette): every leaf
+ * becomes a palette index — see parse.ts's PaletteCollector.
+ */
 export function p(strings: TemplateStringsArray, ...values: unknown[]): P {
-	return toP(parseNotation(strings, values, activeTemplateSource(strings.length)));
+	const { pat, palette } = parseNotationWithPalette(strings, values, activeTemplateSource(strings.length));
+	return new P(pat, palette);
 }

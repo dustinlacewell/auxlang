@@ -24,6 +24,7 @@
  * leaf carries its token's site and an error points at the exact code.
  */
 
+import { isHandle } from "../../patch/handle-data";
 import { locateError } from "../../source/located-error";
 import type { Pat } from "../ast";
 import {
@@ -41,6 +42,7 @@ import {
 	tie,
 	timecat,
 } from "../combinators";
+import type { PaletteSignal } from "../palette/palette-signal";
 import { isP } from "../pat-class";
 import type { R } from "../rational";
 import { r } from "../rational";
@@ -50,6 +52,7 @@ import { withSite } from "../with-site";
 import { NotationError, notationError } from "./notation-error";
 import type { NotationSource } from "./notation-source";
 import { atomValue, isNumber } from "./note";
+import { PaletteCollector } from "./palette-collect";
 import { type Token, tokenize } from "./tokenize";
 
 interface WStep {
@@ -62,6 +65,7 @@ class Parser {
 	constructor(
 		private readonly toks: readonly Token[],
 		private readonly src: NotationSource | undefined,
+		private readonly palette: PaletteCollector,
 	) {}
 
 	/** The site of the token at `t`, when the text was written in the code. */
@@ -213,7 +217,7 @@ class Parser {
 				return withSite(pure(atomValue(t.text, t.pos)), this.siteOf(t));
 			case "splice":
 				this.next();
-				return spliceToPat(t.value, t.pos, spliceSource(this.src, t));
+				return spliceToPat(t.value, t.pos, spliceSource(this.src, t), this.palette);
 			case "lbracket":
 				return this.parseBracketGroup();
 			case "langle":
@@ -434,18 +438,28 @@ function atSplice(outer: NotationSource, pos: number): NotationSource {
 	return { tokenSite: () => undefined, range: () => outer.range(pos, 1), splice: () => ({}) };
 }
 
-/** Convert an interpolated JS value into a Pat. */
-function spliceToPat(value: unknown, pos: number, from: SpliceSource = {}): Pat {
+/**
+ * Convert an interpolated JS value into a Pat. `palette` collects a
+ * splice's contribution: a signal pins a fresh index leaf; a palette `P`
+ * absorbs its members at a fresh pinned leaf; anything else is unchanged
+ * (its own `pure` leaves, if any, are plain literals for `finalize()` to
+ * register later).
+ */
+function spliceToPat(value: unknown, pos: number, from: SpliceSource, palette: PaletteCollector): Pat {
 	if (typeof value === "number") return withSite(pure(value), from.site);
+	if (isHandle(value)) return palette.addSignal(value, from.site);
 	if (typeof value === "string") {
-		// A note/number string, or a full mini-notation fragment.
+		// A note/number string, or a full mini-notation fragment — never a signal.
 		return parseNotation([value], [], from.text);
 	}
 	if (Array.isArray(value)) {
 		if (value.length === 0) throw notationError("empty array interpolation", pos);
-		return fastcat(value.map((v) => spliceToPat(v, pos)));
+		return fastcat(value.map((v) => spliceToPat(v, pos, {}, palette)));
 	}
-	if (isP(value)) return value.ast;
+	if (isP(value)) {
+		if (value.palette === undefined) return value.ast;
+		return palette.absorbPattern(value.ast, value.palette);
+	}
 	if (isPat(value)) return value;
 	throw notationError(`cannot splice value of type ${typeof value}`, pos);
 }
@@ -455,25 +469,43 @@ function isPat(x: unknown): x is Pat {
 	return typeof x === "object" && x !== null && typeof (x as { op?: unknown }).op === "string";
 }
 
+/** A parsed template: `pat` alone, unless a splice spliced a signal (`palette`). */
+export interface ParsedNotation {
+	readonly pat: Pat;
+	readonly palette?: readonly PaletteSignal[];
+}
+
 /**
- * Parse a template (segments + interpolations) to a Pat. With `src`, leaves
+ * Parse a template (segments + interpolations), collecting a palette if any
+ * splice is a signal (pattern/notation/palette-collect). With `src`, leaves
  * carry their token's site and a notation error points at its code.
  */
-export function parseNotation(
+export function parseNotationWithPalette(
 	strings: readonly string[],
 	values: readonly unknown[],
 	src?: NotationSource,
-): Pat {
+): ParsedNotation {
 	try {
 		const toks = tokenize(strings, values);
 		if (toks.length === 0) throw notationError("empty pattern", 0);
-		return new Parser(toks, src).parseTop();
+		const collector = new PaletteCollector();
+		const pat = new Parser(toks, src, collector).parseTop();
+		return collector.finalize(pat);
 	} catch (err) {
 		if (err instanceof NotationError && src !== undefined) {
 			locateError(err, src.range(err.pos, err.length));
 		}
 		throw err;
 	}
+}
+
+/** Parse a template to a Pat; splicing a signal is a loud error here (no palette caller). */
+export function parseNotation(
+	strings: readonly string[],
+	values: readonly unknown[],
+	src?: NotationSource,
+): Pat {
+	return parseNotationWithPalette(strings, values, src).pat;
 }
 
 /** Parse a plain string to a Pat. */
