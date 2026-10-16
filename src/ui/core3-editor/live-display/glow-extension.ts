@@ -20,11 +20,14 @@ import {
 	type ViewUpdate,
 } from "@codemirror/view";
 import { classifyOutput } from "./classify-output";
-import { type GlowState, createGlowState, glowOf } from "./glow-state";
+import { MAX_ALPHA, MAX_ALPHA_AUDIO, glowAlpha, glowMarkClass } from "./glow-alpha";
+import { type GlowState, type OutputKind, createGlowState, glowOf } from "./glow-state";
 import { watchMonitor } from "./live-monitor-loop";
 import { buildSiteRanges } from "./site-ranges";
 
 const QUANTUM_STEPS = 16;
+/** No frame in this long: the glow reads as stopped and clears (item 1 of the live-controls fixes). */
+const STALE_MS = 250;
 const reducedMotion = () =>
 	typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -37,6 +40,7 @@ export function glowExtension(sourceMapOf: () => SourceMap): Extension {
 			private states = new Map<number, GlowState>();
 			private steps = new Map<number, number>();
 			private unsubscribe: () => void;
+			private staleTimer: ReturnType<typeof setTimeout> | null = null;
 
 			constructor(private view: EditorView) {
 				this.unsubscribe = watchMonitor((snapshot, watches) => {
@@ -44,7 +48,13 @@ export function glowExtension(sourceMapOf: () => SourceMap): Extension {
 					const siteRanges = buildSiteRanges(sourceMap);
 					const now = performance.now();
 					let changed = false;
-					const marks: { from: number; to: number; step: number; sign: -1 | 0 | 1 }[] = [];
+					const marks: {
+						from: number;
+						to: number;
+						step: number;
+						sign: -1 | 0 | 1;
+						kind: OutputKind;
+					}[] = [];
 
 					watches.forEach((watch, i) => {
 						const levels = snapshot.levels[i];
@@ -59,10 +69,11 @@ export function glowExtension(sourceMapOf: () => SourceMap): Extension {
 						const step = Math.round(glow.intensity * QUANTUM_STEPS);
 						if (this.steps.get(i) !== step) changed = true;
 						this.steps.set(i, step);
-						if (step > 0) marks.push({ from: range.start, to: range.end, step, sign: glow.sign });
+						if (step > 0) marks.push({ from: range.start, to: range.end, step, sign: glow.sign, kind });
 					});
 
 					if (changed) this.decorations = buildDecorations(marks);
+					this.armStaleTimer();
 				});
 			}
 
@@ -71,7 +82,26 @@ export function glowExtension(sourceMapOf: () => SourceMap): Extension {
 			}
 
 			destroy() {
+				this.clearStaleTimer();
 				this.unsubscribe();
+				this.decorations = Decoration.none;
+			}
+
+			/** No frame for STALE_MS: the monitor read as stopped, so the glow clears. */
+			private armStaleTimer() {
+				this.clearStaleTimer();
+				this.staleTimer = setTimeout(() => {
+					this.decorations = Decoration.none;
+					this.states.clear();
+					this.steps.clear();
+					this.view.dispatch({});
+				}, STALE_MS);
+			}
+
+			private clearStaleTimer() {
+				if (this.staleTimer === null) return;
+				clearTimeout(this.staleTimer);
+				this.staleTimer = null;
 			}
 		},
 		{ decorations: (v) => v.decorations },
@@ -81,14 +111,12 @@ export function glowExtension(sourceMapOf: () => SourceMap): Extension {
 }
 
 function buildDecorations(
-	marks: readonly { from: number; to: number; step: number; sign: -1 | 0 | 1 }[],
+	marks: readonly { from: number; to: number; step: number; sign: -1 | 0 | 1; kind: OutputKind }[],
 ): DecorationSet {
 	const sorted = [...marks].sort((a, b) => a.from - b.from);
 	return Decoration.set(
 		sorted.map((m) =>
-			Decoration.mark({
-				class: `aux-glow aux-glow-${m.step} ${m.sign === 1 ? "aux-glow-pos" : m.sign === -1 ? "aux-glow-neg" : ""}`,
-			}).range(m.from, m.to),
+			Decoration.mark({ class: glowMarkClass(m.step, m.kind, m.sign) }).range(m.from, m.to),
 		),
 	);
 }
@@ -96,14 +124,18 @@ function buildDecorations(
 const glowTheme = EditorView.baseTheme(
 	Object.fromEntries(
 		Array.from({ length: QUANTUM_STEPS + 1 }, (_, step) => {
-			const alpha = step / QUANTUM_STEPS;
-			return [
-				`.aux-glow-${step}`,
-				{ backgroundColor: `rgba(250, 204, 21, ${(alpha * 0.35).toFixed(3)})` },
-			];
-		}).concat([
-			[".aux-glow-pos", { backgroundColor: "var(--aux-glow-pos, rgba(74, 222, 128, 0.3))" }],
-			[".aux-glow-neg", { backgroundColor: "var(--aux-glow-neg, rgba(248, 113, 113, 0.3))" }],
-		]),
+			const alpha = glowAlpha(step, QUANTUM_STEPS, "bipolar");
+			return [`.aux-glow-${step}`, { backgroundColor: `rgba(250, 204, 21, ${alpha.toFixed(3)})` }];
+		})
+			.concat(
+				Array.from({ length: QUANTUM_STEPS + 1 }, (_, step) => {
+					const alpha = glowAlpha(step, QUANTUM_STEPS, "audio");
+					return [`.aux-glow-audio-${step}`, { backgroundColor: `rgba(250, 204, 21, ${alpha.toFixed(3)})` }];
+				}),
+			)
+			.concat([
+				[".aux-glow-pos", { backgroundColor: `var(--aux-glow-pos, rgba(74, 222, 128, ${MAX_ALPHA}))` }],
+				[".aux-glow-neg", { backgroundColor: `var(--aux-glow-neg, rgba(248, 113, 113, ${MAX_ALPHA}))` }],
+			]),
 	),
 );
