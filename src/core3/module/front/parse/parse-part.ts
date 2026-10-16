@@ -26,6 +26,8 @@ export interface PartSite {
 
 export interface ParsedPart {
 	readonly node: FunctionNode;
+	/** The text the node's offsets index (parse-function.ts `expression`). */
+	readonly text: string;
 	readonly fail: Fail;
 }
 
@@ -35,5 +37,6 @@ export function parsePart(site: PartSite): ParsedPart {
 	const fail: Fail = (node, message) => {
 		throw violation(located, node.loc?.start.line ?? 1, message);
 	};
-	return { node: parseFunction(site.src, `${site.owner} ${site.part}`).node, fail };
+	const parsed = parseFunction(site.src, `${site.owner} ${site.part}`);
+	return { node: parsed.node, text: parsed.expression, fail };
 }

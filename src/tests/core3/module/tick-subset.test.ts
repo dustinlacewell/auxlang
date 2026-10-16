@@ -69,6 +69,15 @@ describe("tick subset: each forbidden form throws with its patch line", () => {
 		expect(() => evalPatch(patch(body))).toThrow(reason);
 	});
 
+	it("a name of auxlang's library, beside a call the binding gives that name", () => {
+		expect(() => evalPatch(patch("o.out = Math.sin(1) + __math_sin(1);"))).toThrow(
+			/defmod\('t'\) tick: the name '__math_sin' is reserved/,
+		);
+		expect(() => evalPatch(patch("o.out = hashRandom(1) + __random_hashNumber(1, 2);"))).toThrow(
+			/defmod\('t'\) tick: the name '__random_hashNumber' is reserved/,
+		);
+	});
+
 	it("a closure over a patch variable", () => {
 		expect(() => evalPatch(patch("o.out = depth;", "", "const depth = 2"))).toThrow(
 			/tick at patch line 11: 'depth' is not defined here/,

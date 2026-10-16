@@ -13,6 +13,7 @@ import { AUX_MATH_FUNCTIONS } from "../../math/aux-math-functions";
 import { type TextEdit, applyEdits } from "../tick-build/text-edits";
 import { type FunctionNode, parseFunction } from "../front/parse/parse-function";
 import { walk } from "../front/parse/walk";
+import { assertNoLibraryNames } from "../library-names";
 import { cacheCall } from "./cache-call";
 import { assertNoCacheNames } from "./cache-names";
 
@@ -28,6 +29,7 @@ export function rewriteMath(src: string, what: string, firstSlot = 0): MathRewri
 	const parsed = parseFunction(src, what);
 	const uses = new Set<string>();
 	assertNoCacheNames(parsed.node, what);
+	assertNoLibraryNames(parsed.node, what);
 	if (declares(parsed.node, "Math")) return { text: src, uses, slots: 0 };
 	const edits: TextEdit[] = [];
 	const temps: string[] = [];

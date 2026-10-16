@@ -9,15 +9,15 @@
  */
 
 import type { ModuleSpec } from "@/core3/types";
-import { analyseModule } from "./analyse-module";
 import { keepIR, keptIR } from "./kept-ir";
 import { moduleFacts } from "./module-facts";
 import type { ModuleIR } from "./module-ir";
+import { readModule } from "./read-module";
 
 export function specIR(spec: ModuleSpec): ModuleIR {
 	const known = keptIR(spec);
 	if (known !== undefined) return known;
-	if (spec.source === undefined) throw new Error(`module '${spec.name}' has no tick source`);	const ir = analyseModule(spec.source, moduleFacts(spec, `defmod('${spec.name}')`));
+	if (spec.source === undefined) throw new Error(`module '${spec.name}' has no tick source`);	const ir = readModule(spec, spec.source, moduleFacts(spec, `defmod('${spec.name}')`));
 	keepIR(spec, ir);
 	return ir;
 }

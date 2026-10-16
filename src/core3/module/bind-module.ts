@@ -11,9 +11,8 @@
 
 import type { ModuleSource, ModuleSpec, SourceOrigin } from "../types";
 import { bindModuleMath } from "./bind-math/bind-module-math";
-import { MATH_HELPER_PREFIX } from "./bind-math/math-helpers";
 import { bindModuleRandom } from "./bind-random/bind-module-random";
-import { RANDOM_HELPER_PREFIX } from "./bind-random/random-helpers";
+import { libraryPrefixOf } from "./library-names";
 import { locateInSource } from "./source-text";
 import { buildTick } from "./tick-build/build-tick";
 import { type ReadTime, checkModule } from "./front/module/check-module";
@@ -28,7 +27,7 @@ export function bindModule(written: WrittenSpec, read: ReadTime): ModuleSpec {
 	const { helpers, ...spec } = written;
 	const owner = `defmod('${spec.name}')`;
 	const written_ = sourceOf(written.tick, helpers ?? {}, owner);
-	const bound = bindModuleRandom(bindModuleMath(written_, owner), owner, spec.config ?? {});
+	const bound = bindModuleRandom(bindModuleMath(written_, owner), owner);
 	const source = withOrigins(bound, written_);
 	const result = { ...spec, tick: buildTick(source, owner), source };
 	checkModule(result, source, read);
@@ -47,8 +46,6 @@ function withOrigins(bound: ModuleSource, written: ModuleSource): ModuleSource {
 	return Object.keys(origins).length === 0 ? bound : { ...bound, origins };
 }
 
-const RESERVED_PREFIXES = [MATH_HELPER_PREFIX, RANDOM_HELPER_PREFIX];
-
 function sourceOf(
 	tick: ModuleSpec["tick"],
 	helpers: Readonly<Record<string, (...args: never[]) => unknown>>,
@@ -56,7 +53,7 @@ function sourceOf(
 ): ModuleSource {
 	const texts: Record<string, string> = {};
 	for (const [name, fn] of Object.entries(helpers)) {
-		const prefix = RESERVED_PREFIXES.find((p) => name.startsWith(p));
+		const prefix = libraryPrefixOf(name);
 		if (prefix !== undefined)
 			throw new Error(
 				`${owner}: helper names starting with '${prefix}' are reserved for auxlang's library`,
