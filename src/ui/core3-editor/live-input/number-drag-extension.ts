@@ -19,8 +19,9 @@
 
 import { currentSlots, writeSlot } from "@/core3/runtime/audio";
 import type { SourceMap } from "@/core3/source/source-map";
-import { Annotation, type Extension } from "@codemirror/state";
+import { Annotation, type EditorState, type Extension } from "@codemirror/state";
 import { EditorView, ViewPlugin } from "@codemirror/view";
+import { numberDragTheme } from "./number-drag-theme";
 import { FrameCoalescer } from "./frame-coalescer";
 import { literalRewrite } from "./literal-rewrite";
 import { draggableNumbersOf, numberSiteAt } from "./number-drag-sites";
@@ -38,8 +39,11 @@ export interface NumberDragHost {
 	readonly ensureSlotSite: (site: number) => Promise<void>;
 }
 
+/** Class on `view.dom` while a drag is live: suppresses text selection and touch scroll. */
+const DRAGGING_CLASS = "aux-number-dragging";
+
 export function numberDragExtension(host: NumberDragHost): Extension {
-	return ViewPlugin.fromClass(
+	const plugin = ViewPlugin.fromClass(
 		class {
 			private coalescer = new FrameCoalescer((writes) => this.applyWrites(writes));
 			private dragging: {
@@ -50,6 +54,8 @@ export function numberDragExtension(host: NumberDragHost): Extension {
 				startY: number;
 				startValue: number;
 			} | null = null;
+			/** The selection/caret when the current drag began; restored if CodeMirror moves it mid-drag. */
+			private selectionAtDragStart: EditorState["selection"] | null = null;
 
 			constructor(private view: EditorView) {
 				view.dom.addEventListener("pointerdown", this.onPointerDown);
@@ -71,6 +77,10 @@ export function numberDragExtension(host: NumberDragHost): Extension {
 				if (number === null) return;
 
 				event.preventDefault();
+				// CodeMirror's own mousedown handler can still move the selection/caret
+				// (preventDefault on pointerdown doesn't always suppress it) — restore
+				// the selection the drag started from, every time it changes.
+				const selectionBefore = this.view.state.selection;
 				const digitIndex = caretInLiteral - number.range.start;
 				const digitStep = stepFromDigit(number.text, digitIndex, event.shiftKey);
 
@@ -83,10 +93,15 @@ export function numberDragExtension(host: NumberDragHost): Extension {
 						startY: event.clientY,
 						startValue: Number.parseFloat(number.text),
 					};
+					this.selectionAtDragStart = selectionBefore;
 					this.view.dom.setPointerCapture(event.pointerId);
+					this.view.dom.classList.add(DRAGGING_CLASS);
 					this.view.dom.addEventListener("pointermove", this.onPointerMove);
 					this.view.dom.addEventListener("pointerup", this.onPointerUp);
 					this.view.dom.addEventListener("keydown", this.onKeyDown);
+					if (!this.view.state.selection.eq(selectionBefore)) {
+						this.view.dispatch({ selection: selectionBefore });
+					}
 				};
 
 				if (number.slotIndex !== null) {
@@ -107,6 +122,12 @@ export function numberDragExtension(host: NumberDragHost): Extension {
 				const steps = pixels / PIXELS_PER_STEP;
 				const value = shapeByUnit(drag.startValue, steps * drag.digitStep, "sig");
 				this.coalescer.push(drag.slotIndex, value);
+				// A move is also a chance for CodeMirror's own drag-select to have
+				// grabbed the selection; the drag owns the caret until pointerup.
+				const anchor = this.selectionAtDragStart;
+				if (anchor !== null && !this.view.state.selection.eq(anchor)) {
+					this.view.dispatch({ selection: anchor });
+				}
 			};
 
 			private onPointerUp = () => {
@@ -145,12 +166,15 @@ export function numberDragExtension(host: NumberDragHost): Extension {
 
 			private endDrag() {
 				if (this.dragging === null) return;
+				this.view.dom.classList.remove(DRAGGING_CLASS);
 				this.view.dom.removeEventListener("pointermove", this.onPointerMove);
 				this.view.dom.removeEventListener("pointerup", this.onPointerUp);
 				this.view.dom.removeEventListener("keydown", this.onKeyDown);
 				this.dragging = null;
+				this.selectionAtDragStart = null;
 			}
 		},
 	);
+	return [plugin, numberDragTheme];
 }
 
