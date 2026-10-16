@@ -69,3 +69,15 @@ function literalForSlot(call: CallSite, site: number, callId: number): ArgSite {
 function sortByOffset(slots: readonly ControlSlot[]): readonly ControlSlot[] {
 	return [...slots].sort((a, b) => a.decl.site - b.decl.site);
 }
+
+/**
+ * The index of the slot at exactly `site` in a given slot list — for writing
+ * to the PLAYING program: a widget's own `ControlSlot.slotIndex` may have come
+ * from an unplayed preview eval, whose slot order can differ from the
+ * engine's, so a write always re-resolves the index against `currentSlots()`
+ * by site, never reuses the preview's index.
+ */
+export function slotIndexForSite(slots: readonly SlotDecl[], site: number): number | null {
+	const index = slots.findIndex((decl) => decl.site === site);
+	return index === -1 ? null : index;
+}

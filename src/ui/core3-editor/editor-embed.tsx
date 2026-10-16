@@ -5,6 +5,7 @@
  * the editable CodeMirror; Ctrl+Enter re-evaluates while playing.
  */
 
+import type { SlotDecl } from "@/core3/runtime/live/live-contract";
 import type { SourceMap } from "@/core3/source/source-map";
 import { TabButton } from "@/ui/design/tab-button";
 import { EmbedFrame } from "@/ui/docs-kit/embed-frame";
@@ -20,6 +21,7 @@ interface EditorEmbedProps {
 	onChange: (code: string) => void;
 	isPlaying: boolean;
 	sourceMap: SourceMap;
+	liveSlots: readonly SlotDecl[];
 	ensureSlotSite: (site: number) => Promise<void>;
 	onRun: () => void;
 	onStop: () => void;
@@ -88,6 +90,7 @@ export function EditorEmbed({
 	onChange,
 	isPlaying,
 	sourceMap,
+	liveSlots,
 	ensureSlotSite,
 	onRun,
 	onStop,
@@ -135,6 +138,8 @@ export function EditorEmbed({
 				onRun={onRun}
 				onStop={onStop}
 				sourceMap={sourceMap}
+				liveSlots={liveSlots}
+				isPlaying={isPlaying}
 				ensureSlotSite={ensureSlotSite}
 				className="text-xs"
 			/>

@@ -5,6 +5,7 @@
  * core2-only) — this editor drives audio through the core3 eval path.
  */
 
+import type { SlotDecl } from "@/core3/runtime/live/live-contract";
 import { EMPTY_SOURCE_MAP, type SourceMap } from "@/core3/source/source-map";
 import { auxlangTheme } from "@/ui/code-editor/auxlang-theme";
 import { createExtensions } from "@/ui/code-editor/extensions";
@@ -26,6 +27,9 @@ interface CodeMirrorProps {
 	onStop: () => void;
 	/** The last successful eval's location tables; read live by the glow/pattern-highlight/live-input extensions. */
 	sourceMap: SourceMap;
+	/** Display slots for the control widgets: the preview eval's while stopped, the playing program's while playing. */
+	liveSlots: readonly SlotDecl[];
+	isPlaying: boolean;
 	/** Turns a dragged number literal's site into a live slot (live-input/number-drag-extension.ts). */
 	ensureSlotSite: (site: number) => Promise<void>;
 	className?: string;
@@ -37,6 +41,8 @@ export function CodeMirror({
 	onRun,
 	onStop,
 	sourceMap,
+	liveSlots,
+	isPlaying,
 	ensureSlotSite,
 	className = "",
 }: CodeMirrorProps) {
@@ -46,6 +52,8 @@ export function CodeMirror({
 	const onRunRef = useRef(onRun);
 	const onStopRef = useRef(onStop);
 	const sourceMapRef = useRef<SourceMap>(EMPTY_SOURCE_MAP);
+	const liveSlotsRef = useRef<readonly SlotDecl[]>(liveSlots);
+	const isPlayingRef = useRef(isPlaying);
 	const ensureSlotSiteRef = useRef(ensureSlotSite);
 	const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null);
 
@@ -53,6 +61,8 @@ export function CodeMirror({
 	onRunRef.current = onRun;
 	onStopRef.current = onStop;
 	sourceMapRef.current = sourceMap;
+	liveSlotsRef.current = liveSlots;
+	isPlayingRef.current = isPlaying;
 	ensureSlotSiteRef.current = ensureSlotSite;
 
 	useEffect(() => {
@@ -93,7 +103,11 @@ export function CodeMirror({
 						sourceMapOf: () => sourceMapRef.current,
 						ensureSlotSite: (site) => ensureSlotSiteRef.current(site),
 					}),
-					controlWidgetExtension(() => sourceMapRef.current),
+					controlWidgetExtension({
+						sourceMapOf: () => sourceMapRef.current,
+						slotsOf: () => liveSlotsRef.current,
+						isPlaying: () => isPlayingRef.current,
+					}),
 				],
 			}),
 			parent: containerRef.current,

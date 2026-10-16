@@ -9,16 +9,26 @@
  * column they point at. (The graph renders
  * from the code itself via PatchGraph in the embed, so no compiled Program is
  * held here.)
+ *
+ * Controls show as soon as the code is in the editor, not only once playing:
+ * a debounced, silent, audio-free `evaluatePatch` (no `play`) runs on mount
+ * and after each edit, and its Program's `liveSlots` feed the control widgets
+ * while stopped. An eval error here is swallowed — the last good widget set
+ * just stays put until the code compiles again.
  */
 
 import { play, playSeed, stop } from "@/core3/runtime/audio";
+import type { SlotDecl } from "@/core3/runtime/live/live-contract";
 import { EMPTY_SOURCE_MAP, type SourceMap } from "@/core3/source/source-map";
 import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { errorText } from "./error-text";
 import { DEFAULT_EXAMPLE } from "./examples";
 import type { ShownSeed } from "./seed-bar";
 import { codeFromUrl } from "./share-url";
+
+/** Debounce for the silent preview eval that keeps widgets live while stopped. */
+const PREVIEW_DEBOUNCE_MS = 300;
 
 interface Core3EditorState {
 	code: string;
@@ -28,6 +38,8 @@ interface Core3EditorState {
 	seed: ShownSeed | null;
 	/** The last successful eval's location tables (source/source-map.ts), for the live display's glow and pattern highlight. */
 	sourceMap: SourceMap;
+	/** The last successful eval's live slots — while playing, the playing program's; while stopped, the silent preview eval's. */
+	liveSlots: readonly SlotDecl[];
 	run: () => Promise<void>;
 	reroll: () => Promise<void>;
 	halt: () => void;
@@ -41,6 +53,7 @@ export function useCore3Editor(): Core3EditorState {
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [seed, setSeed] = useState<ShownSeed | null>(null);
 	const [sourceMap, setSourceMap] = useState<SourceMap>(EMPTY_SOURCE_MAP);
+	const [liveSlots, setLiveSlots] = useState<readonly SlotDecl[]>([]);
 	/** Sites dragged into slots this play session; an ordinary run()/reroll() clears it so a literal bakes again. */
 	const slotSitesRef = useRef<Set<number>>(new Set());
 	const codeRef = useRef(code);
@@ -55,10 +68,29 @@ export function useCore3Editor(): Core3EditorState {
 		});
 		setError(null);
 		setSourceMap(evaluated);
+		setLiveSlots(program.liveSlots ?? []);
 		await play(program);
 		setSeed({ value: program.seed, pinned: seedPinned });
 		setIsPlaying(true);
 	}, []);
+
+	// Silent preview: while stopped, a debounced no-audio eval keeps the
+	// control widgets and their glow ranges live from the code alone. While
+	// playing, the playing program (evalAndPlay above) is the source of
+	// truth instead, so this effect does nothing.
+	useEffect(() => {
+		if (isPlaying) return;
+		const timer = setTimeout(() => {
+			try {
+				const { program, sourceMap: evaluated } = evaluatePatch(code, { seed: playSeed.current() });
+				setSourceMap(evaluated);
+				setLiveSlots(program.liveSlots ?? []);
+			} catch {
+				// Keep the last good widget set; a mid-edit parse/compile error is expected.
+			}
+		}, PREVIEW_DEBOUNCE_MS);
+		return () => clearTimeout(timer);
+	}, [code, isPlaying]);
 
 	const run = useCallback(async () => {
 		slotSitesRef.current = new Set();
@@ -93,5 +125,17 @@ export function useCore3Editor(): Core3EditorState {
 		[evalAndPlay],
 	);
 
-	return { code, setCode, error, isPlaying, seed, sourceMap, run, reroll, halt, ensureSlotSite };
+	return {
+		code,
+		setCode,
+		error,
+		isPlaying,
+		seed,
+		sourceMap,
+		liveSlots,
+		run,
+		reroll,
+		halt,
+		ensureSlotSite,
+	};
 }
