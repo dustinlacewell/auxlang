@@ -106,6 +106,7 @@ export class EngineBuild {
 		const bufs: ValueBuffers = {
 			cur: new Float64Array(layout.size),
 			prv: new Float64Array(layout.size),
+			slots: Float64Array.from(program.liveSlots ?? [], (slot) => slot.init),
 		};
 		restoreFeedback(feedback, new Map(), layout, sampleRate, undefined, bufs.cur);
 		const taps = (port: string) => Int32Array.from(program.outs, (n) => slotOf(layout, n, port, 0));
@@ -147,6 +148,7 @@ export class EngineBuild {
 			feedback,
 			runs: this.runs,
 			bufs,
+			liveSlots: prepared.program.liveSlots ?? [],
 			driver: interpretBlock(plan),
 		};
 	}

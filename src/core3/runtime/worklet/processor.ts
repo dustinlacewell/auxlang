@@ -46,6 +46,7 @@ class Core3Processor extends AudioWorkletProcessor {
 	private handle(message: WorkletMessage): void {
 		if (message.type === "swap") this.host.swap(message.prepared);
 		else if (message.type === "stop") this.host.stop();
+		else if (message.type === "slots") this.host.writeSlots(message.writes);
 		else if (PERF) this.setPerf(message.enabled);
 	}
 

@@ -8,12 +8,13 @@
  * snapshot as the JS engine continues one (runtime/live-engine.ts
  * `handOver`): at the same rate, each paired node's lanes whose state fits
  * the fresh JS state (module/front/state/shape-fits.ts) and the feedback values; at any
- * rate, the sample count.
+ * rate, the sample count and the live slots by site.
  */
 
 import { shapeFits } from "../../module/front/state/shape-fits";
 import { laneShapeOf } from "../../module/front/state/state-shape-of";
 import { captureFeedback, restoreFeedback } from "../../runtime/feedback";
+import { type SlotEntries, carriedSlots } from "../../runtime/live/slot-carry";
 import type { NodeRun } from "../../runtime/node-run";
 import type { EngineState, KeyedIdentity } from "../../types";
 import type { WasmLayout } from "../program/memory-layout";
@@ -44,7 +45,17 @@ export function readEngineState({ memory, layout, facts }: CodecTarget): EngineS
 		),
 		sampleRate: facts.sampleRate,
 		sampleCount: new Float64Array(memory, layout.count, 1)[0] as number,
+		...(layout.slotCount > 0 ? { liveSlots: readSlots(memory, layout, facts) } : {}),
 	};
+}
+
+function readSlots(memory: ArrayBuffer, layout: WasmLayout, facts: EngineFacts): SlotEntries {
+	const slots = liveSlots(memory, layout);
+	return facts.slotSites.map((site, i) => [site, slots[i] as number] as const);
+}
+
+function liveSlots(memory: ArrayBuffer, layout: WasmLayout): Float64Array {
+	return new Float64Array(memory, layout.slots, layout.slotCount);
 }
 
 /** `fresh`: the built runs the instance was initialised from (their states are the fresh shapes). */
@@ -66,6 +77,7 @@ export function writeEngineState(
 		values(memory, layout),
 	);
 	new Float64Array(memory, layout.count, 1)[0] = state.sampleCount;
+	carriedSlots(facts.slotSites, state.liveSlots, liveSlots(memory, layout));
 }
 
 function carryNode(

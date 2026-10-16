@@ -17,7 +17,7 @@ export function interpretBlock(plan: DriverPlan): Driver {
 			bufs.prv = bufs.cur;
 			bufs.cur = flip;
 			const cur = flip;
-			walk(cur, bufs.prv, sr, (count + k) / sr);
+			walk(cur, bufs.prv, bufs.slots, sr, (count + k) / sr);
 			let sumL = 0;
 			let sumR = 0;
 			for (let j = 0; j < tapsL.length; j++) {

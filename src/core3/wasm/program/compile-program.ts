@@ -40,6 +40,8 @@ export interface WasmInput {
 	readonly tapsR: Int32Array;
 	/** The engine's value slot count. */
 	readonly size: number;
+	/** The program's live slot count (Program.liveSlots). */
+	readonly slotCount: number;
 	readonly sampleRate: number;
 }
 
@@ -49,7 +51,15 @@ export interface CompiledWasm {
 }
 
 export function compileWasm(input: WasmInput): CompiledWasm {
-	const layout = planMemory(input.runs, input.readsPattern, input.irs, input.plans, input.lambdas, input.size);
+	const layout = planMemory(
+		input.runs,
+		input.readsPattern,
+		input.irs,
+		input.plans,
+		input.lambdas,
+		input.size,
+		input.slotCount,
+	);
 	const table = new FunctionTable(1);
 	const fillType = table.typeIndex([I32, I32, F64], []);
 	const enter = table.add(tableEnter(table.typeIndex(ENTER_PARAMS, []), FILL));

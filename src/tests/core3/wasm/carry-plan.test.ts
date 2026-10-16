@@ -83,7 +83,18 @@ function side({
 	rate = 48000,
 }: SideSpec): CarrySide {
 	return {
-		layout: { pages: 1, outL: 0, outR: 512, cur: 1024, count: 1016, size: 4, nodes, heap: 2048 },
+		layout: {
+			pages: 1,
+			outL: 0,
+			outR: 512,
+			cur: 1024,
+			count: 1016,
+			size: 4,
+			slots: 1056,
+			slotCount: 0,
+			nodes,
+			heap: 2048,
+		},
 		facts: {
 			identities: keys.map((key) => ({ key }) as KeyedIdentity),
 			paired,
@@ -96,6 +107,7 @@ function side({
 				laneCounts: nodes.map(() => 2),
 			},
 			sampleRate: rate,
+			slotSites: [],
 		},
 	};
 }

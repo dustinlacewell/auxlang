@@ -5,6 +5,8 @@
  * carries (runtime/live-engine.ts `handOver`):
  *
  * - the sample count, always;
+ * - each live slot whose site the old program has, always
+ *   (runtime/live/slot-carry.ts);
  * - at an unchanged sample rate, each paired node's lanes whose state fits
  *   (by state shape, as the JS carry fits: module/front/state/shape-fits.ts),
  *   `__rng` unless the seed changed;
@@ -15,6 +17,7 @@
  */
 
 import { shapeFits } from "../../module/front/state/shape-fits";
+import { slotPairs } from "../../runtime/live/slot-carry";
 import type { WasmLayout } from "../program/memory-layout";
 import { CARRY_F64 } from "./carry/carry-run";
 import { feedbackRuns } from "./carry/feedback-runs";
@@ -32,6 +35,8 @@ export interface CarrySide {
 export function planCarry(old: CarrySide, fresh: CarrySide): Int32Array {
 	const runs = new RunList();
 	runs.add(old.layout.count, fresh.layout.count, 8, CARRY_F64);
+	for (const [to, from] of slotPairs(fresh.facts.slotSites, old.facts.slotSites))
+		runs.add(old.layout.slots + 8 * from, fresh.layout.slots + 8 * to, 8, CARRY_F64);
 	if (old.facts.sampleRate !== fresh.facts.sampleRate) return runs.toArray();
 	const oldIndex = pairedNodes(old.facts, fresh.facts);
 	for (const [node, from] of oldIndex) nodeRuns(runs, old, fresh, from, node);

@@ -1,7 +1,7 @@
 /**
  * From a Program to WASM bytes plus the values an instance starts from:
  * the engine is built as the offline host builds it (prepare, then every
- * build step), and its runs, slots and taps are compiled.
+ * build step), and its runs, slots, live slots and taps are compiled.
  *
  * Against running identities (a re-eval), the program is matched as the JS
  * engine matches it, so each node gets the same migration key, seed and
@@ -102,8 +102,13 @@ function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 		tapsL: taps("l"),
 		tapsR: taps("r"),
 		size: parts.layout.size,
+		slotCount: parts.bufs.slots.length,
 		sampleRate,
 	};
 	const facts = engineFacts(parts, input.readsPattern);
-	return { input, start: { runs: parts.runs, cur: parts.bufs.cur }, facts };
+	return {
+		input,
+		start: { runs: parts.runs, cur: parts.bufs.cur, slots: parts.bufs.slots },
+		facts,
+	};
 }

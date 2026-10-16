@@ -11,10 +11,14 @@
 
 import type { NodeRun } from "./node-run";
 
-/** The engine's two value buffers. A driver may swap them (the per-sample flip). */
+/**
+ * The engine's two value buffers, which a driver may swap (the per-sample
+ * flip), and its live slots, which only a slot write changes.
+ */
 export interface ValueBuffers {
 	cur: Float64Array;
 	prv: Float64Array;
+	readonly slots: Float64Array;
 }
 
 /** What a driver walks: the built node runs and the slots the out-nodes' l/r land in. */

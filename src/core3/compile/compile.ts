@@ -4,6 +4,7 @@
  *
  *   subpatches   each sub-patch instance → its inner graph, spliced in as plain
  *                nodes (compile/subpatch); the program never sees a sub-patch
+ *   slots        control ports and chosen literals → live slots (bind-slots)
  *   mods         `.mod` terms → base + Σ(signal × depth) as add/mul nodes
  *   collect      reachable nodes from the roots (object-identity graph walk)
  *   expand       pattern inputs → `seq(pattern).out` nodes (patterns as knobs)
@@ -29,7 +30,7 @@
  */
 
 import { nodePorts } from "@/core3/module/node-ports";
-import { isLambdaInput, isNodeRef, isZRef } from "../graph/input-kinds";
+import { isLambdaInput, isNodeRef, isSlotInput, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
 import { bindLambdaMath } from "../module/bind-math/bind-lambda-math";
 import { type SpecTable, resolveSpec } from "../module/resolve";
@@ -38,6 +39,7 @@ import type { EvalResult } from "../patch/context";
 import type { ModuleSpec, PNode, PortAnn, PortSrc, Program, SerializedModuleSpec } from "../types";
 import { resolveAmbientClocks } from "./ambient-clock";
 import { atNode } from "./at-node";
+import { bindSlots } from "./bind-slots";
 import { collect } from "./collect";
 import { copyMeter } from "./copy-meter";
 import { expandMods } from "./expand-mods";
@@ -47,6 +49,7 @@ import { markClocked } from "./mark-clocked";
 import { prepareSeqs } from "./prepare-seqs";
 import { expandSubpatches } from "./subpatch/expand-subpatches";
 import { toposort } from "./toposort";
+import { SlotTable } from "./slot-table";
 import { resolveWidths } from "./widths";
 import { cutZ1Edges } from "./z1-edges";
 
@@ -57,11 +60,14 @@ interface Resolved {
 	readonly identities: Map<GNode, Placement>;
 	/** Patch-defined specs (defmod) from the eval, layered under every module lookup. */
 	readonly specs: SpecTable;
+	/** The live slots emit reads, indexed as it meets them. */
+	readonly slots: SlotTable;
 }
 
 export function compile(evalResult: EvalResult): Program {
 	const specs = evalResult.specs;
 	expandSubpatches(evalResult);
+	bindSlots(collect(evalResult.roots), specs, evalResult.slotSites);
 	expandMods(collect(evalResult.roots), specs);
 	const reachable = collect(evalResult.roots); // re-walk: the mod arithmetic nodes are new
 	expandPatterns(reachable, evalResult.clock);
@@ -79,16 +85,19 @@ export function compile(evalResult: EvalResult): Program {
 		index: indexByPosition(order),
 		identities: identities(evalResult.roots, order, specs),
 		specs,
+		slots: new SlotTable(),
 	};
 
 	const pnodes = order.map((node) => atNode(node, () => emitNode(node, resolved)));
 	const outs = outIndices(evalResult.roots, resolved.index);
 	const used = usedSpecs(order, specs);
+	const liveSlots = resolved.slots.list;
 	return {
 		nodes: pnodes,
 		outs,
 		seed: evalResult.seed,
 		...(used.length > 0 ? { specs: used } : {}),
+		...(liveSlots.length > 0 ? { liveSlots } : {}),
 	};
 }
 
@@ -171,6 +180,7 @@ function portSrc(
 
 function srcOf(value: InputValue, node: GNode, port: string, lane: number, r: Resolved): PortSrc {
 	if (typeof value === "number") return { k: "c", v: value };
+	if (isSlotInput(value)) return { k: "s", slot: r.slots.index(value.slot) };
 	if (isLambdaInput(value)) return { k: "l", lambda: bindLambdaMath(value.lambda.toString()) };
 	if (isNodeRef(value))
 		return connSrc("n", value.node, value.port, value.lane, lane, r, node, port);

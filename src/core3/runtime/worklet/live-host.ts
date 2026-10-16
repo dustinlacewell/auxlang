@@ -11,22 +11,29 @@
  *
  * Programs build one after another, in the order they arrive: each takes
  * effect at its own block boundary (§7). A stop drops the programs still
- * building.
+ * building. Slot writes go to the last program posted (`writeSlots`).
  */
 
 import type { Registry } from "../../types";
 import type { HostPrepared } from "../prepare/host-prepared";
+import { PendingSlots } from "./pending-slots";
 import { WasmHostProgram } from "./wasm-host-program";
 
 const CROSSFADE_MS = 100;
 const HALF_PI = Math.PI / 2;
+
+/** A posted program waiting to build, with the slot writes it gets before it plays. */
+interface Queued {
+	readonly prepared: HostPrepared;
+	readonly slots: PendingSlots;
+}
 
 export class LiveHost {
 	private engine: WasmHostProgram | null = null;
 	private fading: WasmHostProgram | null = null;
 	private fadePos = 0;
 	private readonly fadeLen: number;
-	private readonly queue: HostPrepared[] = [];
+	private readonly queue: Queued[] = [];
 	private building: WasmHostProgram | null = null;
 	private liveL = new Float32Array(128);
 	private liveR = new Float32Array(128);
@@ -48,7 +55,17 @@ export class LiveHost {
 
 	/** Queue a program to build; it swaps in at the block boundary after its build. */
 	swap(prepared: HostPrepared): void {
-		this.queue.push(prepared);
+		this.queue.push({ prepared, slots: new PendingSlots(prepared.program.liveSlots?.length ?? 0) });
+	}
+
+	/**
+	 * Slot writes, indexed by the last program posted: into it while it is
+	 * queued or building (held for its swap), else into the playing engine.
+	 */
+	writeSlots(pairs: Float64Array): void {
+		const queued = this.queue[this.queue.length - 1];
+		if (queued !== undefined) queued.slots.writeSlots(pairs);
+		else (this.building ?? this.engine)?.writeSlots(pairs);
 	}
 
 	/** Fade to silence instead of cutting mid-waveform; drop the programs still building. */
@@ -83,8 +100,8 @@ export class LiveHost {
 			if (next === undefined) return;
 			// The program it will continue at the swap: the swap only ever takes this
 			// one (or none, once a stop fade ends), since builds run one at a time.
-			const source = next.continues ? (this.engine ?? this.fading) : null;
-			this.building = new WasmHostProgram(next, this.registry, source);
+			const source = next.prepared.continues ? (this.engine ?? this.fading) : null;
+			this.building = new WasmHostProgram(next.prepared, this.registry, source, next.slots);
 		}
 		try {
 			this.building.advance(this.building.prepared.budget);

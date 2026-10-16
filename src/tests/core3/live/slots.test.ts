@@ -228,16 +228,27 @@ describe("slot writes on the worklet host", () => {
 		session.host.writeSlots(Float64Array.of(0, 0.25));
 		session.blocks(20);
 		const settled = Math.max(...slice(session.l, session.l.length - BLOCK * 4, session.l.length));
-		expect(settled).toBeCloseTo(0.25, 2);
+		expect(settled).toBeCloseTo(peakAt(0.25), 2);
 
 		await session.play(program(SLIDER.replace("0.5", "0.6")));
 		session.host.writeSlots(Float64Array.of(0, 0.75));
-		session.untilSwap();
+		const swap = session.untilSwap();
+		const building = Math.max(...slice(session.l, swap - BLOCK * 4, swap));
+		expect(building, "the playing program keeps its value while the new one builds").toBeCloseTo(
+			peakAt(0.25),
+			2,
+		);
 		session.blocks(60);
 		const after = Math.max(...slice(session.l, session.l.length - BLOCK * 4, session.l.length));
-		expect(after).toBeCloseTo(0.75, 2);
+		expect(after).toBeCloseTo(peakAt(0.75), 2);
 	}, 20_000);
 });
+
+/** The settled left peak of `sin(60).gain(gain).out()` (out's own level included). */
+function peakAt(gain: number): number {
+	const { l } = renderWithWrites(ENGINES.interpreter?.(program(`sin(60).gain(${gain}).out()`)) as SlotEngine, 4000, []);
+	return Math.max(...l.slice(2000));
+}
 
 /** The site of the number literal `value` in `code`. */
 function numberSite(code: string, value: number): number {

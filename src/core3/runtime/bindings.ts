@@ -6,7 +6,8 @@
  *
  * Kinds: BIND_CONST reads a constant, BIND_CUR reads the current buffer
  * ("n" source, producer already ran this sample), BIND_PREV reads the previous
- * buffer ("z" source, cycle cut), BIND_LAMBDA calls a hydrated user lambda.
+ * buffer ("z" source, cycle cut), BIND_LAMBDA calls a hydrated user lambda,
+ * BIND_SLOT reads a live slot ("s" source; the offset is the slot index).
  */
 
 import { nodePorts } from "@/core3/module/node-ports";
@@ -18,6 +19,7 @@ export const BIND_CONST = 0;
 export const BIND_CUR = 1;
 export const BIND_PREV = 2;
 export const BIND_LAMBDA = 3;
+export const BIND_SLOT = 4;
 
 export interface LaneBindings {
 	readonly names: readonly string[];
@@ -72,6 +74,10 @@ export function compileLaneBindings(
 			case "l":
 				kinds[j] = BIND_LAMBDA;
 				lambdas[j] = hydrateLambda(src.lambda);
+				break;
+			case "s":
+				kinds[j] = BIND_SLOT;
+				offsets[j] = src.slot;
 				break;
 		}
 	});

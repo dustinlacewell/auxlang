@@ -8,13 +8,15 @@
  * per engine by runtime/hydrate-specs).
  */
 
+import type { SlotWrites } from "../live/live-contract";
 import type { HostPrepared } from "../prepare/host-prepared";
 
 /** Main thread -> worklet. */
 export type WorkletMessage =
 	| { readonly type: "swap"; readonly prepared: HostPrepared }
 	| { readonly type: "stop" }
-	| { readonly type: "perf"; readonly enabled: boolean };
+	| { readonly type: "perf"; readonly enabled: boolean }
+	| SlotWrites;
 
 /** A single missed-deadline event: how long the quantum took and when. */
 export interface PerfOverrun {

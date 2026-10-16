@@ -5,6 +5,7 @@
  * collection/compile time. A chain nobody roots is garbage, not a zombie.
  */
 
+import type { SlotDecl } from "../runtime/live/live-contract";
 import type { Scope } from "./scope";
 
 /** Reference to another node's output port (optionally a single lane of it). */
@@ -34,7 +35,16 @@ export interface PatternInput {
 	readonly pattern: unknown;
 }
 
-export type InputValue = number | NodeRef | ZRef | LambdaInput | PatternInput;
+/**
+ * A live slot (runtime/live/live-contract.ts): a number the editor writes
+ * while the patch plays. Compile binds a control port's number or a chosen
+ * literal to one (compile/bind-slots.ts); it is a constant to identity.
+ */
+export interface SlotInput {
+	readonly slot: SlotDecl;
+}
+
+export type InputValue = number | NodeRef | ZRef | LambdaInput | PatternInput | SlotInput;
 
 /** One modulation source on a port: adds `signal × depth` to the port's base. */
 export interface ModTerm {

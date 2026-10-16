@@ -13,6 +13,9 @@
  * one, allocating nothing. A snapshot (an `EngineState`) goes in through
  * `load` instead (state-codec.ts).
  *
+ * `writeSlot` sets a live slot in memory between renders; `render` loads
+ * the slots once per block, as every mirrored value.
+ *
  * Seq tables run one cycle ahead (seq-tables.ts): after each render the
  * engine fills the tables its lanes want next, `fillBudget` at most. The
  * table heap can grow memory (table-heap.ts), which detaches every view on
@@ -20,6 +23,7 @@
  * render and after the table work, never inside `render`.
  */
 
+import { type SlotTarget, applySlotWrites, isSlotIndex } from "../../runtime/live/slot-target";
 import type { NodeRun } from "../../runtime/node-run";
 import { slotOf } from "../../runtime/output-slots";
 import type { Engine, EngineState } from "../../types";
@@ -41,6 +45,8 @@ export const FILL_BUDGET = 1;
 export interface WasmStart {
 	readonly runs: readonly NodeRun[];
 	readonly cur: Float64Array;
+	/** The live slots' start values (their inits). */
+	readonly slots: Float64Array;
 }
 
 /**
@@ -62,7 +68,7 @@ export interface WasmEngineOptions {
 	readonly written?: boolean;
 }
 
-export class WasmEngine implements Engine {
+export class WasmEngine implements Engine, SlotTarget {
 	private views: WasmMemory;
 	private f32: Float32Array;
 	private readonly memory: WebAssembly.Memory;
@@ -87,7 +93,7 @@ export class WasmEngine implements Engine {
 		this.f32 = new Float32Array(this.memory.buffer);
 		this.render = instance.exports.render as (n: number) => void;
 		if (options.written !== true)
-			initMemory(this.views.f64, layout, prepared.start.runs, prepared.start.cur);
+			initMemory(this.views.f64, layout, prepared.start.runs, prepared.start.cur, prepared.start.slots);
 		this.tables = new SeqTables(
 			prepared.start.runs,
 			layout,
@@ -209,6 +215,22 @@ export class WasmEngine implements Engine {
 	/** The cycle the current table of (node, lane) holds; NaN when none. */
 	tableCycle(node: number, lane: number): number {
 		return this.tables.cycleOf(node, lane);
+	}
+
+	/** Set live slot `index` in memory; the next render reads it. Allocates nothing. */
+	writeSlot(index: number, value: number): void {
+		const { slots, slotCount } = this.prepared.compiled.layout;
+		if (isSlotIndex(index, slotCount)) this.views.f64[slots / 8 + index] = value;
+	}
+
+	/** Apply a SlotWrites message's [index, value] pairs. */
+	writeSlots(pairs: Float64Array): void {
+		applySlotWrites(pairs, this);
+	}
+
+	/** Live slot `index` as written (before the module clamps it). */
+	slotValue(index: number): number {
+		return this.views.f64[this.prepared.compiled.layout.slots / 8 + index] as number;
 	}
 
 	/** A value slot as of the last sample rendered (the engine's `cur`). */

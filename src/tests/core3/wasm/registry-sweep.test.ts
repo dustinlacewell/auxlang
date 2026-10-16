@@ -24,6 +24,13 @@ const t = seq(p\`60(3,8)\`).trig
 
 const PATCHES: Readonly<Record<string, string>> = {
 	abs: "sin(57).abs().gain(0.2).out()",
+	slider: "sin(57).gain(slider(0.3, 0, 1, { slew: lfo(0.5, 0, 0.02) })).out()",
+	knob: "sin(57).gain(knob(0.7, 0.1, 0.4)).out()",
+	xy: `const pad = xy(0.2, 0.6, 0, 1)
+sin(57).gain(pad.x).out()
+sin(64).gain(pad.y).out()`,
+	toggle: "sin(57).gain(toggle(1)).gain(0.2).out()",
+	button: "sin(57).gain(button().add(1)).gain(0.2).out()",
 	add: "sin(57).add(lfo(2, 0, 0.1)).gain(0.2).out()",
 	clip: "sin(57).mul(2).clip(lfo(1, -0.9, -0.2), 0.5).gain(0.2).out()",
 	gt: "sin(57).gt(lfo(1, -0.5, 0.5)).gain(0.1).out()",

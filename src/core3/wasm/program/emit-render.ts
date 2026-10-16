@@ -61,7 +61,7 @@ export function emitRender(input: RenderInput, fns: Functions, table: FunctionTa
 	const time = e.local("f64");
 	const locals = new RenderLocals(e);
 	const count = locals.at(input.memory.count);
-	const slots = new ValueSlots(e, locals, input.memory.cur, input.runs);
+	const slots = new ValueSlots(e, locals, input.memory.cur, input.runs, input.memory.slots);
 	const walk = new NodeWalk({ e, input, fns, table, locals, slots, time });
 	e.depth = 2;
 	const sample = e.capture(() => {

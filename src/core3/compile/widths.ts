@@ -8,7 +8,7 @@
  * Computed as a monotone fixpoint so widths propagate through z-edge cycles.
  */
 
-import { isLambdaInput, isNodeRef, isZRef } from "../graph/input-kinds";
+import { isLambdaInput, isNodeRef, isSlotInput, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
 import { type SpecTable, resolveSpec } from "../module/resolve";
 
@@ -50,7 +50,7 @@ function inputWidths(node: GNode, widths: Map<GNode, number>): number[] {
 }
 
 function sourceWidth(value: InputValue, widths: Map<GNode, number>): number {
-	if (typeof value === "number" || isLambdaInput(value)) return 1;
+	if (typeof value === "number" || isLambdaInput(value) || isSlotInput(value)) return 1;
 	if (isNodeRef(value)) return value.lane !== undefined ? 1 : (widths.get(value.node) ?? 1);
 	if (isZRef(value)) return widths.get(value.z.node) ?? 1;
 	return 1; // patterns are expanded before width resolution
