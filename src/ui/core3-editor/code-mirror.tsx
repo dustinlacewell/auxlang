@@ -15,7 +15,6 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { glowExtension } from "./live-display/glow-extension";
 import { patternHighlightExtension } from "./live-display/pattern-highlight-extension";
 import { controlWidgetExtension, setLiveProgram } from "./live-input/control-widget-extension";
 import { numberDragExtension } from "./live-input/number-drag-extension";
@@ -25,7 +24,7 @@ interface CodeMirrorProps {
 	onChange: (value: string) => void;
 	onRun: () => void;
 	onStop: () => void;
-	/** The last successful eval's location tables; read live by the glow/pattern-highlight/live-input extensions. */
+	/** The last successful eval's location tables; read live by the pattern-highlight/live-input extensions. */
 	sourceMap: SourceMap;
 	/** Display slots for the control widgets: the preview eval's while stopped, the playing program's while playing. */
 	liveSlots: readonly SlotDecl[];
@@ -97,7 +96,6 @@ export function CodeMirror({
 					auxlangTheme,
 					runKeymap,
 					updateListener,
-					glowExtension(() => sourceMapRef.current),
 					patternHighlightExtension(() => sourceMapRef.current),
 					numberDragExtension({
 						sourceMapOf: () => sourceMapRef.current,

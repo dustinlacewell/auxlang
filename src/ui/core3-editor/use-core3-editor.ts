@@ -36,7 +36,7 @@ interface Core3EditorState {
 	error: string | null;
 	isPlaying: boolean;
 	seed: ShownSeed | null;
-	/** The last successful eval's location tables (source/source-map.ts), for the live display's glow and pattern highlight. */
+	/** The last successful eval's location tables (source/source-map.ts), for the live display's pattern highlight. */
 	sourceMap: SourceMap;
 	/** The last successful eval's live slots — while playing, the playing program's; while stopped, the silent preview eval's. */
 	liveSlots: readonly SlotDecl[];
@@ -85,7 +85,7 @@ export function useCore3Editor(): Core3EditorState {
 	}, []);
 
 	// Silent preview: while stopped, a no-audio eval keeps the control
-	// widgets and their glow ranges live from the code alone. The first eval
+	// widgets live from the code alone. The first eval
 	// (mount, or coming back from playing) runs right away so widgets show
 	// with no click/focus needed; later edits debounce. While playing, the
 	// playing program (evalAndPlay above) is the source of truth instead, so

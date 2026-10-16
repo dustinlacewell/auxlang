@@ -41,13 +41,10 @@ function buildFrame(): MonitorFrame {
 }
 
 describe("frame store", () => {
-	it("copies levels and onsets out synchronously", () => {
+	it("copies onsets out synchronously", () => {
 		const store = createFrameStore();
 		const snapshot = store.copyFrom(buildFrame());
 
-		expect(snapshot.levels).toHaveLength(2);
-		expect(snapshot.levels[0]).toEqual({ last: 0.5, min: 0, max: 1, peak: 0.9, hits: 1 });
-		expect(snapshot.levels[1]).toEqual({ last: -0.25, min: -1, max: 1, peak: 0.3, hits: 0 });
 		expect(snapshot.onsets).toEqual([{ watch: 1, site: 7, frame: 48000 }]);
 		expect(snapshot.engineFrame).toBe(48000);
 	});
@@ -57,9 +54,10 @@ describe("frame store", () => {
 		const frame = buildFrame();
 		const snapshot = store.copyFrom(frame);
 
-		// Mutate the source buffer after copying; the snapshot must not change.
-		new Float64Array(frame.buffer)[LEVEL_LAST] = 999;
+		// Mutate the source buffer after copying; the snapshot's onsets must not change.
+		const onsetBase = frame.levelCount * LEVEL_STRIDE;
+		new Float64Array(frame.buffer)[onsetBase + ONSET_SITE] = 999;
 
-		expect(snapshot.levels[0]?.last).toBe(0.5);
+		expect(snapshot.onsets[0]?.site).toBe(7);
 	});
 });

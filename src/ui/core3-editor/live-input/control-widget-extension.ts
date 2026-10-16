@@ -22,8 +22,8 @@
  * and annotated `dragEditAnnotation` so the host skips re-evaluating for it.
  *
  * A literal's range is seeded from `sourceMap` on each re-eval, then
- * remapped through every doc change after that (same approach as the glow
- * and pattern-highlight extensions' decorations), so a widget write still
+ * remapped through every doc change after that (same approach as the
+ * pattern-highlight extension's decorations), so a widget write still
  * finds the right text after an earlier edit has shifted it. Widget DOM is
  * built once per control and reused across updates (`eq`/`updateDOM`).
  */
