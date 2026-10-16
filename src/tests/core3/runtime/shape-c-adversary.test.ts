@@ -343,16 +343,97 @@ osc().out()`;
 		expect(js.peek(0, "out", 0)).toBe(42);
 	});
 
-	it("an expression-bodied arrow returning an output object, `() => ({ l: a, r: b })`, lowers without the brace-wrapping bug: it fails on the same pre-existing object-key resolution gap a block-bodied `return { l, r }` hits too, not on the expression-body rewrite", () => {
+	it("a block-bodied tick's `return { l: a, r: b }` resolves the object literal's keys as property names, not free names, and both outputs carry across a re-eval", () => {
+		const before = `const osc = defmod("osc", {}, ({ sr }) => {
+  let g = 1
+  return () => {
+    g += 1
+    return { l: g, r: -g }
+  }
+})
+const o = osc()
+out({ l: o.l, r: o.r })`;
+		const after = `const osc = defmod("osc", {}, ({ sr }) => {
+  let g = 1
+  return () => {
+    g += 1000
+    return { l: g, r: -g }
+  }
+})
+const o = osc()
+out({ l: o.l, r: o.r })`;
+		const a = evalPatch(before);
+		const js = new Core3Engine(a, SR, registry(a));
+		const l = new Float32Array(1);
+		const r = new Float32Array(1);
+		js.renderBlock(l, r, 0, 1);
+		expect(js.peek(0, "l", 0)).toBe(2);
+		expect(js.peek(0, "r", 0)).toBe(-2);
+
+		const b = evalPatch(after);
+		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		swapped.renderBlock(l, r, 0, 1);
+		expect(swapped.peek(0, "l", 0)).toBe(1002);
+		expect(swapped.peek(0, "r", 0)).toBe(-1002);
+	});
+
+	it("`return { l: x, r: y }` is identical on JS and WASM: the object-literal fix is in the shared resolve-bindings stage, not one engine's path", () => {
+		const PATCH = `const osc = defmod("osc", {}, ({ sr }) => {
+  return () => {
+    return { l: 5, r: -5 }
+  }
+})
+const o = osc()
+out({ l: o.l, r: o.r })`;
+		const program = evalPatch(PATCH);
+		const js = new Core3Engine(program, SR, registry(program));
+		const wasm = createWasmEngine(program, SR, getRegistry());
+		const l = new Float32Array(1);
+		const r = new Float32Array(1);
+		js.renderBlock(l, r, 0, 1);
+		wasm.renderBlock(l, r, 0, 1);
+		const jsL = js.peek(0, "l", 0);
+		const jsR = js.peek(0, "r", 0);
+		const wasmL = wasm.slot(slotOf(js.layout, 0, "l", 0));
+		const wasmR = wasm.slot(slotOf(js.layout, 0, "r", 0));
+		expect(jsL).toBe(5);
+		expect(jsR).toBe(-5);
+		expect(wasmL).toBe(jsL);
+		expect(wasmR).toBe(jsR);
+	});
+
+	it("a block-bodied tick's `return { l, r }` (shorthand, both tick locals) resolves `l`/`r` as references to those locals, not as property names", () => {
+		const PATCH = `const osc = defmod("osc", {}, ({ sr }) => {
+  return () => {
+    const l = 3
+    const r = 4
+    return { l, r }
+  }
+})
+const o = osc()
+out({ l: o.l, r: o.r })`;
+		const program = evalPatch(PATCH);
+		const js = new Core3Engine(program, SR, registry(program));
+		const left = new Float32Array(1);
+		const right = new Float32Array(1);
+		js.renderBlock(left, right, 0, 1);
+		expect(js.peek(0, "l", 0)).toBe(3);
+		expect(js.peek(0, "r", 0)).toBe(4);
+	});
+
+	it("an expression-bodied arrow returning an output object, `() => ({ l: a, r: b })`, lowers to the same correct result as the block-bodied form", () => {
 		const PATCH = `const osc = defmod("osc", {}, ({ sr }) => {
   return () => ({ l: 1, r: 2 })
 })
 const o = osc()
 out({ l: o.l, r: o.r })`;
-		// Pre-existing gap (not this fix's scope): resolve-bindings does not special-case an
-		// ObjectExpression Property key as a non-reference, so a returned object literal's keys
-		// are misread as free names — reproduces identically for a block-bodied tick.
-		expect(() => evalPatch(PATCH)).toThrow(/'l' is not a port/);
+		const program = evalPatch(PATCH);
+		const js = new Core3Engine(program, SR, registry(program));
+		const l = new Float32Array(1);
+		const r = new Float32Array(1);
+		js.renderBlock(l, r, 0, 1);
+		expect(js.peek(0, "l", 0)).toBe(1);
+		expect(js.peek(0, "r", 0)).toBe(2);
 	});
 });
 

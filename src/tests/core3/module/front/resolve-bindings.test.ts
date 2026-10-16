@@ -107,4 +107,27 @@ describe("resolveBindings", () => {
 		const scopes = resolve("(o) => { const out = 1; o.out = out }");
 		expect(refs(scopes, "out")).toHaveLength(1);
 	});
+
+	it("does not resolve an object literal's non-computed key as a reference, only its value", () => {
+		const scopes = resolve("(o) => { const l = 1; o.out = { l: l } }");
+		expect(refs(scopes, "l")).toHaveLength(1);
+		expect(boundTo(refs(scopes, "l")[0])).toBe(bindings(scopes, "l")[0]);
+	});
+
+	it("resolves a computed object literal key as a reference", () => {
+		const scopes = resolve("(o) => { const l = 1; o.out = { [l]: 2 } }");
+		expect(refs(scopes, "l")).toHaveLength(1);
+		expect(boundTo(refs(scopes, "l")[0])).toBe(bindings(scopes, "l")[0]);
+	});
+
+	it("resolves a shorthand object literal property, `{ l }`, as one reference to its binding", () => {
+		const scopes = resolve("(o) => { const l = 1; o.out = { l } }");
+		expect(refs(scopes, "l")).toHaveLength(1);
+		expect(boundTo(refs(scopes, "l")[0])).toBe(bindings(scopes, "l")[0]);
+	});
+
+	it("does not resolve a destructuring pattern's property key as a reference", () => {
+		const scopes = resolve("(o) => { const { in: x } = o; o.out = x }");
+		expect(refs(scopes, "in")).toHaveLength(0);
+	});
 });
