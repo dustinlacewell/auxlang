@@ -49,6 +49,42 @@ describe("p.with", () => {
 	});
 });
 
+describe("callback combinators keep the fields their transform gives", () => {
+	const base = p`c3 e3 g3 b3`;
+	const rec = base.with({ vel: p`1` });
+	const to03 = (q: P) => q.with({ vel: p`0.3` });
+	const fields = (pat: P, from = 0, to = 4) =>
+		queryCycles(pat.ast, from, to).map((ev) => ev.fields?.vel);
+
+	it("sometimes: a transformed event takes the transform's fields, the others keep theirs", () => {
+		// The same seeded rolls, seen through a value change: transformed events are up an octave.
+		const which = queryCycles(base.sometimes((q) => q.add(12)).ast, 0, 4).map((ev) => ev.value >= 60);
+		expect(which).toContain(true);
+		expect(which).toContain(false);
+		expect(fields(rec.sometimes(to03))).toEqual(which.map((up) => (up ? 0.3 : 1)));
+	});
+
+	it("always, often, rarely and someBy go through the same path", () => {
+		expect(fields(rec.always(to03))).toEqual(Array(16).fill(0.3));
+		for (const pat of [rec.often(to03), rec.rarely(to03), rec.someBy(0.4, to03)])
+			expect(fields(pat).every((v) => v === 1 || v === 0.3)).toBe(true);
+	});
+
+	it("every: the transformed cycles carry the transform's fields", () => {
+		expect(fields(rec.every(2, to03), 0, 2)).toEqual([0.3, 0.3, 0.3, 0.3, 1, 1, 1, 1]);
+	});
+
+	it("chunk: the transformed slice carries the transform's fields", () => {
+		expect(fields(rec.chunk(4, to03), 0, 2)).toEqual([0.3, 1, 1, 1, 1, 0.3, 1, 1]);
+	});
+
+	it("off: the shifted copy carries the transform's fields", () => {
+		const evs = queryCycles(rec.off(0.125, to03).ast, 0, 1).filter((ev) => ev.whole !== null);
+		for (const ev of evs) expect(ev.fields?.vel).toBe(ev.lane === 1 ? 0.3 : 1);
+		expect(evs.some((ev) => ev.lane === 1)).toBe(true);
+	});
+});
+
 describe("recordFields", () => {
 	it("names the fields, sorted; none without a with", () => {
 		expect(recordFields(p`c3`.with({ vel: p`1`, cv2: p`2` }).ast)).toEqual(["cv2", "vel"]);

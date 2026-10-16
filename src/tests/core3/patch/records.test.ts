@@ -85,12 +85,56 @@ describe("seq records", () => {
 	});
 });
 
+/** Lane `lane`'s vel at `samples`. */
+const laneVel = (program: Program, lane: number, samples: readonly number[]) =>
+	at(renderTap(program, nodeIndex(program, "seq"), "vel", lane, 2 * 96000), samples);
+
+const STABLE = 'p`[c3, e3] ~ [g3, b3] ~`.with({ vel: p`1 ~ 0.5 ~` }).voices("stable")';
+const RR = 'p`c3 e3 g3 b3`.with({ vel: p`1 0.5 0.25 0.125` }).voices("rr", 3)';
+const OFF = "p`c3 e3`.with({ vel: p`1 0.5` }).off(0.25, (q) => q.add(7))";
+const STRUCT = "p`c3 e3 g3 b3`.with({ vel: p`<1 ~> 0.5` }).struct(p`1 0 1 1`)";
+
+describe("seq records through voices and transforms", () => {
+	it('voices("stable"): each lane holds its chord tone\'s field through the rests', () => {
+		const program = patch(STABLE);
+		const samples = [0, 24000, 48000, 72000, 96000, 120000];
+		expect(laneVel(program, 0, samples)).toEqual([1, 1, 0.5, 0.5, 1, 1]);
+		expect(laneVel(program, 1, samples)).toEqual([1, 1, 0.5, 0.5, 1, 1]);
+	});
+
+	it('voices("rr", 3): each lane takes the field of the onset it plays, and holds it', () => {
+		const program = patch(RR);
+		// Onsets n0..n6 go to lanes 0 1 2 0 1 2 0, every 24000 samples.
+		expect(laneVel(program, 0, [0, 72000, 100000, 144000])).toEqual([1, 0.125, 0.125, 0.25]);
+		expect(laneVel(program, 1, [24000, 72000, 96000])).toEqual([0.5, 0.5, 1]);
+		expect(laneVel(program, 2, [48000, 96000, 120000])).toEqual([0.25, 0.25, 0.5]);
+	});
+
+	it(".off: the shifted lane carries its own copy of the field, looked back into cycle 0", () => {
+		const program = patch(OFF);
+		expect(laneVel(program, 0, [0, 24000, 48000, 72000])).toEqual([1, 1, 0.5, 0.5]);
+		expect(laneVel(program, 1, [0, 24000, 48000, 72000])).toEqual([0.5, 1, 1, 0.5]);
+	});
+
+	it(".struct: each struck step keeps the field of the event it samples", () => {
+		const program = patch(STRUCT);
+		expect(laneVel(program, 0, [0, 24000, 48000, 72000, 96000, 144000])).toEqual([
+			1, 1, 0.5, 0.5, 0.5, 0.5,
+		]);
+	});
+});
+
 describe("seq records on both engines", () => {
 	for (const [label, program] of [
 		["four onsets", () => patch(FOUR)],
 		["a rest in the field", () => patch(REST)],
 		["per half", () => patch(HALVES)],
 		["two fields", () => patch(TWO, TWO_BODY)],
+		["stable voices", () => patch(STABLE)],
+		["rr voices", () => patch(RR)],
+		["off", () => patch(OFF)],
+		["struct", () => patch(STRUCT)],
+		["sometimes", () => patch("p`c3 e3 g3 b3`.with({ vel: p`1` }).sometimes((q) => q.with({ vel: p`0.3` }))")],
 	] as const)
 		it(`${label}: 8 s bit-identical`, () => {
 			expectIdentical(program(), 8 * SR);
