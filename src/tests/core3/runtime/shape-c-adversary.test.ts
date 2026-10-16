@@ -40,10 +40,8 @@ function swapJs(before: string, after: string, ticksBefore = 1): { readonly befo
 }
 
 describe("shape-C adversary: tick-writes aliasing", () => {
-	it.fails(
-		"BROKEN: const v = voices[0]; v.x += 1 does not mark 'voices' written — a re-eval drops the lane to a fresh array instead of carrying it (tick-writes.ts aliasSites only tracks a direct Identifier init, not a MemberExpression)",
-		() => {
-			const before = `const osc = defmod("osc", {}, ({ sr }) => {
+	it("const v = voices[0]; v.x += 1 marks 'voices' written — a re-eval carries the lane instead of dropping it to a fresh array (tick-writes.ts follows the alias through the element access, by the records shape)", () => {
+		const before = `const osc = defmod("osc", {}, ({ sr }) => {
   const voices = [{ x: 0 }, { x: 0 }]
   return () => {
     const v = voices[0]
@@ -52,7 +50,7 @@ describe("shape-C adversary: tick-writes aliasing", () => {
   }
 })
 osc().out()`;
-			const after = `const osc = defmod("osc", {}, ({ sr }) => {
+		const after = `const osc = defmod("osc", {}, ({ sr }) => {
   const voices = [{ x: 0 }, { x: 0 }]
   return () => {
     const v = voices[0]
@@ -61,14 +59,12 @@ osc().out()`;
   }
 })
 osc().out()`;
-			const { after: swapped } = swapJs(before, after);
-			const l = new Float32Array(1);
-			const r = new Float32Array(1);
-			swapped.renderBlock(l, r, 0, 1);
-			// expected: carried (1 + 1000 = 1001); observed: resets to fresh (0 + 1000 = 1000)
-			expect((laneOf(swapped).voices as { x: number }[])[0]?.x).toBe(1001);
-		},
-	);
+		const { after: swapped } = swapJs(before, after);
+		const l = new Float32Array(1);
+		const r = new Float32Array(1);
+		swapped.renderBlock(l, r, 0, 1);
+		expect((laneOf(swapped).voices as { x: number }[])[0]?.x).toBe(1001);
+	});
 
 	it("a same-file helper that mutates its array argument keeps the buffer written: the field carries across re-eval", () => {
 		const before = `function push(b, x) { b[0] = x }
@@ -140,10 +136,8 @@ osc().out()`;
 		expect(Array.from(buf)).toEqual([0, 0, 0, 0]);
 	});
 
-	it.fails(
-		"BROKEN: returning a read-only setup local from the tick marks it 'written' (tick-writes.ts aliasSites treats any returned Identifier as escaping), so editing its setup constant does NOT take effect after a field that was written in the old tick becomes read-only in the new one — the stale old value is carried instead of the new constant",
-		() => {
-			const before = `const osc = defmod("osc", {}, ({ sr, base = 7 }) => {
+	it("returning a read-only setup local from the tick does not mark it 'written' (a tick's own return is its output, not an escaping reference), so editing its setup constant takes effect after a field that was written in the old tick becomes read-only in the new one", () => {
+		const before = `const osc = defmod("osc", {}, ({ sr, base = 7 }) => {
   let g = base
   return () => {
     g += 1
@@ -151,18 +145,33 @@ osc().out()`;
   }
 })
 osc().out()`;
-			const after = `const osc = defmod("osc", {}, ({ sr, base = 100 }) => {
+		const after = `const osc = defmod("osc", {}, ({ sr, base = 100 }) => {
   const g = base
   return () => {
     return g
   }
 })
 osc().out()`;
-			const { after: swapped } = swapJs(before, after, 2); // g = 9 after 2 ticks under 'before'
-			// expected: g is read-only in the new tick, so it rebuilds fresh from base = 100
-			expect(laneOf(swapped).g).toBe(100);
-		},
-	);
+		const { after: swapped } = swapJs(before, after, 2); // g = 9 after 2 ticks under 'before'
+		// g is read-only in the new tick, so it rebuilds fresh from base = 100
+		expect(laneOf(swapped).g).toBe(100);
+	});
+
+	it("returning a setup local that is only read takes effect on an edited constant even unswapped: a fresh eval with no re-eval history also reads base, not a stale default", () => {
+		const PATCH = `const osc = defmod("osc", {}, ({ sr, base = 42 }) => {
+  const g = base
+  return () => {
+    return g
+  }
+})
+osc().out()`;
+		const program = evalPatch(PATCH);
+		const js = new Core3Engine(program, SR, registry(program));
+		const l = new Float32Array(1);
+		const r = new Float32Array(1);
+		js.renderBlock(l, r, 0, 1);
+		expect(laneOf(js).g).toBe(42);
+	});
 });
 
 describe("shape-C adversary: identity and independence", () => {
@@ -224,10 +233,8 @@ osc().out()`;
 		expect(swapped.peek(2, "out", 0)).toBe(1002);
 	});
 
-	it.fails(
-		"BROKEN: the H1 alias-through-index bug reproduces identically on WASM (js === wasm), confirming the bug is in the shared lowering stage (tick-writes.ts), not one engine's carry path",
-		() => {
-			const before = `const osc = defmod("osc", {}, ({ sr }) => {
+	it("the alias-through-index carry is correct identically on WASM (js === wasm), confirming the fix is in the shared lowering stage (tick-writes.ts), not one engine's carry path", () => {
+		const before = `const osc = defmod("osc", {}, ({ sr }) => {
   const voices = [{ x: 0 }, { x: 0 }]
   return () => {
     const v = voices[0]
@@ -236,7 +243,7 @@ osc().out()`;
   }
 })
 osc().out()`;
-			const after = `const osc = defmod("osc", {}, ({ sr }) => {
+		const after = `const osc = defmod("osc", {}, ({ sr }) => {
   const voices = [{ x: 0 }, { x: 0 }]
   return () => {
     const v = voices[0]
@@ -245,26 +252,24 @@ osc().out()`;
   }
 })
 osc().out()`;
-			const a = evalPatch(before);
-			const js = new Core3Engine(a, SR, registry(a));
-			const wasm = createWasmEngine(a, SR, getRegistry());
-			const l = new Float32Array(1);
-			const r = new Float32Array(1);
-			js.renderBlock(l, r, 0, 1);
-			wasm.renderBlock(l, r, 0, 1);
+		const a = evalPatch(before);
+		const js = new Core3Engine(a, SR, registry(a));
+		const wasm = createWasmEngine(a, SR, getRegistry());
+		const l = new Float32Array(1);
+		const r = new Float32Array(1);
+		js.renderBlock(l, r, 0, 1);
+		wasm.renderBlock(l, r, 0, 1);
 
-			const b = evalPatch(after);
-			const swappedJs = new Core3Engine(b, SR, registry(b), js.liveState());
-			const swappedWasm = swapWasmEngine(b, SR, getRegistry(), wasm);
-			swappedJs.renderBlock(l, r, 0, 1);
-			swappedWasm.renderBlock(l, r, 0, 1);
-			const jsOut = swappedJs.peek(0, "out", 0);
-			const wasmOut = swappedWasm.slot(slotOf(swappedJs.layout, 0, "out", 0));
-			// expected (correct carry): both 1001; observed (bug, matching on both engines): both 1000
-			expect(jsOut).toBe(1001);
-			expect(wasmOut).toBe(1001);
-		},
-	);
+		const b = evalPatch(after);
+		const swappedJs = new Core3Engine(b, SR, registry(b), js.liveState());
+		const swappedWasm = swapWasmEngine(b, SR, getRegistry(), wasm);
+		swappedJs.renderBlock(l, r, 0, 1);
+		swappedWasm.renderBlock(l, r, 0, 1);
+		const jsOut = swappedJs.peek(0, "out", 0);
+		const wasmOut = swappedWasm.slot(slotOf(swappedJs.layout, 0, "out", 0));
+		expect(jsOut).toBe(1001);
+		expect(wasmOut).toBe(1001);
+	});
 });
 
 describe("shape-C adversary: randomness and ports", () => {
@@ -324,16 +329,31 @@ osc().out()`;
 });
 
 describe("shape-C adversary: lowering of bare expression-bodied ticks", () => {
-	it.fails(
-		"BROKEN: a tick written as a bare expression-bodied arrow (no braces, no explicit 'return') fails to compile at all — infer-outs.ts rewrites 'expr' to 'o.out = (expr); return;' without wrapping the arrow body in braces, producing a syntactically invalid function ('=> stmt; return;' with no block)",
-		() => {
-			const PATCH = `const osc = defmod("osc", {}, ({ sr }) => {
+	it("a tick written as a bare expression-bodied arrow (no braces, no explicit 'return') compiles and runs", () => {
+		const PATCH = `const osc = defmod("osc", {}, ({ sr }) => {
   return () => 42
 })
 osc().out()`;
-			expect(() => evalPatch(PATCH)).not.toThrow();
-		},
-	);
+		expect(() => evalPatch(PATCH)).not.toThrow();
+		const program = evalPatch(PATCH);
+		const js = new Core3Engine(program, SR, registry(program));
+		const l = new Float32Array(1);
+		const r = new Float32Array(1);
+		js.renderBlock(l, r, 0, 1);
+		expect(js.peek(0, "out", 0)).toBe(42);
+	});
+
+	it("an expression-bodied arrow returning an output object, `() => ({ l: a, r: b })`, lowers without the brace-wrapping bug: it fails on the same pre-existing object-key resolution gap a block-bodied `return { l, r }` hits too, not on the expression-body rewrite", () => {
+		const PATCH = `const osc = defmod("osc", {}, ({ sr }) => {
+  return () => ({ l: 1, r: 2 })
+})
+const o = osc()
+out({ l: o.l, r: o.r })`;
+		// Pre-existing gap (not this fix's scope): resolve-bindings does not special-case an
+		// ObjectExpression Property key as a non-reference, so a returned object literal's keys
+		// are misread as free names — reproduces identically for a block-bodied tick.
+		expect(() => evalPatch(PATCH)).toThrow(/'l' is not a port/);
+	});
 });
 
 describe("shape-C adversary: static error line numbers", () => {
@@ -352,5 +372,15 @@ describe("shape-C adversary: static error line numbers", () => {
 })
 osc().out()`;
 		expect(() => evalPatch(PATCH)).toThrow(/tick at patch line 7:/);
+	});
+
+	it("an unresolved free name in the tick is a loud error naming the patch line it was read at", () => {
+		const PATCH = `const osc = defmod("osc", {}, ({ sr }) => {
+  return () => {
+    return notAThing
+  }
+})
+osc().out()`;
+		expect(() => evalPatch(PATCH)).toThrow(/line 3.*'notAThing'/);
 	});
 });
