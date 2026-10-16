@@ -14,6 +14,9 @@ import { emitFieldRebind, isFieldRebind } from "./pointer-field";
 import { type Address, type MemoryValue, inMemory } from "./values";
 import { referenceWritten } from "./written";
 
+/** The operators that store an array or record: `=`, and `&&=` (an array or record is truthy). */
+export const REBINDS: ReadonlySet<string> = new Set(["=", "&&="]);
+
 export function declareAddress(e: FnEmitter, name: string, init: AnyNode): void {
 	e.scope.declare(name, addressLocal(e, refAt(e, init)));
 }
@@ -34,8 +37,8 @@ export function isRebind(e: FnEmitter, node: AssignmentExpression): boolean {
 /** `a = s.b`: the variable's address local takes the new address. */
 export function emitRebind(e: FnEmitter, node: AssignmentExpression): void {
 	const variable = node.left.type === "Identifier" ? e.scope.lookup(node.left.name) : null;
-	if (node.operator !== "=" || variable?.k !== "memory" || variable.at.base === null)
-		e.fail(node, "an array variable is only ever rebound by a plain `=` (compiler bug)");
+	if (!REBINDS.has(node.operator) || variable?.k !== "memory" || variable.at.base === null)
+		e.fail(node, "an array variable is only ever rebound by `=` or `&&=` (compiler bug)");
 	pushAddress(e, refAt(e, node.right).at);
 	e.code.set(variable.at.base);
 }

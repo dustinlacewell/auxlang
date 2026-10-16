@@ -10,7 +10,7 @@
 
 import type { AssignmentExpression, MemberExpression } from "acorn";
 import { OP } from "../encode/opcodes";
-import { pushAddress, refAt } from "./address-variable";
+import { REBINDS, pushAddress, refAt } from "./address-variable";
 import type { FnEmitter } from "./fn-emitter";
 import { placeOf } from "./place";
 import { fieldOf, resolve } from "./resolve";
@@ -32,8 +32,8 @@ export function isFieldRebind(e: FnEmitter, node: AssignmentExpression): boolean
 
 /** `s.a = s.b`: the field's slot takes the right side's address; returns the right side's place. */
 export function emitFieldRebind(e: FnEmitter, node: AssignmentExpression): MemoryValue {
-	if (node.operator !== "=" || node.left.type !== "MemberExpression")
-		return e.fail(node, "a field holding an array or record is only ever rebound by a plain `=`");
+	if (!REBINDS.has(node.operator) || node.left.type !== "MemberExpression")
+		return e.fail(node, "a field holding an array or record is only ever rebound by `=` or `&&=` (compiler bug)");
 	const slot = slotOf(e, node.left);
 	const value = refAt(e, node.right);
 	pushBase(e, slot);

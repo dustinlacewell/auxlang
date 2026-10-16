@@ -10,21 +10,38 @@
 import type { AssignmentExpression } from "acorn";
 import { keepsLeft } from "../../module/front/types/keeps-left";
 import { OP } from "../encode/opcodes";
+import { emitRebind } from "./address-variable";
 import { toBool, toF64 } from "./coerce";
 import { writeTarget } from "./emit-assignment";
 import { emitExpr, emitStatic } from "./emit-expression";
 import { type Target, readTarget, targetOf } from "./emit-member";
 import type { FnEmitter } from "./fn-emitter";
+import { placeOf } from "./place";
+import { emitFieldRebind, isFieldRebind } from "./pointer-field";
 import type { Kind } from "./values";
 
 export function emitLogicalAssignment(e: FnEmitter, node: AssignmentExpression, keep: boolean): Kind | null {
 	const op = node.operator.slice(0, -1);
+	if (e.typeOf(node.left).k === "ref") return refAssign(e, node, op, keep);
 	const known = e.fold(node.left);
 	if (known !== null && keepsLeft(op, known.v)) return keep ? emitStatic(e, known.v, node.left) : null;
 	const target = targetOf(e, node.left);
 	if (known !== null) return asResult(e, writeTarget(e, target, keep, () => emitExpr(e, node.right), node));
 	if (op === "??") return nullishAssign(e, node, target, keep);
 	return testedAssign(e, node, target, op === "||", keep);
+}
+
+/**
+ * On an array or record variable or field: it is truthy and never nullish,
+ * so `&&=` always rebinds it and `||=`/`??=` only find it (the owner's code
+ * runs, as JS evaluates it).
+ */
+function refAssign(e: FnEmitter, node: AssignmentExpression, op: string, keep: boolean): null {
+	if (keep) return e.fail(node, "a logical assignment of an array or record is used as a value");
+	if (op !== "&&") placeOf(e, node.left);
+	else if (isFieldRebind(e, node)) emitFieldRebind(e, node);
+	else emitRebind(e, node);
+	return null;
 }
 
 /** `a ??= b`: `a`, or `b` where `a` is an element at an invalid index. */

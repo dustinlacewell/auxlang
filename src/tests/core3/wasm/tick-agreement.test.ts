@@ -157,6 +157,9 @@ const AGREED_ACCEPT: readonly Row[] = [
 		"a record field rebound to a record at a run-time index",
 		"s.v = s.voices[s.n % 2]; s.n++; s.v.x += 1; o.out = s.voices[0].x - s.voices[1].x",
 	),
+	accept("&&= on an array field always rebinds it", "s.a &&= s.b; s.b[0] = i.in; o.out = s.a[0]"),
+	accept("||= on an array field keeps it", "s.a ||= s.b; s.b[0] = i.in; o.out = s.a[0]"),
+	accept("&&= on an array variable rebinds it", "let a = s.a; a &&= s.b; s.b[0] = i.in; o.out = a[0]"),
 	accept(
 		"a swap in a helper given the state record",
 		"o.out = sw(s)",
