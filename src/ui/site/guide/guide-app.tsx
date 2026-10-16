@@ -4,11 +4,10 @@
  * live on the patterns/modules pages — this page teaches the shapes.
  */
 
-import { hasModule } from "@/core3/module/define";
 import { TextLink } from "@/ui/design/text-link";
 import { ModuleCard } from "@/ui/docs-kit/module-card";
-import { ModuleName } from "@/ui/docs-kit/module-name";
 import { useSharedAudio } from "@/ui/docs-kit/use-shared-audio";
+import { C, P, Section } from "@/ui/site/prose";
 import { RunBlock } from "@/ui/site/run-block";
 import { SitePage } from "@/ui/site/site-page";
 import { GUIDE_EXAMPLES } from "./examples";
@@ -28,33 +27,6 @@ const NOTATION_ROWS = [
 	["a? / a?0.7", "maybe: seeded rest, chance 0.5 / 0.7"],
 	["a(3,8) / a(3,8,2)", "euclid, with rotation"],
 ] as const;
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-	return (
-		<section className="mb-10">
-			<h2 className="text-lg font-medium border-b border-surface-700 pb-1 mb-3 text-gray-100">
-				{title}
-			</h2>
-			{children}
-		</section>
-	);
-}
-
-function P({ children }: { children: React.ReactNode }) {
-	return <p className="text-gray-400 leading-relaxed mb-3">{children}</p>;
-}
-
-/** Inline code; a bare registered module name upgrades to the live ModuleName. */
-function C({ children }: { children: React.ReactNode }) {
-	if (typeof children === "string" && hasModule(children)) {
-		return (
-			<span className="text-[0.9em]">
-				<ModuleName name={children} />
-			</span>
-		);
-	}
-	return <code className="font-mono text-gray-200 text-[0.9em]">{children}</code>;
-}
 
 export function GuideApp() {
 	const audio = useSharedAudio();
@@ -203,9 +175,9 @@ export function GuideApp() {
 					<C>defmod(spec)</C> defines a real module for this patch — the same contract the built-ins
 					use: <C>ins</C>/<C>outs</C> with unit annotations (<C>sig</C>, <C>hz</C>, <C>unit</C>,
 					...), optional <C>state</C>, and a per-sample <C>tick</C> that runs in the audio engine.
-					It then chains like any built-in. One rule: <C>tick</C> and <C>state</C> ship to the audio
-					thread as source, so they must be closure-free — only their parameters and globals like{" "}
-					<C>Math</C>.
+					It then chains like any built-in. <C>tick</C> runs once per sample, so it must not
+					allocate or close over patch variables. The full list of rules is on the{" "}
+					<TextLink href="/module-code.html">module code page</TextLink>.
 				</P>
 				{ex("customModules")}
 				<P>

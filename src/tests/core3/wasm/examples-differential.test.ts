@@ -23,6 +23,7 @@ import { EXAMPLES as SITE } from "@/ui/core3-editor/examples";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples";
 import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples";
+import { SKELETON as MODULE_CODE_SKELETON } from "@/ui/site/module-code/rules";
 import { describe, expect, it } from "vitest";
 import { SNIPPETS } from "../../../../docs/snippets";
 import {
@@ -75,12 +76,16 @@ const EXAMPLES: readonly { readonly label: string; readonly code: string }[] = [
 	...PATTERN_DOCS.map((e) => ({ label: `pattern-docs [${e.section}] ${e.title}`, code: e.code })),
 ];
 
-const CASES = [...EXAMPLES, ...SNIPPETS.map((s) => ({ label: `snippet: ${s.id}`, code: s.code }))];
+const CASES = [
+	...EXAMPLES,
+	...SNIPPETS.map((s) => ({ label: `snippet: ${s.id}`, code: s.code })),
+	{ label: "module-code page skeleton", code: MODULE_CODE_SKELETON },
+];
 
 describe("WASM is bit-identical to the interpreter", () => {
 	it("covers every example set", () => {
 		expect(EXAMPLES.length).toBe(SITE.length + MODULE_DOCS.length + PATTERN_DOCS.length);
-		expect(CASES.length).toBe(EXAMPLES.length + SNIPPETS.length);
+		expect(CASES.length).toBe(EXAMPLES.length + SNIPPETS.length + 1);
 	});
 
 	for (const c of CASES) {

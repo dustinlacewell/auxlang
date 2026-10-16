@@ -22,6 +22,7 @@ export default defineConfig(({ command }) => ({
 				guide: resolve(__dirname, "guide.html"),
 				patterns: resolve(__dirname, "patterns.html"),
 				modules: resolve(__dirname, "modules.html"),
+				moduleCode: resolve(__dirname, "module-code.html"),
 				core3: resolve(__dirname, "core3.html"),
 				// perf.html is a dev-only diagnostic harness — served in dev, never
 				// built into a production bundle.

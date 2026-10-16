@@ -26,6 +26,7 @@ const NEXT_STEPS = [
 		label: "modules",
 		blurb: "oscillators, filters, envelopes, effects, drums",
 	},
+	{ href: "/module-code.html", label: "module code", blurb: "the JS rules for your own modules" },
 ] as const;
 
 export function LandingApp() {
