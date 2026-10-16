@@ -16,7 +16,6 @@ import { combine } from "./emit-binary";
 import { emitExpr } from "./emit-expression";
 import { emitStatements } from "./emit-statement";
 import type { FnEmitter } from "./fn-emitter";
-import { staticOf } from "./static-value";
 
 export function emitSwitch(e: FnEmitter, node: SwitchStatement, label: string | null): void {
 	const cases = node.cases;
@@ -71,12 +70,12 @@ function defaultBlock(cases: readonly SwitchCase[], blocks: readonly number[]): 
 
 /** The matching case's index when everything is known (null: none matches); undefined otherwise. */
 function knownCase(e: FnEmitter, node: SwitchStatement): number | null | undefined {
-	const disc = staticOf(e, node.discriminant);
+	const disc = e.fold(node.discriminant);
 	if (disc === null) return undefined;
 	for (let k = 0; k < node.cases.length; k++) {
 		const test = (node.cases[k] as SwitchCase).test as AnyNode | null | undefined;
 		if (test === null || test === undefined) continue;
-		const value = staticOf(e, test);
+		const value = e.fold(test);
 		if (value === null) return undefined;
 		if (value.v === disc.v) return k;
 	}

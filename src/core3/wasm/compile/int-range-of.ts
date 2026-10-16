@@ -2,12 +2,19 @@
  * The integer range of an expression (int-range.ts), when it is known while
  * compiling: constants, int locals, integer typed-array elements read at an
  * index proven in bounds, and the operators and Math functions that keep
- * integers exact. Like static-value.ts it only reads: no code is emitted.
+ * integers exact. It only reads: no code is emitted. It reads only nodes
+ * the function's plan walked (front/types/function-plan.ts).
  * Null means "maybe not an integer" — any f64, a boolean, NaN, -0.
  */
 
-import type { AnyNode, MemberExpression, UnaryExpression } from "acorn";
-import type { ElementType } from "../layout/element-type";
+import type {
+	AnyNode,
+	ConditionalExpression,
+	LogicalExpression,
+	MemberExpression,
+	UnaryExpression,
+} from "acorn";
+import type { ElementType } from "../../module/front/types/element-type";
 import type { FnEmitter } from "./fn-emitter";
 import { binaryRange } from "./int-range-binary";
 import { mathRange } from "./int-range-math";
@@ -23,10 +30,9 @@ import {
 	within,
 } from "./int-range";
 import { resolve } from "./resolve";
-import { staticOf } from "./static-value";
 
 export function intRange(e: FnEmitter, node: AnyNode): Range | null {
-	const folded = staticOf(e, node);
+	const folded = e.fold(node);
 	if (folded !== null) return constantRange(folded.v);
 	switch (node.type) {
 		case "Identifier":
@@ -39,10 +45,9 @@ export function intRange(e: FnEmitter, node: AnyNode): Range | null {
 		case "BinaryExpression":
 			return binaryRange(e, node);
 		case "ConditionalExpression":
-			return union(intRange(e, node.consequent), intRange(e, node.alternate));
+			return conditionalRange(e, node);
 		case "LogicalExpression":
-			// `a && b` is `a` (then 0) or `b`; `??` reads an element that may be missing.
-			return node.operator === "??" ? null : union(intRange(e, node.left), intRange(e, node.right));
+			return logicalRange(e, node);
 		case "CallExpression":
 			return mathRange(e, node);
 		default:
@@ -77,6 +82,24 @@ function elementRange(e: FnEmitter, node: MemberExpression): Range | null {
 	const range = ELEMENT_RANGES[owner.shape.type];
 	if (range === undefined || !provenIndex(e, node.property, owner.shape.length)) return null;
 	return range;
+}
+
+/** A known test leaves one arm, the only one the plan walks. */
+function conditionalRange(e: FnEmitter, node: ConditionalExpression): Range | null {
+	const test = e.fold(node.test);
+	if (test !== null) return intRange(e, test.v ? node.consequent : node.alternate);
+	return union(intRange(e, node.consequent), intRange(e, node.alternate));
+}
+
+/**
+ * `a && b` is `a` (then 0) or `b`; `??` reads an element that may be
+ * missing. A known left side that does not decide the result leaves `b`
+ * (one that decides it folds the whole expression).
+ */
+function logicalRange(e: FnEmitter, node: LogicalExpression): Range | null {
+	if (node.operator === "??") return null;
+	if (e.fold(node.left) !== null) return intRange(e, node.right);
+	return union(intRange(e, node.left), intRange(e, node.right));
 }
 
 function unaryRange(e: FnEmitter, node: UnaryExpression): Range | null {

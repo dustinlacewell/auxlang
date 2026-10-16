@@ -13,7 +13,6 @@ import { toF64 } from "../compile/coerce";
 import type { Intrinsics } from "../compile/emit-context";
 import { emitExpr } from "../compile/emit-expression";
 import type { FnEmitter } from "../compile/fn-emitter";
-import { staticOf } from "../compile/static-value";
 import { OP } from "../encode/opcodes";
 import {
 	ROW_BYTES,
@@ -60,7 +59,7 @@ function current(e: FnEmitter, slot: number) {
 
 /** Rows are integers in range: a saturating truncation, no check. */
 function readRow(e: FnEmitter, slot: number, args: readonly Expression[], at: AnyNode): "f64" {
-	const field = staticOf(e, args[0] as Expression)?.v;
+	const field = e.fold(args[0] as Expression)?.v;
 	if (!isTableRowField(field)) return e.fail(at, "__tableRow needs a table field name");
 	current(e, slot);
 	toF64(e, emitExpr(e, args[1] as Expression));

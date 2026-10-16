@@ -12,11 +12,10 @@ import { OP } from "../encode/opcodes";
 import { toBool } from "./coerce";
 import { emitExpr } from "./emit-expression";
 import type { FnEmitter } from "./fn-emitter";
-import { staticOf } from "./static-value";
 
 /** Leaves 1 when `node` is truthy, else 0. */
 export function emitTest(e: FnEmitter, node: AnyNode): void {
-	const known = staticOf(e, node);
+	const known = e.fold(node);
 	if (known !== null) {
 		e.code.i32Const(known.v ? 1 : 0);
 		return;
@@ -30,7 +29,7 @@ export function emitTest(e: FnEmitter, node: AnyNode): void {
 
 function logicalTest(e: FnEmitter, node: LogicalExpression): void {
 	const and = node.operator === "&&";
-	const left = staticOf(e, node.left);
+	const left = e.fold(node.left);
 	if (left !== null) {
 		if (and === !!left.v) emitTest(e, node.right);
 		else e.code.i32Const(left.v ? 1 : 0);

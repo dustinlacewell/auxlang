@@ -23,7 +23,6 @@ import { emitStatement } from "./emit-statement";
 import { emitTest } from "./emit-test";
 import type { FnEmitter } from "./fn-emitter";
 import { type Counter, counterOf } from "./loop-counter";
-import { staticOf } from "./static-value";
 import { intLocal } from "./values";
 
 type Loop = ForStatement | WhileStatement | DoWhileStatement;
@@ -75,7 +74,7 @@ function emitInit(e: FnEmitter, node: ForStatement): void {
 /** Leave the loop when `test` is false; a missing or known-true test never leaves. */
 function exitUnless(e: FnEmitter, test: Loop["test"] | null, exit: number): void {
 	if (test === null || test === undefined) return;
-	const known = staticOf(e, test);
+	const known = e.fold(test);
 	if (known !== null) {
 		if (!known.v) e.br(exit);
 		return;
@@ -86,7 +85,7 @@ function exitUnless(e: FnEmitter, test: Loop["test"] | null, exit: number): void
 }
 
 function repeatIf(e: FnEmitter, node: DoWhileStatement, top: number): void {
-	const known = staticOf(e, node.test);
+	const known = e.fold(node.test);
 	if (known !== null) {
 		if (known.v) e.br(top);
 		return;

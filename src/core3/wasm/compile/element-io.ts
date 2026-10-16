@@ -8,8 +8,8 @@
  * [0, 255] and rounds ties to even, NaN to 0.
  */
 
+import type { ElementType } from "../../module/front/types/element-type";
 import { OP } from "../encode/opcodes";
-import type { ElementType } from "../layout/element-type";
 import { toF64, toInt32 } from "./coerce";
 import type { FnEmitter } from "./fn-emitter";
 import type { Kind } from "./values";

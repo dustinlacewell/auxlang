@@ -1,20 +1,11 @@
 /**
- * The helper sets every program shares, read by the front end once per
- * process on first use: auxlang's math and random libraries (by their helper
- * name prefix) and the runtime functions.
+ * The helper sets every program shares: auxlang's math and random libraries
+ * (by their helper name prefix, read by the front end: library-irs.ts) and
+ * the runtime functions, read once per process on first use.
  */
 
 import { analyseLibrary } from "../../module/front/module/analyse-library";
-import {
-	MATH_HELPER_PREFIX,
-	mathFunctionNames,
-	mathHelpers,
-} from "../../module/bind-math/math-helpers";
-import {
-	RANDOM_HELPER_PREFIX,
-	randomFunctionNames,
-	randomHelpers,
-} from "../../module/bind-random/random-helpers";
+import { libraryIrs } from "../../module/front/module/library-irs";
 import { RUNTIME_SOURCES } from "../runtime/runtime-sources";
 import { type HelperSet, helperSet } from "./helper-set";
 
@@ -28,15 +19,8 @@ let sets: LibrarySets | null = null;
 
 export function librarySets(): LibrarySets {
 	sets ??= {
-		libraries: [
-			[MATH_HELPER_PREFIX, library("math", mathHelpers(mathFunctionNames()))],
-			[RANDOM_HELPER_PREFIX, library("random", randomHelpers(randomFunctionNames()))],
-		],
-		runtime: library("runtime", RUNTIME_SOURCES),
+		libraries: libraryIrs().map((l) => [l.prefix, helperSet(l.owner, l.fns)] as const),
+		runtime: helperSet("runtime", analyseLibrary("runtime", RUNTIME_SOURCES)),
 	};
 	return sets;
-}
-
-function library(owner: string, texts: Readonly<Record<string, string>>): HelperSet {
-	return helperSet(owner, analyseLibrary(owner, texts));
 }

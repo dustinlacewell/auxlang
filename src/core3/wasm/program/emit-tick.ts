@@ -5,6 +5,7 @@
  */
 
 import type { FunctionIR } from "../../module/front/module/module-ir";
+import type { FunctionPlan } from "../../module/front/types/function-plan";
 import type { CacheAccess, Calls, Intrinsics, TickRoles } from "../compile/emit-context";
 import { emitDiscard } from "../compile/emit-expression";
 import { emitStatements } from "../compile/emit-statement";
@@ -16,6 +17,8 @@ import { OP } from "../encode/opcodes";
 
 export interface TickSite {
 	readonly fn: FunctionIR;
+	/** The tick's plan for this lane (lane-root.ts). */
+	readonly plan: FunctionPlan;
 	readonly owner: string;
 	readonly calls: Calls;
 	readonly roles: TickRoles;
@@ -32,6 +35,7 @@ export function emitTick(e: FnEmitter, site: TickSite): void {
 	e.ctx = {
 		owner: site.owner,
 		fn: site.fn,
+		plan: site.plan,
 		roles: site.roles,
 		cache: site.cache,
 		calls: site.calls,

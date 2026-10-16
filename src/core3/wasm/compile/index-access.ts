@@ -8,12 +8,12 @@
  */
 
 import type { AnyNode } from "acorn";
+import { validIndex } from "../../module/front/types/valid-index";
 import { OP } from "../encode/opcodes";
 import { emitExpr } from "./emit-expression";
 import { emitInteger, integerWidth } from "./emit-int";
 import type { FnEmitter } from "./fn-emitter";
 import { provenIndex } from "./int-range-of";
-import { staticOf } from "./static-value";
 import type { Address, Kind } from "./values";
 
 /** A constant index, or the local holding a run-time one (`proven`: always valid). */
@@ -23,7 +23,7 @@ export type Index =
 	| { readonly k: "long" | "f64"; readonly local: number };
 
 export function emitIndex(e: FnEmitter, property: AnyNode, length: number): Index {
-	const known = staticOf(e, property);
+	const known = e.fold(property);
 	if (known !== null) {
 		if (typeof known.v !== "number") return e.fail(property, "an index must be a number");
 		return { k: "static", value: known.v };
@@ -45,10 +45,6 @@ function setLocal(e: FnEmitter, kind: Kind): number {
 	const local = e.local(kind);
 	e.code.set(local);
 	return local;
-}
-
-export function validIndex(index: number, length: number): boolean {
-	return Number.isInteger(index) && index >= 0 && index < length;
 }
 
 /** Where an array's elements are: its address, element count and element size. */

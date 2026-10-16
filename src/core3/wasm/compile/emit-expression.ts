@@ -15,11 +15,11 @@ import { emitConditional, emitLogical } from "./emit-logical";
 import { emitMemberRead } from "./emit-member";
 import { emitTest } from "./emit-test";
 import type { FnEmitter } from "./fn-emitter";
-import { staticOf } from "./static-value";
-import type { Kind, StaticValue, Value } from "./values";
+import type { StaticValue } from "../../module/front/types/ty";
+import type { Kind, Value } from "./values";
 
 export function emitExpr(e: FnEmitter, node: AnyNode): Kind {
-	const folded = staticOf(e, node);
+	const folded = e.fold(node);
 	if (folded !== null) return emitStatic(e, folded.v, node);
 	switch (node.type) {
 		case "Identifier":
@@ -53,7 +53,7 @@ export function emitExpr(e: FnEmitter, node: AnyNode): Kind {
 
 /** Emit for effects only: no value is left on the stack. */
 export function emitDiscard(e: FnEmitter, node: AnyNode): void {
-	if (staticOf(e, node) !== null) return;
+	if (e.fold(node) !== null) return;
 	if (node.type === "AssignmentExpression") emitAssignment(e, node, false);
 	else if (node.type === "UpdateExpression") emitUpdate(e, node, false);
 	else if (node.type === "SequenceExpression") for (const x of node.expressions) emitDiscard(e, x);

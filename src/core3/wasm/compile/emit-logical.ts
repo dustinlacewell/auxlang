@@ -18,11 +18,10 @@ import { emitInteger, integerWidth } from "./emit-int";
 import { emitNullish } from "./emit-member";
 import { emitTest } from "./emit-test";
 import type { FnEmitter } from "./fn-emitter";
-import { staticOf } from "./static-value";
 import type { Kind } from "./values";
 
 export function emitLogical(e: FnEmitter, node: LogicalExpression): Kind {
-	const known = staticOf(e, node.left);
+	const known = e.fold(node.left);
 	if (known !== null) {
 		const v = known.v;
 		const takeLeft =
@@ -39,7 +38,7 @@ export function emitLogical(e: FnEmitter, node: LogicalExpression): Kind {
 }
 
 export function emitConditional(e: FnEmitter, node: ConditionalExpression): Kind {
-	const known = staticOf(e, node.test);
+	const known = e.fold(node.test);
 	if (known !== null) return emitExpr(e, known.v ? node.consequent : node.alternate);
 	const test = e.capture(() => emitTest(e, node.test));
 	const width = integerWidth(e, node);

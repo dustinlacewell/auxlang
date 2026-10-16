@@ -16,7 +16,6 @@ import { writtenWithin } from "../../module/front/scope/writes";
 import type { FnEmitter } from "./fn-emitter";
 import { type Range, fitsI32 } from "./int-range";
 import { intRange } from "./int-range-of";
-import { staticOf } from "./static-value";
 import { functionOf } from "./written";
 
 type IsCounter = (node: AnyNode) => boolean;
@@ -82,7 +81,7 @@ function stepOf(e: FnEmitter, update: AnyNode | null | undefined, is: IsCounter)
 	if (update?.type === "UpdateExpression")
 		return is(update.argument) ? (update.operator === "++" ? 1 : -1) : null;
 	if (update?.type !== "AssignmentExpression" || !is(update.left)) return null;
-	const k = staticOf(e, update.right)?.v;
+	const k = e.fold(update.right)?.v;
 	if (typeof k !== "number" || !Number.isSafeInteger(k) || k <= 0) return null;
 	if (update.operator === "+=") return k;
 	return update.operator === "-=" ? -k : null;

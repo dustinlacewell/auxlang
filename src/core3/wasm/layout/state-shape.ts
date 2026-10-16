@@ -6,7 +6,7 @@
  * top-level fields, from address 0). Every size is a multiple of 8.
  */
 
-import type { ElementType } from "./element-type";
+import type { ElementType } from "../../module/front/types/element-type";
 
 export type Shape = NumberShape | ArrayShape | RecordShape | RecordsShape;
 

@@ -11,7 +11,6 @@ import { emitExpr } from "./emit-expression";
 import type { FnEmitter } from "./fn-emitter";
 import { fitsI32, widthOf } from "./int-range";
 import { intRange } from "./int-range-of";
-import { staticOf } from "./static-value";
 import type { Width } from "./values";
 
 /** `node` can be emitted as an i32: its range fits int32. */
@@ -30,7 +29,7 @@ export function emitInt(e: FnEmitter, node: AnyNode): void {
 
 /** `node` as `width`; its range must fit (int: int32; long: any range). */
 export function emitInteger(e: FnEmitter, node: AnyNode, width: Width): void {
-	const folded = staticOf(e, node);
+	const folded = e.fold(node);
 	if (typeof folded?.v === "number") {
 		if (width === "int") e.code.i32Const(folded.v);
 		else e.code.i64Const(folded.v);

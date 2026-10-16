@@ -9,8 +9,7 @@
 import type { AnyNode, MemberExpression } from "acorn";
 import { MATH_CONSTANTS } from "../../math/math-constants";
 import type { FnEmitter } from "./fn-emitter";
-import { validIndex } from "./index-access";
-import { staticOf } from "./static-value";
+import { validIndex } from "../../module/front/types/valid-index";
 import { type MemoryValue, type Value, fixed, inMemory, local } from "./values";
 
 /** The value `node` names, when it is a name or a field; null for anything else. */
@@ -62,7 +61,7 @@ function resolveMember(e: FnEmitter, node: MemberExpression): Value | null {
 function recordAtConstant(e: FnEmitter, owner: MemoryValue, property: AnyNode): Value | null {
 	const shape = owner.shape;
 	if (shape.k !== "records") return null;
-	const index = staticOf(e, property);
+	const index = e.fold(property);
 	if (index === null || typeof index.v !== "number" || !validIndex(index.v, shape.length))
 		return null;
 	const offset = owner.at.offset + index.v * shape.element.size;

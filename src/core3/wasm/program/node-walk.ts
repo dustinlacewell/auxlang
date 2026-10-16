@@ -6,6 +6,8 @@
  */
 
 import type { ModuleIR } from "../../module/front/module/module-ir";
+import { calleesOf } from "../../module/front/types/callees";
+import { tickPlan } from "../../module/front/types/function-plan";
 import { GATHER_CUR } from "../../runtime/gathers";
 import type { NodeRun } from "../../runtime/node-run";
 import { tableIntrinsics } from "../bridge/table-intrinsics";
@@ -17,6 +19,7 @@ import type { RenderInput } from "./emit-render";
 import { emitTick } from "./emit-tick";
 import { emitLambdaInputs } from "./lambda-inputs";
 import { laneRoles } from "./lane-roles";
+import { laneRoot } from "./lane-root";
 import type { RenderLocals } from "./render-locals";
 import type { ValueSlots } from "./value-slots";
 
@@ -71,8 +74,12 @@ export class NodeWalk {
 			this.site.fns,
 			this.site.table,
 		);
+		const ir = this.ir(i);
+		const width = run.gathers?.width ?? 1;
+		const root = laneRoot(run, memory, lane, input.sampleRate, width);
 		emitTick(e, {
-			fn: this.ir(i).tick,
+			fn: ir.tick,
+			plan: tickPlan(ir.tick, root, calleesOf(ir.helpers)),
 			owner: `${module} tick (node ${i} lane ${lane})`,
 			calls: this.site.fns.calls(this.set(i)),
 			roles: laneRoles(e, run, memory, lane, slots, (addr) => locals.at(addr), lambdas),
@@ -86,7 +93,7 @@ export class NodeWalk {
 					? null
 					: tableIntrinsics(laneMemory.tables, i, lane, input.enter),
 			sampleRate: input.sampleRate,
-			width: run.gathers?.width ?? 1,
+			width,
 		});
 	}
 

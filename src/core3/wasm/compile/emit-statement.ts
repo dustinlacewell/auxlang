@@ -19,7 +19,6 @@ import { emitLoop } from "./emit-loop";
 import { emitSwitch } from "./emit-switch";
 import { emitTest } from "./emit-test";
 import type { FnEmitter } from "./fn-emitter";
-import { staticOf } from "./static-value";
 
 /**
  * Emit a statement list up to the first statement that never falls through:
@@ -71,7 +70,7 @@ export function emitStatement(e: FnEmitter, node: AnyNode, label: string | null 
 }
 
 function emitIf(e: FnEmitter, node: IfStatement): boolean {
-	const known = staticOf(e, node.test);
+	const known = e.fold(node.test);
 	if (known !== null) {
 		const live = known.v ? node.consequent : node.alternate;
 		return live !== null && live !== undefined && emitStatement(e, live);
@@ -119,7 +118,6 @@ function emitReturn(e: FnEmitter, node: ReturnStatement): void {
 	let kind = "f64" as ReturnType<typeof emitExpr>;
 	if (arg === null || arg === undefined) e.code.f64Const(Number.NaN);
 	else kind = emitExpr(e, arg);
-	ret.seen.push(kind);
 	if (ret.kind === "f64") toF64(e, kind);
 	else if (kind !== "bool") e.fail(node, "this helper returns booleans and numbers");
 	e.code.op(OP.return);

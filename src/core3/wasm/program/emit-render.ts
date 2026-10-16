@@ -46,6 +46,7 @@ export function emitRender(input: RenderInput, fns: Functions, table: FunctionTa
 	const e = new FnEmitter([I32], {
 		owner: "render",
 		fn: null,
+		plan: null,
 		roles: null,
 		cache: null,
 		calls: fns.calls(helperSet("render", new Map())),

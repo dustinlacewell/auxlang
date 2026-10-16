@@ -6,6 +6,7 @@
  */
 
 import type { AnyNode } from "acorn";
+import type { Folded } from "../../module/front/types/ty";
 import { CodeBuffer } from "../encode/code-buffer";
 import { F64, I32, I64, OP } from "../encode/opcodes";
 import type { EmitContext } from "./emit-context";
@@ -95,6 +96,13 @@ export class FnEmitter {
 		} finally {
 			this.scope = outer;
 		}
+	}
+
+	/** The node's value when it is known while compiling, from this function's plan. */
+	fold(node: AnyNode): Folded | null {
+		const plan = this.ctx.plan;
+		if (plan === null) return this.fail(node, "internal: no plan to fold against");
+		return plan.fold(node);
 	}
 
 	fail(node: AnyNode, message: string): never {

@@ -6,9 +6,11 @@
 
 import type { AnyNode, Expression } from "acorn";
 import type { FunctionIR } from "../../module/front/module/module-ir";
+import type { FunctionPlan } from "../../module/front/types/function-plan";
+import type { StaticValue } from "../../module/front/types/ty";
 import type { Aggregate, RecordShape } from "../layout/state-shape";
 import type { FnEmitter } from "./fn-emitter";
-import type { Kind, StaticValue, Value } from "./values";
+import type { Kind, Value } from "./values";
 
 /** A tick's parameter records for one node lane. */
 export interface TickRoles {
@@ -46,7 +48,7 @@ export type CacheAccess =
 
 /** How `return` leaves: with a value (a helper), or by branching out of an inlined tick. */
 export type Return =
-	| { readonly k: "value"; readonly kind: Kind; readonly seen: Kind[] }
+	| { readonly k: "value"; readonly kind: Kind }
 	| { readonly k: "exit"; readonly depth: number };
 
 /**
@@ -89,6 +91,8 @@ export interface EmitContext {
 	readonly owner: string;
 	/** The function being emitted, as the front end read it; null for the render function. */
 	readonly fn: FunctionIR | null;
+	/** That function's plan for this specialisation: each node's type and known value. */
+	readonly plan: FunctionPlan | null;
 	readonly roles: TickRoles | null;
 	readonly cache: CacheAccess | null;
 	readonly calls: Calls;

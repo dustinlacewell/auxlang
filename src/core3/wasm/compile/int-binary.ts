@@ -16,7 +16,6 @@ import { emitExpr } from "./emit-expression";
 import { emitInteger, integerWidth } from "./emit-int";
 import type { FnEmitter } from "./fn-emitter";
 import { wider } from "./int-range";
-import { staticOf } from "./static-value";
 import type { Kind, Width } from "./values";
 
 type Ops = Readonly<Record<string, Readonly<Record<Width, number>>>>;
@@ -81,7 +80,7 @@ function emitBitwise(e: FnEmitter, node: BinaryExpression, op: number): Kind {
 
 /** ToInt32 of an operand, as an i32. */
 function intOperand(e: FnEmitter, node: AnyNode): void {
-	const known = staticOf(e, node);
+	const known = e.fold(node);
 	if (typeof known?.v === "number") {
 		e.code.i32Const(known.v | 0);
 		return;

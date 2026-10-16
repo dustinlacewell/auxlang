@@ -19,7 +19,6 @@ import {
 	within,
 } from "./int-range";
 import { intRange } from "./int-range-of";
-import { staticOf } from "./static-value";
 
 const BITWISE: ReadonlySet<string> = new Set(["&", "|", "^", "<<", ">>", ">>>"]);
 
@@ -60,7 +59,7 @@ function remainderRange(a: Range, b: Range): Range | null {
 
 /** The shift count when it is known: JS uses its low five bits. */
 function shiftOf(e: FnEmitter, node: AnyNode): number | null {
-	const known = staticOf(e, node);
+	const known = e.fold(node);
 	return typeof known?.v === "number" ? (known.v | 0) & 31 : null;
 }
 

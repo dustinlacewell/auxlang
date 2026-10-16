@@ -1,9 +1,10 @@
 /**
- * The typed array constructor of each element type (element-type.ts): what
- * a lane's array reads back as when memory is decoded into a state.
+ * The typed array constructor of each element type
+ * (module/front/types/element-type.ts): what a lane's array reads back as
+ * when memory is decoded into a state.
  */
 
-import type { ElementType } from "./element-type";
+import type { ElementType } from "../../module/front/types/element-type";
 
 type ArrayCtor = new (buffer: ArrayBuffer) => ArrayBufferView;
 

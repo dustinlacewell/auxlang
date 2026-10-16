@@ -9,15 +9,15 @@
  */
 
 import type { AnyNode, MemberExpression } from "acorn";
+import { validIndex } from "../../module/front/types/valid-index";
 import { ELEMENT_BYTES } from "../layout/element-type";
 import type { ArrayShape } from "../layout/state-shape";
 import { toF64 } from "./coerce";
 import { type NumberKind, emitLoad, emitStore } from "./element-io";
 import { emitExpr, emitValue } from "./emit-expression";
 import type { FnEmitter } from "./fn-emitter";
-import { type Index, type Span, emitIndex, guarded, validIndex } from "./index-access";
+import { type Index, type Span, emitIndex, guarded } from "./index-access";
 import { placeOf } from "./place";
-import { staticOf } from "./static-value";
 import type { Address, Kind } from "./values";
 
 /** The name of the math call cache array in bound text (module/bind-math/cache-names.ts). */
@@ -47,7 +47,7 @@ export function emitMemberRead(e: FnEmitter, node: MemberExpression): Kind {
  * else on the left. A chain `a ?? b ?? c` is `a ?? (b ?? c)`.
  */
 export function emitNullish(e: FnEmitter, node: AnyNode, orElse: () => Kind): Kind {
-	const known = staticOf(e, node);
+	const known = e.fold(node);
 	if (known !== null)
 		return known.v === undefined || known.v === null ? orElse() : emitExpr(e, node);
 	if (node.type === "MemberExpression") return emitMemberReadOr(e, node, orElse);
@@ -208,7 +208,7 @@ function cacheTarget(e: FnEmitter, node: MemberExpression): Target | null {
 		e.scope.lookup(CACHE_ARRAY) !== undefined
 	)
 		return null;
-	const slot = staticOf(e, node.property);
+	const slot = e.fold(node.property);
 	if (slot === null || typeof slot.v !== "number") return e.fail(node, "cache slots are constants");
 	const cache = e.ctx.cache;
 	if (cache === null) return e.fail(node, "this function has no math cache");

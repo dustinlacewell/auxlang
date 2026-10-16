@@ -1,18 +1,23 @@
 /**
- * One helper specialised on its argument shapes, as a function body. The
- * result kind is found by compiling: first with an f64 result; when every
- * `return` gave a boolean, again with a boolean result. The checker
- * (tick-subset/kinds/) rejects a helper that returns both.
+ * One helper specialised on its argument shapes, as a function body. Its
+ * plan (module/front/types/) for these shapes types every node and gives
+ * the result kind: a boolean when every `return` gives one, else an f64.
+ * The checker (tick-subset/kinds/) rejects a helper that returns both.
  */
 
 import type { Expression, ReturnStatement } from "acorn";
 import type { FunctionIR } from "../../module/front/module/module-ir";
+import { calleesOf } from "../../module/front/types/callees";
+import type { FunctionPlan } from "../../module/front/types/function-plan";
+import { helperPlan } from "../../module/front/types/helper-plans";
+import { BOOL, NUM, type Ty, known, ref } from "../../module/front/types/ty";
 import { I32 } from "../encode/opcodes";
 import type { ArgShape, Calls } from "./emit-context";
 import { emitStatic } from "./emit-expression";
 import { emitStatement, emitStatements } from "./emit-statement";
 import { FnEmitter, valueType } from "./fn-emitter";
 import type { HelperSet } from "./helper-set";
+import { refShape } from "./shape-ty";
 import { type Kind, fixed, inMemory, local } from "./values";
 import { paramWritten } from "./written";
 
@@ -32,19 +37,27 @@ export function compileHelper(
 	const ir = set.fns.get(name);
 	if (ir === undefined) throw new Error(`wasm: ${set.owner} has no helper '${name}'`);
 	const owner = `${set.owner} helper '${name}'`;
-	const first = build(ir, shapes, calls, set.cached, owner, "f64");
-	const bools = first.seen.length > 0 && first.seen.every((k) => k === "bool");
-	return bools ? build(ir, shapes, calls, set.cached, owner, "bool") : first;
+	const plan = helperPlan({ ir, callees: calleesOf(set.fns) }, shapes.map(paramTy));
+	if (plan === null) throw new Error(`wasm: ${owner}: calls itself`);
+	return build(plan, shapes, calls, set.cached, owner);
+}
+
+/** What the helper's plan takes for an argument of this shape. */
+function paramTy(shape: ArgShape): Ty {
+	if (shape.k === "run") return shape.kind === "bool" ? BOOL : NUM;
+	if (shape.k === "static") return known(shape.value);
+	return ref(refShape(shape.shape));
 }
 
 function build(
-	ir: FunctionIR,
+	plan: FunctionPlan,
 	shapes: readonly ArgShape[],
 	calls: Calls,
 	hidden: boolean,
 	owner: string,
-	result: Kind,
-): CompiledHelper & { seen: Kind[] } {
+): CompiledHelper {
+	const ir = plan.ir;
+	const result: Kind = plan.result === "bool" ? "bool" : "f64";
 	const fn = ir.node;
 	if (shapes.length > fn.params.length)
 		throw new Error(
@@ -55,22 +68,22 @@ function build(
 		if (s.k === "run") params.push(valueType(s.kind));
 		else if (s.k === "memory" && s.dynamic) params.push(I32);
 	}
-	const seen: Kind[] = [];
 	const e = new FnEmitter(params, {
 		owner,
 		fn: ir,
+		plan,
 		roles: null,
 		cache: hidden ? { k: "memory", base: 0 } : null,
 		calls,
 		intrinsics: null,
-		ret: { k: "value", kind: result, seen },
+		ret: { k: "value", kind: result },
 	});
 	bindParams(e, ir, shapes, hidden ? 1 : 0);
 	if (fn.body.type === "BlockStatement") emitStatements(e, fn.body.body);
 	else emitStatement(e, returnOf(fn.body));
 	if (result === "f64") e.code.f64Const(Number.NaN);
 	else e.code.i32Const(0);
-	return { params, locals: e.locals, body: e.code.bytes, result, seen };
+	return { params, locals: e.locals, body: e.code.bytes, result };
 }
 
 /** A known argument the helper reassigns becomes a local holding it. */

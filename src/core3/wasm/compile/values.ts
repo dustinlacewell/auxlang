@@ -13,6 +13,7 @@
  *          fit int32 (a sum of two int32s), in an i64
  */
 
+import type { StaticValue } from "../../module/front/types/ty";
 import type { Shape } from "../layout/state-shape";
 import type { Range } from "./int-range";
 
@@ -20,9 +21,6 @@ export type Kind = "f64" | "bool" | "int" | "long";
 
 /** The two integer kinds. */
 export type Width = "int" | "long";
-
-/** A value known while compiling: config strings, constants, typeof results. */
-export type StaticValue = number | string | boolean | undefined | null;
 
 /** A place in linear memory: the i32 local holding a run-time base (null: none) plus a constant offset. */
 export interface Address {

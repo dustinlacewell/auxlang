@@ -10,7 +10,8 @@
  * (host/table-heap.ts), not in the lane.
  */
 
-import { ELEMENT_BYTES, elementTypeOf } from "../layout/element-type";
+import { elementTypeOf } from "../../module/front/types/element-type";
+import { ELEMENT_BYTES } from "../layout/element-type";
 import type { Field, RecordShape, RecordsShape, Shape } from "../layout/state-shape";
 
 const NUMBER: Shape = { k: "number" };

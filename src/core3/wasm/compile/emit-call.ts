@@ -14,7 +14,6 @@ import { emitExpr } from "./emit-expression";
 import { emitMathCall } from "./exact-math";
 import type { FnEmitter } from "./fn-emitter";
 import { placeOf } from "./place";
-import { staticOf } from "./static-value";
 import type { Kind } from "./values";
 
 export function emitCall(e: FnEmitter, node: CallExpression): Kind | "void" {
@@ -84,7 +83,7 @@ function stateArg(e: FnEmitter, arg: Expression): StateRecord | null {
  * `bytes` compute it.
  */
 function knownShape(e: FnEmitter, arg: Expression): KnownArg | null {
-	const folded = staticOf(e, arg);
+	const folded = e.fold(arg);
 	if (folded !== null && typeof folded.v !== "number")
 		return { shape: { k: "static", value: folded.v }, bytes: null };
 	const placed = e.capture(() => placeOf(e, arg));

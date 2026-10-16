@@ -16,7 +16,6 @@ import type { FnEmitter } from "./fn-emitter";
 import { INT32, SAFE, widthOf } from "./int-range";
 import { intRange } from "./int-range-of";
 import { placeOf } from "./place";
-import { staticOf } from "./static-value";
 import { type Kind, fixed, intLocal, local } from "./values";
 import { declaredWritten } from "./written";
 
@@ -69,7 +68,7 @@ function setLocal(e: FnEmitter, kind: Kind): number {
  * local. A record at a run-time index keeps the code that finds its address.
  */
 function declareAlias(e: FnEmitter, name: string, init: AnyNode): boolean {
-	const folded = staticOf(e, init);
+	const folded = e.fold(init);
 	if (folded !== null) {
 		e.scope.declare(name, fixed(folded.v));
 		return true;
