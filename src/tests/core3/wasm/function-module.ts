@@ -4,6 +4,7 @@
  * to its JS original.
  */
 
+import { analyseLibrary } from "@/core3/module/front/module/analyse-library";
 import type { Calls, FnRef } from "@/core3/wasm/compile/emit-context";
 import { FunctionTable } from "@/core3/wasm/compile/function-table";
 import { Functions } from "@/core3/wasm/compile/functions";
@@ -18,7 +19,7 @@ export function exportFunctions(
 ): Record<string, Exported> {
 	const table = new FunctionTable(0);
 	const fns = new Functions(table);
-	const refs = pick(fns.calls(helperSet("test", texts)));
+	const refs = pick(fns.calls(helperSet("test", analyseLibrary("test", texts))));
 	const bytes = moduleBytes({
 		types: table.allTypes(),
 		imports: [],

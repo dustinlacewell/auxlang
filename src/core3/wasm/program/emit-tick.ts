@@ -4,18 +4,18 @@
  * records — (state, ins, outs, config, sampleRate[, width]).
  */
 
-import type { FunctionNode } from "../../module/front/parse/parse-function";
-import { writes } from "../compile/assigned-names";
+import type { FunctionIR } from "../../module/front/module/module-ir";
 import type { CacheAccess, Calls, Intrinsics, TickRoles } from "../compile/emit-context";
 import { emitDiscard } from "../compile/emit-expression";
 import { emitStatements } from "../compile/emit-statement";
 import type { FnEmitter } from "../compile/fn-emitter";
 import { Scope } from "../compile/scope";
 import { type Role, type Value, fixed, local } from "../compile/values";
+import { paramWritten } from "../compile/written";
 import { OP } from "../encode/opcodes";
 
 export interface TickSite {
-	readonly fn: FunctionNode;
+	readonly fn: FunctionIR;
 	readonly owner: string;
 	readonly calls: Calls;
 	readonly roles: TickRoles;
@@ -31,6 +31,7 @@ export function emitTick(e: FnEmitter, site: TickSite): void {
 	const exit = e.enter(OP.block);
 	e.ctx = {
 		owner: site.owner,
+		fn: site.fn,
 		roles: site.roles,
 		cache: site.cache,
 		calls: site.calls,
@@ -38,7 +39,7 @@ export function emitTick(e: FnEmitter, site: TickSite): void {
 		ret: { k: "exit", depth: exit },
 	};
 	e.within(paramScope(e, site), () => {
-		const body = site.fn.body;
+		const body = site.fn.node.body;
 		if (body.type === "BlockStatement") emitStatements(e, body.body);
 		else emitDiscard(e, body);
 	});
@@ -48,7 +49,7 @@ export function emitTick(e: FnEmitter, site: TickSite): void {
 /** The sample rate and width are constants, or f64 locals when the tick reassigns them. */
 function paramScope(e: FnEmitter, site: TickSite): Scope {
 	const scope = new Scope();
-	site.fn.params.forEach((param, k) => {
+	site.fn.node.params.forEach((param, k) => {
 		if (param.type !== "Identifier") return e.fail(param, "tick parameters must be plain names");
 		const role = ROLES[k];
 		if (role !== undefined) {
@@ -56,8 +57,7 @@ function paramScope(e: FnEmitter, site: TickSite): Scope {
 			return;
 		}
 		const value = k === 4 ? site.sampleRate : site.width;
-		const written = writes([site.fn.body], param.name);
-		scope.declare(param.name, written ? numberLocal(e, value) : fixed(value));
+		scope.declare(param.name, paramWritten(site.fn, k) ? numberLocal(e, value) : fixed(value));
 	});
 	return scope;
 }

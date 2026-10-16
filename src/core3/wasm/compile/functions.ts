@@ -5,25 +5,15 @@
  * runtime functions.
  */
 
-import {
-	MATH_HELPER_PREFIX,
-	mathFunctionNames,
-	mathHelpers,
-} from "../../module/bind-math/math-helpers";
-import {
-	RANDOM_HELPER_PREFIX,
-	randomFunctionNames,
-	randomHelpers,
-} from "../../module/bind-random/random-helpers";
 import type { RawFunction } from "../runtime/raw-function";
 import { roundFunction } from "../runtime/round";
-import { RUNTIME_SOURCES } from "../runtime/runtime-sources";
 import { toInt32Function } from "../runtime/to-int32";
 import { compileHelper } from "./compile-helper";
 import type { ArgShape, Calls, FnRef } from "./emit-context";
 import { valueType } from "./fn-emitter";
 import type { FunctionTable } from "./function-table";
-import { type HelperSet, helperSet } from "./helper-set";
+import type { HelperSet } from "./helper-set";
+import { librarySets } from "./library-sets";
 
 type RuntimeName = Parameters<Calls["runtime"]>[0];
 
@@ -35,18 +25,15 @@ const RAW: Readonly<Record<string, () => RawFunction>> = {
 export class Functions {
 	private readonly compiled = new Map<string, FnRef>();
 	/** auxlang's libraries, by helper name prefix: one set each, shared by all modules. */
-	private readonly libraries: readonly (readonly [string, HelperSet])[] = [
-		[MATH_HELPER_PREFIX, helperSet("math", mathHelpers(mathFunctionNames()))],
-		[RANDOM_HELPER_PREFIX, helperSet("random", randomHelpers(randomFunctionNames()))],
-	];
-	private readonly runtimeSet = helperSet("runtime", RUNTIME_SOURCES);
+	private readonly libraries = librarySets().libraries;
+	private readonly runtimeSet = librarySets().runtime;
 
 	constructor(private readonly table: FunctionTable) {}
 
 	/** The calls a function in `set` can make. */
 	calls(set: HelperSet): Calls {
 		return {
-			hasHelper: (name) => name in this.setFor(set, name).texts,
+			hasHelper: (name) => this.setFor(set, name).fns.has(name),
 			helper: (name, shapes) => this.helper(this.setFor(set, name), name, shapes),
 			runtime: (name) => this.runtime(name),
 		};

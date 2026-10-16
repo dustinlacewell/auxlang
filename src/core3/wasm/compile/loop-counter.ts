@@ -5,15 +5,21 @@
  * step k is a positive integer constant, and only the update writes `i`.
  * The body runs only where the test held, so there `i` is between A and B;
  * the update can take it one step past B, which the counter's whole range
- * covers. Anything else is not a counter, and `i` stays an f64.
+ * covers. Anything else is not a counter, and `i` stays an f64. `i` is its
+ * binding (module/front/scope/), so a shadowing `i` is another variable.
  */
 
 import type { AnyNode, Expression, ForStatement } from "acorn";
-import { mentions, writes } from "./assigned-names";
+import { bindingDeclaredBy, bindingOf } from "../../module/front/scope/binding";
+import { refersTo } from "../../module/front/scope/refers-to";
+import { writtenWithin } from "../../module/front/scope/writes";
 import type { FnEmitter } from "./fn-emitter";
 import { type Range, fitsI32 } from "./int-range";
 import { intRange } from "./int-range-of";
 import { staticOf } from "./static-value";
+import { functionOf } from "./written";
+
+type IsCounter = (node: AnyNode) => boolean;
 
 export interface Counter {
 	readonly name: string;
@@ -31,11 +37,17 @@ export function counterOf(e: FnEmitter, node: ForStatement): Counter | null {
 	const d = init.declarations[0];
 	if (d?.id.type !== "Identifier" || d.init === null || d.init === undefined) return null;
 	const name = d.id.name;
-	const step = stepOf(e, node.update, name);
-	const bound = boundOf(node.test, name);
-	if (step === null || bound === null || mentions(d.init, name) || mentions(bound.limit, name))
+	const fn = functionOf(e, node);
+	const binding = bindingDeclaredBy(fn.scopes, d.id);
+	if (binding === undefined) return null;
+	const is: IsCounter = (n) => n.type === "Identifier" && bindingOf(fn.scopes, n) === binding;
+	const step = stepOf(e, node.update, is);
+	const bound = boundOf(node.test, is);
+	if (step === null || bound === null) return null;
+	if (refersTo(fn.scopes, d.init, binding) || refersTo(fn.scopes, bound.limit, binding))
 		return null;
-	if (writes([node.test, node.body], name)) return null;
+	if (writtenWithin(fn.writes, binding, bound.test) || writtenWithin(fn.writes, binding, node.body))
+		return null;
 	const start = intRange(e, d.init);
 	const limit = intRange(e, bound.limit);
 	if (start === null || limit === null) return null;
@@ -66,10 +78,10 @@ function downward(start: Range, limit: Range, op: string, step: number): Ranges 
 }
 
 /** The update's step: ±1 for `++`/`--`, ±k for `+= k`/`-= k`; null for anything else. */
-function stepOf(e: FnEmitter, update: AnyNode | null | undefined, name: string): number | null {
+function stepOf(e: FnEmitter, update: AnyNode | null | undefined, is: IsCounter): number | null {
 	if (update?.type === "UpdateExpression")
-		return isName(update.argument, name) ? (update.operator === "++" ? 1 : -1) : null;
-	if (update?.type !== "AssignmentExpression" || !isName(update.left, name)) return null;
+		return is(update.argument) ? (update.operator === "++" ? 1 : -1) : null;
+	if (update?.type !== "AssignmentExpression" || !is(update.left)) return null;
 	const k = staticOf(e, update.right)?.v;
 	if (typeof k !== "number" || !Number.isSafeInteger(k) || k <= 0) return null;
 	if (update.operator === "+=") return k;
@@ -78,19 +90,15 @@ function stepOf(e: FnEmitter, update: AnyNode | null | undefined, name: string):
 
 const FLIP: Readonly<Record<string, string>> = { "<": ">", "<=": ">=", ">": "<", ">=": "<=" };
 
-/** The test as `name op limit`. */
+/** The test as `counter op limit`. */
 function boundOf(
 	test: AnyNode | null | undefined,
-	name: string,
-): { op: string; limit: AnyNode } | null {
+	is: IsCounter,
+): { test: AnyNode; op: string; limit: AnyNode } | null {
 	if (test?.type !== "BinaryExpression") return null;
 	const flipped = FLIP[test.operator];
 	if (flipped === undefined) return null;
-	if (isName(test.left, name)) return { op: test.operator, limit: test.right };
-	if (isName(test.right, name)) return { op: flipped, limit: test.left };
+	if (is(test.left)) return { test, op: test.operator, limit: test.right };
+	if (is(test.right)) return { test, op: flipped, limit: test.left };
 	return null;
-}
-
-function isName(node: AnyNode, name: string): boolean {
-	return node.type === "Identifier" && node.name === name;
 }

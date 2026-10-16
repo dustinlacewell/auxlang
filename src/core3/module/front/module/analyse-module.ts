@@ -7,10 +7,11 @@
 
 import type { ModuleSource } from "@/core3/types";
 import { parsePart } from "@/core3/module/front/parse/parse-part";
-import { type FunctionFacts, analyseFunction, resolvePart } from "./analyse-function";
+import { analyseFunction, resolvePart } from "./analyse-function";
+import { analyseHelpers, resolveHelpers } from "./analyse-helpers";
 import { assertNoRecursion } from "./helper-cycles";
 import { helperStateParams } from "./helper-state-params";
-import type { FunctionIR, ModuleFacts, ModuleIR, ResolvedPart } from "./module-ir";
+import type { ModuleFacts, ModuleIR } from "./module-ir";
 
 /** Names a helper may not take: they are the tick's own bindings. */
 const RESERVED_HELPER_NAMES = new Set(["Math", "hashRandom", "undefined", "NaN", "Infinity"]);
@@ -20,11 +21,8 @@ export function analyseModule(source: ModuleSource, facts: ModuleFacts): ModuleI
 	const shared = { ...facts, helpers: names };
 	const tick = resolvePart(parsePart({ ...facts, part: "tick", src: source.tick }), names);
 	const tickIR = analyseFunction(tick, { ...shared, kind: "tick" });
-	const resolved = resolveHelpers(source, facts.owner, names);
-	const stateParams = helperStateParams(tick, resolved);
-	const helpers = new Map<string, FunctionIR>();
-	for (const [name, part] of resolved)
-		helpers.set(name, analyseFunction(part, { ...shared, kind: "helper" }, stateParams.get(name)));
+	const resolved = resolveHelpers(source.helpers, facts.owner, names);
+	const helpers = analyseHelpers(resolved, shared, helperStateParams(tick, resolved));
 	assertNoRecursion(helpers);
 	return { tick: tickIR, helpers };
 }
@@ -36,15 +34,4 @@ function helperNames(source: ModuleSource, owner: string): ReadonlySet<string> {
 			throw new Error(`${owner}: helper '${name}' would hide the tick's own '${name}'`);
 	}
 	return names;
-}
-
-function resolveHelpers(
-	source: ModuleSource,
-	owner: string,
-	names: FunctionFacts["helpers"],
-): Map<string, ResolvedPart> {
-	const resolved = new Map<string, ResolvedPart>();
-	for (const [name, src] of Object.entries(source.helpers))
-		resolved.set(name, resolvePart(parsePart({ owner, part: `helper '${name}'`, src }), names));
-	return resolved;
 }

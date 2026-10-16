@@ -25,14 +25,10 @@ export function emitSwitch(e: FnEmitter, node: SwitchStatement, label: string | 
 	e.within(e.scope.child(), () => {
 		dispatch(e, node, blocks, exit);
 		e.labels.push({ name: label, implicit: true, breakAt: exit, continueAt: null });
-		cases.forEach((c, k) => {
+		for (const c of cases) {
 			e.exit();
-			emitStatements(
-				e,
-				c.consequent,
-				cases.slice(k + 1).flatMap((later) => later.consequent),
-			);
-		});
+			emitStatements(e, c.consequent);
+		}
 		e.labels.pop();
 	});
 	e.exit();

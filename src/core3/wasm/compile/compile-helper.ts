@@ -6,15 +6,15 @@
  */
 
 import type { Expression, ReturnStatement } from "acorn";
-import { type FunctionNode, parseFunction } from "../../module/front/parse/parse-function";
+import type { FunctionIR } from "../../module/front/module/module-ir";
 import { I32 } from "../encode/opcodes";
-import { writes } from "./assigned-names";
 import type { ArgShape, Calls } from "./emit-context";
 import { emitStatic } from "./emit-expression";
 import { emitStatement, emitStatements } from "./emit-statement";
 import { FnEmitter, valueType } from "./fn-emitter";
 import type { HelperSet } from "./helper-set";
 import { type Kind, fixed, inMemory, local } from "./values";
+import { paramWritten } from "./written";
 
 export interface CompiledHelper {
 	readonly params: readonly number[];
@@ -29,23 +29,23 @@ export function compileHelper(
 	shapes: readonly ArgShape[],
 	calls: Calls,
 ): CompiledHelper {
-	const text = set.texts[name];
-	if (text === undefined) throw new Error(`wasm: ${set.owner} has no helper '${name}'`);
-	const fn = parseFunction(text, `${set.owner} helper '${name}'`).node;
+	const ir = set.fns.get(name);
+	if (ir === undefined) throw new Error(`wasm: ${set.owner} has no helper '${name}'`);
 	const owner = `${set.owner} helper '${name}'`;
-	const first = build(fn, shapes, calls, set.cached, owner, "f64");
+	const first = build(ir, shapes, calls, set.cached, owner, "f64");
 	const bools = first.seen.length > 0 && first.seen.every((k) => k === "bool");
-	return bools ? build(fn, shapes, calls, set.cached, owner, "bool") : first;
+	return bools ? build(ir, shapes, calls, set.cached, owner, "bool") : first;
 }
 
 function build(
-	fn: ReturnType<typeof parseFunction>["node"],
+	ir: FunctionIR,
 	shapes: readonly ArgShape[],
 	calls: Calls,
 	hidden: boolean,
 	owner: string,
 	result: Kind,
 ): CompiledHelper & { seen: Kind[] } {
+	const fn = ir.node;
 	if (shapes.length > fn.params.length)
 		throw new Error(
 			`wasm: ${owner}: called with ${shapes.length} arguments for ${fn.params.length}`,
@@ -58,13 +58,14 @@ function build(
 	const seen: Kind[] = [];
 	const e = new FnEmitter(params, {
 		owner,
+		fn: ir,
 		roles: null,
 		cache: hidden ? { k: "memory", base: 0 } : null,
 		calls,
 		intrinsics: null,
 		ret: { k: "value", kind: result, seen },
 	});
-	bindParams(e, fn, shapes, hidden ? 1 : 0);
+	bindParams(e, ir, shapes, hidden ? 1 : 0);
 	if (fn.body.type === "BlockStatement") emitStatements(e, fn.body.body);
 	else emitStatement(e, returnOf(fn.body));
 	if (result === "f64") e.code.f64Const(Number.NaN);
@@ -75,16 +76,16 @@ function build(
 /** A known argument the helper reassigns becomes a local holding it. */
 function bindParams(
 	e: FnEmitter,
-	fn: FunctionNode,
+	ir: FunctionIR,
 	shapes: readonly ArgShape[],
 	first: number,
 ): void {
 	let next = first;
-	fn.params.forEach((param, k) => {
+	ir.node.params.forEach((param, k) => {
 		if (param.type !== "Identifier") return e.fail(param, "parameters must be plain names");
 		const shape: ArgShape = shapes[k] ?? { k: "static", value: undefined };
 		if (shape.k === "run") e.scope.declare(param.name, local(next++, shape.kind));
-		else if (shape.k === "static" && writes([fn.body], param.name)) {
+		else if (shape.k === "static" && paramWritten(ir, k)) {
 			const kind = emitStatic(e, shape.value, param);
 			const index = e.local(kind);
 			e.code.set(index);

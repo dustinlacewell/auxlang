@@ -168,7 +168,7 @@ function portSrc(
 
 function srcOf(value: InputValue, node: GNode, port: string, lane: number, r: Resolved): PortSrc {
 	if (typeof value === "number") return { k: "c", v: value };
-	if (isLambdaInput(value)) return { k: "l", src: bindLambdaMath(value.lambda.toString()) };
+	if (isLambdaInput(value)) return { k: "l", lambda: bindLambdaMath(value.lambda.toString()) };
 	if (isNodeRef(value))
 		return connSrc("n", value.node, value.port, value.lane, lane, r, node, port);
 	if (isZRef(value)) {

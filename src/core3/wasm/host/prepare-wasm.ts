@@ -10,11 +10,12 @@
  */
 
 import { getRegistry } from "../../module/define";
+import { specIR } from "../../module/front/module/spec-ir";
 import { EngineBuild } from "../../runtime/build/engine-build";
 import { withProgramSpecs } from "../../runtime/hydrate-specs";
 import { slotOf } from "../../runtime/output-slots";
 import { type PreparedProgram, prepareProgram } from "../../runtime/prepare/prepare-program";
-import type { KeyedIdentity, Program, Registry } from "../../types";
+import type { KeyedIdentity, ModuleSpec, Program, Registry } from "../../types";
 import { type CompiledWasm, type WasmInput, compileWasm } from "../program/compile-program";
 import { lambdaSources } from "../program/lambda-sources";
 import { type CarrySide, planCarry } from "./carry-plan";
@@ -92,6 +93,7 @@ function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 		runs: parts.runs,
 		modules: program.nodes.map((n) => n.module),
 		readsPattern: program.nodes.map((n) => layered.get(n.module)?.reads === "pattern"),
+		irs: program.nodes.map((n) => specIR(specOf(layered, n.module))),
 		lambdas: lambdaSources(program.nodes),
 		tapsL: taps("l"),
 		tapsR: taps("r"),
@@ -100,4 +102,10 @@ function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 	};
 	const facts = engineFacts(parts, input.readsPattern);
 	return { input, start: { runs: parts.runs, cur: parts.bufs.cur }, facts };
+}
+
+function specOf(layered: Registry, module: string): ModuleSpec {
+	const spec = layered.get(module);
+	if (spec === undefined) throw new Error(`wasm: unknown module '${module}'`);
+	return spec;
 }

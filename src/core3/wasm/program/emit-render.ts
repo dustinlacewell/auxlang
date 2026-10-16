@@ -9,8 +9,8 @@
 
 import { BIND_CUR } from "../../runtime/bindings";
 import { GATHER_CUR } from "../../runtime/gathers";
+import type { ModuleIR } from "../../module/front/module/module-ir";
 import type { NodeRun } from "../../runtime/node-run";
-import type { ModuleSource } from "../../types";
 import { FnEmitter } from "../compile/fn-emitter";
 import type { FunctionTable } from "../compile/function-table";
 import type { Functions } from "../compile/functions";
@@ -25,7 +25,8 @@ import { ValueSlots } from "./value-slots";
 export interface RenderInput {
 	readonly runs: readonly NodeRun[];
 	readonly modules: readonly string[];
-	readonly sources: readonly ModuleSource[];
+	/** Each node's module, as the front end read it. */
+	readonly irs: readonly ModuleIR[];
 	readonly lambdas: LambdaSources;
 	readonly memory: WasmLayout;
 	readonly tapsL: Int32Array;
@@ -44,9 +45,10 @@ export function emitRender(input: RenderInput, fns: Functions, table: FunctionTa
 	assertUpstream(input.runs);
 	const e = new FnEmitter([I32], {
 		owner: "render",
+		fn: null,
 		roles: null,
 		cache: null,
-		calls: fns.calls(helperSet("render", {})),
+		calls: fns.calls(helperSet("render", new Map())),
 		intrinsics: null,
 		ret: { k: "exit", depth: 0 },
 	});

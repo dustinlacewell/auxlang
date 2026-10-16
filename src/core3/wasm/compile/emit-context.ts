@@ -5,6 +5,7 @@
  */
 
 import type { AnyNode, Expression } from "acorn";
+import type { FunctionIR } from "../../module/front/module/module-ir";
 import type { Aggregate, RecordShape } from "../layout/state-shape";
 import type { FnEmitter } from "./fn-emitter";
 import type { Kind, StaticValue, Value } from "./values";
@@ -86,6 +87,8 @@ export interface Intrinsics {
 
 export interface EmitContext {
 	readonly owner: string;
+	/** The function being emitted, as the front end read it; null for the render function. */
+	readonly fn: FunctionIR | null;
 	readonly roles: TickRoles | null;
 	readonly cache: CacheAccess | null;
 	readonly calls: Calls;

@@ -96,7 +96,7 @@ export function compileReduceGathers(
 					constValue: 0,
 					base: 0,
 					srcLanes: 1,
-					lambda: hydrateLambda(src.src),
+					lambda: hydrateLambda(src.lambda),
 				};
 		}
 	});

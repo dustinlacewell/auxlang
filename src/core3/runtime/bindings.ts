@@ -69,7 +69,7 @@ export function compileLaneBindings(
 				break;
 			case "l":
 				kinds[j] = BIND_LAMBDA;
-				lambdas[j] = hydrateLambda(src.src);
+				lambdas[j] = hydrateLambda(src.lambda);
 				break;
 		}
 	});

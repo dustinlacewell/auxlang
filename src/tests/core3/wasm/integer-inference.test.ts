@@ -12,6 +12,7 @@
 import { describe, expect, it } from "vitest";
 
 import { defmod, runProgram } from "@/core3/api";
+import { analyseLibrary } from "@/core3/module/front/module/analyse-library";
 import type { Program } from "@/core3/types";
 import { sig } from "@/core3/types";
 import { compileHelper } from "@/core3/wasm/compile/compile-helper";
@@ -107,7 +108,7 @@ const js: Record<string, (x: number) => number> = Object.fromEntries(
 );
 
 function localsOf(name: string, type: number): number {
-	const set = helperSet("test", HELPERS);
+	const set = helperSet("test", analyseLibrary("test", HELPERS));
 	const fns = new Functions(new FunctionTable(0));
 	const fn = compileHelper(set, name, [{ k: "run", kind: "f64" }], fns.calls(set));
 	return fn.locals.filter((t) => t === type).length;

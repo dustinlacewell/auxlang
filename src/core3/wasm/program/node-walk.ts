@@ -5,10 +5,9 @@
  * gathers its input lanes into f64 views, then ticks once.
  */
 
-import { type FunctionNode, parseFunction } from "../../module/front/parse/parse-function";
+import type { ModuleIR } from "../../module/front/module/module-ir";
 import { GATHER_CUR } from "../../runtime/gathers";
 import type { NodeRun } from "../../runtime/node-run";
-import type { ModuleSource } from "../../types";
 import { tableIntrinsics } from "../bridge/table-intrinsics";
 import type { FnEmitter } from "../compile/fn-emitter";
 import type { FunctionTable } from "../compile/function-table";
@@ -34,8 +33,7 @@ export interface WalkSite {
 }
 
 export class NodeWalk {
-	private readonly ticks = new Map<string, FunctionNode>();
-	private readonly sets = new Map<string, HelperSet>();
+	private readonly sets = new Map<ModuleIR, HelperSet>();
 
 	constructor(private readonly site: WalkSite) {}
 
@@ -74,7 +72,7 @@ export class NodeWalk {
 			this.site.table,
 		);
 		emitTick(e, {
-			fn: this.tick(i),
+			fn: this.ir(i).tick,
 			owner: `${module} tick (node ${i} lane ${lane})`,
 			calls: this.site.fns.calls(this.set(i)),
 			roles: laneRoles(e, run, memory, lane, slots, (addr) => locals.at(addr), lambdas),
@@ -122,24 +120,18 @@ export class NodeWalk {
 		}
 	}
 
-	private tick(i: number): FunctionNode {
-		const { input } = this.site;
-		const text = (input.sources[i] as ModuleSource).tick;
-		let fn = this.ticks.get(text);
-		if (fn === undefined) {
-			fn = parseFunction(text, `${input.modules[i]} tick`).node;
-			this.ticks.set(text, fn);
-		}
-		return fn;
+	private ir(i: number): ModuleIR {
+		const ir = this.site.input.irs[i];
+		if (ir === undefined) throw new Error(`wasm: no module reading for node ${i}`);
+		return ir;
 	}
 
 	private set(i: number): HelperSet {
-		const { input } = this.site;
-		const module = input.modules[i] as string;
-		let set = this.sets.get(module);
+		const ir = this.ir(i);
+		let set = this.sets.get(ir);
 		if (set === undefined) {
-			set = helperSet(module, (input.sources[i] as ModuleSource).helpers);
-			this.sets.set(module, set);
+			set = helperSet(this.site.input.modules[i] as string, ir.helpers);
+			this.sets.set(ir, set);
 		}
 		return set;
 	}

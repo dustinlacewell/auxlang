@@ -12,13 +12,12 @@
  * holds as Float32Arrays, and typed arrays, which keep their element type.
  */
 
+import type { ModuleIR } from "../../module/front/module/module-ir";
 import type { NodeRun } from "../../runtime/node-run";
-import type { ModuleSource } from "../../types";
+import { cacheSlotsIn } from "../compile/cache-slots";
 import type { Field } from "../layout/state-shape";
 import { INITIAL_ROWS, SLOT_BYTES, tableBytes } from "../layout/table-format";
-import { cacheSlotsIn } from "./cache-slots";
-import type { LambdaSources } from "./lambda-sources";
-import { lambdaText } from "./lambda-text";
+import type { LambdaSource, LambdaSources } from "./lambda-sources";
 import { planAggregates } from "./state-layout";
 
 /** Samples per render call at most (the AudioWorklet quantum). */
@@ -68,7 +67,7 @@ export interface WasmLayout {
 export function planMemory(
 	runs: readonly NodeRun[],
 	readsPattern: readonly boolean[],
-	sources: readonly ModuleSource[],
+	irs: readonly ModuleIR[],
 	lambdas: LambdaSources,
 	size: number,
 ): WasmLayout {
@@ -88,8 +87,7 @@ export function planMemory(
 		for (const port of run.gathers?.ports ?? []) {
 			if (port.view !== null) views[port.name] = take(8 * port.srcLanes);
 		}
-		const source = sources[i] as ModuleSource;
-		const slots = cacheSlotsIn([source.tick, ...Object.values(source.helpers)]);
+		const slots = moduleCacheSlots(irs[i] as ModuleIR);
 		const lanes = run.states.map((state, l) => ({
 			state: Object.fromEntries(numericFields(state).map((f) => [f, take(8)])),
 			aggregates: planAggregates(state, take),
@@ -119,14 +117,19 @@ function numericFields(state: Record<string, unknown>): string[] {
 	return Object.keys(state).filter((f) => typeof state[f] === "number");
 }
 
+/** The math cache the tick and helpers share: their slots are numbered across all of them. */
+function moduleCacheSlots(ir: ModuleIR): number {
+	return cacheSlotsIn([ir.tick.node, ...[...ir.helpers.values()].map((fn) => fn.node)]);
+}
+
 /** Each lambda input's own math cache. */
 function planLambdas(
-	lambdas: Readonly<Record<string, string>>,
+	lambdas: Readonly<Record<string, LambdaSource>>,
 	take: (bytes: number) => number,
 ): Record<string, LambdaMemory> {
 	const out: Record<string, LambdaMemory> = {};
 	for (const [port, src] of Object.entries(lambdas)) {
-		const cacheSlots = cacheSlotsIn([lambdaText(src)]);
+		const cacheSlots = src.bound.slots;
 		out[port] = { cache: take(8 * cacheSlots), cacheSlots };
 	}
 	return out;

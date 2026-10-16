@@ -10,11 +10,12 @@ import type { FnEmitter } from "../compile/fn-emitter";
 import type { FunctionTable } from "../compile/function-table";
 import type { Functions } from "../compile/functions";
 import { compileLambda } from "./lambda-fn";
+import type { LambdaSource } from "./lambda-sources";
 import type { LambdaMemory } from "./memory-layout";
 
 export interface LambdaSite {
-	/** Input port → bound lambda source. */
-	readonly sources: Readonly<Record<string, string>>;
+	/** Input port → its bound lambda. */
+	readonly sources: Readonly<Record<string, LambdaSource>>;
 	readonly memory: Readonly<Record<string, LambdaMemory>>;
 	/** Names the lane in errors. */
 	readonly owner: string;
@@ -36,7 +37,7 @@ export function emitLambdaInputs(
 		if (memory === undefined)
 			throw new Error(`wasm: ${site.owner}: no memory for lambda '${port}'`);
 		const owner = `lambda (${site.owner} input '${port}')`;
-		const fn = compileLambda(src, owner, site.sampleRate, fns, table);
+		const fn = compileLambda(src.ir, owner, site.sampleRate, fns, table);
 		if (fn.cached) e.code.i32Const(memory.cache);
 		if (fn.timed) e.code.get(site.time);
 		e.code.call(fn.index);

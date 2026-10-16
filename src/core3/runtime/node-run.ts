@@ -6,14 +6,12 @@
  * its start values, so both share one source of semantics.
  */
 
-import type { ModuleSource, ReduceTickFn, TickFn } from "../types";
+import type { ReduceTickFn, TickFn } from "../types";
 import type { LaneBindings } from "./bindings";
 import type { ReduceGathers } from "./gathers";
 
 export interface NodeRun {
 	readonly tick: TickFn | ReduceTickFn;
-	/** The module's checked tick and helper text; absent for a hand-built test spec. WASM compiles it. */
-	readonly source: ModuleSource | undefined;
 	readonly config: Record<string, unknown>;
 	readonly laneCount: number;
 	readonly states: Record<string, unknown>[];

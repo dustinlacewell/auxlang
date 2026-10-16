@@ -28,6 +28,11 @@ export function writeSites(fn: FunctionNode, scopes: Scopes): WriteSites {
 	return sites;
 }
 
+/** Whether `binding` is written anywhere. */
+export function isWritten(sites: WriteSites, binding: Binding): boolean {
+	return (sites.get(binding) ?? []).length > 0;
+}
+
 /** Whether `binding` is written anywhere inside `node`. */
 export function writtenWithin(sites: WriteSites, binding: Binding, node: AnyNode): boolean {
 	return (sites.get(binding) ?? []).some((w) => w.start >= node.start && w.end <= node.end);

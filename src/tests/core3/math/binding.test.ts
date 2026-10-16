@@ -12,6 +12,7 @@ import "@/core3/modules/all";
 import { EXACT_HOST_MATH } from "@/core3/math/exact-host-math";
 import { MATH_CONSTANTS } from "@/core3/math/math-constants";
 import { bindLambdaMath } from "@/core3/module/bind-math/bind-lambda-math";
+import { lambdaWrapper } from "@/core3/module/bind-math/lambda-wrapper";
 import { mathFunctions } from "@/core3/module/bind-math/math-functions";
 import { mathFunctionNames, mathHelpers } from "@/core3/module/bind-math/math-helpers";
 import { getRegistry } from "@/core3/module/define";
@@ -82,7 +83,7 @@ describe("math binding", () => {
 
 	it("binds a lambda: same results as auxlang math, no host transcendental left", () => {
 		const lambda = (_s: unknown, _sr: number, t: number) => Math.sin(t) + t ** 1.5 + Math.floor(t);
-		const bound = bindLambdaMath(lambda.toString());
+		const bound = lambdaWrapper(bindLambdaMath(lambda.toString()));
 		expect(hostMathIn(bound)).toEqual([]);
 		const fn = new Function(`"use strict"; return (${bound});`)() as typeof lambda;
 		const m = mathFunctions();
@@ -92,7 +93,7 @@ describe("math binding", () => {
 
 	it("leaves a lambda without auxlang math unchanged", () => {
 		const src = ((_s: unknown, _sr: number, t: number) => Math.abs(t) * Math.PI).toString();
-		expect(bindLambdaMath(src)).toBe(src);
+		expect(bindLambdaMath(src)).toEqual({ fn: src, math: [], slots: 0 });
 	});
 });
 

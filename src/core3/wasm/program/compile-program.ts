@@ -9,8 +9,8 @@
  * `render` and `memory`.
  */
 
+import type { ModuleIR } from "../../module/front/module/module-ir";
 import type { NodeRun } from "../../runtime/node-run";
-import type { ModuleSource } from "../../types";
 import { FunctionTable } from "../compile/function-table";
 import { Functions } from "../compile/functions";
 import { moduleBytes } from "../encode/module-bytes";
@@ -29,6 +29,8 @@ export interface WasmInput {
 	readonly modules: readonly string[];
 	/** Each node's module declares `reads: "pattern"`: its lanes get event tables. */
 	readonly readsPattern: readonly boolean[];
+	/** Each node's module, as the front end reads it (module/front/module/spec-ir.ts). */
+	readonly irs: readonly ModuleIR[];
 	/** Each node lane's signal lambdas (lambda-sources.ts). */
 	readonly lambdas: LambdaSources;
 	readonly tapsL: Int32Array;
@@ -44,14 +46,13 @@ export interface CompiledWasm {
 }
 
 export function compileWasm(input: WasmInput): CompiledWasm {
-	const sources = input.runs.map((run, i) => sourceOf(run, input.modules[i] as string));
-	const layout = planMemory(input.runs, input.readsPattern, sources, input.lambdas, input.size);
+	const layout = planMemory(input.runs, input.readsPattern, input.irs, input.lambdas, input.size);
 	const table = new FunctionTable(1);
 	const fillType = table.typeIndex([I32, I32, F64], []);
 	const enter = table.add(tableEnter(table.typeIndex(ENTER_PARAMS, []), FILL));
 	const fns = new Functions(table);
 	const render = table.reserve();
-	const body = emitRender({ ...input, sources, memory: layout, enter }, fns, table);
+	const body = emitRender({ ...input, memory: layout, enter }, fns, table);
 	table.define(render, { type: table.typeIndex([I32], []), locals: body.locals, body: body.body });
 	const bytes = moduleBytes({
 		types: table.allTypes(),
@@ -64,9 +65,4 @@ export function compileWasm(input: WasmInput): CompiledWasm {
 		],
 	});
 	return { bytes, layout };
-}
-
-function sourceOf(run: NodeRun, module: string): ModuleSource {
-	if (run.source === undefined) throw new Error(`wasm: module '${module}' has no tick source`);
-	return run.source;
 }

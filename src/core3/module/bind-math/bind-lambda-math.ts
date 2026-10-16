@@ -1,19 +1,16 @@
 /**
- * Bind a signal lambda's math. A lambda crosses to the engine as source text
- * that evaluates to the function, so the bound text is an expression that
- * declares the math helpers it reaches and its call cache (cache-names.ts),
- * and returns the rewritten lambda. Each lambda occurrence is built on its
- * own, so each keeps its own cache. A lambda that uses no auxlang math is
- * returned unchanged.
+ * Bind a signal lambda's math: its auxlang math calls become cached calls of
+ * the math helpers (rewrite-math.ts). The result is data (types.ts
+ * `BoundLambda`); each engine builds what it runs from it. Each lambda
+ * occurrence is bound on its own, so each keeps its own cache. A lambda that
+ * uses no auxlang math keeps its text unchanged.
  */
 
-import { CACHE_ARRAY, cacheArray } from "./cache-names";
-import { mathHelpers } from "./math-helpers";
+import type { BoundLambda } from "../../types";
 import { rewriteMath } from "./rewrite-math";
 
-export function bindLambdaMath(src: string): string {
+export function bindLambdaMath(src: string): BoundLambda {
 	const { text, uses, slots } = rewriteMath(src, "lambda");
-	if (uses.size === 0) return src;
-	const helpers = Object.entries(mathHelpers(uses)).map(([name, fn]) => `const ${name} = ${fn};`);
-	return `(() => {\n${helpers.join("\n")}\n${cacheArray(CACHE_ARRAY, slots)}\nreturn (${text});\n})()`;
+	if (uses.size === 0) return { fn: src, math: [], slots: 0 };
+	return { fn: text, math: [...uses].sort(), slots };
 }

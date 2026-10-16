@@ -14,7 +14,7 @@
  * local; in the body it carries its narrower body range.
  */
 
-import type { AnyNode, DoWhileStatement, ForStatement, WhileStatement } from "acorn";
+import type { DoWhileStatement, ForStatement, WhileStatement } from "acorn";
 import { OP } from "../encode/opcodes";
 import { emitDeclaration } from "./emit-declaration";
 import { emitDiscard } from "./emit-expression";
@@ -64,19 +64,12 @@ function declareCounter(e: FnEmitter, counter: Counter): number {
 	return index;
 }
 
-/** A `for` init that is not a counter; its declarations see the rest of the loop. */
+/** A `for` init that is not a counter. */
 function emitInit(e: FnEmitter, node: ForStatement): void {
 	const init = node.init;
 	if (init === null || init === undefined) return;
-	if (init.type === "VariableDeclaration") emitDeclaration(e, init, loopParts(node));
+	if (init.type === "VariableDeclaration") emitDeclaration(e, init);
 	else emitDiscard(e, init);
-}
-
-function loopParts(node: ForStatement): AnyNode[] {
-	const parts: AnyNode[] = [node.body];
-	if (node.test !== null && node.test !== undefined) parts.push(node.test);
-	if (node.update !== null && node.update !== undefined) parts.push(node.update);
-	return parts;
 }
 
 /** Leave the loop when `test` is false; a missing or known-true test never leaves. */

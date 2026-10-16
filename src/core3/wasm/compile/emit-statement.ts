@@ -1,6 +1,6 @@
 /**
  * Statements. A known `if` test emits only its live branch. Blocks open a
- * scope; a declaration sees the rest of its block (emit-declaration.ts).
+ * scope.
  */
 
 import type {
@@ -25,20 +25,9 @@ import { staticOf } from "./static-value";
  * Emit a statement list up to the first statement that never falls through:
  * what follows it is dead, and may not make sense where a branch was folded
  * away (`if (typeof x === "number") return x; const n = x.length;`).
- * `after`: code that follows the list in the same scope (a switch's later
- * cases), which a declaration must see too.
  */
-export function emitStatements(
-	e: FnEmitter,
-	list: readonly AnyNode[],
-	after: readonly AnyNode[] = [],
-): boolean {
-	for (let k = 0; k < list.length; k++) {
-		const statement = list[k] as AnyNode;
-		if (statement.type === "VariableDeclaration")
-			emitDeclaration(e, statement, [...list.slice(k + 1), ...after]);
-		else if (emitStatement(e, statement)) return true;
-	}
+export function emitStatements(e: FnEmitter, list: readonly AnyNode[]): boolean {
+	for (const statement of list) if (emitStatement(e, statement)) return true;
 	return false;
 }
 
@@ -50,7 +39,7 @@ export function emitStatement(e: FnEmitter, node: AnyNode, label: string | null 
 				emitDiscard(e, node.expression);
 			return false;
 		case "VariableDeclaration":
-			emitDeclaration(e, node, null);
+			emitDeclaration(e, node);
 			return false;
 		case "BlockStatement":
 			return e.within(e.scope.child(), () => emitStatements(e, node.body));

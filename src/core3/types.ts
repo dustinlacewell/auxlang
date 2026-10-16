@@ -185,7 +185,23 @@ export type PortSrc =
 			readonly lane: number;
 			readonly start?: number;
 	  }
-	| { readonly k: "l"; readonly src: string }; // user lambda, stringified (state, sr, time) => number
+	| { readonly k: "l"; readonly lambda: BoundLambda }; // user lambda (state, sr, time) => number
+
+/**
+ * A signal lambda bound to auxlang's math (module/bind-math/bind-lambda-math.ts),
+ * as data: the rewritten function text, the library functions it calls and
+ * its call cache size. Each engine builds what it runs from this: JS wraps it
+ * with the helpers and a cache array (bind-math/lambda-wrapper.ts); WASM
+ * calls the shared library and keeps the cache in memory.
+ */
+export interface BoundLambda {
+	/** The function text; its math calls go through `__math_<name>` and `__mc[slot]`. */
+	readonly fn: string;
+	/** The library functions `fn` calls, by name without the prefix, sorted. */
+	readonly math: readonly string[];
+	/** Its call cache size. */
+	readonly slots: number;
+}
 
 /** What re-eval matching sees of a node (runtime/match.ts, MANIFESTO §6.2). Wiring and constants are not identity. */
 export interface Identity {

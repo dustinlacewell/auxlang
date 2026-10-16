@@ -42,3 +42,8 @@ export function bindingOf(scopes: Scopes, node: Identifier): Binding | undefined
 	const r = scopes.references.get(node);
 	return r?.k === "binding" ? r.binding : undefined;
 }
+
+/** The binding `id` declares, when it is a parameter's or a declarator's name. */
+export function bindingDeclaredBy(scopes: Scopes, id: Identifier): Binding | undefined {
+	return scopes.bindings.find((b) => b.id === id);
+}

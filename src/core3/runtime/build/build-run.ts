@@ -26,7 +26,6 @@ export function buildRun(
 	const outBases = Int32Array.from(outPorts, (port) => bases[port] as number);
 	return {
 		tick: spec.tick,
-		source: spec.source,
 		config: { ...spec.config, ...node.config },
 		laneCount: node.lanes.length,
 		states,

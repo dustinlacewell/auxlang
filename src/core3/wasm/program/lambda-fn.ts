@@ -7,14 +7,13 @@
  * hidden first parameter, as a cached helper does.
  */
 
-import { parseFunction } from "../../module/front/parse/parse-function";
+import type { FunctionIR } from "../../module/front/module/module-ir";
 import { compileHelper } from "../compile/compile-helper";
 import type { ArgShape } from "../compile/emit-context";
 import type { FunctionTable } from "../compile/function-table";
 import type { Functions } from "../compile/functions";
 import { helperSet } from "../compile/helper-set";
 import { F64 } from "../encode/opcodes";
-import { lambdaText } from "./lambda-text";
 
 export interface LambdaFn {
 	readonly index: number;
@@ -25,16 +24,14 @@ export interface LambdaFn {
 }
 
 export function compileLambda(
-	bound: string,
+	ir: FunctionIR,
 	owner: string,
 	sampleRate: number,
 	fns: Functions,
 	table: FunctionTable,
 ): LambdaFn {
-	const text = lambdaText(bound);
-	const set = helperSet(owner, { lambda: text });
-	const params = parseFunction(text, owner).node.params.length;
-	const shapes = lambdaShapes(sampleRate).slice(0, params);
+	const set = helperSet(owner, new Map([["lambda", ir]]));
+	const shapes = lambdaShapes(sampleRate).slice(0, ir.node.params.length);
 	const fn = compileHelper(set, "lambda", shapes, fns.calls(set));
 	// The checker (tick-subset/kinds/) already refuses a lambda that returns a boolean.
 	if (fn.result !== "f64")

@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import { bindLambdaMath } from "@/core3/module/bind-math/bind-lambda-math";
+import { lambdaWrapper } from "@/core3/module/bind-math/lambda-wrapper";
 import { mathFunctions } from "@/core3/module/bind-math/math-functions";
 import { rewriteMath } from "@/core3/module/bind-math/rewrite-math";
 
@@ -18,7 +19,7 @@ const lib = (name: string): Fn => m[name] as Fn;
 
 /** A function text bound to auxlang math with its caches, built as the engine builds a lambda. */
 function bound(src: string): Fn {
-	return new Function(`"use strict"; return (${bindLambdaMath(src)});`)() as Fn;
+	return new Function(`"use strict"; return (${lambdaWrapper(bindLambdaMath(src))});`)() as Fn;
 }
 
 const SPECIAL = [0, -0, 0, -0, -0, 0, Number.NaN, Number.NaN, 0, 1, 1, -1, 1, -1, -1];

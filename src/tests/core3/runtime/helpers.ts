@@ -3,6 +3,7 @@
  * inline (unique, file-prefixed names) and wire hand-built Programs.
  */
 
+import { bindLambdaMath } from "@/core3/module/bind-math/bind-lambda-math";
 import type { PNode, PortSrc, Program } from "@/core3/types";
 
 /** Tick param shorthands: inline test modules annotate explicitly because the
@@ -13,7 +14,7 @@ export type IO = Record<string, number>;
 export const c = (v: number): PortSrc => ({ k: "c", v });
 export const n = (node: number, port = "out", lane = 0): PortSrc => ({ k: "n", node, port, lane });
 export const z = (node: number, port = "out", lane = 0): PortSrc => ({ k: "z", node, port, lane });
-export const lam = (src: string): PortSrc => ({ k: "l", src });
+export const lam = (src: string): PortSrc => ({ k: "l", lambda: bindLambdaMath(src) });
 
 export function pnode(
 	module: string,

@@ -1,12 +1,15 @@
 /**
- * User lambda hydration. Lambdas cross the worklet boundary as strings (§8 —
- * alongside patch-defined module specs, see hydrate-specs.ts); they are
- * compiled ONCE at engine build via `new Function`, never per sample. Each
- * occurrence gets its own persistent state object, passed to the lambda every
- * call.
+ * User lambda hydration. Lambdas cross the worklet boundary as data (§8 —
+ * alongside patch-defined module specs, see hydrate-specs.ts): their bound
+ * text, wrapped for JS (module/bind-math/lambda-wrapper.ts), is compiled
+ * ONCE at engine build via `new Function`, never per sample. Each occurrence
+ * gets its own persistent state object, passed to the lambda every call.
  *
  * Signature: (state, sampleRate, time) => number
  */
+
+import { lambdaWrapper } from "../module/bind-math/lambda-wrapper";
+import type { BoundLambda } from "../types";
 
 export type LambdaFn = (state: Record<string, unknown>, sampleRate: number, time: number) => number;
 
@@ -15,7 +18,8 @@ export interface LambdaSlot {
 	readonly state: Record<string, unknown>;
 }
 
-export function hydrateLambda(src: string): LambdaSlot {
+export function hydrateLambda(bound: BoundLambda): LambdaSlot {
+	const src = lambdaWrapper(bound);
 	let fn: unknown;
 	try {
 		fn = new Function(`"use strict"; return (${src});`)();
