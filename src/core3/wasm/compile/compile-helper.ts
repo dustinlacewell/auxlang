@@ -12,6 +12,7 @@ import type { FunctionPlan } from "../../module/front/types/function-plan";
 import { helperPlan } from "../../module/front/types/helper-plans";
 import { BOOL, NUM, type Ty, known, ref } from "../../module/front/types/ty";
 import { I32 } from "../encode/opcodes";
+import { addressLocal } from "./address-variable";
 import type { ArgShape, Calls } from "./emit-context";
 import { emitStatic } from "./emit-expression";
 import { emitStatement, emitStatements } from "./emit-statement";
@@ -86,7 +87,10 @@ function build(
 	return { params, locals: e.locals, body: e.code.bytes, result };
 }
 
-/** A known argument the helper reassigns becomes a local holding it. */
+/**
+ * A known argument the helper reassigns becomes a local holding it; an
+ * array or record one, an i32 local holding its address (address-variable.ts).
+ */
 function bindParams(
 	e: FnEmitter,
 	ir: FunctionIR,
@@ -105,8 +109,9 @@ function bindParams(
 			e.scope.declare(param.name, local(index, kind));
 		} else if (shape.k === "static") e.scope.declare(param.name, fixed(shape.value));
 		else {
-			const base = shape.dynamic ? next++ : null;
-			e.scope.declare(param.name, inMemory(shape.shape, { base, offset: shape.offset }));
+			const at = { base: shape.dynamic ? next++ : null, offset: shape.offset };
+			const held = inMemory(shape.shape, at);
+			e.scope.declare(param.name, paramWritten(ir, k) ? addressLocal(e, held) : held);
 		}
 	});
 }

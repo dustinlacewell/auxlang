@@ -14,11 +14,15 @@ import { type Address, type MemoryValue, inMemory } from "./values";
 import { referenceWritten } from "./written";
 
 export function declareAddress(e: FnEmitter, name: string, init: AnyNode): void {
-	const held = refAt(e, init);
+	e.scope.declare(name, addressLocal(e, refAt(e, init)));
+}
+
+/** `held` with its address in a fresh i32 local, for a variable or helper parameter that is rebound. */
+export function addressLocal(e: FnEmitter, held: MemoryValue): MemoryValue {
 	const base = e.local("int");
 	pushAddress(e, held.at);
 	e.code.set(base);
-	e.scope.declare(name, inMemory(held.shape, { base, offset: 0 }));
+	return inMemory(held.shape, { base, offset: 0 });
 }
 
 /** Whether `node` assigns to a variable holding an array or record. */
