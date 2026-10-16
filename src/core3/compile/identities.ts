@@ -14,6 +14,7 @@ import type { Identity } from "../types";
 import { constantEvidence } from "./constant-evidence";
 import { firstPaths } from "./first-paths";
 import { kindOf } from "./kind";
+import { portHops } from "./port-hop";
 import { upstreamSignatures } from "./upstream-signatures";
 
 export type Placement = Omit<Identity, "pin">;
@@ -24,9 +25,10 @@ export function identities(
 	order: readonly GNode[],
 	specs: SpecTable,
 ): Map<GNode, Placement> {
-	const paths = firstPaths(roots);
+	const hopOf = portHops(specs);
+	const paths = firstPaths(roots, hopOf);
 	const kinds = new Map(order.map((node) => [node, kindOf(node, specs)]));
-	const upstream = upstreamSignatures(order, kinds);
+	const upstream = upstreamSignatures(order, kinds, hopOf);
 	const constants = constantEvidence(order);
 	const result = new Map<GNode, Placement>();
 	for (const node of order) {
