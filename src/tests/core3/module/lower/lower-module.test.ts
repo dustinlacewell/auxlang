@@ -103,6 +103,40 @@ describe("lowerModule", () => {
 		).toThrow(/default input/);
 	});
 
+	const argsWithConfigSetupText = [
+		"({ sr, mul = 2 }) => {",
+		"  return ({ in: p = 0 }) => p * mul",
+		"}",
+	].join("\n");
+
+	it("meta.args may name a setup config param (not just an input): the old object form's positional, crossing config and port", () => {
+		const fileText = [`defmod("x", { args: ["mul"] }, ${argsWithConfigSetupText})`].join("\n");
+		const source: SourceText = { file: "patch", text: fileText };
+		const lowered = lowerModule({
+			name: "x",
+			meta: { args: ["mul"] },
+			setupText: argsWithConfigSetupText,
+			file: { text: fileText, program: fileProgram(source) },
+			library: false,
+		});
+		expect(lowered.positional).toEqual(["in", "mul"]);
+		expect(lowered.config).toEqual({ mul: 2 });
+	});
+
+	it("meta.args naming an unknown name (not an input or a config key) is a loud error", () => {
+		const fileText = [`defmod("x", { args: ["nope"] }, ${argsSetupText})`].join("\n");
+		const source: SourceText = { file: "patch", text: fileText };
+		expect(() =>
+			lowerModule({
+				name: "x",
+				meta: { args: ["nope"] },
+				setupText: argsSetupText,
+				file: { text: fileText, program: fileProgram(source) },
+				library: false,
+			}),
+		).toThrow(/'nope', which is not an input or a config key/);
+	});
+
 	it("a tick calling a library helper lowers without error, and the helper appears in source.helpers", () => {
 		const setupText = ["({ sr }) => {", "  return ({ in: p = 0 }) => semisToHz(p)", "}"].join("\n");
 		const fileText = [`defmod("x", {}, ${setupText})`].join("\n");

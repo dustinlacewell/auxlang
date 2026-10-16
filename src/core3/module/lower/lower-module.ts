@@ -139,7 +139,6 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 
 	const ins = ports.ins;
 	const defaultIn = ports.order[0];
-	const positional = positionalArgs(ports.order, input.meta.args, what);
 	const defaultOut = outs.outs.includes("out") ? "out" : undefined;
 
 	const config: Record<string, unknown> = { ...(input.meta.config ?? {}) };
@@ -150,6 +149,7 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 		config.lanes = 1;
 		config.clocked = 0;
 	}
+	const positional = positionalArgs(ports.order, input.meta.args, what, configKeys);
 
 	const result: LoweredModule = {
 		name: input.name,

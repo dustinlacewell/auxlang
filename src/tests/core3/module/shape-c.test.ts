@@ -8,7 +8,10 @@
 
 import { describe, expect, it } from "vitest";
 
+import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
+import { Core3Engine } from "@/core3/runtime/engine";
+import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { SR, firstBitDiff, interpreterRun } from "../wasm/differential-harness";
 
@@ -92,5 +95,17 @@ describe("shape C", () => {
   return () => __dsp_x
 })`;
 		expect(() => evalPatch(PATCH)).toThrow(/reserved/);
+	});
+
+	it("meta.args naming a setup config param: a positional call after the default input sets config, not a port", () => {
+		const PATCH = `const x = defmod("x", { args: ["mul"] }, ({ sr, mul = 2 }) => {
+  return ({ in: p = 0 }) => p * mul
+})
+x(3, 10).out()`;
+		const program = evalPatch(PATCH);
+		const registry = withProgramSpecs(getRegistry(), program);
+		const engine = new Core3Engine(program, SR, registry);
+		engine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
+		expect(engine.peek(0, "out", 0)).toBe(30);
 	});
 });
