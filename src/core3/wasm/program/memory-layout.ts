@@ -14,6 +14,8 @@
 
 import type { ModuleIR } from "../../module/front/module/module-ir";
 import { fieldRebinds } from "../../module/front/scope/field-rebinds";
+import type { RecordState } from "../../module/front/state/state-shape";
+import { laneShapeOf } from "../../module/front/state/state-shape-of";
 import { elementRebinds } from "../../module/front/types/element-rebinds";
 import type { FunctionPlan } from "../../module/front/types/function-plan";
 import type { NodeRun } from "../../runtime/node-run";
@@ -94,14 +96,21 @@ export function planMemory(
 		}
 		const slots = moduleCacheSlots(irs[i] as ModuleIR);
 		const fields = fieldRebinds(irs[i] as ModuleIR);
-		const lanes = run.states.map((state, l) => ({
-			state: Object.fromEntries(numericFields(state).map((f) => [f, take(8)])),
-			aggregates: planAggregates(state, { fields, elements: laneElementRebinds(plans[i], l) }, take),
-			cache: take(8 * slots),
-			cacheSlots: slots,
-			tables: readsPattern[i] ? take(SLOT_BYTES) : null,
-			lambdas: planLambdas(lambdas[i]?.[l] ?? {}, take),
-		}));
+		const lanes = run.states.map((state, l) => {
+			const shape = laneShapeOf(state);
+			return {
+				state: Object.fromEntries(numericFields(shape).map((f) => [f, take(8)])),
+				aggregates: planAggregates(
+					shape,
+					{ fields, elements: laneElementRebinds(plans[i], l) },
+					take,
+				),
+				cache: take(8 * slots),
+				cacheSlots: slots,
+				tables: readsPattern[i] ? take(SLOT_BYTES) : null,
+				lambdas: planLambdas(lambdas[i]?.[l] ?? {}, take),
+			};
+		});
 		return { outs, views, lanes };
 	});
 	const heap = top;
@@ -112,7 +121,10 @@ export function planMemory(
 const NO_REBINDS: ReadonlySet<string> = new Set();
 
 /** The arrays of records whose elements lane `l`'s plan rebinds; none for a node with no plans. */
-function laneElementRebinds(plans: readonly FunctionPlan[] | undefined, l: number): ReadonlySet<string> {
+function laneElementRebinds(
+	plans: readonly FunctionPlan[] | undefined,
+	l: number,
+): ReadonlySet<string> {
 	const plan = plans?.[l];
 	return plan === undefined ? NO_REBINDS : elementRebinds(plan);
 }
@@ -127,8 +139,8 @@ function initialHeap(nodes: readonly NodeMemory[]): number {
  * The engine's numeric fields count: `__rng` (the stream position), `__seed`,
  * `__lane`. A boolean has no memory form (state-layout.ts).
  */
-function numericFields(state: Record<string, unknown>): string[] {
-	return Object.keys(state).filter((f) => typeof state[f] === "number");
+function numericFields(state: RecordState): string[] {
+	return Object.keys(state.fields).filter((f) => state.fields[f]?.k === "number");
 }
 
 /** The math cache the tick and helpers share: their slots are numbered across all of them. */
