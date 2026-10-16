@@ -10,7 +10,7 @@ import type { LaneMemory } from "../../program/memory-layout";
 import { CARRY_F64 } from "./carry-run";
 import { shapeKeys } from "./lane-fits";
 import type { RunList } from "./run-list";
-import { shapeRuns } from "./shape-runs";
+import { fieldRuns } from "./shape-runs";
 
 const STREAM = "__rng";
 
@@ -27,6 +27,6 @@ export function laneRuns(
 	for (const name of shapeKeys(fresh.aggregates)) {
 		const from = old.aggregates[name] as Field;
 		const to = fresh.aggregates[name] as Field;
-		shapeRuns(runs, from.shape, from.offset, to.shape, to.offset);
+		fieldRuns(runs, from, 0, to, 0, false);
 	}
 }

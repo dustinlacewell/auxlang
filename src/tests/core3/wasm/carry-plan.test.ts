@@ -7,7 +7,14 @@
 
 import type { KeyedIdentity } from "@/core3/types";
 import { type CarrySide, planCarry } from "@/core3/wasm/host/carry-plan";
-import { CARRY_F64, CARRY_WORD, RUN_WIDTH } from "@/core3/wasm/host/carry/carry-run";
+import {
+	CARRY_DEREF,
+	CARRY_F64,
+	CARRY_POP,
+	CARRY_REL,
+	CARRY_WORD,
+	RUN_WIDTH,
+} from "@/core3/wasm/host/carry/carry-run";
 import { bindCarry, runCarry } from "@/core3/wasm/host/carry/run-carry";
 import { memoryViews } from "@/core3/wasm/host/wasm-memory";
 import type { Field } from "@/core3/wasm/layout/state-shape";
@@ -197,5 +204,30 @@ describe("runCarry", () => {
 		runCarry(bindCarry(Int32Array.from([0, 1, 1, CARRY_F64, 4, 8, 2, CARRY_WORD]), from, to));
 		expect(Object.is(to.f64[1], -0)).toBe(true);
 		expect([to.i32[8], to.i32[9]]).toEqual([0x7fa00001, -1]);
+	});
+
+	it("reads a rebound field where its old slot points at the swap, nested slots too", () => {
+		const f64s = (offset: number) => ({ offset, shape: { k: "array" as const, type: "f64" as const, length: 1 } });
+		const inner = (pointer: number | undefined) => ({
+			k: "record" as const,
+			size: pointer === undefined ? 8 : 16,
+			fields: { buf: pointer === undefined ? f64s(0) : { ...f64s(0), pointer } },
+		});
+		// Old: `r` at 2040 (slot 2056) holds a record whose `buf` has its slot at +8.
+		const old = side({ nodes: [node(lane(2000, { r: { offset: 2040, shape: inner(8), pointer: 2056 } }))], keys: ["a"] });
+		const fresh = side({
+			nodes: [node(lane(3000, { r: { offset: 3040, shape: inner(undefined) } }))],
+			keys: ["a"],
+			paired: [[0, "a"]],
+		});
+		const plan = planCarry(old, fresh);
+		expect(runs(plan).slice(2).map((r) => r[3])).toEqual([CARRY_DEREF, CARRY_DEREF, CARRY_REL, CARRY_POP, CARRY_POP]);
+		const from = memoryViews(new ArrayBuffer(4096));
+		const to = memoryViews(new ArrayBuffer(4096));
+		from.i32[2056 / 4] = 2400; // r names the record at 2400
+		from.i32[2408 / 4] = 2600; // its buf names the array at 2600
+		from.f64[2600 / 8] = 7.5;
+		runCarry(bindCarry(plan, from, to));
+		expect(to.f64[3040 / 8]).toBe(7.5);
 	});
 });

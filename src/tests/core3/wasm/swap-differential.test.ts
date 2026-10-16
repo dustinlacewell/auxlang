@@ -16,6 +16,7 @@ import { slotOf } from "@/core3/runtime/output-slots";
 import type { Program } from "@/core3/types";
 import { createWasmEngine, swapWasmEngine } from "@/core3/wasm/host/create-wasm-engine";
 import type { WasmEngine } from "@/core3/wasm/host/wasm-engine";
+import { evalPatch } from "@/ui/core3-playground/eval-patch";
 
 const SR = 48000;
 const BLOCK = 128;
@@ -59,6 +60,54 @@ const effects = (pattern: string) => () => {
 		.out();
 };
 
+/**
+ * A module whose tick runs `body` (which sets `v`) and outputs `v`, then
+ * `gain`. An edit to its code makes a new node (a new key: nothing carries),
+ * so the edits are downstream and the module's lane carries.
+ */
+const swapper = (body: string, gain: number) => `tempo(180)
+const sw = defmod({
+  name: "sw",
+  category: "utils",
+  ins: { in: sig(0) },
+  outs: { out: sig() },
+  defaultIn: "in",
+  defaultOut: "out",
+  state: () => ({
+    n: 0,
+    a: new Float32Array(3),
+    b: new Float32Array(3),
+    p: { buf: new Float64Array(2), k: 0 },
+    q: { buf: new Float64Array(2), k: 0 },
+  }),
+  tick: (s, i, o) => {
+    ${body}
+    o.out = v
+  },
+})
+seq("[c3,e3] <g3 a3>").sw().mul(${gain}).out()`;
+
+/**
+ * Swaps the arrays every 7 samples: an odd number of swaps by the swap
+ * (BEFORE blocks), so each name holds the other's storage.
+ */
+const SWAP_ARRAYS = `s.n++
+    s.a[s.n % 3] += i.in * 0.001
+    if (s.n % 7 === 0) { const t = s.a; s.a = s.b; s.b = t }
+    const v = s.a[0] - s.b[1]`;
+
+/** As SWAP_ARRAYS; late in A, one-way: both names hold one array. */
+const ALIAS_ARRAYS = `${SWAP_ARRAYS}
+    if (s.n === 7919) s.b = s.a`;
+
+/** Swaps the records every 7 samples and the arrays inside them every 19: both odd by the swap. */
+const SWAP_RECORDS = `s.n++
+    s.p.buf[s.n % 2] += i.in * 0.001
+    s.p.k += 1
+    if (s.n % 7 === 0) { const t = s.p; s.p = s.q; s.q = t }
+    if (s.n % 19 === 0) { const u = s.p.buf; s.p.buf = s.q.buf; s.q.buf = u }
+    const v = s.p.buf[0] - s.q.buf[1] + s.p.k * 0.0001`;
+
 const EDITS: Record<string, Edit> = {
 	"knob change": {
 		before: patch(() => saw(48).lpf(80).delay(DELAY).out()),
@@ -97,6 +146,18 @@ const EDITS: Record<string, Edit> = {
 	"pattern edit, array state": {
 		before: patch(effects("c3 e3 g3 b3")),
 		after: patch(effects("c3 e3 a3 c4")),
+	},
+	"swapped arrays carried": {
+		before: () => evalPatch(swapper(SWAP_ARRAYS, 0.1)),
+		after: () => evalPatch(swapper(SWAP_ARRAYS, 0.2)),
+	},
+	"one array under two names carried as two": {
+		before: () => evalPatch(swapper(ALIAS_ARRAYS, 0.1)),
+		after: () => evalPatch(swapper(ALIAS_ARRAYS, 0.2)),
+	},
+	"swapped records holding swapped arrays carried": {
+		before: () => evalPatch(swapper(SWAP_RECORDS, 0.1)),
+		after: () => evalPatch(swapper(SWAP_RECORDS, 0.2)),
 	},
 	"sample-rate change": {
 		before: patch(() => saw(48).lpf(80).delay(DELAY).out()),
