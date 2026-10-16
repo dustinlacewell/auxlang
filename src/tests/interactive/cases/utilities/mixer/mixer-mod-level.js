@@ -5,6 +5,6 @@ clock(60)
   .apply(s =>
     mixer({
       a: s.tri().gain(s.gate.adsr()),
-      b: noise().lpf({ cutoff: 500 })})
+      b: noise().lpf({ cutoff: hz(500) })})
       .mod("level.b", lfo(0.2, 0, 1), 1)
       .out())
