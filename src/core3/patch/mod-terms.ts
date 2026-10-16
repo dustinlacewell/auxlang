@@ -6,6 +6,7 @@
  * terms into add/mul nodes (compile/expand-mods).
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { ModTerm } from "../graph/node";
 import type { ModulePorts } from "../types";
 import { bindInput } from "./bind-input";
@@ -30,9 +31,10 @@ export function withModTerm(
 }
 
 function assertInput(spec: ModulePorts, port: unknown): asserts port is string {
-	if (typeof port === "string" && port in spec.ins) return;
+	const ins = nodePorts(spec).ins;
+	if (typeof port === "string" && port in ins) return;
 	throw new Error(
 		`${spec.name}.mod(${JSON.stringify(port)}, ...): not an input of '${spec.name}'. ` +
-			`inputs: [${Object.keys(spec.ins).join(", ")}]`,
+			`inputs: [${Object.keys(ins).join(", ")}]`,
 	);
 }

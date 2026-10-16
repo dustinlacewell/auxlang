@@ -6,6 +6,7 @@
  * that would drop a channel, so it throws.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { InputValue } from "../graph/node";
 import type { ModulePorts } from "../types";
 import type { HandleData } from "./handle-data";
@@ -39,5 +40,5 @@ function byName(data: HandleData): Record<string, InputValue> {
 }
 
 function intoDescription(dest: ModulePorts): string {
-	return `connecting into '${dest.name}' (inputs: [${Object.keys(dest.ins).join(", ")}], no l/r pair)`;
+	return `connecting into '${dest.name}' (inputs: [${Object.keys(nodePorts(dest).ins).join(", ")}], no l/r pair)`;
 }

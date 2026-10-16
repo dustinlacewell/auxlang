@@ -28,6 +28,7 @@
  * registry, so tests register their own toy modules.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import { isLambdaInput, isNodeRef, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
 import { bindLambdaMath } from "../module/bind-math/bind-lambda-math";
@@ -125,7 +126,7 @@ function outIndices(roots: readonly GNode[], index: Map<GNode, number>): number[
 function emitNode(node: GNode, r: Resolved): PNode {
 	const spec = resolveSpec(node.module, r.specs);
 	const width = r.widths.get(node) ?? 1;
-	const lanes = Array.from({ length: width }, (_, lane) => resolveLane(node, spec.ins, lane, r));
+	const lanes = Array.from({ length: width }, (_, lane) => resolveLane(node, nodePorts(spec).ins, lane, r));
 	return {
 		...(r.identities.get(node) as Placement),
 		module: node.module,

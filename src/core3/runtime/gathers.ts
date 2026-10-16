@@ -12,6 +12,7 @@
  * `Float64Array | number` ins.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { ModuleSpec, PNode, PortAnn, PortSrc } from "../types";
 import { type LambdaSlot, hydrateLambda } from "./lambda";
 import { type OutputLayout, slotOf } from "./output-slots";
@@ -46,7 +47,8 @@ export function compileReduceGathers(
 	layout: OutputLayout,
 ): ReduceGathers {
 	const srcs = node.lanes[0] as Record<string, PortSrc>;
-	const names = Object.keys(spec.ins);
+	const ins = nodePorts(spec).ins;
+	const names = Object.keys(ins);
 
 	interface Partial {
 		name: string;
@@ -60,7 +62,7 @@ export function compileReduceGathers(
 	const partials: Partial[] = names.map((name) => {
 		const src = srcs[name];
 		if (src === undefined) {
-			const ann = spec.ins[name] as PortAnn;
+			const ann = ins[name] as PortAnn;
 			if (ann.def === null && !ann.opt) {
 				throw new Error(
 					`node #${nodeIndex} ('${node.module}'): input '${name}' is required but unconnected`,

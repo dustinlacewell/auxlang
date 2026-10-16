@@ -6,6 +6,7 @@
  * error.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { ModuleSpec, PNode } from "../../types";
 import { compileLaneBindings } from "../bindings";
 import { compileReduceGathers } from "../gathers";
@@ -21,7 +22,8 @@ export function buildRun(
 ): NodeRun {
 	const reduce = spec.policy === "reduce";
 	assertLanes(node, i, reduce);
-	const outPorts = Object.keys(spec.outs);
+	const ports = nodePorts(spec);
+	const outPorts = Object.keys(ports.outs);
 	const bases = layout.bases[i] as Record<string, number>;
 	const outBases = Int32Array.from(outPorts, (port) => bases[port] as number);
 	return {
@@ -29,7 +31,7 @@ export function buildRun(
 		config: { ...spec.config, ...node.config },
 		laneCount: node.lanes.length,
 		states,
-		ins: zeroRecord(Object.keys(spec.ins)) as NodeRun["ins"],
+		ins: zeroRecord(Object.keys(ports.ins)) as NodeRun["ins"],
 		outs: zeroRecord(outPorts),
 		outPorts,
 		outBases,

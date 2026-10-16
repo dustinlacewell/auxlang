@@ -13,6 +13,7 @@
  * (MANIFESTO §10.1).
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import { isGNode } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
 import { currentCall } from "../source/active-source";
@@ -135,7 +136,7 @@ function applyNamedArgs(
 		if (!knownKey(spec, key)) {
 			throw new Error(
 				`${spec.name}: unknown parameter '${key}'. ` +
-					`inputs: [${Object.keys(spec.ins).join(", ")}], config: [${Object.keys(spec.config ?? {}).join(", ")}]`,
+					`inputs: [${Object.keys(nodePorts(spec).ins).join(", ")}], config: [${Object.keys(spec.config ?? {}).join(", ")}]`,
 			);
 		}
 		assign(spec, key, value, inputs, config);
@@ -149,7 +150,7 @@ function assign(
 	inputs: Record<string, InputValue>,
 	config: Record<string, unknown>,
 ): void {
-	if (name in spec.ins) {
+	if (name in nodePorts(spec).ins) {
 		inputs[name] = bindInput(spec, name, value);
 		return;
 	}
@@ -162,7 +163,7 @@ function assign(
 }
 
 function knownKey(spec: ModulePorts, key: string): boolean {
-	return key in spec.ins || key in (spec.config ?? {}) || key.startsWith("__");
+	return key in nodePorts(spec).ins || key in (spec.config ?? {}) || key.startsWith("__");
 }
 
 /** A plain object that is not itself a signal value is a named-args bag. */

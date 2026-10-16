@@ -5,6 +5,7 @@
  * input with no value is a loud error, as for any module.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { GNode, InputValue } from "../../graph/node";
 import type { SubpatchSpec } from "../../patch/subpatch/subpatch-spec";
 import type { PortAnn } from "../../types";
@@ -12,7 +13,7 @@ import { modulated } from "../expand-mods";
 
 export function inputValues(instance: GNode, spec: SubpatchSpec): Record<string, InputValue> {
 	const values: Record<string, InputValue> = {};
-	for (const [port, ann] of Object.entries(spec.ins)) {
+	for (const [port, ann] of Object.entries(nodePorts(spec).ins)) {
 		values[port] = portValue(instance, port, ann);
 	}
 	return values;

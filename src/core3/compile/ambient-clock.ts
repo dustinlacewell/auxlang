@@ -5,6 +5,7 @@
  * error — it could never move.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { GNode } from "../graph/node";
 import { defaultOutOf } from "../module/default-out";
 import { getModule } from "../module/define";
@@ -16,7 +17,7 @@ export function resolveAmbientClocks(
 	specs?: SpecTable,
 ): void {
 	for (const node of nodes) {
-		for (const [port, ann] of Object.entries(resolveSpec(node.module, specs).ins)) {
+		for (const [port, ann] of Object.entries(nodePorts(resolveSpec(node.module, specs)).ins)) {
 			if (ann.unit !== "phase" || node.inputs[port] !== undefined) continue;
 			node.inputs[port] = ambientPosition(clockNode, node.module, port);
 		}

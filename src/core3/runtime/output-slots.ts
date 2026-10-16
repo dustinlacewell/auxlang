@@ -6,6 +6,7 @@
  * plain indexed access.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { PNode, Registry } from "../types";
 
 export interface OutputLayout {
@@ -30,7 +31,7 @@ export function buildOutputLayout(nodes: readonly PNode[], registry: Registry): 
 		}
 		const laneCount = node.lanes.length;
 		const nodeBases: Record<string, number> = {};
-		for (const port of Object.keys(spec.outs)) {
+		for (const port of Object.keys(nodePorts(spec).outs)) {
 			nodeBases[port] = size;
 			size += laneCount;
 		}

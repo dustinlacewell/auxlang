@@ -8,6 +8,7 @@
  * The new nodes live in the modulated node's sub-patch scope, if any.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { GNode, InputValue, ModTerm } from "../graph/node";
 import { type Scope, inScope } from "../graph/scope";
 import { type SpecTable, resolveSpec } from "../module/resolve";
@@ -18,7 +19,7 @@ export function expandMods(nodes: readonly GNode[], specs?: SpecTable): void {
 	for (const node of nodes) {
 		if (node.mods === undefined) continue;
 		for (const [port, terms] of Object.entries(node.mods)) {
-			const ann = () => resolveSpec(node.module, specs).ins[port];
+			const ann = () => nodePorts(resolveSpec(node.module, specs)).ins[port];
 			node.inputs[port] = modulated(node, port, ann, terms);
 		}
 		// biome-ignore lint/performance/noDelete: compile-time, once per node; `mods` must be absent afterwards

@@ -5,6 +5,7 @@
  * clock's. Static, like the meter itself. Runs after ambient-clock resolution.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import { isNodeRef } from "../graph/input-kinds";
 import type { GNode } from "../graph/node";
 import { getModule } from "../module/define";
@@ -15,13 +16,13 @@ export function copyMeter(nodes: readonly GNode[], specs?: SpecTable): void {
 	for (const node of nodes) {
 		const spec = resolveSpec(node.module, specs);
 		if (!("beatsPerBar" in (spec.config ?? {})) || node.module === "clock") continue;
-		const clock = clockRead(node, spec.ins);
+		const clock = clockRead(node, nodePorts(spec).ins);
 		if (clock !== null) node.config = { ...node.config, beatsPerBar: meterOf(clock) };
 	}
 }
 
 /** The clock wired into one of the node's phase-unit inputs, if any. */
-function clockRead(node: GNode, ins: Record<string, PortAnn>): GNode | null {
+function clockRead(node: GNode, ins: Readonly<Record<string, PortAnn>>): GNode | null {
 	for (const [port, ann] of Object.entries(ins)) {
 		const value = node.inputs[port];
 		const fromClock = isNodeRef(value) && value.node.module === "clock";

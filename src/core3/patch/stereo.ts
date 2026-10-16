@@ -5,18 +5,21 @@
  * a loud error: taking one port would silently drop the other channel.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { ModulePorts } from "../types";
 
 export const STEREO_PORTS = ["l", "r"] as const;
 
 /** A source is stereo when it outputs `l` and `r` and declares no default output (`pan`, `out`). */
 export function isStereoSource(spec: ModulePorts): boolean {
-	return "l" in spec.outs && "r" in spec.outs && spec.defaultOut === undefined;
+	const outs = nodePorts(spec).outs;
+	return "l" in outs && "r" in outs && spec.defaultOut === undefined;
 }
 
 /** A destination takes stereo when it has both `l` and `r` inputs. */
 export function takesStereo(spec: ModulePorts): boolean {
-	return "l" in spec.ins && "r" in spec.ins;
+	const ins = nodePorts(spec).ins;
+	return "l" in ins && "r" in ins;
 }
 
 /** The loud error for a connection that would keep one channel of `source` and drop the other. */

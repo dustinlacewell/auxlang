@@ -9,6 +9,7 @@
  * and promise checks never explode.
  */
 
+import { type NodePorts, nodePorts } from "@/core3/module/node-ports";
 import type { GNode } from "../graph/node";
 import { getRegistry } from "../module/define";
 import { checkSeed } from "../random/check-seed";
@@ -47,6 +48,7 @@ const INTROSPECTION = new Set([
 export function wrap(node: GNode, port?: string, lane?: number): Handle {
 	const spec = resolvePatchModule(node.module);
 	assertNoReservedPorts(spec);
+	const ports = nodePorts(spec);
 	const data: HandleData = {
 		node,
 		...(port !== undefined ? { port } : {}),
@@ -71,14 +73,14 @@ export function wrap(node: GNode, port?: string, lane?: number): Handle {
 					modulated(node, port, lane, spec, input, signal, depth);
 			}
 
-			if (prop in spec.outs) return wrap(node, prop, lane);
-			if (prop in spec.ins) return inputSetter(node, port, lane, spec, prop);
+			if (prop in ports.outs) return wrap(node, prop, lane);
+			if (prop in ports.ins) return inputSetter(node, port, lane, spec, prop);
 			if (isPatchModule(prop)) {
 				const dest = resolvePatchModule(prop);
 				return (...args: unknown[]) => wrap(buildNode(dest, args, connectWhole(data, dest)));
 			}
 
-			throw new Error(unknownPropMessage(prop, spec));
+			throw new Error(unknownPropMessage(prop, spec.name, ports));
 		},
 
 		apply(_t, _thisArg, args) {
@@ -218,7 +220,7 @@ function reservedPortError(spec: ModulePorts, name: string, kind: string): Error
 	);
 }
 
-function unknownPropMessage(prop: string, spec: ModulePorts): string {
+function unknownPropMessage(prop: string, moduleName: string, ports: NodePorts): string {
 	const names = [
 		...rootSubpatches().keys(),
 		...(currentSpecs()?.keys() ?? []),
@@ -226,9 +228,9 @@ function unknownPropMessage(prop: string, spec: ModulePorts): string {
 	];
 	const defined = names.length > 0 ? ` Patch-defined modules: [${names.join(", ")}]` : "";
 	return (
-		`'${prop}' is not an input, output, or module for '${spec.name}'. ` +
-		`inputs: [${Object.keys(spec.ins).join(", ")}], outputs: [${Object.keys(spec.outs).join(", ")}]. ` +
-		`Set an input by calling it (h.${Object.keys(spec.ins)[0] ?? "input"}(x)), tap an output by name, ` +
+		`'${prop}' is not an input, output, or module for '${moduleName}'. ` +
+		`inputs: [${Object.keys(ports.ins).join(", ")}], outputs: [${Object.keys(ports.outs).join(", ")}]. ` +
+		`Set an input by calling it (h.${Object.keys(ports.ins)[0] ?? "input"}(x)), tap an output by name, ` +
 		`or chain to a registered module. Known modules: [${[...getRegistry().keys()].join(", ")}]${defined}`
 	);
 }

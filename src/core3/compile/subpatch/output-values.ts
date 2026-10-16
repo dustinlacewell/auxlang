@@ -4,13 +4,14 @@
  * pattern). Anything else is a loud error naming what was expected.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { InputValue } from "../../graph/node";
 import { isHandle } from "../../patch/handle-data";
 import { lift } from "../../patch/lift";
 import type { SubpatchSpec } from "../../patch/subpatch/subpatch-spec";
 
 export function outputValues(spec: SubpatchSpec, returned: unknown): Record<string, InputValue> {
-	const declared = Object.keys(spec.outs);
+	const declared = Object.keys(nodePorts(spec).outs);
 	if (typeof returned !== "object" || returned === null || isHandle(returned)) {
 		throw new Error(
 			`sub-patch '${spec.name}': patch must return a record of outputs [${declared.join(", ")}]`,

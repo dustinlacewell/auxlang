@@ -4,6 +4,7 @@
  * unit and is never rejected for it).
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { InputValue } from "../graph/node";
 import type { ModulePorts, PortAnn } from "../types";
 import { isUnitTag } from "../units/tag";
@@ -12,6 +13,6 @@ import { lift } from "./lift";
 
 export function bindInput(spec: ModulePorts, port: string, value: unknown): InputValue {
 	const where = `${spec.name}.${port}`;
-	if (isUnitTag(value)) return convertTag(value, spec.ins[port] as PortAnn, where);
+	if (isUnitTag(value)) return convertTag(value, nodePorts(spec).ins[port] as PortAnn, where);
 	return lift(value, where);
 }

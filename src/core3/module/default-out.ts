@@ -4,12 +4,13 @@
  * error naming `where` and the outputs it could tap instead.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { ModulePorts } from "../types";
 
 export function defaultOutOf(spec: ModulePorts, where: string): string {
 	if (spec.defaultOut !== undefined) return spec.defaultOut;
 	throw new Error(
 		`${where}: '${spec.name}' has no default output. Tap one by name: ` +
-			`[${Object.keys(spec.outs).join(", ")}].`,
+			`[${Object.keys(nodePorts(spec).outs).join(", ")}].`,
 	);
 }

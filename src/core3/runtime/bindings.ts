@@ -9,6 +9,7 @@
  * buffer ("z" source, cycle cut), BIND_LAMBDA calls a hydrated user lambda.
  */
 
+import { nodePorts } from "@/core3/module/node-ports";
 import type { ModuleSpec, PNode, PortAnn, PortSrc } from "../types";
 import { type LambdaSlot, hydrateLambda } from "./lambda";
 import { type OutputLayout, slotOf } from "./output-slots";
@@ -34,7 +35,8 @@ export function compileLaneBindings(
 	lane: number,
 ): LaneBindings {
 	const srcs = node.lanes[lane] as Record<string, PortSrc>;
-	const names = Object.keys(spec.ins);
+	const ins = nodePorts(spec).ins;
+	const names = Object.keys(ins);
 	const kinds = new Int8Array(names.length);
 	const offsets = new Int32Array(names.length);
 	const consts = new Float64Array(names.length);
@@ -43,7 +45,7 @@ export function compileLaneBindings(
 	names.forEach((name, j) => {
 		const src = srcs[name];
 		if (src === undefined) {
-			const ann = spec.ins[name] as PortAnn;
+			const ann = ins[name] as PortAnn;
 			if (ann.def === null && !ann.opt) {
 				throw new Error(
 					`node #${nodeIndex} ('${node.module}') lane ${lane}: input '${name}' is required but unconnected`,
