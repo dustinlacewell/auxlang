@@ -42,7 +42,8 @@ const visualizationStyles = EditorView.theme({
  * same span with equal-specificity classes and stylesheet injection order picks
  * the winner arbitrarily. Single owner, no cascade race.
  *
- * Departures from oneDark: variables are pure white; property access — port
+ * Departures from oneDark: variables are pure white; keywords (`const`) and
+ * property access — port
  * reads (`s.gate`), method chains, object keys (`{ cutoff: 81 }`) — is a quiet
  * gray, so the only strong color in code is a registered module name in its
  * category color (the `aux-mod-*` decorations, which out-rank this via
@@ -52,7 +53,7 @@ const visualizationStyles = EditorView.theme({
 const white = "#ffffff";
 const quiet = "#8a93a3";
 const auxSyntax = HighlightStyle.define([
-	{ tag: t.keyword, color: "#c678dd" },
+	{ tag: t.keyword, color: quiet },
 	{ tag: [t.deleted, t.character, t.macroName], color: "#e06c75" },
 	{ tag: [t.variableName, t.definition(t.variableName)], color: white },
 	// Non-module function calls; registered modules get aux-mod colors on top.
