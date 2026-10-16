@@ -225,13 +225,13 @@ describe("slot writes on the worklet host", () => {
 		const p = program(SLIDER);
 		await session.play(p);
 		session.untilSwap();
-		session.host.writeSlots(Float64Array.of(0, 0.25));
+		session.host.writeSlots(serialOf(session), Float64Array.of(0, 0.25));
 		session.blocks(20);
 		const settled = Math.max(...slice(session.l, session.l.length - BLOCK * 4, session.l.length));
 		expect(settled).toBeCloseTo(peakAt(0.25), 2);
 
 		await session.play(program(SLIDER.replace("0.5", "0.6")));
-		session.host.writeSlots(Float64Array.of(0, 0.75));
+		session.host.writeSlots(serialOf(session), Float64Array.of(0, 0.75));
 		const swap = session.untilSwap();
 		const building = Math.max(...slice(session.l, swap - BLOCK * 4, swap));
 		expect(building, "the playing program keeps its value while the new one builds").toBeCloseTo(
@@ -243,6 +243,11 @@ describe("slot writes on the worklet host", () => {
 		expect(after).toBeCloseTo(peakAt(0.75), 2);
 	}, 20_000);
 });
+
+/** The serial of the session's last program posted: the program slot writes target. */
+function serialOf(session: Session): number {
+	return session.running?.wasm.serial ?? 0;
+}
 
 /** The settled left peak of `sin(60).gain(gain).out()` (out's own level included). */
 function peakAt(gain: number): number {

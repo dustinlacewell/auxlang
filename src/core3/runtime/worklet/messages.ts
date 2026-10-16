@@ -41,8 +41,13 @@ export interface PerfReport {
 	readonly overruns: readonly PerfOverrun[]; // quanta that blew the budget
 }
 
-/** Worklet -> main thread. Build failures must be loud, not swallowed. */
+/**
+ * Worklet -> main thread. Build failures must be loud, not swallowed.
+ * `swapped`: the program with `serial` now plays. `error`: `serial` names
+ * the program whose build failed; the old program plays on.
+ */
 export type WorkletReply =
-	| { readonly type: "error"; readonly message: string }
+	| { readonly type: "swapped"; readonly serial: number }
+	| { readonly type: "error"; readonly serial: number; readonly message: string }
 	| PerfReport
 	| MonitorFrame;

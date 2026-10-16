@@ -1,7 +1,8 @@
 /**
  * Slot writes for a program that is not playing yet. The main thread writes
- * the slots of the last program it posted (audio.ts `currentSlots`), so a
- * write that arrives while that program is queued or building is held here
+ * the slots of the latest program it posted and not failed (audio.ts
+ * `currentSlots`), tagged with its serial, so a write that arrives while
+ * that program is queued or building is held here
  * and applied after its swap's carry: newer than the carried value, it wins.
  * Preallocated per program; a write allocates nothing.
  */

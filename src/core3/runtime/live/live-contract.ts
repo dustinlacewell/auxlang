@@ -26,9 +26,15 @@ export interface SlotDecl {
 	readonly max?: number;
 }
 
-/** Editor -> worklet: dirty slots of one animation frame, pairs [slot index, value]. */
+/**
+ * Editor -> worklet: dirty slots of one animation frame, pairs [slot index, value].
+ * `serial`: the program whose slot indices the pairs use (prepare/wasm-prepared.ts).
+ * The worklet applies them only to that program, playing or still to play;
+ * else it drops them.
+ */
 export interface SlotWrites {
 	readonly type: "slots";
+	readonly serial: number;
 	readonly writes: Float64Array;
 }
 

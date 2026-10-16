@@ -4,8 +4,10 @@
  * (prepare/prepare-wasm-program.ts: the re-eval match against the last
  * program played, and the compiled and warmed WASM module) and posts it as
  * a swap; the worklet builds it while the old engine plays, then swaps and
- * crossfades. `stop()` silences it and ends the session: the next play
- * starts fresh.
+ * crossfades. The worklet replies `swapped` or `error` per program
+ * (posted-programs.ts): a program whose build failed is never the base of
+ * the next prepare, and its slot writes are dropped. `stop()` silences it
+ * and ends the session: the next play starts fresh.
  * The worklet bundle is
  * loaded via Vite's `?worker&url` import: Vite bundles it as a separate ES
  * module (worker.format) and returns its URL, in both dev and build. A bare
@@ -19,7 +21,7 @@ import { BUILD_BUDGET } from "./build/build-budget";
 import type { MonitorFrame, SlotDecl, Watch } from "./live/live-contract";
 import { MonitorReceiver } from "./live/monitor-receiver";
 import { watchList } from "./live/watch-list";
-import type { HostPrepared } from "./prepare/host-prepared";
+import { PostedPrograms } from "./posted-programs";
 import { prepareWasmProgram } from "./prepare/prepare-wasm-program";
 import { type SeedSession, createSeedSession } from "./seed-session";
 import workletUrl from "./worklet/index.ts?worker&url";
@@ -44,8 +46,8 @@ interface AudioHost {
 let host: AudioHost | null = null;
 // Beats/sec used to place overruns on the musical grid; set by enablePerf().
 let perfBps = 0;
-// The last program played: the next one matches against it and plans its carry from it.
-let running: HostPrepared | undefined;
+// The programs posted: the next one matches against the latest not failed and plans its carry from it.
+const programs = new PostedPrograms();
 
 async function ensureHost(): Promise<AudioHost> {
 	if (host) return host;
@@ -57,7 +59,11 @@ async function ensureHost(): Promise<AudioHost> {
 		outputChannelCount: [2],
 	});
 	node.port.onmessage = (e: MessageEvent<WorkletReply>) => {
-		if (e.data.type === "error") throw new Error(`core3 worklet: ${e.data.message}`);
+		if (e.data.type === "swapped") programs.swapped(e.data.serial);
+		if (e.data.type === "error") {
+			buildFailed(e.data.serial);
+			throw new Error(`core3 worklet: ${e.data.message}`);
+		}
 		if (e.data.type === "perf") reportPerf(e.data, context.sampleRate);
 		if (e.data.type === "monitor") receiveFrame(e.data, node.port);
 	};
@@ -99,13 +105,13 @@ async function playNext(program: Program, at: number): Promise<void> {
 		program,
 		registry,
 		context.sampleRate,
-		running,
+		programs.latest,
 		BUILD_BUDGET,
 		monitor,
 	);
 	if (at !== session) return;
 	flushSlots();
-	running = prepared;
+	programs.posted(prepared);
 	if (monitor) monitors.posted(prepared.wasm.serial, watchList(prepared.program, registry));
 	const message: WorkletMessage = { type: "swap", prepared };
 	node.port.postMessage(message);
@@ -121,7 +127,7 @@ export const playSeed: SeedSession = createSeedSession();
 export function stop(): void {
 	playSeed.end();
 	dirtySlots.clear();
-	running = undefined;
+	programs.clear();
 	session++;
 	if (!host) return;
 	const message: WorkletMessage = { type: "stop" };
@@ -155,29 +161,44 @@ export function disablePerf(): void {
 
 // ---- Live channel (live/live-contract.ts). Stubs: the engine side fills them in. ----
 
-// Slot writes since the last flush, by slot index; posted once per animation frame.
+// Slot writes since the last flush, by slot index, all for the program with
+// serial `dirtySerial`; posted once per animation frame.
 const dirtySlots = new Map<number, number>();
+let dirtySerial = 0;
 let slotPairs = new Float64Array(0);
 let slotFlushQueued = false;
 
-/** Write a slot of the playing program; coalesced to one message per animation frame. */
+/**
+ * Write a slot of the latest program posted and not failed (`currentSlots`);
+ * coalesced to one message per animation frame.
+ */
 export function writeSlot(index: number, value: number): void {
-	if (host === null || running === undefined) return;
+	const target = programs.latest;
+	if (host === null || target === undefined) return;
+	if (target.wasm.serial !== dirtySerial) flushSlots();
+	dirtySerial = target.wasm.serial;
 	dirtySlots.set(index, value);
 	if (slotFlushQueued) return;
 	slotFlushQueued = true;
 	requestAnimationFrame(flushSlots);
 }
 
-/** The slots of the last program played (Program.liveSlots), [] when none. */
+/** The slots writes target: the latest program posted and not failed (Program.liveSlots), [] when none. */
 export function currentSlots(): readonly SlotDecl[] {
-	return running?.program.liveSlots ?? [];
+	return programs.latest?.program.liveSlots ?? [];
+}
+
+/** A build failed: the program before it is the base again; its unsent writes go. */
+function buildFailed(serial: number): void {
+	if (serial === dirtySerial) dirtySlots.clear();
+	programs.failed(serial);
 }
 
 /**
- * Post the dirty slots as one SlotWrites. The pairs buffer is reused; the
- * message copies it (structured clone), so nothing is transferred. Runs
- * before a swap posts too, so writes indexed by the old program land first.
+ * Post the dirty slots as one SlotWrites, tagged with their program's
+ * serial. The pairs buffer is reused; the message copies it (structured
+ * clone), so nothing is transferred. Runs before a swap posts too, so writes
+ * indexed by the old program land first.
  */
 function flushSlots(): void {
 	slotFlushQueued = false;
@@ -189,7 +210,11 @@ function flushSlots(): void {
 		slotPairs[k++] = value;
 	}
 	dirtySlots.clear();
-	const message: WorkletMessage = { type: "slots", writes: slotPairs.subarray(0, k) };
+	const message: WorkletMessage = {
+		type: "slots",
+		serial: dirtySerial,
+		writes: slotPairs.subarray(0, k),
+	};
 	host.node.port.postMessage(message);
 }
 
@@ -209,7 +234,8 @@ export function onMonitor(
 ): () => void {
 	if (monitors.add(listener)) {
 		if (host) postMonitor(host.node.port, true);
-		if (running !== undefined && !running.monitor) void play(running.program).catch(console.error);
+		const latest = programs.latest;
+		if (latest !== undefined && !latest.monitor) void play(latest.program).catch(console.error);
 	}
 	return () => {
 		if (monitors.remove(listener) && host) postMonitor(host.node.port, false);

@@ -32,7 +32,12 @@ declare class AudioWorkletProcessor {
 declare function registerProcessor(name: string, processorCtor: typeof AudioWorkletProcessor): void;
 
 class Core3Processor extends AudioWorkletProcessor {
-	private readonly host = new LiveHost(sampleRate, getRegistry(), (err) => this.reportError(err));
+	private readonly host = new LiveHost(
+		sampleRate,
+		getRegistry(),
+		(err, serial) => this.reply({ type: "error", serial, message: String(err) }),
+		(serial) => this.reply({ type: "swapped", serial }),
+	);
 	// The right channel for a mono destination, mixed down after the block.
 	private monoR = new Float32Array(128);
 	// Opt-in render-quantum instrumentation; null until a "perf" message enables
@@ -50,7 +55,7 @@ class Core3Processor extends AudioWorkletProcessor {
 	private handle(message: WorkletMessage): void {
 		if (message.type === "swap") this.swap(message.prepared);
 		else if (message.type === "stop") this.host.stop();
-		else if (message.type === "slots") this.host.writeSlots(message.writes);
+		else if (message.type === "slots") this.host.writeSlots(message.serial, message.writes);
 		else if (message.type === "monitor") this.monitor.enable(message.enabled);
 		else if (message.type === "monitor-return") this.monitor.giveBack(message.buffer);
 		else if (PERF) this.setPerf(message.enabled);
@@ -71,8 +76,7 @@ class Core3Processor extends AudioWorkletProcessor {
 		}
 	}
 
-	private reportError(err: unknown): void {
-		const reply: WorkletReply = { type: "error", message: String(err) };
+	private reply(reply: WorkletReply): void {
 		this.port.postMessage(reply);
 	}
 

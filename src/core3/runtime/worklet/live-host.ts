@@ -11,7 +11,9 @@
  *
  * Programs build one after another, in the order they arrive: each takes
  * effect at its own block boundary (§7). A stop drops the programs still
- * building. Slot writes go to the last program posted (`writeSlots`).
+ * building. Each swap is reported with its program's serial (`swapped`), each
+ * failed build too (`report`); the old engine plays on after a failure. Slot
+ * writes go to the program whose serial they carry (`writeSlots`).
  */
 
 import type { Registry } from "../../types";
@@ -44,7 +46,8 @@ export class LiveHost {
 	constructor(
 		sampleRate: number,
 		private readonly registry: Registry,
-		private readonly report: (error: unknown) => void,
+		private readonly report: (error: unknown, serial: number) => void,
+		private readonly swapped: (serial: number) => void = () => {},
 	) {
 		this.fadeLen = Math.max(1, Math.floor((CROSSFADE_MS / 1000) * sampleRate));
 	}
@@ -60,13 +63,18 @@ export class LiveHost {
 	}
 
 	/**
-	 * Slot writes, indexed by the last program posted: into it while it is
-	 * queued or building (held for its swap), else into the playing engine.
+	 * Slot writes, indexed by the program with `serial`: into the playing
+	 * engine, or held for the swap of a program queued or building. Dropped
+	 * for any other program (one whose build failed, or one stopped).
 	 */
-	writeSlots(pairs: Float64Array): void {
-		const queued = this.queue[this.queue.length - 1];
-		if (queued !== undefined) queued.slots.writeSlots(pairs);
-		else (this.building ?? this.engine)?.writeSlots(pairs);
+	writeSlots(serial: number, pairs: Float64Array): void {
+		this.slotTarget(serial)?.writeSlots(pairs);
+	}
+
+	private slotTarget(serial: number): { writeSlots(pairs: Float64Array): void } | null {
+		if (this.engine?.wasm.serial === serial) return this.engine;
+		if (this.building?.wasm.serial === serial) return this.building;
+		return this.queue.find((q) => q.prepared.wasm.serial === serial)?.slots ?? null;
 	}
 
 	/** Fade to silence instead of cutting mid-waveform; drop the programs still building. */
@@ -108,6 +116,7 @@ export class LiveHost {
 		this.fading = this.engine ?? this.fading; // any engine already fading is dropped here
 		this.fadePos = 0;
 		this.engine = next;
+		this.swapped(next.wasm.serial);
 	}
 
 	private build(): void {
@@ -122,8 +131,9 @@ export class LiveHost {
 		try {
 			this.building.advance(this.building.prepared.budget);
 		} catch (err) {
+			const { serial } = this.building.wasm;
 			this.building = null;
-			this.report(err);
+			this.report(err, serial);
 		}
 	}
 
