@@ -152,8 +152,9 @@ const controlTheme = EditorView.baseTheme({
 		width: "1px",
 		height: "7px",
 		background: "white",
-		transformOrigin: "50% 0%",
-		// knobAngle() is 0 = pointing up; shift the origin-anchored line up first.
+		// Rotate about the line's bottom end, which sits on the knob's centre.
+		transformOrigin: "50% 100%",
+		// knobAngle() is 0 = pointing up: the line spans centre to rim above it.
 		translate: "0 -7px",
 	},
 	".aux-control-toggle": {
