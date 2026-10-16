@@ -3,38 +3,51 @@
  * read back as source. A signal lambda, a tick, its helpers and its state are
  * stringified (checked against the tick subset, shipped to the worklet,
  * hashed into the module kind), so a trace call inserted there would change
- * the program. Two rules find them:
+ * the program. Three rules find them:
  *
  *  - every argument of a `defmod(...)` call, and the declarations its spec
  *    names by identifier (`defmod(spec)`, `{ tick }`, `helpers: { fold }`);
+ *  - a `defpatch(...)` call's last argument's PARAM LIST only (not its body,
+ *    which is ordinary patch code and stays traced): `fn.toString()` is read
+ *    back for port inference (patch/defpatch), so a trace wrapper inserted in
+ *    a param default (e.g. `cutoff = hz(84)`) would change what that read
+ *    back text parses to;
  *  - every function that cannot build a module: no method call other than
  *    `Math.*`, no tagged template, no call to a user-scope name. Every tick
  *    and lambda inside the subset is such a function.
  */
 
-import type { AnyNode, CallExpression } from "acorn";
+import type { AnyNode, ArrowFunctionExpression, CallExpression, FunctionExpression } from "acorn";
 import { walk } from "../../module/front/parse/walk";
 import type { SourceRange } from "../range";
 import { isMathMember } from "./is-math-member";
 
 export function protectedSpans(program: AnyNode, scope: ReadonlySet<string>): SourceRange[] {
 	const found = survey(program, scope);
-	return [...inertFunctions(found), ...defmodSpans(found)];
+	return [...inertFunctions(found), ...defmodSpans(found), ...defpatchSpans(found)];
 }
 
 interface Survey {
 	readonly functions: AnyNode[];
 	readonly builderCalls: AnyNode[];
 	readonly defmods: CallExpression[];
+	readonly defpatches: CallExpression[];
 	readonly declarations: Map<string, AnyNode[]>;
 }
 
 function survey(program: AnyNode, scope: ReadonlySet<string>): Survey {
-	const found: Survey = { functions: [], builderCalls: [], defmods: [], declarations: new Map() };
+	const found: Survey = {
+		functions: [],
+		builderCalls: [],
+		defmods: [],
+		defpatches: [],
+		declarations: new Map(),
+	};
 	walk(program, (node) => {
 		if (isFunction(node)) found.functions.push(node);
 		if (isBuilderCall(node, scope)) found.builderCalls.push(node);
 		if (node.type === "CallExpression" && calleeIs(node, "defmod")) found.defmods.push(node);
+		if (node.type === "CallExpression" && calleeIs(node, "defpatch")) found.defpatches.push(node);
 		const declared = declaration(node);
 		if (declared !== null) {
 			const list = found.declarations.get(declared.name) ?? [];
@@ -60,6 +73,21 @@ function defmodSpans(found: Survey): SourceRange[] {
 				for (const decl of found.declarations.get(name) ?? []) spans.push(spanOf(decl));
 			}
 		}
+	}
+	return spans;
+}
+
+/** A `defpatch(...)` call's last argument, when a function: its param list only. */
+function defpatchSpans(found: Survey): SourceRange[] {
+	const spans: SourceRange[] = [];
+	for (const call of found.defpatches) {
+		const last = call.arguments[call.arguments.length - 1];
+		if (last === undefined || !isFunction(last)) continue;
+		const fn = last as ArrowFunctionExpression | FunctionExpression;
+		if (fn.params.length === 0) continue;
+		const first = fn.params[0] as AnyNode;
+		const end = fn.params[fn.params.length - 1] as AnyNode;
+		spans.push({ start: first.start, end: end.end });
 	}
 	return spans;
 }

@@ -14,6 +14,7 @@ export const RESERVED_SCOPE_NAMES: ReadonlySet<string> = new Set([
 	"loop",
 	"p",
 	"defmod",
+	"defpatch",
 	// PortAnn helpers (types.ts) — pure, exposed so defmod specs can annotate ports.
 	"sig",
 	"hz",

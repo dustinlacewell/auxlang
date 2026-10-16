@@ -16,6 +16,7 @@ import { compile } from "./compile/compile";
 import { getModule, getRegistry } from "./module/define";
 import { type EvalOptions, runEval } from "./patch/context";
 import { defmod } from "./patch/defmod";
+import { defpatch } from "./patch/defpatch";
 import { moduleFactory } from "./patch/factory";
 import type { Handle } from "./patch/handle-data";
 import { loop } from "./patch/loop";
@@ -34,6 +35,7 @@ import { beats, hz, secs, semis } from "./units/tag";
 export { runEval } from "./patch/context";
 export { clock } from "./patch/clock";
 export { defmod } from "./patch/defmod";
+export { defpatch } from "./patch/defpatch";
 export { loop } from "./patch/loop";
 export { out } from "./patch/out";
 export { seq } from "./patch/seq";
@@ -70,6 +72,7 @@ const RESERVED = {
 	loop,
 	p,
 	defmod,
+	defpatch,
 	sig,
 	hz,
 	unit,

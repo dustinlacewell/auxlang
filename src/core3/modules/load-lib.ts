@@ -8,17 +8,19 @@
 import { LIBRARY_FUNCTIONS } from "../module/library-functions";
 import { withSourceText } from "../module/source-text";
 import { defmod } from "../patch/defmod";
+import { defpatch } from "../patch/defpatch";
 import { gatePort, group, optional, phasePort, sig, sigs, slotted, trigPort, unit } from "../types";
 import { beats, hz, secs, semis } from "../units/tag";
 import type { LibSource } from "./lib-sources";
 
 /**
- * What a library file can name: `defmod`, the port annotations, and the pure
+ * What a library file can name: `defmod`, `defpatch`, the port annotations, and the pure
  * functions a module may list in its `helpers` (their text, not their
  * closure, is what the tick runs).
  */
 const LIB_SCOPE: Readonly<Record<string, unknown>> = {
 	defmod,
+	defpatch,
 	sig,
 	sigs,
 	unit,
