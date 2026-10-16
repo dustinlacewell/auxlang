@@ -49,7 +49,7 @@ export interface CompiledWasm {
 }
 
 export function compileWasm(input: WasmInput): CompiledWasm {
-	const layout = planMemory(input.runs, input.readsPattern, input.irs, input.lambdas, input.size);
+	const layout = planMemory(input.runs, input.readsPattern, input.irs, input.plans, input.lambdas, input.size);
 	const table = new FunctionTable(1);
 	const fillType = table.typeIndex([I32, I32, F64], []);
 	const enter = table.add(tableEnter(table.typeIndex(ENTER_PARAMS, []), FILL));

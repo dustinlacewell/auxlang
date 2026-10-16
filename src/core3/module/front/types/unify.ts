@@ -5,10 +5,11 @@
  * JS); a variable holding an array or record only takes one of the same type
  * and length, so every engine reads it at a run-time address the same way; a
  * string only exists while compiling, so it is never stored, nor is one of
- * a tick's parameter records (a `const` names it, module/roles.ts). An array
- * element converts what it is given (its place is `unknown`), so it takes
- * any number or boolean. Returns the loud error, or null when the store
- * unifies.
+ * a tick's parameter records (a `const` names it, module/roles.ts). A typed
+ * array's element converts what it is given (its place is `unknown`), so it
+ * takes any number or boolean, and an array or record there is used as a
+ * number. A record in an array of records is a place of the record's type.
+ * Returns the loud error, or null when the store unifies.
  */
 
 import { type RefShape, type Ty, tyKey } from "./ty";
@@ -37,7 +38,7 @@ export const ROLE_STORED =
 export function unify(place: Ty, value: Ty): string | null {
 	if (value.k === "role") return ROLE_STORED;
 	if (place.k === "ref") return value.k === "ref" && sameShape(place.shape, value.shape) ? null : REBOUND;
-	if (value.k === "ref") return place.k === "unknown" ? null : REF_STORED;
+	if (value.k === "ref") return place.k === "unknown" ? STRUCTURED_OPERAND : REF_STORED;
 	if (value.k === "static" && typeof value.v === "string") return STRING_STORED;
 	const p = classOf(place);
 	const v = classOf(value);

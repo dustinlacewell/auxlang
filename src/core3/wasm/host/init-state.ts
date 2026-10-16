@@ -7,7 +7,7 @@
  */
 
 import type { Field, Shape } from "../layout/state-shape";
-import { pointHome } from "./codec/field-address";
+import { pointElementsHome, pointHome } from "./codec/field-address";
 
 /** A field of the record at `base`: its value in its own storage, a rebound field's slot pointing there. */
 export function initField(memory: ArrayBuffer, base: number, field: Field, value: unknown): void {
@@ -33,6 +33,7 @@ function writeState(memory: ArrayBuffer, at: number, shape: Shape, value: unknow
 		}
 		case "records": {
 			const list = value as readonly unknown[];
+			pointElementsHome(memory, at, shape);
 			list.forEach((item, k) => {
 				writeState(memory, at + k * shape.element.size, shape.element, item);
 			});

@@ -10,7 +10,7 @@ import type { AnyNode, AssignmentExpression } from "acorn";
 import { OP } from "../encode/opcodes";
 import type { FnEmitter } from "./fn-emitter";
 import { placeOf } from "./place";
-import { emitFieldRebind, isFieldRebind } from "./pointer-field";
+import { emitPointerRebind, isPointerRebind } from "./pointer-slot";
 import { type Address, type MemoryValue, inMemory } from "./values";
 import { referenceWritten } from "./written";
 
@@ -52,7 +52,7 @@ export function placeOfAddress(e: FnEmitter, node: AnyNode, known: MemoryValue |
 		emitRebind(e, node);
 		return refAt(e, node.left);
 	}
-	if (node.type === "AssignmentExpression" && isFieldRebind(e, node)) return emitFieldRebind(e, node);
+	if (node.type === "AssignmentExpression" && isPointerRebind(e, node)) return emitPointerRebind(e, node);
 	const fn = e.ctx.fn;
 	if (node.type !== "Identifier" || known === null || known.at.base === null) return null;
 	if (fn === null || !referenceWritten(fn, node)) return null;

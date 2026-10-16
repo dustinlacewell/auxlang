@@ -1,8 +1,7 @@
 /**
  * The agreement table: each tick snippet either passes the shared checker and
  * renders on WASM bit-identical to the interpreter (accept), or the checker
- * refuses it, at eval or at build on both engines (reject). Rows whose
- * backends disagree today are `it.fails` until a step closes them.
+ * refuses it, at eval or at build on both engines (reject).
  */
 
 import "@/core3/modules/all";
@@ -166,6 +165,23 @@ const AGREED_ACCEPT: readonly Row[] = [
 		"o.out = sw(s)",
 		"sw: (r) => { const t = r.a; r.a = r.b; r.b = t; r.a[0] += 1; return r.a[0] - r.b[0] }",
 	),
+	accept("a record stored into an array of records", "s.voices[0] = s.voices[1]; s.voices[0].x += 1; o.out = s.voices[1].x"),
+	accept(
+		"an element swap through a const",
+		"s.voices[0].x = s.n; s.voices[1].x = -s.n; s.n++; const t = s.voices[0]; s.voices[0] = s.voices[1]; s.voices[1] = t; s.voices[0].x += 0.5; o.out = s.voices[0].x * 10 + s.voices[1].x",
+	),
+	accept("a write through one alias of an element", "s.voices[1] = s.voices[0]; s.voices[1].x += i.in; o.out = s.voices[0].x"),
+	accept(
+		"an element swap in a helper",
+		"o.out = sw(s.voices)",
+		"sw: (l) => { const t = l[0]; l[0] = l[1]; l[1] = t; l[0].x += 1; return l[0].x - l[1].x }",
+	),
+	accept(
+		"an element rebound at a proven run-time index",
+		"const k = (s.n | 0) & 1; s.voices[k] = s.voices[1 - k]; s.n++; s.voices[k].x += 1; o.out = s.voices[0].x - s.voices[1].x",
+	),
+	accept("a record field stored into an array of records", "s.voices[0] = s.v; s.v.x += 1; o.out = s.voices[0].x"),
+	accept("&&= on an element of an array of records", "s.voices[0] &&= s.voices[1]; s.voices[1].x += 1; o.out = s.voices[0].x"),
 ];
 
 /** Forms the checker refuses, so neither backend runs them. */
@@ -211,6 +227,9 @@ const AGREED_REJECT: readonly Row[] = [
 	reject("an array as an index", "o.out = s.buf[s.a]", /an array or record used as a number/),
 	reject("the last of a comma expression, an array", "o.out = (0, s.a)", /an array or record used as a number/),
 	reject("a helper returning an array", "o.out = f(s.a)[0]", /an array or record used as a number/, "f: (p) => p"),
+	reject("an array stored into a typed array element", "s.buf[0] = s.a; o.out = 1", /an array or record used as a number/),
+	reject("a number stored over a record of an array of records", "s.voices[0] = 1; o.out = 1", /takes only an array or record of the same type/),
+	reject("a record stored at an index not proven in range", "s.voices[s.n % 2] = s.v; o.out = 1", /index not proven inside the array/),
 	reject("a field of a number", "const k = i.in; o.out = k.n", /reads field 'n' of a value that is not a record/),
 	reject(
 		"a field of a number, in a helper also given the state record",
@@ -226,12 +245,6 @@ const AGREED_REJECT: readonly Row[] = [
 		/takes only an array or record of the same type and length/,
 		"f: (p, q) => { p = q; return p[0] }",
 	),
-];
-
-/** Rows the backends disagree on today: each states the agreed outcome. */
-const DISAGREE_ACCEPT: readonly Row[] = [
-	// The plan takes a record into an element of an array of records; WASM has no pointer per element.
-	accept("a record stored into an array of records", "s.voices[0] = s.voices[1]; s.voices[0].x += 1; o.out = s.voices[1].x"),
 ];
 
 function expectAccepted(row: Row): void {
@@ -255,8 +268,4 @@ function expectRejected(row: Row): void {
 describe("tick forms: both backends agree", () => {
 	for (const row of AGREED_ACCEPT) it(`accept: ${row.what}`, () => expectAccepted(row));
 	for (const row of AGREED_REJECT) it(`reject: ${row.what}`, () => expectRejected(row));
-});
-
-describe("tick forms the backends disagree on today", () => {
-	for (const row of DISAGREE_ACCEPT) it.fails(`accept: ${row.what}`, () => expectAccepted(row));
 });

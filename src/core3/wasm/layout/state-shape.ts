@@ -4,7 +4,8 @@
  * at fixed offsets, an array of records equal-shaped records at a stride.
  * Offsets are from the start of the enclosing record (for a lane's
  * top-level fields, from address 0). Every size is a multiple of 8. A
- * rebound field reaches its value through a pointer slot (`Field`).
+ * rebound field reaches its value through a pointer slot (`Field`), a
+ * rebound element of an array of records through its table (`RecordsShape`).
  */
 
 import type { ElementType } from "../../module/front/types/element-type";
@@ -27,10 +28,18 @@ export interface RecordShape {
 	readonly fields: Readonly<Record<string, Field>>;
 }
 
+/**
+ * `length` records at a stride of `element.size`. An array whose elements
+ * the code rebinds (front/types/element-rebinds.ts) also has a table of i32
+ * slots at `pointers` (same base, 4 bytes each, after the records): slot k
+ * holds the absolute address of the record element k names now, its own
+ * record until the code stores another one there.
+ */
 export interface RecordsShape {
 	readonly k: "records";
 	readonly length: number;
 	readonly element: RecordShape;
+	readonly pointers?: number | undefined;
 }
 
 /**

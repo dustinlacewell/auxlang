@@ -79,6 +79,7 @@ const sw = defmod({
     b: new Float32Array(3),
     p: { buf: new Float64Array(2), k: 0 },
     q: { buf: new Float64Array(2), k: 0 },
+    voices: [{ x: 0 }, { x: 0 }, { x: 0 }],
   }),
   tick: (s, i, o) => {
     ${body}
@@ -107,6 +108,16 @@ const SWAP_RECORDS = `s.n++
     if (s.n % 7 === 0) { const t = s.p; s.p = s.q; s.q = t }
     if (s.n % 19 === 0) { const u = s.p.buf; s.p.buf = s.q.buf; s.q.buf = u }
     const v = s.p.buf[0] - s.q.buf[1] + s.p.k * 0.0001`;
+
+/** Swaps the first and last records of an array of records every 7 samples: odd by the swap. */
+const SWAP_ELEMENTS = `s.n++
+    s.voices[(s.n | 0) & 1].x += i.in * 0.001
+    if (s.n % 7 === 0) { const t = s.voices[0]; s.voices[0] = s.voices[2]; s.voices[2] = t }
+    const v = s.voices[0].x - s.voices[2].x * 0.5 + s.voices[1].x * 0.25`;
+
+/** As SWAP_ELEMENTS; late in A, one-way: two elements name one record. */
+const ALIAS_ELEMENTS = `${SWAP_ELEMENTS}
+    if (s.n === 7919) s.voices[1] = s.voices[0]`;
 
 const EDITS: Record<string, Edit> = {
 	"knob change": {
@@ -158,6 +169,14 @@ const EDITS: Record<string, Edit> = {
 	"swapped records holding swapped arrays carried": {
 		before: () => evalPatch(swapper(SWAP_RECORDS, 0.1)),
 		after: () => evalPatch(swapper(SWAP_RECORDS, 0.2)),
+	},
+	"swapped elements of an array of records carried": {
+		before: () => evalPatch(swapper(SWAP_ELEMENTS, 0.1)),
+		after: () => evalPatch(swapper(SWAP_ELEMENTS, 0.2)),
+	},
+	"one record under two elements carried as two": {
+		before: () => evalPatch(swapper(ALIAS_ELEMENTS, 0.1)),
+		after: () => evalPatch(swapper(ALIAS_ELEMENTS, 0.2)),
 	},
 	"sample-rate change": {
 		before: patch(() => saw(48).lpf(80).delay(DELAY).out()),

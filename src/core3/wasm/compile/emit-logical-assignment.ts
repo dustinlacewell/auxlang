@@ -17,7 +17,7 @@ import { emitExpr, emitStatic } from "./emit-expression";
 import { type Target, readTarget, targetOf } from "./emit-member";
 import type { FnEmitter } from "./fn-emitter";
 import { placeOf } from "./place";
-import { emitFieldRebind, isFieldRebind } from "./pointer-field";
+import { emitPointerRebind, isPointerRebind } from "./pointer-slot";
 import type { Kind } from "./values";
 
 export function emitLogicalAssignment(e: FnEmitter, node: AssignmentExpression, keep: boolean): Kind | null {
@@ -32,14 +32,15 @@ export function emitLogicalAssignment(e: FnEmitter, node: AssignmentExpression, 
 }
 
 /**
- * On an array or record variable or field: it is truthy and never nullish,
- * so `&&=` always rebinds it and `||=`/`??=` only find it (the owner's code
- * runs, as JS evaluates it).
+ * On an array or record variable, field or element: it is truthy and never
+ * nullish, so `&&=` always rebinds it and `||=`/`??=` only find it (the
+ * owner's code runs, as JS evaluates it). The plan refuses its value where
+ * it counts (front/types/type-expression.ts).
  */
 function refAssign(e: FnEmitter, node: AssignmentExpression, op: string, keep: boolean): null {
-	if (keep) return e.fail(node, "a logical assignment of an array or record is used as a value");
+	if (keep) return e.fail(node, "a logical assignment of an array or record is used as a value (compiler bug)");
 	if (op !== "&&") placeOf(e, node.left);
-	else if (isFieldRebind(e, node)) emitFieldRebind(e, node);
+	else if (isPointerRebind(e, node)) emitPointerRebind(e, node);
 	else emitRebind(e, node);
 	return null;
 }

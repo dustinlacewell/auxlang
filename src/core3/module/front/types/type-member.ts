@@ -88,6 +88,8 @@ function typeIndex(c: PlanContext, node: MemberExpression, write: boolean): Ty {
 	const index = typeNumeric(c, node.property, "value");
 	if (isRecord(owner)) c.events.push({ k: "field", node, fault: { k: "indexed" } });
 	if (owner.k !== "ref" || owner.shape.k === "record") return UNKNOWN;
+	if (write && owner.shape.k === "records" && !within(rangeOf(index), 0, owner.shape.length - 1))
+		c.events.push({ k: "field", node, fault: { k: "grows" } });
 	const path = isPath(c, node.object);
 	const constant = path && index.k === "static";
 	const valid = constant && typeof index.v === "number" && validIndex(index.v, owner.shape.length);

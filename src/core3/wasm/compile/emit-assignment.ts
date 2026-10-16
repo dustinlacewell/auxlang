@@ -26,7 +26,7 @@ import {
 	targetOf,
 } from "./emit-member";
 import type { FnEmitter } from "./fn-emitter";
-import { emitFieldRebind, isFieldRebind } from "./pointer-field";
+import { emitPointerRebind, isPointerRebind } from "./pointer-slot";
 import type { Kind } from "./values";
 
 export function emitAssignment(
@@ -36,7 +36,7 @@ export function emitAssignment(
 ): Kind | null {
 	const op = node.operator;
 	if (op === "&&=" || op === "||=" || op === "??=") return emitLogicalAssignment(e, node, keep);
-	if (isRebind(e, node) || isFieldRebind(e, node)) return rebind(e, node, keep);
+	if (isRebind(e, node) || isPointerRebind(e, node)) return rebind(e, node, keep);
 	const target = targetOf(e, node.left);
 	if (target.k === "local" && target.kind === "int") return stepCounter(e, node, target, keep);
 	if (op === "=") return writeTarget(e, target, keep, () => emitExpr(e, node.right), node);
@@ -89,10 +89,13 @@ export function emitUpdate(e: FnEmitter, node: UpdateExpression, keep: boolean):
 	return keep ? kind : null;
 }
 
-/** `a = s.b` on an array variable, `s.a = s.b` on a field; its value is only ever used as a place (place.ts). */
+/**
+ * `a = s.b` on an array variable, `s.a = s.b` on a field, `s.voices[0] = s.voices[1]`
+ * on an element; its value is only ever used as a place (place.ts).
+ */
 function rebind(e: FnEmitter, node: AssignmentExpression, keep: boolean): null {
 	if (keep) return e.fail(node, "an array rebind is used as a number (compiler bug)");
-	if (isFieldRebind(e, node)) emitFieldRebind(e, node);
+	if (isPointerRebind(e, node)) emitPointerRebind(e, node);
 	else emitRebind(e, node);
 	return null;
 }

@@ -14,7 +14,10 @@
 
 import type { ModuleIR } from "../../module/front/module/module-ir";
 import { fieldRebinds } from "../../module/front/scope/field-rebinds";
+import { elementRebinds } from "../../module/front/types/element-rebinds";
+import type { FunctionPlan } from "../../module/front/types/function-plan";
 import type { NodeRun } from "../../runtime/node-run";
+import type { NodePlans } from "../../runtime/specialise/specialise-nodes";
 import { cacheSlotsIn } from "../compile/cache-slots";
 import type { Field } from "../layout/state-shape";
 import { INITIAL_ROWS, SLOT_BYTES, tableBytes } from "../layout/table-format";
@@ -69,6 +72,7 @@ export function planMemory(
 	runs: readonly NodeRun[],
 	readsPattern: readonly boolean[],
 	irs: readonly ModuleIR[],
+	plans: NodePlans,
 	lambdas: LambdaSources,
 	size: number,
 ): WasmLayout {
@@ -89,10 +93,10 @@ export function planMemory(
 			if (port.view !== null) views[port.name] = take(8 * port.srcLanes);
 		}
 		const slots = moduleCacheSlots(irs[i] as ModuleIR);
-		const rebound = fieldRebinds(irs[i] as ModuleIR);
+		const fields = fieldRebinds(irs[i] as ModuleIR);
 		const lanes = run.states.map((state, l) => ({
 			state: Object.fromEntries(numericFields(state).map((f) => [f, take(8)])),
-			aggregates: planAggregates(state, rebound, take),
+			aggregates: planAggregates(state, { fields, elements: laneElementRebinds(plans[i], l) }, take),
 			cache: take(8 * slots),
 			cacheSlots: slots,
 			tables: readsPattern[i] ? take(SLOT_BYTES) : null,
@@ -103,6 +107,14 @@ export function planMemory(
 	const heap = top;
 	const pages = Math.max(1, Math.ceil((heap + initialHeap(nodes)) / PAGE));
 	return { pages, outL, outR, cur, count, size, nodes, heap };
+}
+
+const NO_REBINDS: ReadonlySet<string> = new Set();
+
+/** The arrays of records whose elements lane `l`'s plan rebinds; none for a node with no plans. */
+function laneElementRebinds(plans: readonly FunctionPlan[] | undefined, l: number): ReadonlySet<string> {
+	const plan = plans?.[l];
+	return plan === undefined ? NO_REBINDS : elementRebinds(plan);
 }
 
 /** Two tables of the initial size per table lane. */

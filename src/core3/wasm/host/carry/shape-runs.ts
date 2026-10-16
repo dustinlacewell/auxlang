@@ -5,13 +5,13 @@
  * by field (by name: the two may order their fields differently), an array
  * of records element by element. RunList joins what is contiguous.
  *
- * An old rebound field's value is wherever its slot points at the swap: its
- * runs read from that base (`CARRY_DEREF` … `CARRY_POP`, in words). The new
+ * An old rebound field's value, or rebound element's record, is wherever its
+ * slot points at the swap: its runs read from that base (`CARRY_DEREF` … `CARRY_POP`, in words). The new
  * value always goes to the fresh field's own storage, which its fresh slot
  * points at, so each name gets its own copy, as the JS hand-over gives.
  */
 
-import type { Field, Shape } from "../../layout/state-shape";
+import type { Field, RecordsShape, Shape } from "../../layout/state-shape";
 import { sizeOf } from "../../program/state-layout";
 import { CARRY_F64, CARRY_REL, CARRY_WORD } from "./carry-run";
 import type { RunList } from "./run-list";
@@ -61,16 +61,27 @@ function shapeRuns(
 			return;
 		case "records": {
 			if (old.k !== "records") throw new Error("carry: records against a non-records");
-			const { element } = fresh;
 			for (let k = 0; k < fresh.length; k++)
-				shapeRuns(
-					runs,
-					old.element,
-					oldAt + k * old.element.size,
-					element,
-					freshAt + k * element.size,
-					relative,
-				);
+				elementRuns(runs, old, oldAt, k, fresh.element, freshAt + k * fresh.element.size, relative);
 		}
 	}
+}
+
+/** Element `k` of the old array at `oldAt`: its own record, or, when rebound, wherever its slot points. */
+function elementRuns(
+	runs: RunList,
+	old: RecordsShape,
+	oldAt: number,
+	k: number,
+	fresh: Shape,
+	freshAt: number,
+	relative: boolean,
+): void {
+	if (old.pointers === undefined) {
+		shapeRuns(runs, old.element, oldAt + k * old.element.size, fresh, freshAt, relative);
+		return;
+	}
+	runs.deref(oldAt + old.pointers + 4 * k);
+	shapeRuns(runs, old.element, 0, fresh, freshAt, true);
+	runs.pop();
 }

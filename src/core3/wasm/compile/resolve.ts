@@ -3,8 +3,8 @@
  * record, a tick's state field, input or output, a config value, state in
  * memory (a field of a record, a record of an array at a constant index), an
  * array's length, a Math constant. A record at a run-time index, and a
- * rebound field's value (here its pointer slot), need code for their
- * address: place.ts.
+ * rebound field's or element's value (here its pointer slot), need code for
+ * their address: place.ts.
  */
 
 import type { AnyNode, MemberExpression } from "acorn";
@@ -67,13 +67,15 @@ function resolveMember(e: FnEmitter, node: MemberExpression): Value | null {
 	}
 }
 
-/** `list[3]` of an array of records: the record, at a constant address. */
+/** `list[3]` of an array of records: the record at a constant address, or a rebound one through its slot there. */
 function recordAtConstant(e: FnEmitter, owner: MemoryValue, property: AnyNode): Value | null {
 	const shape = owner.shape;
 	if (shape.k !== "records") return null;
 	const index = e.fold(property);
 	if (index === null || typeof index.v !== "number" || !validIndex(index.v, shape.length))
 		return null;
-	const offset = owner.at.offset + index.v * shape.element.size;
-	return inMemory(shape.element, { base: owner.at.base, offset });
+	const { base, offset } = owner.at;
+	if (shape.pointers !== undefined)
+		return throughPointer(shape.element, { base, offset: offset + shape.pointers + 4 * index.v });
+	return inMemory(shape.element, { base, offset: offset + index.v * shape.element.size });
 }

@@ -173,14 +173,15 @@ function typeUpdate(c: PlanContext, node: UpdateExpression): Ty {
 }
 
 /**
- * The type a write target keeps: a variable's, a field's. An array element
- * converts what it is given in JS too, so it keeps anything.
+ * The type a write target keeps: a variable's, a field's, a record's in an
+ * array of records. A typed array's element converts what it is given in JS
+ * too, so it keeps any number or boolean.
  */
 function typePlace(c: PlanContext, target: AnyNode): Ty {
 	if (target.type !== "MemberExpression") return typeExpr(c, target, "value");
 	const ty = typeMember(c, target, true);
 	c.types.set(target, ty);
-	return target.computed ? UNKNOWN : ty;
+	return target.computed && ty.k !== "ref" ? UNKNOWN : ty;
 }
 
 function typeSequence(c: PlanContext, node: SequenceExpression, pos: Position): Ty {
