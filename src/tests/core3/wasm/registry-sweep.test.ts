@@ -92,6 +92,7 @@ sin(60).mul(clockdiv(c.beat, 3).ad(0.005, 0.1)).gain(0.2).out()`,
 sin(60).mul(clockmult(c.beat, 3).ad(0.005, 0.05)).gain(0.2).out()`,
 	counter: `const c = tempo(120)
 sin(counter(c.beat, { reset: clockdiv(c.beat, 5) }).seq(p\`c4 e4 g4 ~\`.steps())).gain(0.2).out()`,
+	mixer: `mixer({ a: sin(60), b: tri(67) }).level({ b: 0.5 }).mod("level.a", lfo(0.3), 0.5).gain(0.2).out()`,
 	seq: `${NOTES}s.saw().lpf(s.add(24), 0.3).mul(s.gate.adsr(0.01, 0.1, 0.5, 0.1)).gain(0.2).out()`,
 	hz2semis: "sin(lfo(0.5, 200, 800).hz2semis()).gain(0.2).out()",
 	semis2hz: "sin(hz(lfo(0.5, 50, 70).semis2hz())).gain(0.2).out()",
