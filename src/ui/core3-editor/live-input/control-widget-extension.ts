@@ -6,6 +6,11 @@
  * while stopped, or the playing program's (`currentSlots()`) while playing —
  * either way just display data (value, range).
  *
+ * A fresh sourceMap/liveSlots pair (a new silent-eval result, or a played
+ * program's) arrives outside any CodeMirror transaction — the host dispatches
+ * `setLiveProgram.of(...)` to tell the view, so decorations rebuild right
+ * away instead of waiting for the next doc-changing transaction.
+ *
  * Moving a widget always rewrites its value literal in the code — when the
  * call wrote one (`xy(0.2, 0.4)`); a value bound to a signal has nothing to
  * rewrite. While playing, it ALSO writes the engine's slot (already coalesced
@@ -26,7 +31,7 @@
 import { currentSlots, writeSlot } from "@/core3/runtime/audio";
 import type { SlotDecl } from "@/core3/runtime/live/live-contract";
 import type { SourceMap } from "@/core3/source/source-map";
-import type { Extension } from "@codemirror/state";
+import { StateEffect, type Extension } from "@codemirror/state";
 import {
 	Decoration,
 	type DecorationSet,
@@ -55,6 +60,14 @@ export interface ControlWidgetHost {
 	readonly isPlaying: () => boolean;
 }
 
+/** Dispatched when a fresh sourceMap/liveSlots pair arrives outside any doc transaction (new eval result, or a played program's), so the plugin rebuilds decorations right away. */
+export const setLiveProgram = StateEffect.define<void>();
+
+/** True when some transaction in this update carries `setLiveProgram` — pulled out of the ViewPlugin so the trigger condition is testable with no CodeMirror view. */
+export function carriesLiveProgram(update: Pick<ViewUpdate, "transactions">): boolean {
+	return update.transactions.some((tr) => tr.effects.some((e) => e.is(setLiveProgram)));
+}
+
 export function controlWidgetExtension(host: ControlWidgetHost): Extension {
 	const { sourceMapOf, slotsOf, isPlaying } = host;
 	const plugin = ViewPlugin.fromClass(
@@ -75,6 +88,7 @@ export function controlWidgetExtension(host: ControlWidgetHost): Extension {
 						range.end = update.changes.mapPos(range.end, 1);
 					}
 				}
+				if (!update.docChanged && !carriesLiveProgram(update)) return;
 				this.rebuild();
 			}
 

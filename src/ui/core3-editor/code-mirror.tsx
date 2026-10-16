@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { glowExtension } from "./live-display/glow-extension";
 import { patternHighlightExtension } from "./live-display/pattern-highlight-extension";
-import { controlWidgetExtension } from "./live-input/control-widget-extension";
+import { controlWidgetExtension, setLiveProgram } from "./live-input/control-widget-extension";
 import { numberDragExtension } from "./live-input/number-drag-extension";
 
 interface CodeMirrorProps {
@@ -128,6 +128,13 @@ export function CodeMirror({
 			view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } });
 		}
 	}, [value]);
+
+	// A new sourceMap/liveSlots pair (a silent eval or a played program's)
+	// arrives outside any doc transaction — tell the view so the control
+	// widgets rebuild now, not on the next edit/focus.
+	useEffect(() => {
+		viewRef.current?.dispatch({ effects: setLiveProgram.of(undefined) });
+	}, [sourceMap, liveSlots]);
 
 	return (
 		<>

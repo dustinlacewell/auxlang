@@ -74,23 +74,38 @@ export function useCore3Editor(): Core3EditorState {
 		setIsPlaying(true);
 	}, []);
 
-	// Silent preview: while stopped, a debounced no-audio eval keeps the
-	// control widgets and their glow ranges live from the code alone. While
-	// playing, the playing program (evalAndPlay above) is the source of
-	// truth instead, so this effect does nothing.
+	const previewEval = useCallback((source: string) => {
+		try {
+			const { program, sourceMap: evaluated } = evaluatePatch(source, { seed: playSeed.current() });
+			setSourceMap(evaluated);
+			setLiveSlots(program.liveSlots ?? []);
+		} catch {
+			// Keep the last good widget set; a mid-edit parse/compile error is expected.
+		}
+	}, []);
+
+	// Silent preview: while stopped, a no-audio eval keeps the control
+	// widgets and their glow ranges live from the code alone. The first eval
+	// (mount, or coming back from playing) runs right away so widgets show
+	// with no click/focus needed; later edits debounce. While playing, the
+	// playing program (evalAndPlay above) is the source of truth instead, so
+	// this effect does nothing.
+	const hasPreviewedRef = useRef(false);
 	useEffect(() => {
 		if (isPlaying) return;
-		const timer = setTimeout(() => {
-			try {
-				const { program, sourceMap: evaluated } = evaluatePatch(code, { seed: playSeed.current() });
-				setSourceMap(evaluated);
-				setLiveSlots(program.liveSlots ?? []);
-			} catch {
-				// Keep the last good widget set; a mid-edit parse/compile error is expected.
-			}
-		}, PREVIEW_DEBOUNCE_MS);
+		if (!hasPreviewedRef.current) {
+			hasPreviewedRef.current = true;
+			previewEval(code);
+			return;
+		}
+		const timer = setTimeout(() => previewEval(code), PREVIEW_DEBOUNCE_MS);
 		return () => clearTimeout(timer);
-	}, [code, isPlaying]);
+	}, [code, isPlaying, previewEval]);
+
+	// Playing just stopped: the next preview eval should run immediately again.
+	useEffect(() => {
+		if (isPlaying) hasPreviewedRef.current = false;
+	}, [isPlaying]);
 
 	const run = useCallback(async () => {
 		slotSitesRef.current = new Set();
