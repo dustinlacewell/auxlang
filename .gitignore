@@ -1,7 +1,3 @@
 node_modules
 dist
 .claude/worktrees/
-docs/snippets.js
-docs/snippets.js.map
-docs/snippets.d.ts
-docs/snippets.d.ts.map
