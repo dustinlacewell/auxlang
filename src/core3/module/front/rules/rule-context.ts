@@ -25,6 +25,10 @@ export interface RuleContext {
 	readonly helpers: ReadonlySet<string>;
 	readonly ins: ReadonlySet<string>;
 	readonly outs: ReadonlySet<string>;
+	/** In-port names that are port groups. */
+	readonly inGroups: ReadonlySet<string>;
+	/** Out-port names that are port groups. */
+	readonly outGroups: ReadonlySet<string>;
 	/** A fresh state with the engine-injected fields, as the tick will see it. */
 	readonly state: Record<string, unknown>;
 	/** The module declares `reads: "pattern"`: its tick may call the table intrinsics. */

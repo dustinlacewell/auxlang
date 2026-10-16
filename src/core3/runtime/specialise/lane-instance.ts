@@ -8,18 +8,28 @@
 import type { LaneInput, TickInstance } from "@/core3/module/front/types/tick-instance";
 import { BIND_CONST, BIND_LAMBDA, type LaneBindings } from "../bindings";
 import { GATHER_CONST, GATHER_CUR, GATHER_LAMBDA, GATHER_PREV, type PortGather } from "../gathers";
+import type { GroupView } from "../group-view";
 import type { NodeRun } from "../node-run";
 
 export function laneInstance(run: NodeRun, lane: number, sampleRate: number): TickInstance {
 	const state = run.states[lane];
 	if (state === undefined) throw new Error(`specialise: no state for lane ${lane}`);
+	const inputs = run.bindings === null ? gatheredInputs(run) : boundInputs(run.bindings[lane]);
+	for (const g of run.groups.ins) inputs[g.name] = { k: "group", length: g.ports.length };
 	return {
 		state,
-		inputs: run.bindings === null ? gatheredInputs(run) : boundInputs(run.bindings[lane]),
+		inputs,
 		config: run.config,
 		sampleRate,
 		width: run.gathers?.width ?? 1,
+		outGroups: outGroupLengths(run.groups.outs),
 	};
+}
+
+function outGroupLengths(groups: readonly GroupView[]): Record<string, number> {
+	const lengths: Record<string, number> = {};
+	for (const g of groups) lengths[g.name] = g.ports.length;
+	return lengths;
 }
 
 function boundInputs(b: LaneBindings | undefined): Record<string, LaneInput> {

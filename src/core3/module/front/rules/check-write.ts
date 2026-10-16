@@ -87,9 +87,18 @@ function checkStatePath(
 
 function checkOutput(target: AnyNode, hops: readonly Hop[], ctx: RuleContext): void {
 	const hop = hops[0];
-	if (hops.length !== 1 || hop === undefined || hop.computed)
+	const isGroup = hop !== undefined && !hop.computed && hop.name !== null && ctx.outGroups.has(hop.name);
+	if (isGroup) {
+		const indexHop = hops[1];
+		if (hops.length === 2 && indexHop?.computed === true) return;
+		ctx.fail(target, `write a group's members by index (o.${hop?.name}[k])`);
+		return;
+	}
+	if (hops.length !== 1 || hop === undefined || hop.computed) {
 		ctx.fail(target, "write outputs by name (o.out)");
-	if (hop !== undefined && !ctx.outs.has(String(hop.name)))
+		return;
+	}
+	if (!ctx.outs.has(String(hop.name)))
 		ctx.fail(target, `unknown output '${hop.name}' (outputs: ${[...ctx.outs].join(", ")})`);
 }
 

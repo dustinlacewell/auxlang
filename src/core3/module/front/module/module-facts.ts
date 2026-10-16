@@ -5,6 +5,7 @@
  * (runtime/fresh-node-states.ts). Calls the spec's `state`.
  */
 
+import { groupDecls } from "@/core3/module/group-decls";
 import type { ModuleSpec } from "@/core3/types";
 import type { ModuleFacts } from "./module-ir";
 
@@ -19,6 +20,8 @@ export function moduleFacts(
 		owner,
 		ins: new Set(Object.keys(spec.ins)),
 		outs: new Set(Object.keys(spec.outs)),
+		inGroups: new Set(groupDecls(spec, "ins").map((g) => g.name)),
+		outGroups: new Set(groupDecls(spec, "outs").map((g) => g.name)),
 		state: { ...(spec.state?.(SHAPE_SAMPLE_RATE) ?? {}), __rng: 1, __lane: 0, __seed: 0 },
 		tables: spec.reads === "pattern",
 	};

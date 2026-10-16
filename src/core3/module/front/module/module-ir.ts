@@ -30,6 +30,10 @@ export interface ModuleFacts {
 	readonly owner: string;
 	readonly ins: ReadonlySet<string>;
 	readonly outs: ReadonlySet<string>;
+	/** In-port names that are port groups. */
+	readonly inGroups: ReadonlySet<string>;
+	/** Out-port names that are port groups. */
+	readonly outGroups: ReadonlySet<string>;
 	/** A fresh state with the engine-injected fields, as the tick will see it. */
 	readonly state: Record<string, unknown>;
 	/** The module declares `reads: "pattern"` (table-intrinsics.ts). */

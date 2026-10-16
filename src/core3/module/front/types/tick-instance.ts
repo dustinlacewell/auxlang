@@ -16,6 +16,8 @@ export type LaneInput =
 	| { readonly k: "lambda" }
 	/** A reducer's input: the source lanes as an f64 array. */
 	| { readonly k: "gathered"; readonly length: number }
+	/** An in-group's members as an f64 array. */
+	| { readonly k: "group"; readonly length: number }
 	/** A port the lane does not bind. */
 	| { readonly k: "absent" };
 
@@ -25,6 +27,8 @@ export interface TickInstance {
 	readonly config: Readonly<Record<string, unknown>>;
 	readonly sampleRate: number;
 	readonly width: number;
+	/** Out-group name -> member count. */
+	readonly outGroups: Readonly<Record<string, number>>;
 }
 
 export function instanceKey(instance: TickInstance): string {
@@ -32,7 +36,8 @@ export function instanceKey(instance: TickInstance): string {
 	const config = Object.entries(instance.config).map(
 		([field, value]) => `${field}=${tyKey(configTy(value))}`,
 	);
-	return `${inputs.join(",")}|${config.join(",")}|${instance.sampleRate}|${instance.width}`;
+	const outGroups = Object.entries(instance.outGroups).map(([name, length]) => `${name}=${length}`);
+	return `${inputs.join(",")}|${config.join(",")}|${instance.sampleRate}|${instance.width}|${outGroups.join(",")}`;
 }
 
 function inputKey(input: LaneInput): string {
@@ -41,6 +46,8 @@ function inputKey(input: LaneInput): string {
 			return Object.is(input.v, -0) ? "c-0" : `c${input.v}`;
 		case "gathered":
 			return `g${input.length}`;
+		case "group":
+			return `G${input.length}`;
 		default:
 			return input.k;
 	}

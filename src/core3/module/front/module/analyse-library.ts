@@ -16,7 +16,15 @@ export function analyseLibrary(
 	texts: Readonly<Record<string, string>>,
 ): ReadonlyMap<string, FunctionIR> {
 	const names = new Set(Object.keys(texts));
-	const facts = { helpers: names, ins: NONE, outs: NONE, state: {}, tables: false };
+	const facts = {
+		helpers: names,
+		ins: NONE,
+		outs: NONE,
+		inGroups: NONE,
+		outGroups: NONE,
+		state: {},
+		tables: false,
+	};
 	const helpers = analyseHelpers(resolveHelpers(texts, owner, names), facts);
 	assertNoRecursion(helpers);
 	return helpers;

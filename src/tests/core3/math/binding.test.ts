@@ -75,6 +75,8 @@ describe("math binding", () => {
 				helpers,
 				ins: new Set(),
 				outs: new Set(),
+				inGroups: new Set(),
+				outGroups: new Set(),
 				state: {},
 				tables: false,
 			});

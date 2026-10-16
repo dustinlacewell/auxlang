@@ -17,6 +17,8 @@ export function analyseLambda(src: string, helpers: ReadonlySet<string> = NONE):
 		helpers,
 		ins: NONE,
 		outs: NONE,
+		inGroups: NONE,
+		outGroups: NONE,
 		state: {},
 		tables: false,
 	});

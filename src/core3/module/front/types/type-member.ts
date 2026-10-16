@@ -73,7 +73,7 @@ function roleField(c: PlanContext, role: string, field: string): Ty {
 		case "ins":
 			return root.input(field);
 		case "outs":
-			return NUM;
+			return root.outGroup(field) ?? NUM;
 		default:
 			return root.config(field);
 	}

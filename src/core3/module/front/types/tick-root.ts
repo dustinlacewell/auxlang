@@ -17,6 +17,8 @@ export interface TickRoot {
 	state(field: string): Ty | undefined;
 	input(port: string): Ty;
 	config(field: string): Ty;
+	/** An out-group's array-ref type; undefined when `name` is not an out group. */
+	outGroup(name: string): Ty | undefined;
 	/** The whole state record, passed to a helper. */
 	readonly stateRecord: RecordRef;
 	readonly sampleRate: Ty;
@@ -30,10 +32,16 @@ export function instanceRoot(instance: TickInstance): TickRoot {
 			Object.hasOwn(stateRecord.fields, field) ? stateRecord.fields[field] : undefined,
 		input: (port) => inputTy(instance.inputs[port]),
 		config: (field) => configTy(instance.config[field]),
+		outGroup: (name) =>
+			Object.hasOwn(instance.outGroups, name) ? groupTy(instance.outGroups[name] as number) : undefined,
 		stateRecord,
 		sampleRate: known(instance.sampleRate),
 		width: known(instance.width),
 	};
+}
+
+function groupTy(length: number): Ty {
+	return { k: "ref", shape: { k: "array", type: "f64", length }, placed: false };
 }
 
 function inputTy(input: LaneInput | undefined): Ty {
@@ -44,7 +52,8 @@ function inputTy(input: LaneInput | undefined): Ty {
 		case "lambda":
 			return NUM;
 		case "gathered":
-			return { k: "ref", shape: { k: "array", type: "f64", length: input.length }, placed: false };
+		case "group":
+			return groupTy(input.length);
 		default:
 			return UNKNOWN;
 	}
