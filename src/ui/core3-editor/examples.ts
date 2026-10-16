@@ -25,6 +25,26 @@ s.saw()
   .out()
 `;
 
+/** Live controls: widgets that play the patch with no re-eval; any number drags. */
+const liveControls = `// live controls: move the widgets while it plays, no re-eval
+// (drag any plain number too: the digit you grab sets the step)
+tempo(118)
+
+const s = seq("c3 e3 g3 <b2 a2> c4 g3 e3 <d3 f3>")
+const pad = xy(0.5, 0.3, 0, 1)
+
+s.saw()
+  .lpf({ cutoff: slider(84, 60, 110), res: knob(0.3, 0, 0.9) })
+  .mul(s.gate.adsr(0.005, 0.12, 0.5, 0.2))
+  .delay({ time: 0.3, feedback: pad.y, mix: toggle(1).mul(0.35) })
+  .gain(0.3)
+  .pan(pad.x.scale(0, 1, -1, 1))
+  .out()
+
+// hold the button for a kick
+button().trig.kick().gain(0.5).out()
+`;
+
 /** (b) Patterns are values: build a hook, transform it before sequencing. */
 const patternsAsValues = `// patterns are values: transform a hook before it ever sequences
 tempo(120)
@@ -734,6 +754,7 @@ export const EXAMPLES: readonly Example[] = [
 	{ name: "named mixer", source: namedMixer },
 	{ name: "signal splicing", source: signalSplice },
 	{ name: "pattern records", source: patternRecords },
+	{ name: "live controls", source: liveControls },
 ];
 
 /** The patch shown when the editor first loads. */
