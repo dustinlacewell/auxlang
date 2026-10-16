@@ -10,6 +10,7 @@
 
 import type { ArrowFunctionExpression, FunctionExpression, Program } from "acorn";
 import type { Category, ModuleSource, PortAnn, SourceOrigin } from "../../types";
+import { assertAuthorNames } from "../assert-author-names";
 import { parseFunction } from "../front/parse/parse-function";
 import { resolveBindings } from "../front/scope/resolve-bindings";
 import { fileScope, type FileScope } from "./file-scope";
@@ -64,6 +65,7 @@ export interface LoweredModule {
 
 export function lowerModule(input: LowerModuleInput): LoweredModule {
 	const what = `module '${input.name}'`;
+	assertAuthorNames(input.setupText, `${what} setup`);
 	const { setup, fileText } = locateSetup(input);
 	const parts = setupParts(setup, what);
 
@@ -89,6 +91,7 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 		fileText,
 		input.name,
 	);
+	for (const name of closure.fileNames) assertAuthorNames(closure.helpers[name], `${what} helper '${name}'`);
 
 	const writes = [...tickWrites(parts.tick, setupLocals)];
 

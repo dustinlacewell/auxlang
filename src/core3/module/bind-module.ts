@@ -10,6 +10,7 @@
  */
 
 import type { ModuleSource, ModuleSpec, SourceOrigin } from "../types";
+import { assertAuthorNames } from "./assert-author-names";
 import { bindModuleMath } from "./bind-math/bind-module-math";
 import { bindModuleRandom } from "./bind-random/bind-module-random";
 import { libraryPrefixOf } from "./library-names";
@@ -62,6 +63,8 @@ function sourceOf(
 	helpers: Readonly<Record<string, (...args: never[]) => unknown>>,
 	owner: string,
 ): ModuleSource {
+	const tickText = tick.toString();
+	assertAuthorNames(tickText, `${owner} tick`);
 	const texts: Record<string, string> = {};
 	for (const [name, fn] of Object.entries(helpers)) {
 		const prefix = libraryPrefixOf(name);
@@ -69,7 +72,9 @@ function sourceOf(
 			throw new Error(
 				`${owner}: helper names starting with '${prefix}' are reserved for auxlang's library`,
 			);
-		texts[name] = fn.toString();
+		const helperText = fn.toString();
+		assertAuthorNames(helperText, `${owner} helper '${name}'`);
+		texts[name] = helperText;
 	}
-	return { tick: tick.toString(), helpers: texts };
+	return { tick: tickText, helpers: texts };
 }

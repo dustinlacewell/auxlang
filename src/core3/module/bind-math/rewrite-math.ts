@@ -5,7 +5,9 @@
  * `Math.sqrt`, ...), constants and `Math.random` stay as written. Cache
  * slots are numbered from `firstSlot`; the call temps are declared at the top
  * of the function. Edits stay on their lines, so errors keep the source's
- * line numbers.
+ * line numbers. The reserved-name checks run at the author boundary
+ * (assert-author-names.ts), not here: this rewrite also runs on lowering's
+ * own internal text, which legitimately uses the reserved names.
  */
 
 import { type AnyNode, type BinaryExpression, type CallExpression, tokenizer } from "acorn";
@@ -13,9 +15,7 @@ import { AUX_MATH_FUNCTIONS } from "../../math/aux-math-functions";
 import { type TextEdit, applyEdits } from "../tick-build/text-edits";
 import { type FunctionNode, parseFunction } from "../front/parse/parse-function";
 import { walk } from "../front/parse/walk";
-import { assertNoLibraryNames } from "../library-names";
 import { cacheCall } from "./cache-call";
-import { assertNoCacheNames } from "./cache-names";
 
 export interface MathRewrite {
 	readonly text: string;
@@ -28,8 +28,6 @@ export interface MathRewrite {
 export function rewriteMath(src: string, what: string, firstSlot = 0): MathRewrite {
 	const parsed = parseFunction(src, what);
 	const uses = new Set<string>();
-	assertNoCacheNames(parsed.node, what);
-	assertNoLibraryNames(parsed.node, what);
 	if (declares(parsed.node, "Math")) return { text: src, uses, slots: 0 };
 	const edits: TextEdit[] = [];
 	const temps: string[] = [];

@@ -4,12 +4,9 @@
  * origins match the written text, and whose `source` is a valid
  * `ModuleSource` shape.
  *
- * `bindSource` is not wired to accept `__dsp_`-prefixed internal text yet
- * (card step 4): `bindModuleMath`'s `assertNoLibraryNames` runs on every
- * `ModuleSource.tick` unconditionally and rejects the `__dsp_` names this
- * step's `LIBRARY_PREFIXES` addition reserves, so a shape-C lowering is not
- * yet accepted by today's `bindSource`. The second test below records that
- * exact, current behavior rather than asserting a pass that isn't true yet.
+ * The reserved-name checks now run at the author boundary (assert-author-names.ts),
+ * not on every rewrite, so `bindSource` accepts the lowered echo's `__dsp_`-prefixed
+ * internal text.
  */
 
 import { describe, expect, it } from "vitest";
@@ -72,7 +69,7 @@ describe("lowerModule", () => {
 		expect(lowered.source.helpers.wrapIndex).toBeDefined();
 	});
 
-	it("feeding `source` into today's bindSource: not yet accepted (card step 4 wires this)", () => {
+	it("feeding `source` into bindSource: the lowered echo is accepted", () => {
 		const lowered = lowerEcho();
 		const spec = {
 			name: lowered.name,
@@ -86,6 +83,6 @@ describe("lowerModule", () => {
 			tick: (() => {}) as never,
 		};
 
-		expect(() => bindSource(spec, lowered.source, "first use")).toThrow(/__dsp_/);
+		expect(() => bindSource(spec, lowered.source, "first use")).not.toThrow();
 	});
 });
