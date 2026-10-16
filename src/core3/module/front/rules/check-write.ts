@@ -7,16 +7,16 @@
  */
 
 import type { AnyNode, MemberExpression } from "acorn";
-import { type SubsetContext, isBound } from "./subset-context";
+import { type RuleContext, resolutionOf, roleOf } from "./rule-context";
 
 interface Hop {
 	readonly computed: boolean;
 	readonly name: string | null;
 }
 
-export function checkWrite(target: AnyNode, ctx: SubsetContext): void {
+export function checkWrite(target: AnyNode, ctx: RuleContext): void {
 	if (target.type === "Identifier") {
-		if (!isBound(ctx, target.name))
+		if (resolutionOf(ctx, target)?.k !== "binding")
 			ctx.fail(target, `assigns to '${target.name}', which is not a local`);
 		return;
 	}
@@ -27,9 +27,10 @@ export function checkWrite(target: AnyNode, ctx: SubsetContext): void {
 	const owner = root.type === "Identifier" ? root.name : "";
 	if (hops.some((h) => !h.computed && h.name === "length"))
 		ctx.fail(target, "writing .length resizes an array — array sizes are fixed at start");
-	if (owner === ctx.roles.state) checkStatePath(target, hops, ctx);
-	else if (owner === ctx.roles.outs) checkOutput(target, hops, ctx);
-	else if (owner === ctx.roles.ins || owner === ctx.roles.config)
+	const role = roleOf(ctx, root);
+	if (role === "state") checkStatePath(target, owner, hops, ctx);
+	else if (role === "outs") checkOutput(target, hops, ctx);
+	else if (role === "ins" || role === "config")
 		ctx.fail(target, "inputs and config are read-only");
 	else if (hops.some((h) => !h.computed))
 		ctx.fail(
@@ -50,9 +51,14 @@ function unwind(target: MemberExpression): { root: AnyNode; hops: Hop[] } {
 }
 
 /** Walk the path through the fresh state: every named hop must already exist. */
-function checkStatePath(target: AnyNode, hops: readonly Hop[], ctx: SubsetContext): void {
+function checkStatePath(
+	target: AnyNode,
+	owner: string,
+	hops: readonly Hop[],
+	ctx: RuleContext,
+): void {
 	let current: unknown = ctx.state;
-	let path = ctx.roles.state ?? "s";
+	let path = owner;
 	for (const hop of hops) {
 		if (current === undefined) return;
 		if (hop.computed) {
@@ -72,7 +78,7 @@ function checkStatePath(target: AnyNode, hops: readonly Hop[], ctx: SubsetContex
 	}
 }
 
-function checkOutput(target: AnyNode, hops: readonly Hop[], ctx: SubsetContext): void {
+function checkOutput(target: AnyNode, hops: readonly Hop[], ctx: RuleContext): void {
 	const hop = hops[0];
 	if (hops.length !== 1 || hop === undefined || hop.computed)
 		ctx.fail(target, "write outputs by name (o.out)");

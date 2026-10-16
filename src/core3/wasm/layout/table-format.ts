@@ -14,7 +14,7 @@
  * it sets `want` to the cycle after, for the host to fill into `next`.
  */
 
-import { TABLE_ROW_FIELDS, type TableRowField } from "../../module/tick-subset/table-intrinsics";
+import { TABLE_ROW_FIELDS, type TableRowField } from "../../module/front/intrinsics/table-intrinsics";
 
 export const SLOT_CUR = 0;
 export const SLOT_NEXT = 4;

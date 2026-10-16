@@ -8,9 +8,9 @@
  */
 
 import type { AnyNode } from "acorn";
-import type { SubsetContext } from "./subset-context";
+import type { RuleContext } from "./rule-context";
 
-export function checkNullish(left: AnyNode, ctx: SubsetContext): void {
+export function checkNullish(left: AnyNode, ctx: RuleContext): void {
 	if (isDirectElement(left)) return;
 	ctx.fail(
 		left,

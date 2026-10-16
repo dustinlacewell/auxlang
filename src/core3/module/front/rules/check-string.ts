@@ -9,7 +9,8 @@
 
 import type { AnyNode, BinaryExpression, Literal, UnaryExpression } from "acorn";
 import { isRowFieldLiteral } from "./check-table-call";
-import type { SubsetContext } from "./subset-context";
+import { isIntrinsicCall } from "./is-intrinsic-call";
+import type { RuleContext } from "./rule-context";
 
 const EQUALITY = new Set(["===", "!==", "==", "!="]);
 
@@ -17,12 +18,12 @@ export function checkStringLiteral(
 	node: Literal,
 	parent: AnyNode | null,
 	key: string | null,
-	ctx: SubsetContext,
+	ctx: RuleContext,
 ): void {
 	if (typeof node.value !== "string") return;
-	if (isComparison(parent) || isHashKey(parent, key)) return;
+	if (isComparison(parent) || isHashKey(parent, key, ctx)) return;
 	if (parent?.type === "SwitchCase" && key === "test") return;
-	if (isRowFieldLiteral(node, parent)) return;
+	if (isRowFieldLiteral(node, parent, ctx)) return;
 	if (parent?.type === "ExpressionStatement" && "directive" in parent) return;
 	ctx.fail(node, "string values may appear only in comparisons — runtime strings are not allowed");
 }
@@ -30,7 +31,7 @@ export function checkStringLiteral(
 export function checkUnary(
 	node: UnaryExpression,
 	parent: AnyNode | null,
-	ctx: SubsetContext,
+	ctx: RuleContext,
 ): void {
 	if (node.operator === "delete")
 		ctx.fail(node, "`delete` removes fields — state shapes are fixed");
@@ -38,7 +39,7 @@ export function checkUnary(
 		ctx.fail(node, "`typeof` gives a string — use it only in a comparison");
 }
 
-export function checkBinary(node: BinaryExpression, ctx: SubsetContext): void {
+export function checkBinary(node: BinaryExpression, ctx: RuleContext): void {
 	if (node.operator === "in" || node.operator === "instanceof")
 		ctx.fail(
 			node,
@@ -47,12 +48,11 @@ export function checkBinary(node: BinaryExpression, ctx: SubsetContext): void {
 }
 
 /** `hashRandom("kick")`: the key folds to its fnv1a32 hash when bound (bind-random/). */
-function isHashKey(parent: AnyNode | null, key: string | null): boolean {
+function isHashKey(parent: AnyNode | null, key: string | null, ctx: RuleContext): boolean {
 	return (
 		parent?.type === "CallExpression" &&
 		key === "arguments" &&
-		parent.callee.type === "Identifier" &&
-		parent.callee.name === "hashRandom"
+		isIntrinsicCall(parent, "hashRandom", ctx)
 	);
 }
 

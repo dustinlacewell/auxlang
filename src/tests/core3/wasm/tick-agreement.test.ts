@@ -37,9 +37,9 @@ seq("[c3,e3] <g3 a3>").ag().mul(0.1).out()`;
 interface Row {
 	readonly what: string;
 	readonly body: string;
-	readonly helpers?: string;
+	readonly helpers?: string | undefined;
 	/** Reject rows: the checker's message, when it already has one. */
-	readonly message?: RegExp;
+	readonly message?: RegExp | undefined;
 }
 
 const accept = (what: string, body: string, helpers?: string): Row => ({ what, body, helpers });

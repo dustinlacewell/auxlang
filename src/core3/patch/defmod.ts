@@ -50,7 +50,7 @@ interface DefmodBase<I extends Record<string, PortAnn>, O extends Record<string,
 	/** Omitted on a stereo module (outs `l`/`r`), which connects by name. */
 	readonly defaultOut?: keyof O & string;
 	readonly state?: (sampleRate: number) => St;
-	/** "pattern": the tick reads `config.pattern` with the table intrinsics (module/tick-subset/table-intrinsics.ts). */
+	/** "pattern": the tick reads `config.pattern` with the table intrinsics (module/front/intrinsics/table-intrinsics.ts). */
 	readonly reads?: "pattern";
 	/** Named functions the tick may call, under the same rules as the tick. */
 	readonly helpers?: Readonly<Record<string, (...args: never[]) => unknown>>;

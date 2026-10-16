@@ -43,7 +43,7 @@ export function emitMemberRead(e: FnEmitter, node: MemberExpression): Kind {
 
 /**
  * `node ?? orElse`: an array element at an invalid index is `undefined`, so
- * `orElse` runs. The checker (tick-subset/check-nullish.ts) allows nothing
+ * `orElse` runs. The checker (front/rules/check-nullish.ts) allows nothing
  * else on the left. A chain `a ?? b ?? c` is `a ?? (b ?? c)`.
  */
 export function emitNullish(e: FnEmitter, node: AnyNode, orElse: () => Kind): Kind {

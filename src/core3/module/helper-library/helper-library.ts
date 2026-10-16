@@ -10,7 +10,7 @@
 import { type AnyNode, type FunctionDeclaration, parse } from "acorn";
 import type { RawFile } from "../../raw-files/raw-files";
 import { type TextEdit, applyEdits } from "../tick-build/text-edits";
-import { walk } from "../tick-subset/walk";
+import { walk } from "../front/parse/walk";
 
 export interface HelperLibrary {
 	/** The helpers (helper name → text) for library functions `names` and all they call, by name. */

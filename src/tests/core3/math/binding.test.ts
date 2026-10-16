@@ -15,9 +15,10 @@ import { bindLambdaMath } from "@/core3/module/bind-math/bind-lambda-math";
 import { mathFunctions } from "@/core3/module/bind-math/math-functions";
 import { mathFunctionNames, mathHelpers } from "@/core3/module/bind-math/math-helpers";
 import { getRegistry } from "@/core3/module/define";
-import { checkFunction } from "@/core3/module/tick-subset/check-function";
+import { analyseFunction, resolvePart } from "@/core3/module/front/module/analyse-function";
+import { parsePart } from "@/core3/module/front/parse/parse-part";
+import { walk } from "@/core3/module/front/parse/walk";
 import { checkLambda } from "@/core3/module/tick-subset/check-lambda";
-import { walk } from "@/core3/module/tick-subset/walk";
 
 /** Every host-math reach in `text`: a Math member that is not exact, random or a constant, or a `**`. */
 function hostMathIn(text: string): string[] {
@@ -64,14 +65,13 @@ describe("math binding", () => {
 
 	it("each math helper passes the tick subset and reaches no host transcendental", () => {
 		const all = mathHelpers(mathFunctionNames());
+		const helpers = new Set(Object.keys(all));
 		for (const [name, text] of Object.entries(all)) {
 			expect(hostMathIn(text)).toEqual([]);
-			checkFunction({
+			const part = parsePart({ owner: "auxlang math", part: `helper '${name}'`, src: text });
+			analyseFunction(resolvePart(part, helpers), {
 				kind: "helper",
-				src: text,
-				owner: "auxlang math",
-				part: `helper '${name}'`,
-				helpers: new Set(Object.keys(all)),
+				helpers,
 				ins: new Set(),
 				outs: new Set(),
 				state: {},

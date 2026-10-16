@@ -3,9 +3,9 @@
  * fixed cost per sample. Fails at the call that closes the first cycle found.
  */
 
-import type { CheckedFunction } from "./check-function";
+import type { FunctionIR } from "./module-ir";
 
-export function assertNoRecursion(helpers: ReadonlyMap<string, CheckedFunction>): void {
+export function assertNoRecursion(helpers: ReadonlyMap<string, FunctionIR>): void {
 	const done = new Set<string>();
 	for (const name of helpers.keys()) visit(name, [], helpers, done);
 }
@@ -13,7 +13,7 @@ export function assertNoRecursion(helpers: ReadonlyMap<string, CheckedFunction>)
 function visit(
 	name: string,
 	stack: string[],
-	helpers: ReadonlyMap<string, CheckedFunction>,
+	helpers: ReadonlyMap<string, FunctionIR>,
 	done: Set<string>,
 ): void {
 	if (done.has(name)) return;

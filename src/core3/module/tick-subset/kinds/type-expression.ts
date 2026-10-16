@@ -8,7 +8,7 @@
  */
 
 import type { AnyNode, AssignmentExpression, Expression, MemberExpression } from "acorn";
-import { TABLE_INTRINSICS } from "../table-intrinsics";
+import { TABLE_INTRINSICS } from "@/core3/module/front/intrinsics/table-intrinsics";
 import type { KindContext, Position } from "./kind-context";
 import { INTO_BOOLEAN, MIXED, STEP_BOOLEAN, STORED } from "./kind-messages";
 import {

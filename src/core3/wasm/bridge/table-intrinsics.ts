@@ -1,5 +1,5 @@
 /**
- * The table intrinsics (module/tick-subset/table-intrinsics.ts) bound to a
+ * The table intrinsics (module/front/intrinsics/table-intrinsics.ts) bound to a
  * lane's table slot in memory (layout/table-format.ts): `__tableCycle()`,
  * `__tableCount()` and `__tableRow(field, row)` are loads through the slot's
  * `cur` pointer; `__tableFill(cycle)` calls the module's `enter`
@@ -8,7 +8,7 @@
  */
 
 import type { AnyNode, Expression } from "acorn";
-import { isTableRowField } from "../../module/tick-subset/table-intrinsics";
+import { isTableRowField } from "../../module/front/intrinsics/table-intrinsics";
 import { toF64 } from "../compile/coerce";
 import type { Intrinsics } from "../compile/emit-context";
 import { emitExpr } from "../compile/emit-expression";

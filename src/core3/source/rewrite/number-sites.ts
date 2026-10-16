@@ -4,7 +4,7 @@
  */
 
 import type { AnyNode } from "acorn";
-import { walk } from "../../module/tick-subset/walk";
+import { walk } from "../../module/front/parse/walk";
 import type { NumberSite } from "../source-map";
 import type { SiteList } from "./site-list";
 

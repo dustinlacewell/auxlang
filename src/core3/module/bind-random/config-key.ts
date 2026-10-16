@@ -9,8 +9,8 @@
  */
 
 import type { AnyNode } from "acorn";
-import type { FunctionNode } from "../tick-subset/parse-function";
-import { walk } from "../tick-subset/walk";
+import type { FunctionNode } from "../front/parse/parse-function";
+import { walk } from "../front/parse/walk";
 
 const EQUALITY = new Set(["===", "!==", "==", "!="]);
 

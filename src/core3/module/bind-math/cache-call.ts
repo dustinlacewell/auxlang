@@ -18,7 +18,7 @@
 
 import type { AnyNode } from "acorn";
 import type { TextEdit } from "../tick-build/text-edits";
-import { walk } from "../tick-subset/walk";
+import { walk } from "../front/parse/walk";
 import { slotRef, tempName } from "./cache-names";
 import { MATH_HELPER_PREFIX } from "./math-helpers";
 

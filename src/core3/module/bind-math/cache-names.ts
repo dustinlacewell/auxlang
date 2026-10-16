@@ -10,7 +10,7 @@
  */
 
 import type { AnyNode } from "acorn";
-import { walk } from "../tick-subset/walk";
+import { walk } from "../front/parse/walk";
 
 /** The cache array's name in bound text. */
 export const CACHE_ARRAY = "__mc";

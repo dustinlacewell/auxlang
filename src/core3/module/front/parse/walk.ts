@@ -17,12 +17,17 @@ export function walk(
 	key: string | null = null,
 ): void {
 	visit(node, parent, key);
-	for (const [childKey, value] of Object.entries(node)) {
-		if (SKIP.has(childKey)) continue;
+	eachChild(node, (child, childKey) => walk(child, visit, node, childKey));
+}
+
+/** Each direct child node of `node`, in source order, with the key it sits under. */
+export function eachChild(node: AnyNode, visit: (child: AnyNode, key: string) => void): void {
+	for (const [key, value] of Object.entries(node)) {
+		if (SKIP.has(key)) continue;
 		if (Array.isArray(value)) {
-			for (const item of value) if (isNode(item)) walk(item, visit, node, childKey);
+			for (const item of value) if (isNode(item)) visit(item, key);
 		} else if (isNode(value)) {
-			walk(value, visit, node, childKey);
+			visit(value, key);
 		}
 	}
 }

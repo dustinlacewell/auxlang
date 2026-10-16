@@ -11,8 +11,8 @@
 import { type AnyNode, type BinaryExpression, type CallExpression, tokenizer } from "acorn";
 import { AUX_MATH_FUNCTIONS } from "../../math/aux-math-functions";
 import { type TextEdit, applyEdits } from "../tick-build/text-edits";
-import { type FunctionNode, parseFunction } from "../tick-subset/parse-function";
-import { walk } from "../tick-subset/walk";
+import { type FunctionNode, parseFunction } from "../front/parse/parse-function";
+import { walk } from "../front/parse/walk";
 import { cacheCall } from "./cache-call";
 import { assertNoCacheNames } from "./cache-names";
 

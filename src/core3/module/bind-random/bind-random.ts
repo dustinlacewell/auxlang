@@ -15,8 +15,8 @@
 import type { AnyNode, CallExpression } from "acorn";
 import { fnv1a32 } from "../../hash/fnv1a32";
 import { type TextEdit, applyEdits } from "../tick-build/text-edits";
-import { parseFunction } from "../tick-subset/parse-function";
-import { walk } from "../tick-subset/walk";
+import { parseFunction } from "../front/parse/parse-function";
+import { walk } from "../front/parse/walk";
 import { configKeyCheck } from "./config-key";
 import { RANDOM_HELPER_PREFIX } from "./random-helpers";
 

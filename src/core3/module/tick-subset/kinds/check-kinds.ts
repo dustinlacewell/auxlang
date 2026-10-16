@@ -10,14 +10,14 @@
  */
 
 import type { AnyNode } from "acorn";
-import type { CheckedFunction } from "../check-function";
+import type { FunctionIR } from "@/core3/module/front/module/module-ir";
 import { LAMBDA_BOOLEAN, MIXED_RETURNS } from "./kind-messages";
 import { KindWalker } from "./kind-walker";
 import { BOOL, NUM, OTHER, type ValueType, join, typeKey, typeOfValue } from "./value-type";
 
 export interface ModuleKinds {
-	readonly tick: CheckedFunction;
-	readonly helpers: ReadonlyMap<string, CheckedFunction>;
+	readonly tick: FunctionIR;
+	readonly helpers: ReadonlyMap<string, FunctionIR>;
 	readonly state: Record<string, unknown>;
 	readonly config: Record<string, unknown>;
 }
@@ -51,13 +51,13 @@ export function checkModuleKinds(m: ModuleKinds): void {
 }
 
 /** A signal lambda `(s, sr, t)` returns a number. */
-export function checkLambdaKinds(lambda: CheckedFunction): void {
+export function checkLambdaKinds(lambda: FunctionIR): void {
 	const walked = new KindWalker(lambda, () => null).run([typeOfValue({}), NUM, NUM]);
 	for (const r of walked.returns) if (r.type.k === "bool") lambda.fail(r.at, LAMBDA_BOOLEAN);
 }
 
 /** Booleans, numbers, or else what the returns share; booleans mixed with numbers are a loud error. */
-function returnType(helper: CheckedFunction, returns: readonly Returned[]): ValueType {
+function returnType(helper: FunctionIR, returns: readonly Returned[]): ValueType {
 	const bool = returns.find((r) => r.type.k === "bool");
 	const num = returns.find((r) => r.type.k === "num");
 	if (bool !== undefined && num !== undefined)

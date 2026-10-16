@@ -1,5 +1,5 @@
 /**
- * The table intrinsics (module/tick-subset/table-intrinsics.ts): only the
+ * The table intrinsics (module/front/intrinsics/table-intrinsics.ts): only the
  * tick of a module that declares `reads: "pattern"` may call them, with
  * named state and config parameters, the right argument count, and a row
  * field named by a string literal. `reads` crosses to the engine with the

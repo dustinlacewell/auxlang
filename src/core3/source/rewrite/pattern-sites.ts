@@ -13,7 +13,7 @@
  */
 
 import type { AnyNode, Literal, TaggedTemplateExpression } from "acorn";
-import { walk } from "../../module/tick-subset/walk";
+import { walk } from "../../module/front/parse/walk";
 import { tokenize } from "../../pattern/notation/tokenize";
 import { patternOffset } from "../pattern-offset";
 import type { NumberSite, PatternSegment, PatternSite } from "../source-map";

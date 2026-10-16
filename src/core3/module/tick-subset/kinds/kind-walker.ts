@@ -6,7 +6,7 @@
  */
 
 import type { AnyNode, Statement, VariableDeclaration } from "acorn";
-import type { FunctionNode } from "../parse-function";
+import type { FunctionNode } from "@/core3/module/front/parse/parse-function";
 import type { KindContext } from "./kind-context";
 import { typeOf } from "./type-expression";
 import { OTHER, type ValueType } from "./value-type";

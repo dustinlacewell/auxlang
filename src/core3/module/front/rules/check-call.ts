@@ -8,37 +8,31 @@
  */
 
 import type { CallExpression } from "acorn";
-import { AUX_MATH_FUNCTIONS } from "../../math/aux-math-functions";
-import { EXACT_HOST_MATH } from "../../math/exact-host-math";
+import { AUX_MATH_FUNCTIONS } from "@/core3/math/aux-math-functions";
+import { EXACT_HOST_MATH } from "@/core3/math/exact-host-math";
 import { checkTableCall } from "./check-table-call";
-import { type SubsetContext, isBound } from "./subset-context";
-import { TABLE_INTRINSICS } from "./table-intrinsics";
+import { type RuleContext, hasRole, resolutionOf } from "./rule-context";
 
 const ONLY = "only Math.*, helpers and hashRandom(key) may be called (no method calls)";
 
-export function checkCall(node: CallExpression, ctx: SubsetContext): void {
+export function checkCall(node: CallExpression, ctx: RuleContext): void {
 	if (node.optional) ctx.fail(node, "optional calls are not allowed");
 	const callee = node.callee;
-	if (callee.type === "Identifier" && !isBound(ctx, callee.name)) {
-		if (ctx.helpers.has(callee.name)) {
-			ctx.calls.push({ name: callee.name, node });
-			return;
-		}
-		if (callee.name === "hashRandom") {
-			checkRandomCall(node, "hashRandom(key)", 1, ctx);
-			return;
-		}
-		if (TABLE_INTRINSICS.has(callee.name)) {
-			checkTableCall(node, callee.name, ctx);
-			return;
-		}
+	const named = callee.type === "Identifier" ? resolutionOf(ctx, callee) : undefined;
+	if (named?.k === "helper") {
+		ctx.calls.push({ name: named.name, node });
+		return;
+	}
+	if (named?.k === "intrinsic") {
+		if (named.name === "hashRandom") checkRandomCall(node, "hashRandom(key)", 1, ctx);
+		else checkTableCall(node, named.name, ctx);
+		return;
 	}
 	if (
 		callee.type === "MemberExpression" &&
 		!callee.computed &&
 		callee.object.type === "Identifier" &&
-		callee.object.name === "Math" &&
-		!isBound(ctx, "Math") &&
+		resolutionOf(ctx, callee.object)?.k === "math" &&
 		callee.property.type === "Identifier"
 	) {
 		const name = callee.property.name;
@@ -53,7 +47,7 @@ export function checkCall(node: CallExpression, ctx: SubsetContext): void {
  * A tick calls auxlang's math (bind-math/) or an exact host operation —
  * never host transcendentals, which differ between engines (MANIFESTO §7).
  */
-function checkMathCall(node: CallExpression, name: string, ctx: SubsetContext): void {
+function checkMathCall(node: CallExpression, name: string, ctx: RuleContext): void {
 	const arity = AUX_MATH_FUNCTIONS.get(name);
 	if (arity !== undefined) {
 		if (node.arguments.length !== arity)
@@ -71,7 +65,7 @@ function checkRandomCall(
 	node: CallExpression,
 	form: string,
 	arity: number,
-	ctx: SubsetContext,
+	ctx: RuleContext,
 ): void {
 	if (ctx.kind !== "tick")
 		ctx.fail(
@@ -80,6 +74,6 @@ function checkRandomCall(
 		);
 	if (node.arguments.length !== arity)
 		ctx.fail(node, `${form} takes ${arity === 0 ? "no arguments" : "one argument, the key"}`);
-	if (ctx.roles.state === undefined)
+	if (!hasRole(ctx, "state"))
 		ctx.fail(node, `${form} needs the tick's first parameter (the state) to be named`);
 }

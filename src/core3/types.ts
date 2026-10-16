@@ -111,7 +111,7 @@ export interface ModuleSpec extends ModulePorts {
 	readonly policy?: "map" | "reduce";
 	/**
 	 * "pattern": the tick reads `config.pattern` through its lane's event table
-	 * with the table intrinsics (module/tick-subset/table-intrinsics.ts).
+	 * with the table intrinsics (module/front/intrinsics/table-intrinsics.ts).
 	 */
 	readonly reads?: "pattern";
 	/**

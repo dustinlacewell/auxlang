@@ -17,7 +17,7 @@
 import { fillLaneTable } from "../../bridge/lane-table";
 import type { ModuleSource, ReduceTickFn, TickFn } from "../../types";
 import { CACHE_ARRAY, cacheArray, cacheSize } from "../bind-math/cache-names";
-import { parseFunction } from "../tick-subset/parse-function";
+import { parseFunction } from "../front/parse/parse-function";
 import { TABLE_FILL, bindTable } from "./bind-table";
 import { applyEdits } from "./text-edits";
 import { registerTickFactory } from "./tick-factories";

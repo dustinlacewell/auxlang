@@ -4,7 +4,7 @@
  * records — (state, ins, outs, config, sampleRate[, width]).
  */
 
-import type { FunctionNode } from "../../module/tick-subset/parse-function";
+import type { FunctionNode } from "../../module/front/parse/parse-function";
 import { writes } from "../compile/assigned-names";
 import type { CacheAccess, Calls, Intrinsics, TickRoles } from "../compile/emit-context";
 import { emitDiscard } from "../compile/emit-expression";

@@ -6,7 +6,7 @@
  */
 
 import type { AnyNode } from "acorn";
-import { walk } from "../../module/tick-subset/walk";
+import { walk } from "../../module/front/parse/walk";
 
 export function writes(nodes: readonly (AnyNode | null | undefined)[], name: string): boolean {
 	return some(nodes, (node) => {

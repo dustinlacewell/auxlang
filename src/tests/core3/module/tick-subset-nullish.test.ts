@@ -1,5 +1,5 @@
 /**
- * `??` only on a direct array element read (tick-subset/check-nullish.ts):
+ * `??` only on a direct array element read (front/rules/check-nullish.ts):
  * `a[j] ?? d` and chains of such reads pass; anything else is a loud error
  * at eval naming the module and the patch line.
  */

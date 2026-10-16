@@ -6,7 +6,7 @@
  */
 
 import type { AnyNode } from "acorn";
-import type { SubsetContext } from "./subset-context";
+import type { RuleContext } from "./rule-context";
 
 const ALLOWED = new Set([
 	"BlockStatement",
@@ -67,7 +67,7 @@ const REASONS: Record<string, string> = {
 	DebuggerStatement: "`debugger` is not allowed",
 };
 
-export function checkForm(node: AnyNode, ctx: SubsetContext): void {
+export function checkForm(node: AnyNode, ctx: RuleContext): void {
 	if (ALLOWED.has(node.type)) {
 		if (node.type === "Literal" && "regex" in node && node.regex !== undefined)
 			ctx.fail(node, "regular expressions are not allowed");

@@ -13,7 +13,7 @@
  */
 
 import type { AnyNode, CallExpression } from "acorn";
-import { walk } from "../../module/tick-subset/walk";
+import { walk } from "../../module/front/parse/walk";
 import type { SourceRange } from "../range";
 import { isMathMember } from "./is-math-member";
 

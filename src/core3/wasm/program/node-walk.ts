@@ -5,7 +5,7 @@
  * gathers its input lanes into f64 views, then ticks once.
  */
 
-import { type FunctionNode, parseFunction } from "../../module/tick-subset/parse-function";
+import { type FunctionNode, parseFunction } from "../../module/front/parse/parse-function";
 import { GATHER_CUR } from "../../runtime/gathers";
 import type { NodeRun } from "../../runtime/node-run";
 import type { ModuleSource } from "../../types";

@@ -1,5 +1,5 @@
 /**
- * Bind a tick's table intrinsics (tick-subset/table-intrinsics.ts) to the
+ * Bind a tick's table intrinsics (front/intrinsics/table-intrinsics.ts) to the
  * lane's scratch table (bridge/lane-table.ts: a pattern-reading lane is born
  * with one), through the tick's state and config parameters:
  *
@@ -14,9 +14,9 @@
  */
 
 import type { CallExpression } from "acorn";
-import type { ParsedFunction } from "../tick-subset/parse-function";
-import { TABLE_INTRINSICS } from "../tick-subset/table-intrinsics";
-import { walk } from "../tick-subset/walk";
+import { TABLE_INTRINSICS } from "../front/intrinsics/table-intrinsics";
+import type { ParsedFunction } from "../front/parse/parse-function";
+import { walk } from "../front/parse/walk";
 import type { TextEdit } from "./text-edits";
 
 /** The bound name of the lane's table fill (bridge/lane-table.ts) inside a built tick. */

@@ -7,7 +7,7 @@
  * hidden first parameter, as a cached helper does.
  */
 
-import { parseFunction } from "../../module/tick-subset/parse-function";
+import { parseFunction } from "../../module/front/parse/parse-function";
 import { compileHelper } from "../compile/compile-helper";
 import type { ArgShape } from "../compile/emit-context";
 import type { FunctionTable } from "../compile/function-table";

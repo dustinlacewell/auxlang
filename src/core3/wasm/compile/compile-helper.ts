@@ -6,7 +6,7 @@
  */
 
 import type { Expression, ReturnStatement } from "acorn";
-import { type FunctionNode, parseFunction } from "../../module/tick-subset/parse-function";
+import { type FunctionNode, parseFunction } from "../../module/front/parse/parse-function";
 import { I32 } from "../encode/opcodes";
 import { writes } from "./assigned-names";
 import type { ArgShape, Calls } from "./emit-context";

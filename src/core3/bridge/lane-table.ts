@@ -1,5 +1,5 @@
 /**
- * A pattern-reading lane's event table (module/tick-subset/table-intrinsics.ts),
+ * A pattern-reading lane's event table (module/front/intrinsics/table-intrinsics.ts),
  * kept in the lane's engine scratch: derived data, never carried across a
  * re-eval as state (the WASM prefill continues a lane's fill when its table
  * key is unchanged: table-key.ts). The lane is born with an empty table

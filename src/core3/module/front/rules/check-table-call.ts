@@ -7,15 +7,20 @@
  */
 
 import type { AnyNode, CallExpression, Literal } from "acorn";
-import type { SubsetContext } from "./subset-context";
-import { TABLE_INTRINSICS, TABLE_ROW_FIELDS, isTableRowField } from "./table-intrinsics";
+import {
+	TABLE_INTRINSICS,
+	TABLE_ROW_FIELDS,
+	isTableRowField,
+} from "@/core3/module/front/intrinsics/table-intrinsics";
+import { isIntrinsicCall } from "./is-intrinsic-call";
+import { type RuleContext, hasRole } from "./rule-context";
 
-export function checkTableCall(node: CallExpression, name: string, ctx: SubsetContext): void {
+export function checkTableCall(node: CallExpression, name: string, ctx: RuleContext): void {
 	if (!ctx.tables)
 		ctx.fail(node, `${name}() is available only to a module that declares reads: "pattern"`);
 	if (ctx.kind !== "tick")
 		ctx.fail(node, `${name}() is available only in tick, which owns the lane's table`);
-	if (ctx.roles.state === undefined || ctx.roles.config === undefined)
+	if (!hasRole(ctx, "state") || !hasRole(ctx, "config"))
 		ctx.fail(node, `${name}() needs the tick's state and config parameters to be named`);
 	const arity = TABLE_INTRINSICS.get(name) as number;
 	if (node.arguments.length !== arity)
@@ -23,7 +28,7 @@ export function checkTableCall(node: CallExpression, name: string, ctx: SubsetCo
 	if (name === "__tableRow") checkRowField(node, ctx);
 }
 
-function checkRowField(node: CallExpression, ctx: SubsetContext): void {
+function checkRowField(node: CallExpression, ctx: RuleContext): void {
 	const field = node.arguments[0];
 	if (field?.type !== "Literal" || !isTableRowField(field.value))
 		ctx.fail(
@@ -33,11 +38,14 @@ function checkRowField(node: CallExpression, ctx: SubsetContext): void {
 }
 
 /** Whether `literal` is the field argument of a `__tableRow` call (the call itself checks the field). */
-export function isRowFieldLiteral(literal: Literal, parent: AnyNode | null): boolean {
+export function isRowFieldLiteral(
+	literal: Literal,
+	parent: AnyNode | null,
+	ctx: RuleContext,
+): boolean {
 	return (
 		parent?.type === "CallExpression" &&
-		parent.callee.type === "Identifier" &&
-		parent.callee.name === "__tableRow" &&
+		isIntrinsicCall(parent, "__tableRow", ctx) &&
 		parent.arguments[0] === literal
 	);
 }
