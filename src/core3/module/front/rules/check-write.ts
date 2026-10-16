@@ -2,9 +2,9 @@
  * Writes. A tick writes its locals, its declared outputs, and fields its
  * fresh state already has — never a new field, never an array's length, never
  * its inputs or config, never a role parameter itself (`s = 0`: only one
- * state, inputs, outputs and config record exists). Field writes go through the state parameter by name,
- * so their path can be checked against the real fresh state; elsewhere only
- * indexed writes (`buf[k] = x`) are allowed.
+ * state, inputs, outputs and config record exists). Field writes go through
+ * the state parameter by name, so their path can be checked against the real
+ * fresh state; elsewhere only indexed writes (`buf[k] = x`) are allowed.
  */
 
 import type { AnyNode, MemberExpression } from "acorn";

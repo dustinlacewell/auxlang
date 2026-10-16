@@ -71,8 +71,8 @@ function typeIndex(c: PlanContext, node: MemberExpression): Ty {
 	const index = typeExpr(c, node.property, "value");
 	if (owner.k !== "ref" || owner.shape.k === "record") return UNKNOWN;
 	const path = isPath(c, node.object);
-	const constant = path && index.k === "static" && typeof index.v === "number";
-	const valid = constant && validIndex(index.v as number, owner.shape.length);
+	const constant = path && index.k === "static";
+	const valid = constant && typeof index.v === "number" && validIndex(index.v, owner.shape.length);
 	if (owner.shape.k === "records") return listElement(c, node, owner.shape, valid);
 	if (constant && !valid) return known(undefined);
 	if (valid) c.elements.add(node);

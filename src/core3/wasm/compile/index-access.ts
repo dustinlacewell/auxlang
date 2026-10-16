@@ -22,12 +22,12 @@ export type Index =
 	| { readonly k: "int"; readonly local: number; readonly proven: boolean }
 	| { readonly k: "long" | "f64"; readonly local: number };
 
+/** What a non-number index is to a typed array: `undefined`, `true` and `null` name no element. */
+const NEVER_VALID = Number.NaN;
+
 export function emitIndex(e: FnEmitter, property: AnyNode, length: number): Index {
 	const known = e.fold(property);
-	if (known !== null) {
-		if (typeof known.v !== "number") return e.fail(property, "an index must be a number");
-		return { k: "static", value: known.v };
-	}
+	if (known !== null) return { k: "static", value: typeof known.v === "number" ? known.v : NEVER_VALID };
 	const width = integerWidth(e, property);
 	if (width === "int") {
 		emitInteger(e, property, width);
@@ -37,7 +37,10 @@ export function emitIndex(e: FnEmitter, property: AnyNode, length: number): Inde
 	let kind: Kind = "long";
 	if (width === "long") emitInteger(e, property, width);
 	else kind = emitExpr(e, property);
-	if (kind === "bool") return e.fail(property, "a boolean is not an index");
+	if (kind === "bool") {
+		e.code.op(OP.drop);
+		return { k: "static", value: NEVER_VALID };
+	}
 	if (kind === "int") return { k: "int", local: setLocal(e, "int"), proven: false };
 	return { k: kind, local: setLocal(e, kind) };
 }

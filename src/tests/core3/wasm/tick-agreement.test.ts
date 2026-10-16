@@ -81,6 +81,11 @@ const AGREED_ACCEPT: readonly Row[] = [
 	accept("?? after a negative index", "o.out = s.buf[-1] ?? 2"),
 	accept("an out-of-range read without ??", "o.out = s.buf[9]; s.n++"),
 	accept("an out-of-range write", "s.buf[9] = 1; o.out = s.buf[0]"),
+	// Found by generated-ticks: an out-of-range read is undefined in JS and NaN on WASM.
+	accept("an out-of-range read used as an index", "o.out = s.buf[s.buf[9]] ?? 1"),
+	accept("an out-of-range read as an exponent", "o.out = 1 ** s.buf[5]"),
+	accept("a boolean index", "o.out = s.buf[i.in > 50] ?? 2"),
+	accept("an out-of-range read into Math", "o.out = Math.sin(s.buf[7]) + Math.max(s.buf[s.n + 3], 1); s.n++"),
 ];
 
 /** Forms the checker refuses today, so neither backend runs them. */
@@ -125,9 +130,6 @@ const DISAGREE_ACCEPT: readonly Row[] = [
 	accept("||= on an element", "s.buf[1] ||= i.in; o.out = s.buf[1]"),
 	accept("??= on an element", "s.buf[2] ??= i.in; o.out = s.buf[2]"),
 	accept("&&= on a local", "let a = 1; a &&= i.in; o.out = a"),
-	// Found by generated-ticks: an out-of-range read is undefined in JS and NaN on WASM.
-	accept("an out-of-range read used as an index", "o.out = s.buf[s.buf[9]] ?? 1"),
-	accept("an out-of-range read as an exponent", "o.out = 1 ** s.buf[5]"),
 ];
 
 function expectAccepted(row: Row): void {

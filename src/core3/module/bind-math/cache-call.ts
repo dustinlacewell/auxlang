@@ -6,7 +6,11 @@
  * call's own line:
  *
  *   (X = (A), X === a0 && B === a1 && (X !== 0 || 1 / X === 1 / a0) && ... ? r
- *     : (a0 = X, a1 = B, r = __math_f(X, B)))
+ *     : (a0 = X, a1 = B, r = __math_f(+X, +B)))
+ *
+ * The helper takes each run-time argument as a number (`+X`), as `Math.f`
+ * does: an out-of-range element read gives `undefined`, which `Math.f` and
+ * WASM both see as NaN.
  *
  * Equality is bit-exact: `===` plus a sign test at zero, so +0 and -0 differ;
  * NaN never equals, so a NaN argument always computes. A literal argument is
@@ -97,7 +101,8 @@ function cacheTail(
 					...keyed.map(({ value, last }) => `(${value} !== 0 || 1 / ${value} === 1 / ${last})`),
 				].join(" && ");
 	const stores = keyed.map(({ value, last }) => `${last} = ${value}`);
-	const call = `${r} = ${MATH_HELPER_PREFIX}${fn}(${values.map((v) => v.text).join(", ")})`;
+	const args = values.map((v) => (v.kind === "literal" ? v.text : `+${v.text}`));
+	const call = `${r} = ${MATH_HELPER_PREFIX}${fn}(${args.join(", ")})`;
 	return {
 		text: `${test} ? ${r} : (${[...stores, call].join(", ")})`,
 		slots: keyed.length + 1,
