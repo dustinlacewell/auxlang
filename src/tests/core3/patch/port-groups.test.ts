@@ -2,7 +2,7 @@
  * Port groups at the patch layer: a group key binds members from an object
  * or an array, a named argument that is no port goes to the open in-group,
  * setters and `.mod` reach members, an out member taps by name, and every
- * misuse is loud. Engines refuse group members until they build them.
+ * misuse is loud.
  */
 
 import { beforeAll, describe, expect, it } from "vitest";
@@ -11,7 +11,6 @@ import { defmod, factory, runEval, runProgram } from "@/core3/api";
 import type { GNode } from "@/core3/graph/node";
 import type { Handle } from "@/core3/patch/handle-data";
 import { group, type PNode, type Program, sig, sigs, unit } from "@/core3/types";
-import { prepareWasm } from "@/core3/wasm/host/prepare-wasm";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);
@@ -203,13 +202,6 @@ describe("loud errors", () => {
 				osc(1).gsum().out();
 			}),
 		).toThrow(/default input 'ch' is a port group/);
-	});
-
-	it("both engines refuse a node with group members", () => {
-		const program = runProgram(() => {
-			defMix()({ drums: osc(1) }).out();
-		});
-		expect(() => prepareWasm(program, 48000)).toThrow(/port groups are not built yet/);
 	});
 });
 

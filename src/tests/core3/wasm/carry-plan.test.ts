@@ -100,7 +100,7 @@ function side({
 	};
 }
 
-const node = (...lanes: LaneMemory[]): NodeMemory => ({ outs: {}, views: {}, lanes });
+const node = (...lanes: LaneMemory[]): NodeMemory => ({ outs: {}, views: {}, groups: {}, lanes });
 
 /** The plan's runs as tuples, in bytes: [from, to, bytes, type]. */
 function runs(plan: Int32Array): [number, number, number, number][] {

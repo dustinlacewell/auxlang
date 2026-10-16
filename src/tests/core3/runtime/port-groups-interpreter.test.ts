@@ -3,7 +3,6 @@
  * as `i.g[k]` / `i.g.length`, writes an out-group as `o.g[k]`, and a loop
  * over `i.g.length` specialises without error. The checker (module/front/
  * rules/check-write.ts) refuses `o.g = v`, `o.plain[k] = v` and `i.g[k] = v`.
- * WASM still refuses any grouped node (step 2c).
  */
 
 import { describe, expect, it } from "vitest";
@@ -12,7 +11,6 @@ import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
 import { renderTap } from "@/core3/runtime/render";
 import { group, sig, unit } from "@/core3/types";
-import { prepareWasm } from "@/core3/wasm/host/prepare-wasm";
 import { type IO, type St, c, n, pnode, prog } from "./helpers";
 
 // gmix: out = sum ch[k] * level[k]. `ch` open in-group, `level` a `like: ch` in-group.
@@ -92,12 +90,5 @@ describe("port groups on the interpreter", () => {
 		]);
 		expect(renderTap(program, 1, "out", 0, 1, getRegistry())[0]).toBeCloseTo(6, 6);
 		expect(renderTap(program, 2, "out", 0, 1, getRegistry())[0]).toBeCloseTo(10, 6);
-	});
-
-	it("WASM still refuses a grouped node", () => {
-		const program = prog([
-			pnode("pgi.mix", [{ a: c(1), "level.a": c(1) }], { groups: { ch: ["a"] } }),
-		]);
-		expect(() => prepareWasm(program, 48000)).toThrow(/port groups are not built yet/);
 	});
 });

@@ -3,7 +3,7 @@
  * built (MANIFESTO §5.1): the two output blocks (f32), the value buffer
  * (f64 per slot, as the engine's `cur`), the sample count, then per node its
  * outputs record, the f64 lane views its reducer inputs are gathered into,
- * and per lane its numeric state fields, its typed arrays and records
+ * an f64 array per port group (its members are fixed at eval), and per lane its numeric state fields, its typed arrays and records
  * (state-layout.ts), its math call cache, (a module that reads a pattern)
  * its table slot, and each lambda input's own math cache. The table heap
  * starts above all of it (layout/table-format.ts, host/table-heap.ts); the
@@ -56,6 +56,8 @@ export interface NodeMemory {
 	readonly outs: Readonly<Record<string, number>>;
 	/** Reducer input port → its f64 view. */
 	readonly views: Readonly<Record<string, number>>;
+	/** Port group name → its f64 array, one slot per member, shared by the node's lanes. */
+	readonly groups: Readonly<Record<string, number>>;
 	readonly lanes: readonly LaneMemory[];
 }
 
@@ -96,6 +98,8 @@ export function planMemory(
 		for (const port of run.gathers?.ports ?? []) {
 			if (port.view !== null) views[port.name] = take(8 * port.srcLanes);
 		}
+		const groups: Record<string, number> = {};
+		for (const g of [...run.groups.ins, ...run.groups.outs]) groups[g.name] = take(8 * g.ports.length);
 		const slots = moduleCacheSlots(irs[i] as ModuleIR);
 		const fields = fieldRebinds(irs[i] as ModuleIR);
 		const lanes = run.states.map((state, l) => {
@@ -114,7 +118,7 @@ export function planMemory(
 				lambdas: planLambdas(lambdas[i]?.[l] ?? {}, take),
 			};
 		});
-		return { outs, views, lanes };
+		return { outs, views, groups, lanes };
 	});
 	const heap = top;
 	const pages = Math.max(1, Math.ceil((heap + initialHeap(nodes)) / PAGE));

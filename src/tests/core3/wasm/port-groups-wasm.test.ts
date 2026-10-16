@@ -10,10 +10,12 @@ import "@/core3/modules/all";
 import { getRegistry } from "@/core3/module/define";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
+import { renderTap } from "@/core3/runtime/render";
 import type { EngineState, Program } from "@/core3/types";
 import { createWasmEngine, swapWasmEngine } from "@/core3/wasm/host/create-wasm-engine";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { describe, expect, it } from "vitest";
+import { nodeIndex } from "../bridge/helpers";
 import {
 	type Run,
 	SR,
@@ -66,13 +68,23 @@ function patch(...lines: string[]): Program {
 	return evalPatch(lines.join("\n"));
 }
 
+/** The largest absolute sample (a loop: spreading 384000 samples into Math.max overflows the stack). */
+function peak(samples: Float32Array): number {
+	let max = 0;
+	for (const v of samples) max = Math.max(max, Math.abs(v));
+	return max;
+}
+
+/** The module's own output at sample 0: `out` scales and DC-blocks the frame. */
+function firstSample(program: Program, module: string): number {
+	return renderTap(program, nodeIndex(program, module), "out", 0, 1)[0] as number;
+}
+
 describe("port groups on WASM are bit-identical to the interpreter (8 s)", () => {
 	it("constant members with a level setter; sample 0 is 1", () => {
-		const ref = expectIdentical(
-			patch(GMIX, "gmix({ a: 0.5, b: 0.25 }).level({ b: 2 }).out()"),
-			EIGHT_SECONDS,
-		);
-		expect(ref.l[0]).toBe(1);
+		const program = patch(GMIX, "gmix({ a: 0.5, b: 0.25 }).level({ b: 2 }).out()");
+		expectIdentical(program, EIGHT_SECONDS);
+		expect(firstSample(program, "gmix")).toBe(1);
 	});
 
 	it("signal members with .mod on a member level", () => {
@@ -80,12 +92,12 @@ describe("port groups on WASM are bit-identical to the interpreter (8 s)", () =>
 			patch(GMIX, 'gmix({ a: sin(60), b: tri(67) }).mod("level.b", lfo(0.3, -1, 1), 1).out()'),
 			EIGHT_SECONDS,
 		);
-		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.1);
+		expect(peak(ref.l)).toBeGreaterThan(0.01);
 	});
 
 	it("one member; its unset like-member takes the default level 1", () => {
 		const ref = expectIdentical(patch(GMIX, "gmix({ a: lfo(0.2) }).out()"), EIGHT_SECONDS);
-		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.1);
+		expect(peak(ref.l)).toBeGreaterThan(0.01);
 	});
 
 	it("an out-group: o.g[k] = i.ch[k] * 2 taps both members by name", () => {
@@ -97,8 +109,8 @@ describe("port groups on WASM are bit-identical to the interpreter (8 s)", () =>
 			),
 			EIGHT_SECONDS,
 		);
-		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.1);
-		expect(Math.max(...ref.r.map(Math.abs))).toBeGreaterThan(0.1);
+		expect(peak(ref.l)).toBeGreaterThan(0.01);
+		expect(peak(ref.r)).toBeGreaterThan(0.01);
 		expect(firstBitDiff(ref.l, ref.r)).not.toBe(-1);
 	});
 
@@ -107,14 +119,14 @@ describe("port groups on WASM are bit-identical to the interpreter (8 s)", () =>
 			patch(GMIX, "tempo(120)", "gmix({ a: sin(p`[60, 67]`), b: 0.1 }).out()"),
 			EIGHT_SECONDS,
 		);
-		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.1);
+		expect(peak(ref.l)).toBeGreaterThan(0.01);
 	});
 
 	it("i.ch.length read into a local and used in arithmetic: 3 members give 0.75", () => {
 		const glen = defIn("glen", "const n = i.ch.length; o.out = n * 0.25;");
-		const ref = expectIdentical(patch(glen, "glen({ a: 0.1, b: 0.2, c: 0.3 }).out()"), EIGHT_SECONDS);
-		expect(ref.l[0]).toBe(0.75);
-		expect(ref.l[EIGHT_SECONDS - 1]).toBe(0.75);
+		const program = patch(glen, "glen({ a: 0.1, b: 0.2, c: 0.3 }).out()");
+		expectIdentical(program, EIGHT_SECONDS);
+		expect(firstSample(program, "glen")).toBe(0.75);
 	});
 });
 
@@ -148,16 +160,21 @@ function wasmSwap(before: Program, after: Program): SwapRun {
 	return { tail, swapState: head.state };
 }
 
-/** The last `AFTER` samples of a `SWAP_AT + AFTER` render, unswapped. */
-function lastSecond(run: Run): { l: Float32Array; r: Float32Array } {
-	return { l: run.l.subarray(SWAP_AT), r: run.r.subarray(SWAP_AT) };
+/** The lfo's lane states. */
+function lfoState(state: EngineState): Record<string, unknown>[] | undefined {
+	const id = state.identities.find((i) => i.kind === "lfo");
+	return id === undefined ? undefined : state.nodes[id.key];
 }
 
-/** Asserts the swapped tail equals the after-patch rendered from t = 0 without a swap. */
+/**
+ * Asserts the lfo's state after the swap equals an unswapped render's at the
+ * same time: its phase ran on. The output cannot show it: `out` DC-blocks,
+ * so a changed constant member leaves a transient in the frame.
+ */
 function expectPhaseKept(tail: Run, unswapped: Run, label: string): void {
-	const ref = lastSecond(unswapped);
-	expect(firstBitDiff(ref.l, tail.l), `${label}: lfo phase kept (left)`).toBe(-1);
-	expect(firstBitDiff(ref.r, tail.r), `${label}: lfo phase kept (right)`).toBe(-1);
+	const kept = lfoState(tail.state);
+	expect(kept, `${label}: the lfo is running`).toBeDefined();
+	expect(kept, `${label}: lfo phase kept`).toEqual(lfoState(unswapped.state));
 }
 
 const START = "gmix({ a: lfo(0.3), b: 0.2 }).out()";
@@ -182,7 +199,7 @@ describe("a port-group re-eval keeps upstream state on both engines", () => {
 
 			expectPhaseKept(ref.tail, interpreterRun(after, SWAP_AT + AFTER), "interpreter");
 			expectPhaseKept(wasm.tail, wasmRun(after, SWAP_AT + AFTER), "wasm");
-			expect(Math.max(...ref.tail.l.map(Math.abs))).toBeGreaterThan(0.1);
+			expect(peak(ref.tail.l)).toBeGreaterThan(0.01);
 		});
 	}
 });

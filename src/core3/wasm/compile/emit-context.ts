@@ -17,8 +17,8 @@ export interface TickRoles {
 	/** State field `field`: the f64 local mirroring a number, or an array or record in memory. */
 	state(field: string, at: AnyNode): Value;
 	input(port: string, at: AnyNode): Value;
-	/** The f64 local holding output `port`. */
-	output(port: string, at: AnyNode): number;
+	/** Output `port`: the f64 local holding it, or an out-group's f64 array in memory. */
+	output(port: string, at: AnyNode): Value;
 	config(field: string, at: AnyNode): StaticValue;
 	/** The whole state record, passed to a helper. */
 	stateRecord(at: AnyNode): StateRecord;

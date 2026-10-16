@@ -12,7 +12,7 @@ import { MATH_CONSTANTS } from "../../math/math-constants";
 import type { FnEmitter } from "./fn-emitter";
 import { validIndex } from "../../module/front/types/valid-index";
 import type { Shape } from "../layout/state-shape";
-import { type MemoryValue, type Value, fixed, inMemory, local, throughPointer } from "./values";
+import { type MemoryValue, type Value, fixed, inMemory, throughPointer } from "./values";
 
 /** The value `node` names, when it is a name or a field; null for anything else. */
 export function resolve(e: FnEmitter, node: AnyNode): Value | null {
@@ -61,7 +61,7 @@ function resolveMember(e: FnEmitter, node: MemberExpression): Value | null {
 		case "ins":
 			return roles.input(field, node);
 		case "outs":
-			return local(roles.output(field, node), "f64");
+			return roles.output(field, node);
 		case "config":
 			return fixed(roles.config(field, node));
 	}

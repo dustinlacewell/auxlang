@@ -1,7 +1,8 @@
 /**
  * One node's work for one sample inside the render function, as the
  * interpreter's walk (runtime/interpret-sample.ts): a map node's lanes each
- * call their lambdas, tick and scatter their outputs; a reducer first
+ * call their lambdas, fill their in-groups, tick, drain their out-groups and
+ * scatter their outputs (group-io.ts); a reducer first
  * gathers its input lanes into f64 views, then ticks once.
  */
 
@@ -16,8 +17,9 @@ import type { Functions } from "../compile/functions";
 import { type HelperSet, helperSet } from "../compile/helper-set";
 import type { RenderInput } from "./emit-render";
 import { emitTick } from "./emit-tick";
+import { drainOutGroups, fillInGroups } from "./group-io";
 import { emitLambdaInputs } from "./lambda-inputs";
-import { laneRoles } from "./lane-roles";
+import { laneInput, laneRoles } from "./lane-roles";
 import type { RenderLocals } from "./render-locals";
 import type { ValueSlots } from "./value-slots";
 
@@ -74,12 +76,15 @@ export class NodeWalk {
 		);
 		const ir = this.ir(i);
 		const width = run.gathers?.width ?? 1;
+		const owner = `${module} tick (node ${i} lane ${lane})`;
+		const mirror = (addr: number) => locals.at(addr);
+		fillInGroups(e, run, memory, laneInput(run, memory, lane, slots, lambdas), owner);
 		emitTick(e, {
 			fn: ir.tick,
 			plan: this.plan(i, lane),
-			owner: `${module} tick (node ${i} lane ${lane})`,
+			owner,
 			calls: this.site.fns.calls(this.set(i)),
-			roles: laneRoles(e, run, memory, lane, slots, (addr) => locals.at(addr), lambdas),
+			roles: laneRoles(e, run, memory, lane, slots, mirror, lambdas),
 			cache: {
 				k: "locals",
 				slot: (s) => locals.at(laneMemory.cache + 8 * s),
@@ -92,6 +97,7 @@ export class NodeWalk {
 			sampleRate: input.sampleRate,
 			width,
 		});
+		drainOutGroups(e, run, memory, mirror, owner);
 	}
 
 	/** The engine's scatter: each output into its value slot for this lane. */
