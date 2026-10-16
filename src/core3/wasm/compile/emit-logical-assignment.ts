@@ -38,7 +38,7 @@ export function emitLogicalAssignment(e: FnEmitter, node: AssignmentExpression, 
  * it counts (front/types/type-expression.ts).
  */
 function refAssign(e: FnEmitter, node: AssignmentExpression, op: string, keep: boolean): null {
-	if (keep) return e.fail(node, "a logical assignment of an array or record is used as a value (compiler bug)");
+	if (keep) return e.fail(node, "a logical assignment of an array or record is used as a value");
 	if (op !== "&&") placeOf(e, node.left);
 	else if (isPointerRebind(e, node)) emitPointerRebind(e, node);
 	else emitRebind(e, node);

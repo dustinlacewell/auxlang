@@ -13,6 +13,7 @@ import { helperPlan } from "../../module/front/types/helper-plans";
 import { BOOL, NUM, type Ty, known, ref } from "../../module/front/types/ty";
 import { I32 } from "../encode/opcodes";
 import { addressLocal } from "./address-variable";
+import { compilerBug } from "./compiler-bug";
 import type { ArgShape, Calls } from "./emit-context";
 import { emitStatic } from "./emit-expression";
 import { emitStatement, emitStatements } from "./emit-statement";
@@ -36,10 +37,10 @@ export function compileHelper(
 	calls: Calls,
 ): CompiledHelper {
 	const ir = set.fns.get(name);
-	if (ir === undefined) throw new Error(`wasm: ${set.owner} has no helper '${name}'`);
+	if (ir === undefined) return compilerBug(set.owner, `no helper '${name}'`);
 	const owner = `${set.owner} helper '${name}'`;
 	const plan = helperPlan({ ir, callees: calleesOf(set.fns) }, shapes.map(paramTy));
-	if (plan === null) throw new Error(`wasm: ${owner}: calls itself`);
+	if (plan === null) return compilerBug(owner, "calls itself");
 	return build(plan, shapes, calls, set.cached, owner);
 }
 
@@ -61,9 +62,7 @@ function build(
 	const result: Kind = plan.result === "bool" ? "bool" : "f64";
 	const fn = ir.node;
 	if (shapes.length > fn.params.length)
-		throw new Error(
-			`wasm: ${owner}: called with ${shapes.length} arguments for ${fn.params.length}`,
-		);
+		compilerBug(owner, `called with ${shapes.length} arguments for ${fn.params.length}`);
 	const params: number[] = hidden ? [I32] : [];
 	for (const s of shapes) {
 		if (s.k === "run") params.push(valueType(s.kind));

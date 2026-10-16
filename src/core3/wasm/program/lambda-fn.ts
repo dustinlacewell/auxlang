@@ -9,6 +9,7 @@
 
 import type { FunctionIR } from "../../module/front/module/module-ir";
 import { compileHelper } from "../compile/compile-helper";
+import { compilerBug } from "../compile/compiler-bug";
 import type { ArgShape } from "../compile/emit-context";
 import type { FunctionTable } from "../compile/function-table";
 import type { Functions } from "../compile/functions";
@@ -34,8 +35,7 @@ export function compileLambda(
 	const shapes = lambdaShapes(sampleRate).slice(0, ir.node.params.length);
 	const fn = compileHelper(set, "lambda", shapes, fns.calls(set));
 	// The checker (module/front/kinds/) already refuses a lambda that returns a boolean.
-	if (fn.result !== "f64")
-		throw new Error(`wasm: ${owner}: internal: a boolean lambda passed the checker`);
+	if (fn.result !== "f64") compilerBug(owner, "a boolean lambda passed the checker");
 	const type = table.typeIndex(fn.params, [F64]);
 	return {
 		index: table.add({ type, locals: fn.locals, body: fn.body }),

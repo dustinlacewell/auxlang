@@ -38,7 +38,7 @@ export function isRebind(e: FnEmitter, node: AssignmentExpression): boolean {
 export function emitRebind(e: FnEmitter, node: AssignmentExpression): void {
 	const variable = node.left.type === "Identifier" ? e.valueOf(node.left) : null;
 	if (!REBINDS.has(node.operator) || variable?.k !== "memory" || variable.at.base === null)
-		e.fail(node, "an array variable is only ever rebound by `=` or `&&=` (compiler bug)");
+		e.fail(node, "an array variable is only ever rebound by `=` or `&&=`");
 	pushAddress(e, refAt(e, node.right).at);
 	e.code.set(variable.at.base);
 }
@@ -65,7 +65,7 @@ export function placeOfAddress(e: FnEmitter, node: AnyNode, known: MemoryValue |
 export function refAt(e: FnEmitter, node: AnyNode): MemoryValue {
 	const value = placeOf(e, node);
 	if (value?.k !== "memory" || value.shape.k === "number")
-		return e.fail(node, "the plan gives an array or record here, but it names none (compiler bug)");
+		return e.fail(node, "the plan gives an array or record here, but it names none");
 	return value;
 }
 

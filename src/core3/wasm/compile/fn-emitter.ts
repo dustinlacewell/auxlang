@@ -14,6 +14,7 @@ import { type Range, rangeOf } from "../../module/front/types/int-range";
 import type { Folded, Ty } from "../../module/front/types/ty";
 import { CodeBuffer } from "../encode/code-buffer";
 import { F64, I32, I64, OP } from "../encode/opcodes";
+import { compilerBug } from "./compiler-bug";
 import type { EmitContext } from "./emit-context";
 import type { Kind, Value } from "./values";
 
@@ -114,7 +115,7 @@ export class FnEmitter {
 	bind(id: Identifier, value: Value): void {
 		const fn = this.ctx.fn;
 		const binding = fn === null ? undefined : bindingDeclaredBy(fn.scopes, id);
-		if (binding === undefined) return this.fail(id, "a name the front end did not bind (compiler bug)");
+		if (binding === undefined) return this.fail(id, "a name the front end did not bind");
 		this.bound.set(binding, value);
 	}
 
@@ -135,14 +136,13 @@ export class FnEmitter {
 
 	private planned(node: AnyNode): FunctionPlan {
 		const plan = this.ctx.plan;
-		if (plan === null) return this.fail(node, "internal: no plan to type against");
+		if (plan === null) return this.fail(node, "no plan to type against");
 		return plan;
 	}
 
+	/** A compiler bug at `node` (compiler-bug.ts). */
 	fail(node: AnyNode, message: string): never {
 		const line = node.loc?.start.line;
-		throw new Error(
-			`wasm: ${this.ctx.owner}${line === undefined ? "" : ` line ${line}`}: ${message}`,
-		);
+		return compilerBug(`${this.ctx.owner}${line === undefined ? "" : ` line ${line}`}`, message);
 	}
 }

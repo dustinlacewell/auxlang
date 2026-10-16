@@ -73,7 +73,7 @@ function setLocal(e: FnEmitter, kind: Kind): number {
 function declareRoleAlias(e: FnEmitter, id: Identifier, init: AnyNode): void {
 	const value = resolve(e, init);
 	if (value?.k !== "role")
-		e.fail(init, "the plan gives a parameter record here, but it names none (compiler bug)");
+		e.fail(init, "the plan gives a parameter record here, but it names none");
 	e.bind(id, value);
 }
 
@@ -84,6 +84,6 @@ function declareRoleAlias(e: FnEmitter, id: Identifier, init: AnyNode): void {
 function declareAlias(e: FnEmitter, id: Identifier, init: AnyNode): void {
 	const value = placeOf(e, init);
 	if (value?.k !== "memory" || value.shape.k === "number")
-		e.fail(init, "the plan gives an array or record here, but it names none (compiler bug)");
+		e.fail(init, "the plan gives an array or record here, but it names none");
 	e.bind(id, value);
 }

@@ -50,7 +50,7 @@ export function coerce(e: FnEmitter, from: Kind, to: Kind, at: AnyNode): void {
 	if (from === to) return;
 	if (to === "f64") toF64(e, from);
 	else if (to === "int") toInt32(e, from);
-	else if (to === "long") e.fail(at, "only an integer is stored as an i64 (compiler bug)");
+	else if (to === "long") e.fail(at, "only an integer is stored as an i64");
 	else if (from === "bool") return;
 	else e.fail(at, "a boolean variable cannot take a number here");
 }

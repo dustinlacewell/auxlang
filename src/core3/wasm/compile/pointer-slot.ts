@@ -50,7 +50,7 @@ export function isPointerRebind(e: FnEmitter, node: AssignmentExpression): boole
 /** `s.a = s.b`, `s.voices[0] = s.voices[1]`: the slot takes the right side's address; returns the right side's place. */
 export function emitPointerRebind(e: FnEmitter, node: AssignmentExpression): MemoryValue {
 	if (!REBINDS.has(node.operator) || node.left.type !== "MemberExpression")
-		return e.fail(node, "a field or element holding an array or record is only ever rebound by `=` or `&&=` (compiler bug)");
+		return e.fail(node, "a field or element holding an array or record is only ever rebound by `=` or `&&=`");
 	const slot = slotOf(e, node.left);
 	const value = refAt(e, node.right);
 	pushBase(e, slot);
@@ -65,13 +65,13 @@ function slotOf(e: FnEmitter, target: MemberExpression): Address {
 	if (target.computed) {
 		if (owner?.k === "memory" && owner.shape.k === "records" && owner.shape.pointers !== undefined)
 			return elementSlot(e, owner as MemoryValue & { shape: RecordsShape }, target.property, target);
-		return e.fail(target, "a rebound element has no pointer slot (compiler bug)");
+		return e.fail(target, "a rebound element has no pointer slot");
 	}
 	const name = target.property.type === "Identifier" ? target.property.name : null;
 	const field =
 		owner?.k === "role" ? resolve(e, target) : owner?.k === "memory" && name !== null ? fieldOf(owner, name) : null;
 	if (field?.k !== "pointer")
-		return e.fail(target, "a rebound field has no pointer slot (compiler bug)");
+		return e.fail(target, "a rebound field has no pointer slot");
 	return field.slot;
 }
 

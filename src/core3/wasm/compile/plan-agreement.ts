@@ -15,7 +15,7 @@ import type { Kind } from "./values";
 export function agreed(e: FnEmitter, node: AnyNode, kind: Kind): Kind {
 	const reason = disagreement(e, node, kind);
 	if (reason === null) return kind;
-	return e.fail(node, `internal: WASM emitted ${kind} for a ${node.type} the plan typed ${reason}`);
+	return e.fail(node, `WASM emitted ${kind} for a ${node.type} the plan typed ${reason}`);
 }
 
 function disagreement(e: FnEmitter, node: AnyNode, kind: Kind): string | null {

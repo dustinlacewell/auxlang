@@ -6,6 +6,7 @@
  */
 
 import type { DefinedFunc, FuncType } from "../encode/module-bytes";
+import { compilerBug } from "./compiler-bug";
 
 export class FunctionTable {
 	private readonly types: FuncType[] = [];
@@ -44,7 +45,7 @@ export class FunctionTable {
 	allFuncs(): readonly DefinedFunc[] {
 		return this.funcs.map((fn, k) => {
 			if (fn === null)
-				throw new Error(`wasm: function ${k + this.importCount} was reserved but never defined`);
+				compilerBug(`function ${k + this.importCount}`, "reserved but never defined");
 			return fn;
 		});
 	}

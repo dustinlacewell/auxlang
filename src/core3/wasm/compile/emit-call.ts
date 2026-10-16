@@ -9,6 +9,7 @@
 import type { CallExpression, Expression } from "acorn";
 import { isAggregate } from "../layout/state-shape";
 import { toF64 } from "./coerce";
+import { compilerBug } from "./compiler-bug";
 import type { ArgShape, FnRef, StateRecord } from "./emit-context";
 import { emitExpr } from "./emit-expression";
 import { emitMathCall } from "./exact-math";
@@ -111,7 +112,7 @@ function runArg(e: FnEmitter, arg: Expression): "f64" | "bool" {
 function pushHidden(e: FnEmitter, fn: FnRef): void {
 	if (!fn.hidden) return;
 	const cache = e.ctx.cache;
-	if (cache === null) throw new Error(`wasm: ${e.ctx.owner}: a cached helper needs a math cache`);
+	if (cache === null) return compilerBug(e.ctx.owner, "a cached helper needs a math cache");
 	if (cache.k === "locals") e.code.i32Const(cache.address);
 	else e.code.get(cache.base);
 }

@@ -75,7 +75,7 @@ export function emitUpdate(e: FnEmitter, node: UpdateExpression, keep: boolean):
 	const target = targetOf(e, node.argument);
 	const kind = target.k === "local" ? target.kind : "f64";
 	if (kind === "bool") return e.fail(node, "++/-- need a number variable");
-	if (kind === "long") return e.fail(node, "an i64 variable is never written (compiler bug)");
+	if (kind === "long") return e.fail(node, "an i64 variable is never written");
 	const int = kind === "int";
 	beginWrite(e, target);
 	const current = readTarget(e, target);
@@ -94,7 +94,7 @@ export function emitUpdate(e: FnEmitter, node: UpdateExpression, keep: boolean):
  * on an element; its value is only ever used as a place (place.ts).
  */
 function rebind(e: FnEmitter, node: AssignmentExpression, keep: boolean): null {
-	if (keep) return e.fail(node, "an array rebind is used as a number (compiler bug)");
+	if (keep) return e.fail(node, "an array rebind is used as a number");
 	if (isPointerRebind(e, node)) emitPointerRebind(e, node);
 	else emitRebind(e, node);
 	return null;
@@ -109,7 +109,7 @@ function stepCounter(
 ): Kind | null {
 	const op = node.operator === "+=" ? OP.i32Add : node.operator === "-=" ? OP.i32Sub : null;
 	if (op === null || !isInt(e, node.right))
-		return e.fail(node, "an integer loop counter only steps by an integer (compiler bug)");
+		return e.fail(node, "an integer loop counter only steps by an integer");
 	e.code.get(target.index);
 	emitInt(e, node.right);
 	e.code.op(op);

@@ -37,7 +37,7 @@ export function emitInteger(e: FnEmitter, node: AnyNode, width: Width): void {
 	}
 	const kind = emitExpr(e, node);
 	if (kind === width) return;
-	if (kind === "bool") e.fail(node, "a boolean was typed as an integer (compiler bug)");
+	if (kind === "bool") e.fail(node, "a boolean was typed as an integer");
 	if (kind === "f64") e.code.op(width === "int" ? OP.i32TruncF64S : OP.i64TruncF64S);
 	else e.code.op(width === "int" ? OP.i32WrapI64 : OP.i64ExtendI32S);
 }
