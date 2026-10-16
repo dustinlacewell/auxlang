@@ -5,11 +5,11 @@
  * the node it reads onsets from and its tables' site column. Both engines
  * run the same per-sample steps over it:
  *
- *   before the walk   each reader's held note id (seq state `noteId`)
+ *   before the walk   each reader's held note id (seq state `heldId`)
  *   after the walk    each target's level summary from its slot, then each
  *                     reader's onset: its held note id changed to a note
  *                     (not a rest; a tie keeps its note's id), and the row
- *                     under it (state `row`) has a site
+ *                     under it (state `lastRow`) has a site
  *
  * The seq's own state is what says a new note began, so a note that plays
  * on across a re-eval swap makes no onset. Pure.
@@ -34,8 +34,8 @@ export interface MonitorPlan {
 }
 
 /** The seq state fields the onset step reads. */
-export const READER_ROW = "row";
-export const READER_NOTE = "noteId";
+export const READER_ROW = "lastRow";
+export const READER_NOTE = "heldId";
 
 export function monitorPlan(
 	watches: readonly Watch[],

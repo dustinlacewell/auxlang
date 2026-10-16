@@ -27,143 +27,128 @@
 
 /** trig fires when the position enters a different note; a slide entered from the note it slides from fires nothing. */
 function trigOf(kind, noteId, slideFrom, prevNoteId) {
-	if (kind === 0 || noteId === prevNoteId) return 0;
-	return kind === 3 && slideFrom === prevNoteId ? 0 : 1;
+	if (kind === 0 || noteId === prevNoteId) return 0
+	return kind === 3 && slideFrom === prevNoteId ? 0 : 1
 }
 
 function slideOf(kind) {
-	return kind === 3 ? 1 : 0;
+	return kind === 3 ? 1 : 0
 }
 
 /** The note id the reader remembers: none inside a rest. */
 function heldNoteId(kind, noteId) {
-	return kind === 0 ? -1.7976931348623157e308 : noteId;
+	return kind === 0 ? -1.7976931348623157e308 : noteId
 }
 
 /** Unclocked dip countdown in samples: restarts on a trig into a high gate, else counts down. */
 function dipLeftAfter(trig, gateWas, dipLeft, dipSamples) {
-	if (trig === 1 && gateWas === 1) return dipSamples;
-	return dipLeft > 0 ? dipLeft - 1 : 0;
+	if (trig === 1 && gateWas === 1) return dipSamples
+	return dipLeft > 0 ? dipLeft - 1 : 0
 }
 
 /** Clocked dip: the last `dipBeats` of a row marked to dip before the next note. */
 function inDipWindow(pos, end, dipBefore, dipBeats) {
-	return dipBefore === 1 && pos >= end - dipBeats ? 1 : 0;
+	return dipBefore === 1 && pos >= end - dipBeats ? 1 : 0
 }
 
 function gateOf(kind, dipLeft, dipWindow) {
-	return kind !== 0 && dipLeft === 0 && dipWindow === 0 ? 1 : 0;
+	return kind !== 0 && dipLeft === 0 && dipWindow === 0 ? 1 : 0
 }
 
 /** The 1 ms dip in samples. */
 function dipSamplesAt(sampleRate) {
-	return Math.round(0.001 * sampleRate);
+	return Math.round(0.001 * sampleRate)
 }
 
 /** The 1 ms dip in position units, from the position's per-sample step (0 before a first step). */
 function dipBeatsAt(started, step, sampleRate) {
-	return started === 1 && step > 0 ? 0.001 * sampleRate * step : 0;
+	return started === 1 && step > 0 ? 0.001 * sampleRate * step : 0
 }
 
-defmod({
-	name: "seq",
-	category: "timing",
-	doc: "Reads a pattern at a position (default: the clock); outputs value, gate, trig, and slide.",
-	ins: { position: phasePort(0) },
-	outs: {
-		out: semis(0),
-		gate: gatePort(),
-		trig: trigPort(),
-		slide: gatePort(),
-		fields: group(sig(0), { open: true }),
+defmod(
+	"seq",
+	{
+		cat: "timing",
+		doc: "Reads a pattern at a position (default: the clock); outputs value, gate, trig, and slide.",
+		args: ["pattern", "position"],
+		reads: "pattern",
+		outs: {
+			out: semis(0),
+			gate: gatePort(),
+			trig: trigPort(),
+			slide: gatePort(),
+			fields: group(sig(0), { open: true }),
+		},
 	},
-	defaultIn: "position",
-	defaultOut: "out",
-	positional: ["pattern", "position"],
-	config: { pattern: { op: "silence" }, seed: 1, lanes: 1, clocked: 0 },
-	reads: "pattern",
-	state: () => ({
-		row: 0,
-		noteId: -1.7976931348623157e308,
-		gate: 0,
-		dipLeft: 0,
-		lastPos: 0,
-		started: 0,
-	}),
-	helpers: {
-		trigOf,
-		slideOf,
-		heldNoteId,
-		dipLeftAfter,
-		inDipWindow,
-		gateOf,
-		dipSamplesAt,
-		dipBeatsAt,
-	},
-	tick: (s, i, o, cfg, sr) => {
-		const pos = i.position;
-		const cycle = Math.floor(pos);
-		if (cycle !== __tableCycle()) __tableFill(cycle);
+	({ sr, pattern, seed, lanes, clocked }) => {
+		let lastRow = 0
+		let heldId = -1.7976931348623157e308
+		let gateWas = 0
+		let dipWas = 0
+		let lastPos = 0
+		let started = 0
+		return ({ position = phasePort(0) }, o) => {
+			const pos = position
+			const cycle = Math.floor(pos)
+			if (cycle !== __tableCycle()) __tableFill(cycle)
 
-		// The row under the position: walk a step or two from the last row
-		// (the position moved a little), else binary-search the begins.
-		const last = __tableCount() - 1;
-		let row = Math.min(Math.max(s.row | 0, 0), last);
-		let found = false;
-		for (let step = 0; step <= 2; step++) {
-			if (pos < __tableRow("begin", row)) {
-				if (row === 0) {
-					found = true;
-					break;
+			// The row under the position: walk a step or two from the last row
+			// (the position moved a little), else binary-search the begins.
+			const last = __tableCount() - 1
+			let row = Math.min(Math.max(lastRow | 0, 0), last)
+			let found = false
+			for (let step = 0; step <= 2; step++) {
+				if (pos < __tableRow("begin", row)) {
+					if (row === 0) {
+						found = true
+						break
+					}
+					row--
+				} else if (pos >= __tableRow("end", row)) {
+					if (row === last) {
+						found = true
+						break
+					}
+					row++
+				} else {
+					found = true
+					break
 				}
-				row--;
-			} else if (pos >= __tableRow("end", row)) {
-				if (row === last) {
-					found = true;
-					break;
+			}
+			if (!found) {
+				let lo = 0
+				let hi = last
+				while (lo < hi) {
+					const mid = (lo + hi + 1) >> 1
+					if (__tableRow("begin", mid) <= pos) lo = mid
+					else hi = mid - 1
 				}
-				row++;
-			} else {
-				found = true;
-				break;
+				row = lo
 			}
-		}
-		if (!found) {
-			let lo = 0;
-			let hi = last;
-			while (lo < hi) {
-				const mid = (lo + hi + 1) >> 1;
-				if (__tableRow("begin", mid) <= pos) lo = mid;
-				else hi = mid - 1;
-			}
-			row = lo;
-		}
 
-		const kind = __tableRow("kind", row);
-		const noteId = __tableRow("noteId", row);
-		const trig = trigOf(kind, noteId, __tableRow("slideFrom", row), s.noteId);
-		const clocked = cfg.clocked === 1;
-		const dipLeft = clocked ? 0 : dipLeftAfter(trig, s.gate, s.dipLeft, dipSamplesAt(sr));
-		const dipWindow = clocked
-			? inDipWindow(
-					pos,
-					__tableRow("end", row),
-					__tableRow("dipBefore", row),
-					dipBeatsAt(s.started, pos - s.lastPos, sr),
-				)
-			: 0;
-		const gate = gateOf(kind, dipLeft, dipWindow);
+			const kind = __tableRow("kind", row)
+			const noteId = __tableRow("noteId", row)
+			const trig = trigOf(kind, noteId, __tableRow("slideFrom", row), heldId)
+			const isClocked = clocked === 1
+			const dipLeft = isClocked ? 0 : dipLeftAfter(trig, gateWas, dipWas, dipSamplesAt(sr))
+			const dipWindow = isClocked
+				? inDipWindow(
+						pos,
+						__tableRow("end", row),
+						__tableRow("dipBefore", row),
+						dipBeatsAt(started, pos - lastPos, sr),
+					)
+				: 0
+			const gate = gateOf(kind, dipLeft, dipWindow)
 
-		o.out = __tableRow("value", row);
-		for (let k = 0; k < o.fields.length; k++) o.fields[k] = __tableField(k, row);
-		o.gate = gate;
-		o.trig = trig;
-		o.slide = slideOf(kind);
-		s.row = row;
-		s.noteId = heldNoteId(kind, noteId);
-		s.gate = gate;
-		s.dipLeft = dipLeft;
-		s.lastPos = pos;
-		s.started = 1;
+			for (let k = 0; k < o.fields.length; k++) o.fields[k] = __tableField(k, row)
+			lastRow = row
+			heldId = heldNoteId(kind, noteId)
+			gateWas = gate
+			dipWas = dipLeft
+			lastPos = pos
+			started = 1
+			return { out: __tableRow("value", row), gate, trig, slide: slideOf(kind) }
+		}
 	},
-});
+)

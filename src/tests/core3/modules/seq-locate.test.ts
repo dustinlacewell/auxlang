@@ -16,9 +16,9 @@ const rowAt = (pos: number) => Math.floor(pos * 16);
 /** The row seq settles on at `pos`, starting from `cursor`. */
 function locate(pos: number, cursor: number): number {
 	const d = driver(getModule("seq"), config);
-	d.state.row = cursor;
+	d.state.lastRow = cursor;
 	d.step({ position: pos });
-	return d.state.row as number;
+	return d.state.lastRow as number;
 }
 
 describe("seq row lookup", () => {

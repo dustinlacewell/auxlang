@@ -42,7 +42,7 @@ describe("heldNoteId", () => {
 	});
 
 	it("starts as NO_NOTE in a fresh lane", () => {
-		expect(Object.is(getModule("seq").state?.(48000, {}).noteId, NO_NOTE)).toBe(true);
+		expect(Object.is(getModule("seq").state?.(48000, {}).heldId, NO_NOTE)).toBe(true);
 	});
 });
 
