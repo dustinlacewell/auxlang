@@ -9,7 +9,9 @@ import { isGNode } from "../graph/input-kinds";
 import type { InputValue, NodeRef } from "../graph/node";
 import { defaultOutOf } from "../module/default-out";
 import { checkLambda } from "../module/front/module/check-lambda";
+import { isP } from "../pattern/pat-class";
 import { isUnitTag } from "../units/tag";
+import { buildPaletteMux } from "./build-palette-mux";
 import { type HandleData, handleData, isHandle } from "./handle-data";
 import { resolvePatchModule } from "./resolve";
 import { droppedChannelError, isStereoSource } from "./stereo";
@@ -25,6 +27,7 @@ export function lift(value: unknown, where: string): InputValue {
 		checkLambda(value.toString());
 		return { lambda: value as (...args: unknown[]) => number };
 	}
+	if (isP(value) && value.palette !== undefined) return buildPaletteMux(value.ast, value.palette);
 	if (isPatternLike(value)) {
 		return { pattern: (value as { ast: unknown }).ast };
 	}
