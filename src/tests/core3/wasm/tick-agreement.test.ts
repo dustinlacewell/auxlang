@@ -166,6 +166,20 @@ const AGREED_ACCEPT: readonly Row[] = [
 		"sw: (r) => { const t = r.a; r.a = r.b; r.b = t; r.a[0] += 1; return r.a[0] - r.b[0] }",
 	),
 	accept("a record stored into an array of records", "s.voices[0] = s.voices[1]; s.voices[0].x += 1; o.out = s.voices[1].x"),
+	accept("=== undefined of an out-of-range element", "o.out = s.buf[10] === undefined ? 1 : 0"),
+	accept("=== undefined of a negative-index element", "o.out = s.buf[-1] === undefined ? 1 : 0"),
+	accept("=== undefined of an in-range element", "o.out = s.buf[0] === undefined ? 1 : 0"),
+	accept(
+		"a helper comparing its parameter to undefined, out of range",
+		"o.out = isMissing(s.buf[10])",
+		"isMissing: (p) => p === undefined ? 1 : 0",
+	),
+	accept(
+		"a helper comparing its parameter to undefined, in range",
+		"o.out = isMissing(s.buf[0])",
+		"isMissing: (p) => p === undefined ? 1 : 0",
+	),
+	accept("== null of an out-of-range element", "o.out = s.buf[10] == null ? 1 : 0"),
 	accept(
 		"an element swap through a const",
 		"s.voices[0].x = s.n; s.voices[1].x = -s.n; s.n++; const t = s.voices[0]; s.voices[0] = s.voices[1]; s.voices[1] = t; s.voices[0].x += 0.5; o.out = s.voices[0].x * 10 + s.voices[1].x",
