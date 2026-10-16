@@ -3,11 +3,9 @@
  * while the bounds stay within ±2^53; a product that could be 0 times a
  * negative is -0, and so is a remainder of a negative dividend, so those
  * have no range. Bitwise results are int32 (`>>>` uint32), narrower when
- * the operands' ranges say so.
+ * the operands' ranges say so; they have a range whatever the operands.
  */
 
-import type { AnyNode, BinaryExpression } from "acorn";
-import type { FnEmitter } from "./fn-emitter";
 import {
 	I32_MAX,
 	INT32,
@@ -18,17 +16,19 @@ import {
 	safeRange,
 	within,
 } from "./int-range";
-import { intRange } from "./int-range-of";
 
 const BITWISE: ReadonlySet<string> = new Set(["&", "|", "^", "<<", ">>", ">>>"]);
 
-export function binaryRange(e: FnEmitter, node: BinaryExpression): Range | null {
-	if (node.left.type === "PrivateIdentifier") return null;
-	const a = intRange(e, node.left);
-	const b = intRange(e, node.right);
-	if (BITWISE.has(node.operator)) return bitwiseRange(node.operator, a, b, shiftOf(e, node.right));
+/** `shift`: the known shift count (JS uses its low five bits), or null. */
+export function binaryRange(
+	op: string,
+	a: Range | null,
+	b: Range | null,
+	shift: number | null,
+): Range | null {
+	if (BITWISE.has(op)) return bitwiseRange(op, a, b, shift);
 	if (a === null || b === null) return null;
-	switch (node.operator) {
+	switch (op) {
 		case "+":
 			return safeRange(a.lo + b.lo, a.hi + b.hi);
 		case "-":
@@ -55,12 +55,6 @@ function remainderRange(a: Range, b: Range): Range | null {
 	if (a.hi < least) return a;
 	const most = Math.max(Math.abs(b.lo), Math.abs(b.hi));
 	return { lo: 0, hi: Math.min(a.hi, most - 1) };
-}
-
-/** The shift count when it is known: JS uses its low five bits. */
-function shiftOf(e: FnEmitter, node: AnyNode): number | null {
-	const known = e.fold(node);
-	return typeof known?.v === "number" ? (known.v | 0) & 31 : null;
 }
 
 const nonNegative = (r: Range | null): r is Range => within(r, 0, I32_MAX);

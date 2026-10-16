@@ -4,14 +4,17 @@
  * shape. Only a member reached by a path (plan-context.ts) folds: a typed
  * array's or list's length, an array element at a constant index that is
  * not valid (`undefined`). A list element at a run-time index is placed:
- * nothing under it folds.
+ * nothing under it folds. An integer array's element read by a path at an
+ * index proven in bounds has the element type's range.
  */
 
 import type { AnyNode, MemberExpression } from "acorn";
 import { MATH_CONSTANTS } from "@/core3/math/math-constants";
 import { CACHE_ARRAY } from "@/core3/module/bind-math/cache-names";
+import type { ElementType } from "./element-type";
+import { INT32, type Range, UINT32, rangeOf, within } from "./int-range";
 import type { PlanContext } from "./plan-context";
-import { NUM, type RefShape, type Ty, UNKNOWN, known, ref } from "./ty";
+import { NUM, type RefShape, type Ty, UNKNOWN, int, known, ref } from "./ty";
 import { typeExpr } from "./type-expression";
 import { validIndex } from "./valid-index";
 
@@ -67,18 +70,29 @@ function typeIndex(c: PlanContext, node: MemberExpression): Ty {
 	const owner = typeExpr(c, node.object, "value");
 	const index = typeExpr(c, node.property, "value");
 	if (owner.k !== "ref" || owner.shape.k === "record") return UNKNOWN;
-	const constant = isPath(c, node.object) && index.k === "static" && typeof index.v === "number";
+	const path = isPath(c, node.object);
+	const constant = path && index.k === "static" && typeof index.v === "number";
 	const valid = constant && validIndex(index.v as number, owner.shape.length);
-	return owner.shape.k === "array"
-		? arrayElement(c, node, constant, valid)
-		: listElement(c, node, owner.shape, valid);
-}
-
-/** A constant index outside the array reads `undefined`; inside, a number whose `typeof` folds. */
-function arrayElement(c: PlanContext, node: AnyNode, constant: boolean, valid: boolean): Ty {
+	if (owner.shape.k === "records") return listElement(c, node, owner.shape, valid);
 	if (constant && !valid) return known(undefined);
 	if (valid) c.elements.add(node);
-	return NUM;
+	return int(path ? elementRange(owner.shape, index) : null);
+}
+
+const ELEMENT_RANGES: Readonly<Partial<Record<ElementType, Range>>> = {
+	i32: INT32,
+	u32: UINT32,
+	i16: { lo: -32768, hi: 32767 },
+	u16: { lo: 0, hi: 65535 },
+	i8: { lo: -128, hi: 127 },
+	u8: { lo: 0, hi: 255 },
+	u8c: { lo: 0, hi: 255 },
+};
+
+/** An integer array's element at an index proven in bounds (one out of bounds reads `undefined`). */
+function elementRange(shape: RefShape & { k: "array" }, index: Ty): Range | null {
+	const range = ELEMENT_RANGES[shape.type];
+	return range !== undefined && within(rangeOf(index), 0, shape.length - 1) ? range : null;
 }
 
 function listElement(

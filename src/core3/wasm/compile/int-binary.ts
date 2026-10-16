@@ -1,8 +1,8 @@
 /**
- * Binary operators on integer operands (int-range-of.ts). A comparison of
+ * Binary operators on integer operands (plan ranges). A comparison of
  * two integers compares as i32, or as i64 when either may leave int32;
  * `+`, `-`, `*` and `%` run in the narrowest width that holds both operands
- * and the result (int-range-binary.ts: no overflow, no -0, no division by
+ * and the result (front/types/range-binary.ts: no overflow, no -0, no division by
  * zero), so the integer result is the JS one. Bitwise operators always run
  * in i32: a constant operand is its ToInt32, an integer one its low 32
  * bits, anything else goes through ToInt32; `>>>` gives an i64 when its
@@ -15,7 +15,7 @@ import { toInt32 } from "./coerce";
 import { emitExpr } from "./emit-expression";
 import { emitInteger, integerWidth } from "./emit-int";
 import type { FnEmitter } from "./fn-emitter";
-import { wider } from "./int-range";
+import { wider } from "./int-width";
 import type { Kind, Width } from "./values";
 
 type Ops = Readonly<Record<string, Readonly<Record<Width, number>>>>;

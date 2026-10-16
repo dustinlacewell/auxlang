@@ -15,10 +15,16 @@ import { emitConditional, emitLogical } from "./emit-logical";
 import { emitMemberRead } from "./emit-member";
 import { emitTest } from "./emit-test";
 import type { FnEmitter } from "./fn-emitter";
+import { agreed } from "./plan-agreement";
 import type { StaticValue } from "../../module/front/types/ty";
 import type { Kind, Value } from "./values";
 
+/** Emits `node`'s value and returns its kind, which the plan's type must agree with. */
 export function emitExpr(e: FnEmitter, node: AnyNode): Kind {
+	return agreed(e, node, emitNode(e, node));
+}
+
+function emitNode(e: FnEmitter, node: AnyNode): Kind {
 	const folded = e.fold(node);
 	if (folded !== null) return emitStatic(e, folded.v, node);
 	switch (node.type) {

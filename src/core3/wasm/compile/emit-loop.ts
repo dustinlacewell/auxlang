@@ -10,37 +10,29 @@
  *     end
  *   end
  *
- * A `for` counter that is always an int32 (loop-counter.ts) is an i32
- * local; in the body it carries its narrower body range.
+ * A `for` counter that is always an int32 (front/types/loop-counter.ts) is
+ * an i32 local: its declaration's plan type has its range.
  */
 
 import type { DoWhileStatement, ForStatement, WhileStatement } from "acorn";
 import { OP } from "../encode/opcodes";
 import { emitDeclaration } from "./emit-declaration";
 import { emitDiscard } from "./emit-expression";
-import { emitInt } from "./emit-int";
 import { emitStatement } from "./emit-statement";
 import { emitTest } from "./emit-test";
 import type { FnEmitter } from "./fn-emitter";
-import { type Counter, counterOf } from "./loop-counter";
-import { intLocal } from "./values";
 
 type Loop = ForStatement | WhileStatement | DoWhileStatement;
 
 export function emitLoop(e: FnEmitter, node: Loop, label: string | null): void {
 	e.within(e.scope.child(), () => {
-		const counter = node.type === "ForStatement" ? counterOf(e, node) : null;
-		const index = counter === null ? null : declareCounter(e, counter);
-		if (counter === null && node.type === "ForStatement") emitInit(e, node);
+		if (node.type === "ForStatement") emitInit(e, node);
 		const exit = e.enter(OP.block);
 		const top = e.enter(OP.loop);
 		if (node.type !== "DoWhileStatement") exitUnless(e, node.test ?? null, exit);
 		const next = e.enter(OP.block);
 		e.labels.push({ name: label, implicit: true, breakAt: exit, continueAt: next });
-		const body = e.scope.child();
-		if (counter !== null && index !== null)
-			body.declare(counter.name, intLocal(index, "int", counter.body));
-		e.within(body, () => emitStatement(e, node.body));
+		e.within(e.scope.child(), () => emitStatement(e, node.body));
 		e.labels.pop();
 		e.exit();
 		if (node.type === "DoWhileStatement") repeatIf(e, node, top);
@@ -54,16 +46,6 @@ export function emitLoop(e: FnEmitter, node: Loop, label: string | null): void {
 	});
 }
 
-/** The counter as an i32 local holding its whole range; returns the local. */
-function declareCounter(e: FnEmitter, counter: Counter): number {
-	emitInt(e, counter.init);
-	const index = e.local("int");
-	e.code.set(index);
-	e.scope.declare(counter.name, intLocal(index, "int", counter.range));
-	return index;
-}
-
-/** A `for` init that is not a counter. */
 function emitInit(e: FnEmitter, node: ForStatement): void {
 	const init = node.init;
 	if (init === null || init === undefined) return;

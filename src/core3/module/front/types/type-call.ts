@@ -1,6 +1,7 @@
 /**
  * Calls. An exact host `Math` call on known values folds; any other `Math`
- * call and every intrinsic gives a number. A helper call types the helper
+ * call gives a number (an integer range where range-math.ts proves one),
+ * and every intrinsic a number. A helper call types the helper
  * for these argument types (helper-plans.ts), as a backend specialises it,
  * and gives what that plan returns.
  */
@@ -9,8 +10,10 @@ import type { AnyNode, CallExpression } from "acorn";
 import { EXACT_HOST_MATH } from "@/core3/math/exact-host-math";
 import { TABLE_INTRINSICS } from "@/core3/module/front/intrinsics/table-intrinsics";
 import { helperPlan } from "./helper-plans";
+import { rangeOf } from "./int-range";
 import type { PlanContext } from "./plan-context";
-import { BOOL, NUM, type StaticValue, type Ty, UNKNOWN, emittedTy, known, ref } from "./ty";
+import { mathRange } from "./range-math";
+import { BOOL, NUM, type StaticValue, type Ty, UNKNOWN, emittedTy, int, known, ref } from "./ty";
 import { typeExpr } from "./type-expression";
 
 export function typeCall(c: PlanContext, node: CallExpression): Ty {
@@ -34,7 +37,8 @@ function mathCall(c: PlanContext, callee: AnyNode & { type: "MemberExpression" }
 		return UNKNOWN;
 	if (callee.computed || callee.property.type !== "Identifier") return UNKNOWN;
 	const name = callee.property.name;
-	if (!EXACT_HOST_MATH.has(name) || !args.every((a) => a.k === "static")) return NUM;
+	if (!EXACT_HOST_MATH.has(name) || !args.every((a) => a.k === "static"))
+		return int(mathRange(name, args.map(rangeOf)));
 	const values = args.map((a) => (a as { v: StaticValue }).v);
 	const fn = Math[name as keyof Math] as (...a: StaticValue[]) => number;
 	return known(fn(...values));

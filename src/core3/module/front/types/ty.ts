@@ -3,7 +3,7 @@
  * for one instance, a helper for one set of argument types):
  *
  *   static   known while compiling, with its value (it folds)
- *   num      a number at run time
+ *   num      a number at run time, with an integer range when proven
  *   bool     a boolean at run time
  *   ref      a typed array, a record or an array of records in state
  *   role     one of a tick's parameter records
@@ -15,6 +15,7 @@
 
 import type { Role } from "@/core3/module/front/rules/rule-context";
 import type { ElementType } from "./element-type";
+import type { Range } from "./int-range";
 
 /** A value known while compiling: config strings, constants, typeof results. */
 export type StaticValue = number | string | boolean | undefined | null;
@@ -35,7 +36,7 @@ export type RefShape =
 
 export type Ty =
 	| { readonly k: "static"; readonly v: StaticValue }
-	| { readonly k: "num" }
+	| { readonly k: "num"; readonly range?: Range }
 	| { readonly k: "bool" }
 	| { readonly k: "ref"; readonly shape: RefShape; readonly placed: boolean }
 	| { readonly k: "role"; readonly role: Role }
@@ -46,6 +47,8 @@ export const BOOL: Ty = { k: "bool" };
 export const UNKNOWN: Ty = { k: "unknown" };
 
 export const known = (v: StaticValue): Ty => ({ k: "static", v });
+/** A run-time number, an integer in `range` when there is one (int-range.ts). */
+export const int = (range: Range | null): Ty => (range === null ? NUM : { k: "num", range });
 export const ref = (shape: RefShape, placed = false): Ty => ({ k: "ref", shape, placed });
 
 /** What a value of this type is at run time: a number, a boolean, or nothing a backend holds. */

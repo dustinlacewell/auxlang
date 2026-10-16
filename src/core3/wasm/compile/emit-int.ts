@@ -1,26 +1,26 @@
 /**
- * An expression with an integer range (int-range-of.ts) as an i32 or an
- * i64. A constant is a `const`; a value emitted in another kind is an
- * integer in the wanted width's range, so each conversion is exact and the
- * truncations never trap.
+ * An expression with an integer range (its plan's type, front/types/
+ * int-range.ts) as an i32 or an i64. A constant is a `const`; a value
+ * emitted in another kind is an integer in the wanted width's range, so
+ * each conversion is exact and the truncations never trap.
  */
 
 import type { AnyNode } from "acorn";
+import { fitsI32 } from "../../module/front/types/int-range";
 import { OP } from "../encode/opcodes";
 import { emitExpr } from "./emit-expression";
 import type { FnEmitter } from "./fn-emitter";
-import { fitsI32, widthOf } from "./int-range";
-import { intRange } from "./int-range-of";
+import { widthOf } from "./int-width";
 import type { Width } from "./values";
 
 /** `node` can be emitted as an i32: its range fits int32. */
 export function isInt(e: FnEmitter, node: AnyNode): boolean {
-	return fitsI32(intRange(e, node));
+	return fitsI32(e.range(node));
 }
 
 /** The integer kind `node` can be emitted as; null when it has no integer range. */
 export function integerWidth(e: FnEmitter, node: AnyNode): Width | null {
-	return widthOf(intRange(e, node));
+	return widthOf(e.range(node));
 }
 
 export function emitInt(e: FnEmitter, node: AnyNode): void {

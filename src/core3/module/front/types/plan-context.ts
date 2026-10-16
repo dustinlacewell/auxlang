@@ -8,6 +8,7 @@ import type { AnyNode, Identifier } from "acorn";
 import type { FunctionIR } from "@/core3/module/front/module/module-ir";
 import { bindingDeclaredBy, bindingOf } from "@/core3/module/front/scope/binding";
 import type { Binding } from "@/core3/module/front/scope/binding";
+import { isWritten } from "@/core3/module/front/scope/writes";
 import type { Callees } from "./callees";
 import type { PlanEvent, Returned } from "./plan-events";
 import type { TickRoot } from "./tick-root";
@@ -49,9 +50,23 @@ export class PlanContext {
 		return this.varTy(id) === undefined;
 	}
 
+	/** Declares the variable `id` names, of type `ty`; the plan records `ty` at `id`. */
 	declare(id: Identifier, ty: Ty): void {
+		this.types.set(id, ty);
 		const binding = bindingDeclaredBy(this.ir.scopes, id);
 		if (binding !== undefined) this.vars.set(binding, ty);
+	}
+
+	/** From here on, reads of the variable `id` declares are of type `ty` (a loop counter in its body). */
+	narrow(id: Identifier, ty: Ty): void {
+		const binding = bindingDeclaredBy(this.ir.scopes, id);
+		if (binding !== undefined) this.vars.set(binding, ty);
+	}
+
+	/** The variable `id` declares is written after its declaration. */
+	written(id: Identifier): boolean {
+		const binding = bindingDeclaredBy(this.ir.scopes, id);
+		return binding === undefined || isWritten(this.ir.writes, binding);
 	}
 
 	bindParam(binding: Binding, ty: Ty): void {

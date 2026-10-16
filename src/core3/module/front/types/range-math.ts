@@ -3,15 +3,9 @@
  * abs, the roundings (the identity on an integer), imul and clz32.
  */
 
-import type { AnyNode, CallExpression } from "acorn";
-import type { FnEmitter } from "./fn-emitter";
 import { INT32, type Range, safeRange } from "./int-range";
-import { intRange } from "./int-range-of";
 
-export function mathRange(e: FnEmitter, node: CallExpression): Range | null {
-	const name = mathName(e, node);
-	if (name === null) return null;
-	const args = node.arguments.map((a) => (a.type === "SpreadElement" ? null : intRange(e, a)));
+export function mathRange(name: string, args: readonly (Range | null)[]): Range | null {
 	const [x] = args;
 	switch (name) {
 		case "min":
@@ -31,21 +25,6 @@ export function mathRange(e: FnEmitter, node: CallExpression): Range | null {
 		default:
 			return null;
 	}
-}
-
-/** `Math.<name>` with `Math` the global. */
-export function mathName(e: FnEmitter, node: CallExpression): string | null {
-	const callee: AnyNode = node.callee;
-	if (
-		callee.type !== "MemberExpression" ||
-		callee.computed ||
-		callee.object.type !== "Identifier" ||
-		callee.object.name !== "Math" ||
-		e.scope.lookup("Math") !== undefined ||
-		callee.property.type !== "Identifier"
-	)
-		return null;
-	return callee.property.name;
 }
 
 function extremeRange(name: string, args: readonly (Range | null)[]): Range | null {

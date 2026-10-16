@@ -3,17 +3,17 @@
  * an index is valid when it is an integer in [0, length) (-0 is 0). Code that
  * needs the element runs with its address pushed only when the index is
  * valid; JS reads `undefined` and drops the write otherwise. An index whose
- * range (int-range-of.ts) is inside [0, length) needs no check; any other
+ * plan range (front/types/int-range.ts) is inside [0, length) needs no check; any other
  * integer index (i32 or i64) needs one unsigned compare.
  */
 
 import type { AnyNode } from "acorn";
+import { within } from "../../module/front/types/int-range";
 import { validIndex } from "../../module/front/types/valid-index";
 import { OP } from "../encode/opcodes";
 import { emitExpr } from "./emit-expression";
 import { emitInteger, integerWidth } from "./emit-int";
 import type { FnEmitter } from "./fn-emitter";
-import { provenIndex } from "./int-range-of";
 import type { Address, Kind } from "./values";
 
 /** A constant index, or the local holding a run-time one (`proven`: always valid). */
@@ -31,7 +31,8 @@ export function emitIndex(e: FnEmitter, property: AnyNode, length: number): Inde
 	const width = integerWidth(e, property);
 	if (width === "int") {
 		emitInteger(e, property, width);
-		return { k: "int", local: setLocal(e, "int"), proven: provenIndex(e, property, length) };
+		const proven = within(e.range(property), 0, length - 1);
+		return { k: "int", local: setLocal(e, "int"), proven };
 	}
 	let kind: Kind = "long";
 	if (width === "long") emitInteger(e, property, width);

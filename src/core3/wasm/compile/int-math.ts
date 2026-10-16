@@ -8,7 +8,7 @@ import type { AnyNode, CallExpression } from "acorn";
 import { OP } from "../encode/opcodes";
 import { emitInteger, integerWidth } from "./emit-int";
 import type { FnEmitter } from "./fn-emitter";
-import { wider } from "./int-range";
+import { wider } from "./int-width";
 import type { Kind, Width } from "./values";
 
 const ROUNDINGS: ReadonlySet<string> = new Set(["floor", "ceil", "trunc", "round"]);

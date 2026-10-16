@@ -1,13 +1,12 @@
 /**
- * Integer ranges: an expression with a range always evaluates to an integer
- * in [lo, hi] — never -0, never NaN, never a fraction. Bounds stay within
- * ±2^53, where JS's f64 arithmetic on integers is exact, so a range's
- * arithmetic is the JS result. A range inside int32 lets the value live in
- * an i32, any other range in an i64 (int-range-of.ts decides, the emitters
- * follow).
+ * Integer ranges: a number whose type has a range always evaluates to an
+ * integer in [lo, hi] — never -0, never NaN, never a fraction. Bounds stay
+ * within ±2^53, where JS's f64 arithmetic on integers is exact, so a
+ * range's arithmetic is the JS result. A backend may hold such a value in
+ * an integer register: an i32 when the range fits int32, else an i64.
  */
 
-import type { Width } from "./values";
+import type { Ty } from "./ty";
 
 export interface Range {
 	readonly lo: number;
@@ -18,8 +17,12 @@ export const I32_MIN = -(2 ** 31);
 export const I32_MAX = 2 ** 31 - 1;
 export const INT32: Range = { lo: I32_MIN, hi: I32_MAX };
 export const UINT32: Range = { lo: 0, hi: 2 ** 32 - 1 };
-/** Every safe integer: what an i64 local holds when nothing narrower is known. */
-export const SAFE: Range = { lo: Number.MIN_SAFE_INTEGER, hi: Number.MAX_SAFE_INTEGER };
+
+/** The range of a value of type `ty`: a known integer's, or a number's proven one; null otherwise. */
+export function rangeOf(ty: Ty): Range | null {
+	if (ty.k === "static") return constantRange(ty.v);
+	return ty.k === "num" ? (ty.range ?? null) : null;
+}
 
 /** A range when both bounds are exact integers (±2^53); null otherwise. */
 export function safeRange(lo: number, hi: number): Range | null {
@@ -35,17 +38,6 @@ export function constantRange(v: unknown): Range | null {
 
 export function fitsI32(r: Range | null): r is Range {
 	return r !== null && r.lo >= I32_MIN && r.hi <= I32_MAX;
-}
-
-/** The integer kind that holds every value of `r`: an i32 when it fits, else an i64. */
-export function widthOf(r: Range | null): Width | null {
-	if (r === null) return null;
-	return fitsI32(r) ? "int" : "long";
-}
-
-/** The wider of two widths. */
-export function wider(a: Width, b: Width): Width {
-	return a === "long" || b === "long" ? "long" : "int";
 }
 
 /** Every value of `r` is in [lo, hi]. */

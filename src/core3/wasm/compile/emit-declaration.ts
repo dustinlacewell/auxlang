@@ -1,11 +1,10 @@
 /**
  * `let`, `const` and `var` declarations. A `const` bound to a known value,
  * an array or a record stays a compile-time alias; everything else gets a
- * fresh local. A variable never written after its declaration (a `const`,
- * or a `let` with no write sites, written.ts) keeps the kind of its value:
- * when that value has an integer range it is an i32 local (the range fits
- * int32) or an i64 local, with that range. A variable written later stays
- * an f64 or a boolean.
+ * fresh local. A variable the plan gives an integer range (an unwritten
+ * one, front/types/walk-declaration.ts, or a loop counter, loop-counter.ts)
+ * is an i32 local when the range fits int32, else an i64 local. Any other
+ * variable is an f64 or a boolean.
  */
 
 import type { AnyNode, VariableDeclaration, VariableDeclarator } from "acorn";
@@ -13,23 +12,15 @@ import { toF64 } from "./coerce";
 import { emitExpr } from "./emit-expression";
 import { emitInteger } from "./emit-int";
 import type { FnEmitter } from "./fn-emitter";
-import { INT32, SAFE, widthOf } from "./int-range";
-import { intRange } from "./int-range-of";
+import { widthOf } from "./int-width";
 import { placeOf } from "./place";
-import { type Kind, fixed, intLocal, local } from "./values";
-import { declaredWritten } from "./written";
+import { type Kind, fixed, local } from "./values";
 
 export function emitDeclaration(e: FnEmitter, node: VariableDeclaration): void {
-	const constant = node.kind === "const";
-	for (const d of node.declarations) {
-		const unwritten =
-			constant ||
-			(node.kind === "let" && d.id.type === "Identifier" && !declaredWritten(e, d.id));
-		declare(e, d, constant, unwritten);
-	}
+	for (const d of node.declarations) declare(e, d, node.kind === "const");
 }
 
-function declare(e: FnEmitter, d: VariableDeclarator, constant: boolean, unwritten: boolean): void {
+function declare(e: FnEmitter, d: VariableDeclarator, constant: boolean): void {
 	if (d.id.type !== "Identifier") e.fail(d, "declarations must name one variable");
 	const name = d.id.name;
 	if (d.init === null || d.init === undefined) {
@@ -39,22 +30,18 @@ function declare(e: FnEmitter, d: VariableDeclarator, constant: boolean, unwritt
 		return;
 	}
 	if (constant && declareAlias(e, name, d.init)) return;
-	const range = unwritten ? intRange(e, d.init) : null;
-	const width = widthOf(range);
-	if (range !== null && width !== null) {
+	const width = widthOf(e.range(d.id));
+	if (width !== null) {
 		emitInteger(e, d.init, width);
-		e.scope.declare(name, intLocal(setLocal(e, width), width, range));
+		e.scope.declare(name, local(setLocal(e, width), width));
 		return;
 	}
 	let kind = emitExpr(e, d.init);
-	if ((kind === "int" || kind === "long") && !unwritten) {
+	if (kind === "int" || kind === "long") {
 		toF64(e, kind);
 		kind = "f64";
 	}
-	const index = setLocal(e, kind);
-	if (kind === "int" || kind === "long")
-		e.scope.declare(name, intLocal(index, kind, kind === "int" ? INT32 : SAFE));
-	else e.scope.declare(name, local(index, kind));
+	e.scope.declare(name, local(setLocal(e, kind), kind));
 }
 
 function setLocal(e: FnEmitter, kind: Kind): number {

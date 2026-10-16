@@ -1,5 +1,6 @@
 /**
- * The emitter's integer typing (compile/int-range-of.ts): a value proven to
+ * The plan's integer ranges (module/front/types/int-range.ts), as the WASM
+ * emitter uses them: a value proven to
  * be an integer in int32 lives in an i32, one within ±2^53 in an i64, and
  * everything else stays an exact JS f64. Each helper here runs on WASM next
  * to its JS original over edge inputs; the local types show what was

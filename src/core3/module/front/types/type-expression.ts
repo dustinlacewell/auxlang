@@ -18,8 +18,10 @@ import type {
 	UpdateExpression,
 } from "acorn";
 import { applyBinary } from "./fold-ops";
+import { rangeOf, union } from "./int-range";
 import type { PlanContext, Position } from "./plan-context";
-import { BOOL, NUM, type Ty, UNKNOWN, emittedClass, emittedTy, known } from "./ty";
+import { binaryRange } from "./range-binary";
+import { BOOL, NUM, type Ty, UNKNOWN, emittedClass, emittedTy, int, known } from "./ty";
 import { typeCall } from "./type-call";
 import { typeMember } from "./type-member";
 import { typeUnary } from "./type-unary";
@@ -84,7 +86,13 @@ function typeBinary(c: PlanContext, node: BinaryExpression): Ty {
 	const right = typeExpr(c, node.right, "value");
 	if (node.operator !== "**" && left.k === "static" && right.k === "static")
 		return known(applyBinary(node.operator, left.v, right.v));
-	return COMPARISONS.has(node.operator) ? BOOL : NUM;
+	if (COMPARISONS.has(node.operator)) return BOOL;
+	return int(binaryRange(node.operator, rangeOf(left), rangeOf(right), shiftOf(right)));
+}
+
+/** A known shift count: JS uses its low five bits. */
+function shiftOf(ty: Ty): number | null {
+	return ty.k === "static" && typeof ty.v === "number" ? (ty.v | 0) & 31 : null;
 }
 
 /** A known left side picks the branch; otherwise two booleans give a boolean, anything else a number. */
@@ -99,7 +107,8 @@ function typeLogical(c: PlanContext, node: LogicalExpression, pos: Position): Ty
 	const right = typeExpr(c, node.right, pos);
 	if (pos === "value") c.events.push({ k: "paths", node, a: left, b: right });
 	// Only an array element at an invalid index is nullish at run time: `??` gives a number.
-	if (node.operator === "??") return NUM;
+	// An integer element's range proves its index valid, so the left side is the result.
+	if (node.operator === "??") return rangeOf(left) === null ? NUM : left;
 	return joined(left, right);
 }
 
@@ -112,9 +121,13 @@ function typeConditional(c: PlanContext, node: ConditionalExpression, pos: Posit
 	return joined(a, b);
 }
 
-/** One value type leaves a branch: booleans from both sides stay boolean, else a number. */
+/**
+ * One value type leaves a branch: booleans from both sides stay boolean,
+ * else a number, an integer when both sides are.
+ */
 function joined(a: Ty, b: Ty): Ty {
-	return emittedClass(a) === "bool" && emittedClass(b) === "bool" ? BOOL : NUM;
+	if (emittedClass(a) === "bool" && emittedClass(b) === "bool") return BOOL;
+	return int(union(rangeOf(a), rangeOf(b)));
 }
 
 function typeAssignment(c: PlanContext, node: AssignmentExpression): Ty {

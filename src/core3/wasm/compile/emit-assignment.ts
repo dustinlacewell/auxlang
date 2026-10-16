@@ -2,7 +2,8 @@
  * `=`, compound assignment and `++`/`--` on locals, state fields, outputs,
  * cache slots and array elements. A compound assignment reads its target
  * before the right side, as JS does. With `keep`, the assigned value stays
- * on the stack. An int local is a loop counter (loop-counter.ts): only its
+ * on the stack. An int local that is written is a loop counter
+ * (front/types/loop-counter.ts): only its
  * step writes it, in i32, and the counter's range says the step cannot
  * leave int32.
  */

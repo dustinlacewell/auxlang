@@ -6,7 +6,9 @@
  */
 
 import type { AnyNode } from "acorn";
-import type { Folded } from "../../module/front/types/ty";
+import type { FunctionPlan } from "../../module/front/types/function-plan";
+import { type Range, rangeOf } from "../../module/front/types/int-range";
+import type { Folded, Ty } from "../../module/front/types/ty";
 import { CodeBuffer } from "../encode/code-buffer";
 import { F64, I32, I64, OP } from "../encode/opcodes";
 import type { EmitContext } from "./emit-context";
@@ -100,9 +102,23 @@ export class FnEmitter {
 
 	/** The node's value when it is known while compiling, from this function's plan. */
 	fold(node: AnyNode): Folded | null {
+		return this.planned(node).fold(node);
+	}
+
+	/** The node's type in this function's plan. */
+	typeOf(node: AnyNode): Ty {
+		return this.planned(node).typeOf(node);
+	}
+
+	/** The node's integer range in this function's plan; null when it may not be an integer. */
+	range(node: AnyNode): Range | null {
+		return rangeOf(this.typeOf(node));
+	}
+
+	private planned(node: AnyNode): FunctionPlan {
 		const plan = this.ctx.plan;
-		if (plan === null) return this.fail(node, "internal: no plan to fold against");
-		return plan.fold(node);
+		if (plan === null) return this.fail(node, "internal: no plan to type against");
+		return plan;
 	}
 
 	fail(node: AnyNode, message: string): never {
