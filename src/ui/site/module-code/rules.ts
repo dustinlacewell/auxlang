@@ -71,6 +71,14 @@ export const RULES: readonly RuleTopic[] = [
 			],
 			["const t = s", "Allowed. t is the same record. Write fields through it; never reassign t."],
 			["s.voices[k].x += 1", "Allowed: write a field of a record in an array."],
+			[
+				"s.voices[0] = s.voices[1]",
+				"Allowed for records of the same shape. The index must be provably in range: a constant, or k & 1.",
+			],
+			[
+				"c ? s.a : s.b",
+				"Not allowed. An array or record moves only by =, by const, or as a helper argument. Not through ?:, &&, ||, ?? or return.",
+			],
 			["delete  in  instanceof", "Not allowed. Shapes are fixed, so there is nothing to probe."],
 		],
 	},
