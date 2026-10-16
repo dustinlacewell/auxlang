@@ -2,8 +2,8 @@
  * State migration (MANIFESTO §6.2) as a hand-over into a built engine: each
  * new node paired with an old key (reeval-identities.ts) takes the old
  * node's lane values into its fresh lane states. A lane whose carried state
- * does not fit the fresh shape (module/front/state/shape-fits.ts) stays fresh, alone; config is
- * not consulted. A carried lane keeps its `__rng`, so its random stream
+ * does not fit the fresh shape (module/front/state/shape-fits.ts) stays fresh,
+ * alone. A carried lane keeps its `__rng`, so its random stream
  * continues — unless its seed changed (a reroll, an edited `.seed(n)`): then
  * it keeps the fresh stream. The engine-injected fields stay the new
  * engine's own.

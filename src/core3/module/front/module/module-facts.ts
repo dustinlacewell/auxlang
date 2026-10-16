@@ -13,7 +13,7 @@ import type { ModuleFacts } from "./module-ir";
 const SHAPE_SAMPLE_RATE = 48000;
 
 export function moduleFacts(
-	spec: Pick<ModuleSpec, "ins" | "outs" | "state" | "reads">,
+	spec: Pick<ModuleSpec, "ins" | "outs" | "state" | "reads" | "config">,
 	owner: string,
 ): ModuleFacts {
 	return {
@@ -22,7 +22,7 @@ export function moduleFacts(
 		outs: new Set(Object.keys(spec.outs)),
 		inGroups: new Set(groupDecls(spec, "ins").map((g) => g.name)),
 		outGroups: new Set(groupDecls(spec, "outs").map((g) => g.name)),
-		state: { ...(spec.state?.(SHAPE_SAMPLE_RATE) ?? {}), __rng: 1, __lane: 0, __seed: 0 },
+		state: { ...(spec.state?.(SHAPE_SAMPLE_RATE, spec.config ?? {}) ?? {}), __rng: 1, __lane: 0, __seed: 0 },
 		tables: spec.reads === "pattern",
 	};
 }

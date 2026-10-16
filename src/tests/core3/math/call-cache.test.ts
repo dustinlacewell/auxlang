@@ -10,7 +10,6 @@ import { describe, expect, it } from "vitest";
 import { bindLambdaMath } from "@/core3/module/bind-math/bind-lambda-math";
 import { lambdaWrapper } from "@/core3/module/bind-math/lambda-wrapper";
 import { mathFunctions } from "@/core3/module/bind-math/math-functions";
-import { rewriteMath } from "@/core3/module/bind-math/rewrite-math";
 
 type Fn = (...args: number[]) => number;
 
@@ -103,6 +102,6 @@ describe("math call cache", () => {
 
 	it("rejects written source that uses a cache name", () => {
 		const src = "(x) => { const __mc0_r = 1; return Math.sin(x) + __mc0_r; }";
-		expect(() => rewriteMath(src, "test")).toThrow(/reserved for auxlang math/);
+		expect(() => bindLambdaMath(src)).toThrow(/reserved for auxlang math/);
 	});
 });

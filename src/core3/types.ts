@@ -156,10 +156,11 @@ export interface ModuleSpec extends ModulePorts {
 	 * `state.__seed`, the patch seed `hashRandom(key)` in a tick uses. A fresh
 	 * lane also gets `state.__rng`, its own random stream position seeded from
 	 * (patch seed, identity, lane), which `Math.random()` in the tick draws.
-	 * State is fixed-shape: a re-eval keeps it whenever its shape still fits,
-	 * whatever the config, so state must not cache values derived from config.
+	 * State is fixed-shape: a re-eval keeps it whenever its shape still fits.
+	 * Receives the node's config, so a config edit rebuilds any read-only
+	 * fields derived from it.
 	 */
-	readonly state?: (sampleRate: number) => Record<string, unknown>;
+	readonly state?: (sampleRate: number, config: Record<string, unknown>) => Record<string, unknown>;
 	/** The tick as the engine runs it: rebuilt from `source` with the tick names bound (module/tick-build). */
 	readonly tick: TickFn | ReduceTickFn;
 	/**
@@ -168,6 +169,12 @@ export interface ModuleSpec extends ModulePorts {
 	 * closure itself.
 	 */
 	readonly source?: ModuleSource;
+	/**
+	 * Setup-local fields the tick writes (shape-C lowering, lower/tick-writes.ts):
+	 * the re-eval carry rule reads this list. Absent on an old-form spec, whose
+	 * carry rule keeps today's whole-shape-fits behavior.
+	 */
+	readonly writes?: readonly string[];
 }
 
 /** A module's tick and named helpers as source text (MANIFESTO §5.1). */
@@ -213,6 +220,8 @@ export interface SerializedModuleSpec {
 	readonly helpers?: Readonly<Record<string, string>>;
 	/** ModuleSource `origins`. Present only when a part was found in its file. */
 	readonly origins?: Readonly<Record<string, SourceOrigin>>;
+	/** `ModuleSpec.writes`, carried across the crossing. */
+	readonly writes?: readonly string[];
 }
 
 // ---------------------------------------------------------------------------

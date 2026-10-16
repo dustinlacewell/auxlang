@@ -23,9 +23,11 @@
  */
 
 import { type WrittenSpec, bindModule } from "../module/bind-module";
+import { type ReadTime } from "../module/front/module/check-module";
 import { registerSpec, validateSpec } from "../module/define";
 import type { Category, ModuleSpec, PortAnn } from "../types";
 import { currentSpecs, evalCtx } from "./context";
+import { defineModule } from "./define-module";
 import { moduleFactory } from "./factory";
 import { assertNoReservedPorts } from "./handle";
 import type { Handle } from "./handle-data";
@@ -99,7 +101,18 @@ export function defmod<I extends Record<string, PortAnn>, O extends Record<strin
 export function defmod<I extends Record<string, PortAnn>, O extends Record<string, PortAnn>>(
 	spec: DefmodPatchSpec<I, O>,
 ): (...args: unknown[]) => Handle;
-export function defmod(spec: object): (...args: unknown[]) => Handle {
+export function defmod(name: string, setup: (...args: never[]) => unknown): (...args: unknown[]) => Handle;
+export function defmod(
+	name: string,
+	meta: Record<string, unknown>,
+	setup: (...args: never[]) => unknown,
+): (...args: unknown[]) => Handle;
+export function defmod(spec: object | string, ...rest: unknown[]): (...args: unknown[]) => Handle {
+	if (typeof spec === "string") {
+		const [meta, setup] =
+			rest.length === 1 ? [{}, rest[0]] : [rest[0] as Record<string, unknown>, rest[1]];
+		return moduleFactory(register(spec, meta, setup as (...args: never[]) => unknown));
+	}
 	assertNamed(spec);
 	if ("patch" in spec) {
 		return moduleFactory(defineSubpatch(spec as unknown as Record<string, unknown>));
@@ -110,23 +123,48 @@ export function defmod(spec: object): (...args: unknown[]) => Handle {
 	return moduleFactory(bound);
 }
 
+/** The string-name form (MANIFESTO §5.1, shape C): lower, compile its state text, register as the object form does. */
+function register(
+	name: string,
+	meta: Record<string, unknown>,
+	setup: (...args: never[]) => unknown,
+): ModuleSpec {
+	return currentSpecs() === null
+		? registerRoot(name, (read) => defineModule(name, meta, setup, read))
+		: registerEval(name, (read) => defineModule(name, meta, setup, read));
+}
+
 /** Root-scope write (the library, at import): contract checks, the tick build, the realm registry; the tick is read on first use. */
 function registerRootSpec(written: WrittenSpec): ModuleSpec {
-	assertRootNameFree(written.name);
 	validateSpec(written);
-	const bound = bindModule(written, "first use");
-	registerSpec(bound);
-	return bound;
+	return registerRoot(written.name, (read) => bindModule(written, read));
 }
 
 /** Eval-scope write: full collision surface (registry, scope helpers, handle names, this eval), then the eval's table. */
 function registerEvalSpec(written: WrittenSpec): ModuleSpec {
-	const ctx = evalCtx("defmod()");
-	assertEvalNameFree(written.name);
 	validateSpec(written);
 	assertNoReservedPorts(written);
 	assertJsonConfig(written.name, written.config);
-	const bound = bindModule(written, "now");
+	return registerEval(written.name, (read) => bindModule(written, read));
+}
+
+/** Root-scope write, shared by both `defmod` forms: contract checks on the name, bind, the realm registry. */
+function registerRoot(name: string, bind: (read: ReadTime) => ModuleSpec): ModuleSpec {
+	assertRootNameFree(name);
+	const bound = bind("first use");
+	validateSpec(bound);
+	registerSpec(bound);
+	return bound;
+}
+
+/** Eval-scope write, shared by both `defmod` forms: the full collision surface, bind, then this eval's table. */
+function registerEval(name: string, bind: (read: ReadTime) => ModuleSpec): ModuleSpec {
+	const ctx = evalCtx("defmod()");
+	assertEvalNameFree(name);
+	const bound = bind("now");
+	validateSpec(bound);
+	assertNoReservedPorts(bound);
+	assertJsonConfig(bound.name, bound.config);
 	ctx.specs.set(bound.name, bound);
 	return bound;
 }

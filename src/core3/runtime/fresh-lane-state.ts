@@ -18,8 +18,9 @@ export function freshLaneState(
 	sampleRate: number,
 	rng: number,
 	queries?: CycleQueries,
+	config?: Record<string, unknown>,
 ): Record<string, unknown> {
-	const state = spec.state ? spec.state(sampleRate) : {};
+	const state = spec.state ? spec.state(sampleRate, { ...spec.config, ...config }) : {};
 	state.__rng = rng;
 	state.__scratch = freshScratch(spec, queries);
 	return state;

@@ -79,7 +79,7 @@ describe.each(specs)("contract: %s", (name, spec) => {
 
 	it("state() returns plain serializable data (JSON round-trips; typed arrays ok)", () => {
 		if (!spec.state) return;
-		const st = spec.state(SR);
+		const st = spec.state(SR, spec.config ?? {});
 		for (const [k, v] of Object.entries(st)) {
 			const ok = typeof v === "number" || typeof v === "string" || ArrayBuffer.isView(v);
 			expect(ok, `state key '${k}' is ${typeof v}`).toBe(true);

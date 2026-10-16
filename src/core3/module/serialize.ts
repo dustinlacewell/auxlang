@@ -48,6 +48,7 @@ function serializedOf(spec: ModuleSpec): SerializedModuleSpec {
 		...(spec.policy !== undefined ? { policy: spec.policy } : {}),
 		...(spec.reads !== undefined ? { reads: spec.reads } : {}),
 		...(spec.state !== undefined ? { state: spec.state.toString() } : {}),
+		...(spec.writes !== undefined ? { writes: spec.writes } : {}),
 	};
 }
 
@@ -62,6 +63,7 @@ export function hydrateSpec(s: SerializedModuleSpec): ModuleSpec {
 		s.state !== undefined
 			? (hydrateFn(s.state, "state", `module '${s.name}' state`) as (
 					sampleRate: number,
+					config: Record<string, unknown>,
 				) => Record<string, unknown>)
 			: undefined;
 	const { tick: _t, state: _s, helpers: _h, origins: _o, ...rest } = s;
@@ -81,7 +83,7 @@ const TRIAL_SAMPLE_RATE = 48000;
 export function assertClosureFree(s: SerializedModuleSpec): void {
 	const hydrated = hydrateSpec(s);
 	try {
-		const state = hydrated.state?.(TRIAL_SAMPLE_RATE) ?? {};
+		const state = hydrated.state?.(TRIAL_SAMPLE_RATE, hydrated.config ?? {}) ?? {};
 		const ins: Record<string, number> = {};
 		for (const [port, ann] of Object.entries(hydrated.ins)) ins[port] = ann.def ?? 0;
 		const outs: Record<string, number> = {};
@@ -103,7 +105,7 @@ export function assertClosureFree(s: SerializedModuleSpec): void {
  * function expressions); falls back to re-wrapping an object-method shorthand
  * (`state(sr) { ... }` stringifies without a `function` keyword).
  */
-function hydrateFn(src: string, key: string, what: string): unknown {
+export function hydrateFn(src: string, key: string, what: string): unknown {
 	let fn: unknown;
 	try {
 		fn = new Function(`"use strict"; return (${src});`)();

@@ -88,7 +88,7 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 		parts.tick,
 		scope,
 		knownTickNames(ports, setupLocals, configKeys),
-		fileText,
+		input.file === null ? null : fileText,
 		input.name,
 	);
 	for (const name of closure.fileNames) {

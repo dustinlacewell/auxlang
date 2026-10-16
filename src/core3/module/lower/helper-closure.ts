@@ -59,12 +59,21 @@ export function helperClosure(
 				libraryNames.add(name);
 				continue;
 			}
-			throw new Error(`${what}: '${name}' is not a port, state, config, file function/const, or library name`);
+			throw new Error(
+				fileText === null
+					? `${what}: '${name}' is not a port, state, config, or library name. If it is meant to be ` +
+						`a same-file helper or const, evaluate the patch text through evalPatch so the ` +
+						`lowering can see the file.`
+					: `${what}: '${name}' is not a port, state, config, file function/const, or library name`,
+			);
 		}
 	}
 
 	if (fileNames.size > 0 && fileText === null) {
-		throw new Error(`${what}: reaches a same-file helper, but no file text was given to slice it from`);
+		throw new Error(
+			`${what}: reaches a same-file helper, but no file text was given to slice it from. ` +
+				`Evaluate the patch text through evalPatch so the file is available to the lowering.`,
+		);
 	}
 
 	const helpers: Record<string, string> = {};

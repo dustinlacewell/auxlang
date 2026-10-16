@@ -33,7 +33,7 @@ export function freshNodeStates(
 	const streamKey = node.seed === undefined ? key : LOCAL_SEED_KEY;
 	const queries = nodeQueries(spec);
 	return node.lanes.map((_, lane) => {
-		const state = freshLaneState(spec, sampleRate, streamSeed(seed, streamKey, lane), queries);
+		const state = freshLaneState(spec, sampleRate, streamSeed(seed, streamKey, lane), queries, node.config);
 		state.__lane = lane;
 		state.__seed = seed;
 		return state;
