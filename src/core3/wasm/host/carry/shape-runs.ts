@@ -1,8 +1,9 @@
 /**
- * The runs that copy one fitting state value (lane-fits.ts) from its old
- * address to its new one: a number or a Float64Array in f64s, any other
+ * The runs that copy one fitting state value (module/front/state/shape-fits.ts)
+ * from its old address to its new one: a number or a Float64Array in f64s, any other
  * typed array in words over its whole 8-byte-rounded region, a record field
- * by field (by name: the two may order their fields differently), an array
+ * by field (by name: the two may order their fields differently; the engine's
+ * field names are not part of the shape at any depth), an array
  * of records element by element. RunList joins what is contiguous.
  *
  * An old rebound field's value, or rebound element's record, is wherever its
@@ -11,6 +12,7 @@
  * points at, so each name gets its own copy, as the JS hand-over gives.
  */
 
+import { shapeKeys } from "../../../module/front/state/engine-fields";
 import type { Field, RecordsShape, Shape } from "../../layout/state-shape";
 import { sizeOf } from "../../program/state-layout";
 import { CARRY_F64, CARRY_REL, CARRY_WORD } from "./carry-run";
@@ -49,14 +51,19 @@ function shapeRuns(
 			runs.add(oldAt, freshAt, 8, relative ? CARRY_REL : CARRY_F64);
 			return;
 		case "array":
-			runs.add(oldAt, freshAt, sizeOf(fresh), relative ? CARRY_REL : fresh.type === "f64" ? CARRY_F64 : CARRY_WORD);
+			runs.add(
+				oldAt,
+				freshAt,
+				sizeOf(fresh),
+				relative ? CARRY_REL : fresh.type === "f64" ? CARRY_F64 : CARRY_WORD,
+			);
 			return;
 		case "record":
 			if (old.k !== "record") throw new Error("carry: a record against a non-record");
-			for (const [name, field] of Object.entries(fresh.fields)) {
+			for (const name of shapeKeys(fresh.fields)) {
 				const from = old.fields[name];
 				if (from === undefined) throw new Error(`carry: no old field '${name}'`);
-				fieldRuns(runs, from, oldAt, field, freshAt, relative);
+				fieldRuns(runs, from, oldAt, fresh.fields[name] as Field, freshAt, relative);
 			}
 			return;
 		case "records": {

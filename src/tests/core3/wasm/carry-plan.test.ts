@@ -1,10 +1,11 @@
 /**
  * The carry plan (wasm/host/carry-plan.ts) on hand-built layouts: which
- * lanes carry (fit by layout shape), which fields (never the engine's,
+ * lanes carry (fit by state shape), which fields (never the engine's,
  * `__rng` only under the same seed), joined runs, feedback slots, the sample
  * count; and the copy itself keeps every bit.
  */
 
+import type { RecordState, StateShape } from "@/core3/module/front/state/state-shape";
 import type { KeyedIdentity } from "@/core3/types";
 import { type CarrySide, planCarry } from "@/core3/wasm/host/carry-plan";
 import {
@@ -17,7 +18,7 @@ import {
 } from "@/core3/wasm/host/carry/carry-run";
 import { bindCarry, runCarry } from "@/core3/wasm/host/carry/run-carry";
 import { memoryViews } from "@/core3/wasm/host/wasm-memory";
-import type { Field } from "@/core3/wasm/layout/state-shape";
+import type { Field, Shape } from "@/core3/wasm/layout/state-shape";
 import type { LaneMemory, NodeMemory } from "@/core3/wasm/program/memory-layout";
 import { describe, expect, it } from "vitest";
 
@@ -35,7 +36,33 @@ function lane(base: number, aggregates: Record<string, Field> = {}): LaneMemory 
 		__lane: base + 24,
 		__seed: base + 32,
 	};
-	return { state, aggregates, cache: 0, cacheSlots: 0, tables: null, lambdas: {} };
+	const fields: Record<string, StateShape> = {};
+	for (const name of Object.keys(state)) fields[name] = { k: "number" };
+	for (const [name, field] of Object.entries(aggregates)) fields[name] = stateOf(field.shape);
+	const shape: RecordState = { k: "record", fields };
+	return { shape, state, aggregates, cache: 0, cacheSlots: 0, tables: null, lambdas: {} };
+}
+
+/** The state shape a hand-built layout shape lays out: the layout without its offsets. */
+function stateOf(shape: Shape): StateShape {
+	switch (shape.k) {
+		case "number":
+		case "array":
+			return shape;
+		case "record":
+			return {
+				k: "record",
+				fields: Object.fromEntries(
+					Object.entries(shape.fields).map(([name, field]) => [name, stateOf(field.shape)]),
+				),
+			};
+		case "records":
+			return {
+				k: "records",
+				length: shape.length,
+				element: stateOf(shape.element) as RecordState,
+			};
+	}
 }
 
 interface SideSpec {
@@ -207,21 +234,31 @@ describe("runCarry", () => {
 	});
 
 	it("reads a rebound field where its old slot points at the swap, nested slots too", () => {
-		const f64s = (offset: number) => ({ offset, shape: { k: "array" as const, type: "f64" as const, length: 1 } });
+		const f64s = (offset: number) => ({
+			offset,
+			shape: { k: "array" as const, type: "f64" as const, length: 1 },
+		});
 		const inner = (pointer: number | undefined) => ({
 			k: "record" as const,
 			size: pointer === undefined ? 8 : 16,
 			fields: { buf: pointer === undefined ? f64s(0) : { ...f64s(0), pointer } },
 		});
 		// Old: `r` at 2040 (slot 2056) holds a record whose `buf` has its slot at +8.
-		const old = side({ nodes: [node(lane(2000, { r: { offset: 2040, shape: inner(8), pointer: 2056 } }))], keys: ["a"] });
+		const old = side({
+			nodes: [node(lane(2000, { r: { offset: 2040, shape: inner(8), pointer: 2056 } }))],
+			keys: ["a"],
+		});
 		const fresh = side({
 			nodes: [node(lane(3000, { r: { offset: 3040, shape: inner(undefined) } }))],
 			keys: ["a"],
 			paired: [[0, "a"]],
 		});
 		const plan = planCarry(old, fresh);
-		expect(runs(plan).slice(2).map((r) => r[3])).toEqual([CARRY_DEREF, CARRY_DEREF, CARRY_REL, CARRY_POP, CARRY_POP]);
+		expect(
+			runs(plan)
+				.slice(2)
+				.map((r) => r[3]),
+		).toEqual([CARRY_DEREF, CARRY_DEREF, CARRY_REL, CARRY_POP, CARRY_POP]);
 		const from = memoryViews(new ArrayBuffer(4096));
 		const to = memoryViews(new ArrayBuffer(4096));
 		from.i32[2056 / 4] = 2400; // r names the record at 2400

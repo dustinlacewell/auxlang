@@ -6,17 +6,18 @@
  *
  * - the sample count, always;
  * - at an unchanged sample rate, each paired node's lanes whose state fits
- *   (by layout shape, carry/lane-fits.ts), `__rng` unless the seed changed;
+ *   (by state shape, as the JS carry fits: module/front/state/shape-fits.ts),
+ *   `__rng` unless the seed changed;
  * - at an unchanged sample rate, the feedback slots of paired sources.
  *
  * The result is a flat Int32Array of runs (carry/carry-run.ts) that the
  * worklet runs in the swap block (carry/run-carry.ts). Pure.
  */
 
+import { shapeFits } from "../../module/front/state/shape-fits";
 import type { WasmLayout } from "../program/memory-layout";
 import { CARRY_F64 } from "./carry/carry-run";
 import { feedbackRuns } from "./carry/feedback-runs";
-import { laneFits } from "./carry/lane-fits";
 import { laneRuns } from "./carry/lane-runs";
 import { pairedNodes } from "./carry/paired-nodes";
 import { RunList } from "./carry/run-list";
@@ -44,6 +45,7 @@ function nodeRuns(runs: RunList, old: CarrySide, fresh: CarrySide, from: number,
 	const keepStream = old.facts.seeds[from] === fresh.facts.seeds[to];
 	fresh.layout.nodes[to]?.lanes.forEach((lane, l) => {
 		const source = oldLanes[l];
-		if (source !== undefined && laneFits(source, lane)) laneRuns(runs, source, lane, keepStream);
+		if (source !== undefined && shapeFits(source.shape, lane.shape))
+			laneRuns(runs, source, lane, keepStream);
 	});
 }

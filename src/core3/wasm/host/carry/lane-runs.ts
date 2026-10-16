@@ -1,14 +1,14 @@
 /**
- * The runs that carry one fitting lane (lane-fits.ts), as
+ * The runs that carry one fitting lane (module/front/state/shape-fits.ts), as
  * runtime/hand-over/carry-states.ts copies a JS lane: every field of the
  * shape, `__rng` (the random stream) only when the seed is unchanged; the
  * engine-injected fields stay the new engine's.
  */
 
+import { shapeKeys } from "../../../module/front/state/engine-fields";
 import type { Field } from "../../layout/state-shape";
 import type { LaneMemory } from "../../program/memory-layout";
 import { CARRY_F64 } from "./carry-run";
-import { shapeKeys } from "./lane-fits";
 import type { RunList } from "./run-list";
 import { fieldRuns } from "./shape-runs";
 

@@ -6,9 +6,9 @@
  * fields, `__rng` only when the seed is unchanged.
  */
 
+import { shapeKeys } from "../../../module/front/state/engine-fields";
 import type { Field } from "../../layout/state-shape";
 import type { LaneMemory } from "../../program/memory-layout";
-import { shapeKeys } from "../carry/lane-fits";
 import { readField, writeField } from "./shape-codec";
 
 const SCRATCH = "__scratch";

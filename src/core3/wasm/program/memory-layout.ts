@@ -33,6 +33,8 @@ export const BLOCK_MAX = 128;
 export const PAGE = 65536;
 
 export interface LaneMemory {
+	/** The lane's state shape (module/front/state/state-shape.ts): what the carry fits by. */
+	readonly shape: RecordState;
 	/** Numeric state field → address. */
 	readonly state: Readonly<Record<string, number>>;
 	/** Typed array, record and array-of-records state fields, at absolute addresses (rebound ones with a pointer slot). */
@@ -99,6 +101,7 @@ export function planMemory(
 		const lanes = run.states.map((state, l) => {
 			const shape = laneShapeOf(state);
 			return {
+				shape,
 				state: Object.fromEntries(numericFields(shape).map((f) => [f, take(8)])),
 				aggregates: planAggregates(
 					shape,
