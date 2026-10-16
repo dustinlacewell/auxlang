@@ -11,6 +11,7 @@
 
 import { getRegistry } from "../../module/define";
 import { specIR } from "../../module/front/module/spec-ir";
+import { assertNoPortGroups } from "../../runtime/assert-no-port-groups";
 import { EngineBuild } from "../../runtime/build/engine-build";
 import { withProgramSpecs } from "../../runtime/hydrate-specs";
 import { slotOf } from "../../runtime/output-slots";
@@ -87,6 +88,7 @@ export function buildWasmInput(
 
 function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 	const { program, sampleRate } = prepared;
+	for (const node of program.nodes) assertNoPortGroups(node, "WASM");
 	const build = new EngineBuild(prepared, layered, undefined);
 	const parts = build.finish();
 	const taps = (port: string) =>

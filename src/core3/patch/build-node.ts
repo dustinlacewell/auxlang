@@ -13,9 +13,11 @@
  * (MANIFESTO §10.1).
  */
 
+import { groupDecl } from "@/core3/module/group-decls";
 import { nodePorts } from "@/core3/module/node-ports";
 import { isGNode } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
+import { assertGroupPorts, type BuildGroups, bindGroup, bindOpenMember } from "./bind-group";
 import { currentCall } from "../source/active-source";
 import { argLiteralSite, propLiteralSite } from "../source/call-bindings";
 import type { ModulePorts } from "../types";
@@ -24,6 +26,7 @@ import { bindInput } from "./bind-input";
 import { connectWhole } from "./connect";
 import { evalCtx } from "./context";
 import { handleData, isHandle } from "./handle-data";
+import { isNamedArgs } from "./is-named-args";
 import { newNode } from "./new-node";
 
 export function buildNode(
@@ -32,15 +35,14 @@ export function buildNode(
 	chained?: Record<string, InputValue>,
 ): GNode {
 	evalCtx(`${spec.name}(...)`);
-	const inputs: Record<string, InputValue> = {};
-	const config: Record<string, unknown> = {};
+	const into: Into = { inputs: {}, config: {}, groups: {} };
 	const bound = new Set(Object.keys(chained ?? {}));
 
 	const positional = positionalSlots(spec, chained !== undefined, bound);
 	let slot = 0;
 	for (const arg of args) {
 		if (isNamedArgs(arg)) {
-			applyNamedArgs(spec, arg as Record<string, unknown>, inputs, config, bound);
+			applyNamedArgs(spec, arg, into, bound);
 			continue;
 		}
 		if (slot >= positional.length) {
@@ -49,13 +51,25 @@ export function buildNode(
 					`Positional: [${positional.join(", ")}]. Use an object for other parameters.`,
 			);
 		}
-		assignPositional(spec, positional[slot]!, arg, inputs, config);
+		assignPositional(spec, positional[slot]!, arg, into);
 		slot++;
 	}
 
-	if (chained !== undefined) bindChain(spec, chained, inputs);
+	if (chained !== undefined) bindChain(spec, chained, into.inputs);
+	assertGroupPorts(spec, into.inputs, into.groups);
 
-	return { ...newNode(spec.name, inputs, config), ...sourceSites(args, positional) };
+	return {
+		...newNode(spec.name, into.inputs, into.config),
+		...(Object.keys(into.groups).length > 0 ? { groups: into.groups } : {}),
+		...sourceSites(args, positional),
+	};
+}
+
+/** What the arguments bind into: a node's inputs, config and port group members. */
+interface Into {
+	readonly inputs: Record<string, InputValue>;
+	readonly config: Record<string, unknown>;
+	readonly groups: BuildGroups;
 }
 
 /** The making call's site, and the literal sites of the bindings (empty outside a located eval). */
@@ -93,18 +107,12 @@ function positionalSlots(
 }
 
 /** A handle into the default input is a whole-module connection; anything else assigns. */
-function assignPositional(
-	spec: ModulePorts,
-	name: string,
-	value: unknown,
-	inputs: Record<string, InputValue>,
-	config: Record<string, unknown>,
-): void {
-	if (name === spec.defaultIn && isHandle(value)) {
-		Object.assign(inputs, connectWhole(handleData(value), spec));
+function assignPositional(spec: ModulePorts, name: string, value: unknown, into: Into): void {
+	if (name === spec.defaultIn && isHandle(value) && groupDecl(spec, name) === undefined) {
+		Object.assign(into.inputs, connectWhole(handleData(value), spec));
 		return;
 	}
-	assign(spec, name, value, inputs, config);
+	assign(spec, name, value, into);
 }
 
 function bindChain(
@@ -113,6 +121,12 @@ function bindChain(
 	inputs: Record<string, InputValue>,
 ): void {
 	for (const [name, value] of Object.entries(chained)) {
+		if (groupDecl(spec, name) !== undefined) {
+			throw new Error(
+				`Cannot chain into '${spec.name}': its default input '${name}' is a port group. ` +
+					`Pass the source as a member instead: ${spec.name}({ ${name}: { a: x } }).`,
+			);
+		}
 		if (name in inputs) throw chainBoundError(spec, name);
 		inputs[name] = value;
 	}
@@ -124,34 +138,33 @@ function chainBoundError(spec: ModulePorts, name: string): Error {
 	);
 }
 
+/** A key that names no port, group or config is a member of the open in-group, if any. */
 function applyNamedArgs(
 	spec: ModulePorts,
 	named: Record<string, unknown>,
-	inputs: Record<string, InputValue>,
-	config: Record<string, unknown>,
+	into: Into,
 	bound: ReadonlySet<string>,
 ): void {
 	for (const [key, value] of Object.entries(named)) {
 		if (bound.has(key)) throw chainBoundError(spec, key);
-		if (!knownKey(spec, key)) {
+		if (knownKey(spec, key, into.groups)) assign(spec, key, value, into);
+		else if (!bindOpenMember(spec, key, value, into.inputs, into.groups)) {
 			throw new Error(
 				`${spec.name}: unknown parameter '${key}'. ` +
-					`inputs: [${Object.keys(nodePorts(spec).ins).join(", ")}], config: [${Object.keys(spec.config ?? {}).join(", ")}]`,
+					`inputs: [${Object.keys(nodePorts(spec, into.groups).ins).join(", ")}], config: [${Object.keys(spec.config ?? {}).join(", ")}]`,
 			);
 		}
-		assign(spec, key, value, inputs, config);
 	}
 }
 
-function assign(
-	spec: ModulePorts,
-	name: string,
-	value: unknown,
-	inputs: Record<string, InputValue>,
-	config: Record<string, unknown>,
-): void {
-	if (name in nodePorts(spec).ins) {
-		inputs[name] = bindInput(spec, name, value);
+function assign(spec: ModulePorts, name: string, value: unknown, into: Into): void {
+	const group = groupDecl(spec, name);
+	if (group !== undefined) {
+		bindGroup(spec, group, value, into.inputs, into.groups);
+		return;
+	}
+	if (name in nodePorts(spec, into.groups).ins) {
+		into.inputs[name] = bindInput(spec, name, value, into.groups);
 		return;
 	}
 	// Config: static per-node value. `__`-prefixed keys are compile hints
@@ -159,18 +172,14 @@ function assign(
 	if (isHandle(value) || isGNode(value) || isUnitTag(value) || typeof value === "function") {
 		throw new Error(`${spec.name}: config '${name}' takes a static value, not a signal`);
 	}
-	config[name] = value;
+	into.config[name] = value;
 }
 
-function knownKey(spec: ModulePorts, key: string): boolean {
-	return key in nodePorts(spec).ins || key in (spec.config ?? {}) || key.startsWith("__");
-}
-
-/** A plain object that is not itself a signal value is a named-args bag. */
-function isNamedArgs(v: unknown): boolean {
-	if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
-	if (isHandle(v) || isGNode(v) || isUnitTag(v)) return false;
-	const ast = (v as Record<string, unknown>).ast;
-	if (typeof ast === "object" && ast !== null) return false; // P-like pattern
-	return true;
+function knownKey(spec: ModulePorts, key: string, groups: BuildGroups): boolean {
+	return (
+		groupDecl(spec, key) !== undefined ||
+		key in nodePorts(spec, groups).ins ||
+		key in (spec.config ?? {}) ||
+		key.startsWith("__")
+	);
 }

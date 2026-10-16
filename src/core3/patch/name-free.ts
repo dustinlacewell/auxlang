@@ -6,7 +6,7 @@
 
 import { hasModule } from "../module/define";
 import { evalCtx } from "./context";
-import { RESERVED_HANDLE_NAMES } from "./handle";
+import { RESERVED_HANDLE_NAMES } from "./reserved-handle-names";
 import { RESERVED_SCOPE_NAMES } from "./scope-names";
 import { rootSubpatches } from "./subpatch/registry";
 

@@ -25,6 +25,8 @@ export const RESERVED_SCOPE_NAMES: ReadonlySet<string> = new Set([
 	"trigPort",
 	"phasePort",
 	"optional",
+	"group",
+	"sigs",
 	// Continuous pattern-signal generators (0..1), lifted into any knob.
 	"rand",
 	"perlin",

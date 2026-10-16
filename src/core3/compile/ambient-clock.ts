@@ -17,7 +17,7 @@ export function resolveAmbientClocks(
 	specs?: SpecTable,
 ): void {
 	for (const node of nodes) {
-		for (const [port, ann] of Object.entries(nodePorts(resolveSpec(node.module, specs)).ins)) {
+		for (const [port, ann] of Object.entries(nodePorts(resolveSpec(node.module, specs), node.groups).ins)) {
 			if (ann.unit !== "phase" || node.inputs[port] !== undefined) continue;
 			node.inputs[port] = ambientPosition(clockNode, node.module, port);
 		}

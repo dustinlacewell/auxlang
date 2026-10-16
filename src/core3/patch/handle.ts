@@ -9,6 +9,7 @@
  * and promise checks never explode.
  */
 
+import { type GroupDecl, groupDecl } from "@/core3/module/group-decls";
 import { type NodePorts, nodePorts } from "@/core3/module/node-ports";
 import type { GNode } from "../graph/node";
 import { getRegistry } from "../module/define";
@@ -16,6 +17,7 @@ import { checkSeed } from "../random/check-seed";
 import { currentCall } from "../source/active-source";
 import { argLiteralSite } from "../source/call-bindings";
 import type { ModulePorts } from "../types";
+import { assertGroupPorts, type BuildGroups, bindGroup } from "./bind-group";
 import { bindInput } from "./bind-input";
 import { buildNode } from "./build-node";
 import { connectWhole } from "./connect";
@@ -25,11 +27,9 @@ import { HANDLE, type Handle, type HandleData } from "./handle-data";
 import { withModTerm } from "./mod-terms";
 import { newNode } from "./new-node";
 import { rootFromHandle } from "./out";
+import { RESERVED_HANDLE_NAMES } from "./reserved-handle-names";
 import { isPatchModule, resolvePatchModule } from "./resolve";
 import { rootSubpatches } from "./subpatch/registry";
-
-/** Names the handle claims for itself; module ports may not use them. */
-export const RESERVED_HANDLE_NAMES = new Set(["out", "apply", "lane", "id", "seed", "width", "mod"]);
 
 /** Introspection props that must return undefined instead of erroring. */
 const INTROSPECTION = new Set([
@@ -48,7 +48,7 @@ const INTROSPECTION = new Set([
 export function wrap(node: GNode, port?: string, lane?: number): Handle {
 	const spec = resolvePatchModule(node.module);
 	assertNoReservedPorts(spec);
-	const ports = nodePorts(spec);
+	const ports = nodePorts(spec, node.groups);
 	const data: HandleData = {
 		node,
 		...(port !== undefined ? { port } : {}),
@@ -74,7 +74,9 @@ export function wrap(node: GNode, port?: string, lane?: number): Handle {
 			}
 
 			if (prop in ports.outs) return wrap(node, prop, lane);
-			if (prop in ports.ins) return inputSetter(node, port, lane, spec, prop);
+			if (prop in ports.ins || groupDecl(spec, prop) !== undefined) {
+				return inputSetter(node, port, lane, spec, prop);
+			}
 			if (isPatchModule(prop)) {
 				const dest = resolvePatchModule(prop);
 				return (...args: unknown[]) => wrap(buildNode(dest, args, connectWhole(data, dest)));
@@ -148,7 +150,10 @@ function inputSetter(
 	return (value: unknown) => setInput(node, port, lane, spec, input, value);
 }
 
-/** Value semantics: setting an input returns a COPY; the original is untouched. */
+/**
+ * Value semantics: setting an input returns a COPY; the original is untouched.
+ * A port group name sets its members (patch/bind-group).
+ */
 function setInput(
 	node: GNode,
 	port: string | undefined,
@@ -158,8 +163,17 @@ function setInput(
 	value: unknown,
 ): Handle {
 	const copy = rebound(copyNode(node), input, argLiteralSite(currentCall(), 0, value));
-	copy.inputs[input] = bindInput(spec, input, value);
+	const group = groupDecl(spec, input);
+	if (group === undefined) copy.inputs[input] = bindInput(spec, input, value, copy.groups);
+	else setGroup(copy, spec, group, value);
 	return wrap(copy, port, lane);
+}
+
+function setGroup(copy: GNode, spec: ModulePorts, group: GroupDecl, value: unknown): void {
+	const groups: BuildGroups = { ...copy.groups };
+	bindGroup(spec, group, value, copy.inputs, groups);
+	assertGroupPorts(spec, copy.inputs, groups);
+	if (Object.keys(groups).length > 0) copy.groups = groups;
 }
 
 /** The node with `name`'s literal site replaced: the new literal's, or none. */
@@ -181,7 +195,7 @@ function modulated(
 	depth: unknown,
 ): Handle {
 	const copy = copyNode(node);
-	copy.mods = withModTerm(node.mods, spec, input, signal, depth);
+	copy.mods = withModTerm(node.mods, spec, input, signal, depth, node.groups);
 	return wrap(copy, port, lane);
 }
 
@@ -192,6 +206,7 @@ function modulated(
 function copyNode(node: GNode): GNode {
 	return {
 		...newNode(node.module, { ...node.inputs }, { ...node.config }),
+		...(node.groups !== undefined ? { groups: node.groups } : {}),
 		...(node.pin !== undefined ? { pin: node.pin } : {}),
 		...(node.seed !== undefined ? { seed: node.seed } : {}),
 		...(node.mods !== undefined ? { mods: node.mods } : {}),

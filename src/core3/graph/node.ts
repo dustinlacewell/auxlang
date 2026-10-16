@@ -47,6 +47,11 @@ export interface GNode {
 	/** Each port's BASE value. A port with `mods` sums base + Σ(signal × depth). */
 	inputs: Record<string, InputValue>;
 	config: Record<string, unknown>;
+	/**
+	 * Port group -> member names, in index order (module/node-ports). Only the
+	 * groups that are not `like` another; absent when the node has none.
+	 */
+	groups?: Readonly<Record<string, readonly string[]>>;
 	pin?: string;
 	/** Local seed from `.seed(n)`: replaces the patch seed for this node's randomness. */
 	seed?: number;

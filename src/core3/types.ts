@@ -39,6 +39,18 @@ export interface PortAnn {
 	 * `Number.isFinite`.
 	 */
 	readonly opt?: true;
+	/**
+	 * A port group: one name, this annotation, any number of members the node
+	 * fixes at eval (module/node-ports). A member's port is `group.member`, or
+	 * the bare member name in an `open` group. `like` names another group on
+	 * the same side whose members this one copies.
+	 */
+	readonly group?: PortGroup;
+}
+
+export interface PortGroup {
+	readonly open?: true;
+	readonly like?: string;
 }
 
 // The convertible units (hz, semis, secs, beats) are unit tags: units/tag.ts.
@@ -49,6 +61,10 @@ export const trigPort = (def: number | null = 0): PortAnn => ({ unit: "trig", de
 export const phasePort = (def: number | null = 0): PortAnn => ({ unit: "phase", def });
 /** Mark a `def: null` input optional: unconnected is legal, tick sees an absent sentinel. */
 export const optional = (ann: PortAnn): PortAnn => ({ ...ann, opt: true });
+/** Make `ann` a port group: its members are fixed per node. */
+export const group = (ann: PortAnn, opts: PortGroup = {}): PortAnn => ({ ...ann, group: { ...opts } });
+/** A signal group set as an array: members `0..n-1`. */
+export const sigs = (def: number | null = 0): PortAnn => group(sig(def));
 
 // ---------------------------------------------------------------------------
 // Module contract — pure Mealy machines
@@ -242,6 +258,8 @@ export interface PNode extends Identity {
 	/** Per-lane input sources: lanes[lane][portName]. length === width (1 for reduce). */
 	readonly lanes: readonly Record<string, PortSrc>[];
 	readonly config: Record<string, unknown>;
+	/** Port group members, as on the GNode (graph/node.ts). Absent when the node has none. */
+	readonly groups?: Readonly<Record<string, readonly string[]>>;
 	/**
 	 * Local seed from `.seed(n)`. Replaces the patch seed for this node's
 	 * streams and `hashRandom`, and its streams no longer follow its key.

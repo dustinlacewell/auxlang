@@ -126,13 +126,15 @@ function outIndices(roots: readonly GNode[], index: Map<GNode, number>): number[
 function emitNode(node: GNode, r: Resolved): PNode {
 	const spec = resolveSpec(node.module, r.specs);
 	const width = r.widths.get(node) ?? 1;
-	const lanes = Array.from({ length: width }, (_, lane) => resolveLane(node, nodePorts(spec).ins, lane, r));
+	const ins = nodePorts(spec, node.groups).ins;
+	const lanes = Array.from({ length: width }, (_, lane) => resolveLane(node, ins, lane, r));
 	return {
 		...(r.identities.get(node) as Placement),
 		module: node.module,
 		width,
 		lanes,
 		config: strippedConfig(node.config),
+		...(node.groups !== undefined ? { groups: node.groups } : {}),
 		...(node.pin !== undefined ? { pin: node.pin } : {}),
 		...(node.seed !== undefined ? { seed: node.seed } : {}),
 		...(node.site !== undefined ? { site: node.site } : {}),

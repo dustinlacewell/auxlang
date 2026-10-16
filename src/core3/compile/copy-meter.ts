@@ -16,7 +16,7 @@ export function copyMeter(nodes: readonly GNode[], specs?: SpecTable): void {
 	for (const node of nodes) {
 		const spec = resolveSpec(node.module, specs);
 		if (!("beatsPerBar" in (spec.config ?? {})) || node.module === "clock") continue;
-		const clock = clockRead(node, nodePorts(spec).ins);
+		const clock = clockRead(node, nodePorts(spec, node.groups).ins);
 		if (clock !== null) node.config = { ...node.config, beatsPerBar: meterOf(clock) };
 	}
 }

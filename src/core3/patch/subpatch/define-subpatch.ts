@@ -82,6 +82,11 @@ function portRecord(
 			`defmod('${name}'): ${field} must be a record of at least ${least} port annotation(s)`,
 		);
 	}
+	for (const [port, ann] of Object.entries(value as Record<string, PortAnn>)) {
+		if (ann.group !== undefined) {
+			throw new Error(`defmod('${name}'): ${field} '${port}' is a port group. A sub-patch takes no port groups.`);
+		}
+	}
 	return value as Record<string, PortAnn>;
 }
 

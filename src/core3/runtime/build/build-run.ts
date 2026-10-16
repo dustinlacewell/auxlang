@@ -8,6 +8,7 @@
 
 import { nodePorts } from "@/core3/module/node-ports";
 import type { ModuleSpec, PNode } from "../../types";
+import { assertNoPortGroups } from "../assert-no-port-groups";
 import { compileLaneBindings } from "../bindings";
 import { compileReduceGathers } from "../gathers";
 import type { NodeRun } from "../node-run";
@@ -20,6 +21,7 @@ export function buildRun(
 	layout: OutputLayout,
 	states: Record<string, unknown>[],
 ): NodeRun {
+	assertNoPortGroups(node, "interpreter");
 	const reduce = spec.policy === "reduce";
 	assertLanes(node, i, reduce);
 	const ports = nodePorts(spec);

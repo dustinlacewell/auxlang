@@ -28,7 +28,7 @@ import { chord } from "./pattern/chord/chord";
 import { P } from "./pattern/pat-class";
 import { p } from "./pattern/notation/template";
 import type { Program } from "./types";
-import { gatePort, optional, phasePort, sig, trigPort, unit } from "./types";
+import { gatePort, group, optional, phasePort, sig, sigs, trigPort, unit } from "./types";
 import { beats, hz, secs, semis } from "./units/tag";
 
 export { runEval } from "./patch/context";
@@ -80,6 +80,8 @@ const RESERVED = {
 	trigPort,
 	phasePort,
 	optional,
+	group,
+	sigs,
 	rand: P.signal("rand"),
 	perlin: P.signal("perlin"),
 	chord,

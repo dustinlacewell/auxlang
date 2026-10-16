@@ -19,7 +19,7 @@ export function expandMods(nodes: readonly GNode[], specs?: SpecTable): void {
 	for (const node of nodes) {
 		if (node.mods === undefined) continue;
 		for (const [port, terms] of Object.entries(node.mods)) {
-			const ann = () => nodePorts(resolveSpec(node.module, specs)).ins[port];
+			const ann = () => nodePorts(resolveSpec(node.module, specs), node.groups).ins[port];
 			node.inputs[port] = modulated(node, port, ann, terms);
 		}
 		// biome-ignore lint/performance/noDelete: compile-time, once per node; `mods` must be absent afterwards
