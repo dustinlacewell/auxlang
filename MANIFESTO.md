@@ -290,64 +290,78 @@ This desugars to `mux(indexPattern, [palette])`. Rules:
 
 ## 5. Modules
 
-A module is a Mealy machine. The whole contract:
+Patches are JavaScript. Modules are written in auxlang's DSP language: the
+same syntax, compiled to run every sample. A module is a function that sets up
+a voice and returns its **tick**, the function that plays it:
 
 ```js
-defmod({
-  name: "lpf",
-  ins:    { in: sig(0), cutoff: semis(84), res: unit(0.2) },
-  outs:   { out: sig() },
-  config: { mode: "lp" },
-  state:  (sr) => ({ ic1: 0, ic2: 0 }),
-  helpers: { tanh },
-  tick:   (s, i, o, c, sr) => { /* reads i, c; writes o and s */ },
+function wrapIndex(k, n) { return ((Math.floor(k) % n) + n) % n }
+
+defmod("echo", { cat: "effects" }, ({ sr }) => {
+  const buf = new Float64Array(sr)
+  let w = 0
+  return ({ in: x = 0, time = secs(0.25) }) => {
+    const y = x + buf[wrapIndex(w - time * sr, buf.length)] * 0.5
+    buf[w] = y
+    w = (w + 1) % buf.length
+    return y
+  }
 })
 ```
 
-- **`ins`/`outs`** declare names, defaults, and units with the same tags as
-  §2 (`hz`, `semis`, `secs`, `beats`), plus `unit` (0..1) and `sig` (no unit).
-  Units drive UI, errors, and conversion of tagged values.
-- **`state`** runs once at eval. State is plain data: numbers, fixed-shape
-  objects, typed arrays, fixed-size arrays of fixed-shape objects. This makes
-  live state migration, inspection, and snapshots mechanical.
-- **`tick`** runs per sample per lane. Reducers and reshapers declare a lane
-  policy and receive lane arrays.
-- **`helpers`** are named functions `tick` may call. They follow the same rules
-  as `tick`.
-- The first input is the default input (chain target). The first output is the
-  default output, named `out` everywhere. Semantic names (`gate`, `trig`)
-  appear only where they mean exactly that.
-- A stereo module (`pan`) has outputs `l` and `r` and no default output.
-  Chaining from it connects by name (§2); anything else is a loud error.
+`defmod(name, meta?, setup)`. Built-in modules use it too. At root scope it
+registers into the library; inside a patch it registers for that patch.
 
-`defmod` is the only way to define a module. Built-in modules use it too. It is
-scope-aware: at root scope it registers into the library; inside a patch it
-registers for that patch only.
+- **Setup** runs once per voice. Its locals are the voice's memory: numbers,
+  booleans, typed arrays, records, arrays of records. Its parameters are `sr`
+  (sample rate), `width` (lane count, reduce modules) and config, each config
+  key with its default: `({ sr, shape = "sin" })`.
+- **The tick** runs every sample. Its parameter names the inputs.
+  A default is the value when nothing is plugged in; a unit tag sets the
+  port's unit (§2): `time = secs(0.25)`. `ch = sigs()` is an open group of
+  inputs; `value = slot(0.5, "min", "max")` is a live control port (§5.3).
+- **Outputs** are what it returns: a value is `out`; `{ l, r }` names several.
+- **Helpers** are functions written alongside the module. Number constants
+  written alongside it are read in place.
+- **Wiring.** The first input is the chain target. The other inputs are
+  positional in order, or `meta.args` lists them. An output named `out` is the
+  default output. A stereo module (`pan`) returns `l` and `r`; chaining from it
+  connects by name (§2).
+- **`meta`** holds what the code does not say: `doc`, `cat`, `args`,
+  `reduce: true` (one call sees every lane as an array), output units, and
+  fixed config for a family made in a loop.
 
-A module can instead be a **sub-patch**: `defmod({ name, ins, outs, patch:
-(i) => ({ out: ... }) })`. It gets the same ports, chaining, positional args,
-and identity as any module. This is saving a sub-patch as a module.
+**Re-eval keeps the music going.** Memory the tick writes carries
+into the new code by name. Memory it only reads is rebuilt from setup, so an
+edited constant takes effect. When a buffer is rebuilt at a new size, the
+voice starts fresh.
 
-### 5.1 What `tick` may do
+A **sub-patch** saves a patch as a module, with the same inputs and outputs:
+`defpatch("voice", ({ in: pitch, cutoff = 84 }) => pitch.saw().lpf(cutoff))`.
 
-Everything whose shape is fixed when the patch starts. `state()` runs before
-compiling, so the compiler sees the real shapes and needs no type guessing.
+### 5.1 The DSP language
 
-- Allowed: arithmetic, `Math.*` (bound to auxlang's own math, §7),
-  `if`/`switch`/loops, locals, fixed-shape state
-  objects and arrays, helpers (no recursion), config strings (resolved before
-  the patch runs).
-- Not allowed: creating objects or arrays, growing arrays or adding fields,
-  computed property names, runtime strings, closures over patch variables.
+The tick works with numbers, booleans and the memory setup built.
+You write:
 
-A tick outside these rules is a loud error at eval, naming the line.
+- arithmetic and comparison; `Math.*` with auxlang's own math (§7);
+- `if`, `switch`, `?:`, every loop form, `for…of` over arrays, labels;
+- locals, destructuring, and records or arrays passed, chosen and returned
+  by reference;
+- array methods that work in place: `fill`, `set`, `copyWithin`, `forEach`;
+- your own functions, including small arrows inside the tick that read its
+  locals;
+- config strings: compare, switch on, pass and store them; they are settled
+  before the patch runs.
+
+Setup builds every buffer and record; the tick reads and writes them. Each problem names its line and the fix.
 
 **Randomness.** `Math.random()` inside a tick is a seeded generator. Each
 module instance and each lane gets its own stream from (seed, identity, lane).
 The generator's position is module state, so re-eval carries it. For a value
 that is the same every time a key comes back, use `hashRandom(key)`.
 
-**Lambdas** `(s, sr, t) => n` are stateless modules and follow the same rules.
+**Lambdas** `(s, sr, t) => n` are stateless modules in the same language.
 
 ### 5.2 Modulation adds
 
@@ -557,7 +571,7 @@ Runtime obligations:
 - **Controls are slots.** Plain numbers are baked in. Controls and dragged
   numbers are read from slots the editor writes.
 - **Backends agree.** The JS interpreter is the reference. The live engine is
-  WASM: it compiles the same tick subset with the same math, and must match the
+  WASM: it compiles the same DSP language with the same math, and must match the
   interpreter bit for bit.
 - **Re-eval does not glitch.** A new program is compiled and warmed before the
   swap.
