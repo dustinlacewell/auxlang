@@ -27,8 +27,19 @@ export function bindModule(written: WrittenSpec, read: ReadTime): ModuleSpec {
 	const { helpers, ...spec } = written;
 	const owner = `defmod('${spec.name}')`;
 	const written_ = sourceOf(written.tick, helpers ?? {}, owner);
-	const bound = bindModuleRandom(bindModuleMath(written_, owner), owner);
-	const source = withOrigins(bound, written_);
+	return bindSource(spec, written_, read);
+}
+
+/**
+ * Binds a spec to a source already in hand: `written.origins`, when present,
+ * are used as-is and no text search runs; otherwise origins are found by
+ * `withOrigins` as `bindModule` has always done.
+ */
+export function bindSource(spec: ModuleSpec, written: ModuleSource, read: ReadTime): ModuleSpec {
+	const owner = `defmod('${spec.name}')`;
+	const bound = bindModuleRandom(bindModuleMath(written, owner), owner);
+	const source =
+		written.origins !== undefined ? { ...bound, origins: written.origins } : withOrigins(bound, written);
 	const result = { ...spec, tick: buildTick(source, owner), source };
 	checkModule(result, source, read);
 	return result;
