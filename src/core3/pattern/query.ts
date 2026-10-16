@@ -683,7 +683,7 @@ function queryChunk(n: number, child: Pat, transformed: Pat, span: Span, ctx: Qu
 	return [...base, ...trans].sort((a, b) => rcmp(a.part.begin, b.part.begin));
 }
 
-/** Per event, use transformed's value and kind with probability prob (seeded), else child. */
+/** Per event, use transformed's value, kind and record fields with probability prob (seeded), else child. */
 function querySometimes(
 	prob: number,
 	child: Pat,
@@ -696,7 +696,10 @@ function querySometimes(
 		const at = ev.whole ? ev.whole.begin : ev.part.begin;
 		if (hash01(ctx.seed, ctx.path, at.n, at.d) >= prob) return ev;
 		const match = transEvs.find((t) => rcmp(t.part.begin, ev.part.begin) === 0);
-		return match ? { ...ev, value: match.value, kind: match.kind } : ev;
+		if (!match) return ev;
+		const { fields: _child, ...rest } = ev;
+		const fields = match.fields === undefined ? {} : { fields: match.fields };
+		return { ...rest, value: match.value, kind: match.kind, ...fields };
 	});
 }
 
