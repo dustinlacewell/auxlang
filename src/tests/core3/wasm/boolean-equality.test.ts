@@ -1,7 +1,7 @@
 /**
  * Booleans and numbers on WASM, as JS: strict equality between a boolean
  * and a number is false (`!==` true), also in a `switch`, and both sides
- * still run. Every boolean use the shared checker allows (tick-subset/kinds/)
+ * still run. Every boolean use the shared checker allows (module/front/kinds/)
  * compiles and matches: booleans in their own variables, in typed arrays,
  * from helpers, and mixed with numbers where only truthiness counts.
  */
@@ -87,7 +87,7 @@ function allowed(body: string): Program {
 b({ in: lfo(3000) }).out()`);
 }
 
-/** Booleans the checker allows (tick-subset/kinds/): each compiles and matches. */
+/** Booleans the checker allows (module/front/kinds/): each compiles and matches. */
 const ALLOWED: readonly [string, string][] = [
 	["a boolean let given booleans", "let on = false; on = i.in > 0; o.out = on ? 1 : 0;"],
 	["a mix in an if", "o.out = 0; if (s.n && i.in > 0) o.out = 1;"],

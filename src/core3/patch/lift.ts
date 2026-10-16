@@ -8,7 +8,7 @@
 import { isGNode } from "../graph/input-kinds";
 import type { InputValue, NodeRef } from "../graph/node";
 import { defaultOutOf } from "../module/default-out";
-import { checkLambda } from "../module/tick-subset/check-lambda";
+import { checkLambda } from "../module/front/module/check-lambda";
 import { isUnitTag } from "../units/tag";
 import { type HandleData, handleData, isHandle } from "./handle-data";
 import { resolvePatchModule } from "./resolve";

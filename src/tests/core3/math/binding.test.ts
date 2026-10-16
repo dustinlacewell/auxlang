@@ -19,7 +19,7 @@ import { getRegistry } from "@/core3/module/define";
 import { analyseFunction, resolvePart } from "@/core3/module/front/module/analyse-function";
 import { parsePart } from "@/core3/module/front/parse/parse-part";
 import { walk } from "@/core3/module/front/parse/walk";
-import { checkLambda } from "@/core3/module/tick-subset/check-lambda";
+import { checkLambda } from "@/core3/module/front/module/check-lambda";
 
 /** Every host-math reach in `text`: a Math member that is not exact, random or a constant, or a `**`. */
 function hostMathIn(text: string): string[] {

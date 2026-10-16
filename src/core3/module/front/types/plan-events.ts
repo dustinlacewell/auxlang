@@ -1,5 +1,5 @@
 /**
- * What a plan saw that the kind check (tick-subset/kinds/) judges, in walk
+ * What a plan saw that the kind check (front/kinds/) judges, in walk
  * order: stores and steps with the type of their place, values that take
  * one of two paths where the value is kept, field accesses no state has,
  * arrays and records used as numbers, helper calls with the callee's

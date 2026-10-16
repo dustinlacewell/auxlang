@@ -5,7 +5,7 @@
  * Two boolean branches give a boolean, a `?:` with an integer range an
  * integer of its width; otherwise the result is a number (a boolean branch as 0/1), since
  * only one value type can leave an `if`.
- * The checker (tick-subset/kinds/) allows a mix only where truthiness alone
+ * The checker (module/front/kinds/) allows a mix only where truthiness alone
  * counts, so the 0/1 never shows.
  */
 

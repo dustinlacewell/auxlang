@@ -8,7 +8,7 @@
  */
 
 import type { ModuleIR } from "@/core3/module/front/module/module-ir";
-import { judgeKinds } from "@/core3/module/tick-subset/kinds/check-kinds";
+import { judgeKinds } from "@/core3/module/front/kinds/check-kinds";
 import { calleesOf } from "./callees";
 import { type FunctionPlan, tickPlan } from "./function-plan";
 import { type TickInstance, instanceKey } from "./tick-instance";

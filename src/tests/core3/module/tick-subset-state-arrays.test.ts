@@ -1,5 +1,5 @@
 /**
- * Arrays in module state are typed arrays (tick-subset/check-state.ts): a
+ * Arrays in module state are typed arrays (module/front/state/check-state.ts): a
  * plain array is a loud error at definition naming the module and the
  * field, also inside a record or an array of records; typed arrays and
  * arrays of records pass.

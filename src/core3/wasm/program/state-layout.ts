@@ -4,7 +4,7 @@
  * array, records of differing shapes) is a loud error naming the field, so
  * the layout sees the whole state and a layout fit (carry/lane-fits.ts)
  * agrees with the JS `stateFits`. The checker refuses such values in a
- * module's own fresh state (module/tick-subset/check-state.ts); this catches
+ * module's own fresh state (module/front/state/check-state.ts); this catches
  * a state that takes them only under some config. `__scratch` is the
  * engine's derived data: its tables live in the table heap
  * (host/table-heap.ts), not in the lane.

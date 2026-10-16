@@ -2,7 +2,7 @@
  * One helper specialised on its argument shapes, as a function body. Its
  * plan (module/front/types/) for these shapes types every node and gives
  * the result kind: a boolean when every `return` gives one, else an f64.
- * The checker (tick-subset/kinds/) rejects a helper that returns both.
+ * The checker (module/front/kinds/) rejects a helper that returns both.
  */
 
 import type { Expression, ReturnStatement } from "acorn";

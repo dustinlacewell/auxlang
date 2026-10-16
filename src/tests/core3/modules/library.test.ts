@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
 import { getRegistry } from "@/core3/module/define";
-import { checkModule } from "@/core3/module/tick-subset/check-module";
+import { checkModule } from "@/core3/module/front/module/check-module";
 
 const modules = [...getRegistry().values()];
 

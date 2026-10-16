@@ -33,7 +33,7 @@ export function compileLambda(
 	const set = helperSet(owner, new Map([["lambda", ir]]));
 	const shapes = lambdaShapes(sampleRate).slice(0, ir.node.params.length);
 	const fn = compileHelper(set, "lambda", shapes, fns.calls(set));
-	// The checker (tick-subset/kinds/) already refuses a lambda that returns a boolean.
+	// The checker (module/front/kinds/) already refuses a lambda that returns a boolean.
 	if (fn.result !== "f64")
 		throw new Error(`wasm: ${owner}: internal: a boolean lambda passed the checker`);
 	const type = table.typeIndex(fn.params, [F64]);

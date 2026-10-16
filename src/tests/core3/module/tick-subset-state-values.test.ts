@@ -1,6 +1,6 @@
 /**
- * Module state holds only values every backend can hold (tick-subset/
- * check-state.ts): a field with no number form, or an array of records of
+ * Module state holds only values every backend can hold (module/front/
+ * state/check-state.ts): a field with no number form, or an array of records of
  * differing shapes, is a loud error at definition naming the module and the
  * field, so a WASM layout fit sees every field the JS `stateFits` sees.
  */

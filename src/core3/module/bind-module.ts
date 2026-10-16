@@ -14,7 +14,7 @@ import { bindModuleRandom } from "./bind-random/bind-module-random";
 import { RANDOM_HELPER_PREFIX } from "./bind-random/random-helpers";
 import { locateInSource } from "./source-text";
 import { buildTick } from "./tick-build/build-tick";
-import { checkModule } from "./tick-subset/check-module";
+import { checkModule } from "./front/module/check-module";
 
 /** A spec as written: `helpers` are functions the tick may call by name. */
 export interface WrittenSpec extends ModuleSpec {

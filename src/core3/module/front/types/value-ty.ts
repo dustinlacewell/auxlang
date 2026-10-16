@@ -1,7 +1,7 @@
 /**
  * The type of a fresh state value, and of a config value. State holds
  * numbers, typed arrays, records and arrays of records of one shape
- * (tick-subset/check-state.ts); config holds plain values, which fold.
+ * (front/state/check-state.ts); config holds plain values, which fold.
  */
 
 import { elementTypeOf } from "./element-type";

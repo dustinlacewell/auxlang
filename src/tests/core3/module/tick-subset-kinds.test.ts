@@ -1,5 +1,5 @@
 /**
- * The tick subset keeps booleans apart from numbers (tick-subset/kinds/) and
+ * The tick subset keeps booleans apart from numbers (module/front/kinds/) and
  * gives every variable an initial value, for every backend. A missing initial
  * value, a boolean state field and a lambda's refusals are loud errors at
  * eval; a kind refusal in a tick is a loud error at build, on both engines,
