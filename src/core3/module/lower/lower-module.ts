@@ -8,16 +8,18 @@
  * built elsewhere, reads this list).
  */
 
-import type { ArrowFunctionExpression, FunctionExpression, Program } from "acorn";
+import type { ArrowFunctionExpression, FunctionExpression, Identifier, Program } from "acorn";
 import type { StateShape } from "../front/state/state-shape";
 import type { Category, ModuleSource, PortAnn, SourceOrigin } from "../../types";
 import { assertAuthorNames } from "../assert-author-names";
 import { parseFunction } from "../front/parse/parse-function";
+import { isReference } from "../front/scope/is-reference";
 import { resolveBindings } from "../front/scope/resolve-bindings";
+import { walk } from "../front/parse/walk";
 import { fileScope, type FileScope } from "./file-scope";
 import { findSetup } from "./find-setup";
 import { helperClosure } from "./helper-closure";
-import { inferOuts } from "./infer-outs";
+import { inferOuts, type InferredOuts } from "./infer-outs";
 import { inferPorts } from "./infer-ports";
 import { positionalArgs } from "../positional-args";
 import { setupParts } from "./setup-parts";
@@ -132,8 +134,8 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 	const source: ModuleSource =
 		originsFound === undefined ? { tick, helpers: closure.helpers } : { tick, helpers: closure.helpers, origins: originsFound };
 
-	const outsAnn: Record<string, PortAnn> = {};
-	for (const name of outs.outs) outsAnn[name] = input.meta.outs?.[name] ?? { unit: "sig", def: 0 };
+	const outsAnn = outsAnnotation(what, outs, input.meta.outs);
+	assertGroupWritesDeclared(what, parts.tick, outs.outParam, outsAnn);
 
 	const ins = ports.ins;
 	const defaultIn = ports.order[0];
@@ -170,6 +172,76 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 		...(input.meta.reduce === true ? { policy: "reduce" as const } : {}),
 		...(input.meta.reads !== undefined ? { reads: input.meta.reads } : {}),
 	};
+}
+
+/**
+ * Module outputs = the tick's returned keys, then every `meta.outs` key whose
+ * annotation is a group and is not itself returned, in `meta.outs` order. A
+ * `meta.outs` key that is neither returned nor a group is declared but never
+ * produced: a loud error. A returned key that `meta.outs` marks as a group is
+ * also a loud error — groups are written through the tick's second param,
+ * never `return`.
+ */
+function outsAnnotation(
+	what: string,
+	outs: InferredOuts,
+	metaOuts: Readonly<Record<string, PortAnn>> | undefined,
+): Record<string, PortAnn> {
+	const result: Record<string, PortAnn> = {};
+	for (const name of outs.outs) {
+		const ann = metaOuts?.[name];
+		if (ann?.group !== undefined) {
+			throw new Error(
+				`${what}: output '${name}' is returned, but meta.outs declares it as a group; ` +
+					`a group output is written through the tick's second param, not 'return'`,
+			);
+		}
+		result[name] = ann ?? { unit: "sig", def: 0 };
+	}
+	for (const [name, ann] of Object.entries(metaOuts ?? {})) {
+		if (ann.group === undefined) {
+			if (!outs.outs.includes(name)) {
+				throw new Error(`${what}: output '${name}' is declared in meta.outs but never returned; return it`);
+			}
+			continue;
+		}
+		if (!outs.outs.includes(name)) result[name] = ann;
+	}
+	return result;
+}
+
+/** A group member the tick writes through its out param (`o.<name>...`) must be a declared group in `outsAnn`. */
+function assertGroupWritesDeclared(
+	what: string,
+	tick: ArrowFunctionExpression,
+	outParam: string | null,
+	outsAnn: Readonly<Record<string, PortAnn>>,
+): void {
+	if (outParam === null) return;
+	const scopes = resolveBindings(tick as never, new Set());
+	walk(tick.body as never, (node, parent, key) => {
+		if (node.type !== "Identifier" || !isReference(parent, key)) return;
+		const id = node as Identifier;
+		if (id.name !== outParam) return;
+		const resolution = scopes.references.get(id);
+		if (resolution === undefined || resolution.k !== "binding") return;
+		const member = memberNameOf(id, parent);
+		if (member === null) return;
+		const ann = outsAnn[member];
+		if (ann === undefined || ann.group === undefined) {
+			throw new Error(
+				`${what}: the tick writes '${outParam}.${member}', but '${member}' is not declared as a group ` +
+					`output in meta.outs — declare it with 'group(...)' (or 'sigs()'), or return it instead`,
+			);
+		}
+	});
+}
+
+function memberNameOf(id: Identifier, parent: unknown): string | null {
+	const p = parent as { type?: string; object?: unknown; property?: { type?: string; name?: string } } | null;
+	if (p === null || p.type !== "MemberExpression" || p.object !== id) return null;
+	if (p.property === undefined || p.property.type !== "Identifier") return null;
+	return p.property.name ?? null;
 }
 
 function knownTickNames(

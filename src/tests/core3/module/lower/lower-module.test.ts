@@ -133,4 +133,86 @@ describe("lowerModule", () => {
 
 		expect(() => bindSource(spec, lowered.source, "first use")).not.toThrow();
 	});
+
+	const groupSetupText = [
+		"({ sr }) => {",
+		"  return ({ in: x = 0 }, o) => {",
+		"    for (let k = 0; k < o.fields.length; k++) o.fields[k] = x + k",
+		"    return x",
+		"  }",
+		"}",
+	].join("\n");
+
+	function lowerGroupModule(outs: Record<string, unknown>) {
+		const fileText = [`defmod("x", { outs: ${JSON.stringify(outs)} }, ${groupSetupText})`].join("\n");
+		const source: SourceText = { file: "patch", text: fileText };
+		return lowerModule({
+			name: "x",
+			meta: { outs: outs as never },
+			setupText: groupSetupText,
+			file: { text: fileText, program: fileProgram(source) },
+			library: false,
+		});
+	}
+
+	it("a meta.outs key that is a group and never returned is exposed as a second output", () => {
+		const lowered = lowerGroupModule({ fields: { unit: "sig", def: 0, group: { open: true } } });
+		expect(Object.keys(lowered.outs)).toEqual(["out", "fields"]);
+	});
+
+	it("a meta.outs key that is not a group and never returned is a loud error", () => {
+		expect(() => lowerGroupModule({ missing: { unit: "sig", def: 0 } })).toThrow(
+			/'missing' is declared in meta\.outs but never returned/,
+		);
+	});
+
+	it("writing 'o.<name>' where <name> is not a declared group is a loud error", () => {
+		expect(() => lowerGroupModule({})).toThrow(/'fields' is not declared as a group output/);
+	});
+
+	it("a returned key that meta.outs declares as a group is a loud error", () => {
+		const setupText = ["({ sr }) => {", "  return () => 0", "}"].join("\n");
+		const fileText = [`defmod("x", { outs: { out: {} } }, ${setupText})`].join("\n");
+		const source: SourceText = { file: "patch", text: fileText };
+		expect(() =>
+			lowerModule({
+				name: "x",
+				meta: { outs: { out: { unit: "sig", def: 0, group: { open: true } } } },
+				setupText,
+				file: { text: fileText, program: fileProgram(source) },
+				library: false,
+			}),
+		).toThrow(/'out' is returned, but meta\.outs declares it as a group/);
+	});
+
+	it("end to end: a shape-C module returning 'out' and writing an open 'fields' group exposes both outputs", () => {
+		const lowered = lowerGroupModule({ fields: { unit: "sig", def: 0, group: { open: true } } });
+		const spec = {
+			name: lowered.name,
+			category: lowered.category,
+			ins: lowered.ins,
+			outs: lowered.outs,
+			defaultIn: lowered.defaultIn as string,
+			...(lowered.defaultOut !== undefined ? { defaultOut: lowered.defaultOut } : {}),
+			positional: lowered.positional ?? [],
+			config: lowered.config ?? {},
+			tick: (() => {}) as never,
+		};
+		const bound = bindSource(spec, lowered.source, "first use");
+
+		// Drive the bound tick directly, placing the group view the way
+		// `interpret-sample.ts`'s `fillGroupView`/`placeGroupView`/`drainGroupView` would.
+		const fieldsView = new Float64Array(2); // two members fixed by this node's wiring
+		const outs: Record<string, number> = { fields: fieldsView as unknown as number };
+		(bound.tick as (s: unknown, i: unknown, o: unknown, c: unknown, sr: number) => void)(
+			{},
+			{ in: 3 },
+			outs,
+			{},
+			48000,
+		);
+
+		expect(outs.out).toBe(3);
+		expect([...fieldsView]).toEqual([3, 4]);
+	});
 });
