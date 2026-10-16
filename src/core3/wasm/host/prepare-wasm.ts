@@ -111,7 +111,11 @@ function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 			? monitorPlan(watchList(program, layered), parts.runs, parts.layout)
 			: null,
 	};
-	const facts = engineFacts(parts, input.readsPattern);
+	const facts = engineFacts(
+		parts,
+		input.readsPattern,
+		build.nodeSpecs.map((spec) => spec.writes ?? null),
+	);
 	return {
 		input,
 		start: { runs: parts.runs, cur: parts.bufs.cur, slots: parts.bufs.slots },

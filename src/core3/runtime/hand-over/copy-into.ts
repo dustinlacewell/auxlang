@@ -15,6 +15,11 @@ export function copyInto(dst: Writable, src: Writable, skip: ReadonlySet<string>
 	}
 }
 
+/** Copy only the named fields of `src` into `dst` (carry-fields.ts picks them). */
+export function copyFields(dst: Writable, src: Writable, fields: readonly string[]): void {
+	for (const key of fields) dst[key] = copyValue(dst[key], src[key]);
+}
+
 const NONE: ReadonlySet<string> = new Set();
 
 function copyValue(dst: unknown, src: unknown): unknown {

@@ -7,8 +7,9 @@
  * - the sample count, always;
  * - each live slot whose site the old program has, always
  *   (runtime/live/slot-carry.ts);
- * - at an unchanged sample rate, each paired node's lanes whose state fits
- *   (by state shape, as the JS carry fits: module/front/state/shape-fits.ts),
+ * - at an unchanged sample rate, each paired node's lanes the fields
+ *   `carryFields` picks (module/front/state/carry-fields.ts: the module's
+ *   `writes`, or the whole state when it fits, for an old-form module),
  *   `__rng` unless the seed changed;
  * - at an unchanged sample rate, the feedback slots of paired sources.
  *
@@ -16,7 +17,7 @@
  * worklet runs in the swap block (carry/run-carry.ts). Pure.
  */
 
-import { shapeFits } from "../../module/front/state/shape-fits";
+import { carryFields } from "../../module/front/state/carry-fields";
 import { slotPairs } from "../../runtime/live/slot-carry";
 import type { WasmLayout } from "../program/memory-layout";
 import { CARRY_F64 } from "./carry/carry-run";
@@ -44,13 +45,15 @@ export function planCarry(old: CarrySide, fresh: CarrySide): Int32Array {
 	return runs.toArray();
 }
 
-/** Each fresh lane that the old node also has and whose state fits. */
+/** Each fresh lane that the old node also has, with the fields it carries. */
 function nodeRuns(runs: RunList, old: CarrySide, fresh: CarrySide, from: number, to: number): void {
 	const oldLanes = old.layout.nodes[from]?.lanes ?? [];
 	const keepStream = old.facts.seeds[from] === fresh.facts.seeds[to];
+	const writes = fresh.facts.writes[to] ?? undefined;
 	fresh.layout.nodes[to]?.lanes.forEach((lane, l) => {
 		const source = oldLanes[l];
-		if (source !== undefined && shapeFits(source.shape, lane.shape))
-			laneRuns(runs, source, lane, keepStream);
+		if (source === undefined) return;
+		const fields = carryFields(source.shape, lane.shape, writes);
+		if (fields !== null) laneRuns(runs, source, lane, fields, keepStream);
 	});
 }

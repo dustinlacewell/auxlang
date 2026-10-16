@@ -72,6 +72,7 @@ interface SideSpec {
 	readonly seeds?: readonly number[];
 	readonly feedback?: readonly { node: number; port: string; start: number }[];
 	readonly rate?: number;
+	readonly writes?: readonly (readonly string[] | null)[];
 }
 
 function side({
@@ -81,6 +82,7 @@ function side({
 	seeds,
 	feedback = [],
 	rate = 48000,
+	writes,
 }: SideSpec): CarrySide {
 	return {
 		layout: {
@@ -109,6 +111,7 @@ function side({
 			},
 			sampleRate: rate,
 			slotSites: [],
+			writes: writes ?? nodes.map(() => null),
 		},
 	};
 }
@@ -231,6 +234,64 @@ describe("planCarry", () => {
 			rate: 44100,
 		});
 		expect(runs(planCarry(old, fresh))).toEqual([COUNT]);
+	});
+
+	describe("shape C (writes)", () => {
+		// `phase` written, `gain` read-only: both at +8 in the lane, aggregate `buf` named too.
+		const shapeCLane = (base: number, aggregates: Record<string, Field> = {}) => {
+			const l = lane(base, aggregates);
+			return {
+				...l,
+				state: { phase: base, gain: base + 8, __rng: base + 16, __lane: base + 24, __seed: base + 32 },
+				shape: {
+					k: "record" as const,
+					fields: {
+						phase: { k: "number" as const },
+						gain: { k: "number" as const },
+						__rng: { k: "number" as const },
+						__lane: { k: "number" as const },
+						__seed: { k: "number" as const },
+						...(Object.keys(aggregates).length > 0
+							? Object.fromEntries(
+									Object.entries(aggregates).map(([name, field]) => [
+										name,
+										stateOf(field.shape),
+									]),
+								)
+							: {}),
+					},
+				},
+			};
+		};
+
+		it("carries only the written field (phase), rebuilds the read-only field (gain) fresh", () => {
+			const old = side({ nodes: [node(shapeCLane(2000))], keys: ["a"] });
+			const fresh = side({
+				nodes: [node(shapeCLane(3000))],
+				keys: ["a"],
+				paired: [[0, "a"]],
+				writes: [["phase"]],
+			});
+			expect(runs(planCarry(old, fresh))).toEqual([
+				COUNT,
+				[2000, 3000, 8, CARRY_F64], // phase only
+				[2016, 3016, 8, CARRY_F64], // __rng, seed unchanged
+			]);
+		});
+
+		it("starts the lane fresh when a written buffer resizes, leaving the read-only field to rebuild", () => {
+			const old = side({
+				nodes: [node(shapeCLane(2000, { buf: f32s(3, 2040) }))],
+				keys: ["a"],
+			});
+			const fresh = side({
+				nodes: [node(shapeCLane(3000, { buf: f32s(4, 3040) }))],
+				keys: ["a"],
+				paired: [[0, "a"]],
+				writes: [["phase", "buf"]],
+			});
+			expect(runs(planCarry(old, fresh))).toEqual([COUNT]);
+		});
 	});
 });
 

@@ -27,10 +27,16 @@ export interface EngineFacts {
 	readonly sampleRate: number;
 	/** Each live slot's site (Program.liveSlots order): a swap carries a slot by site. */
 	readonly slotSites: readonly number[];
+	/** Each node's `ModuleSpec.writes`, or null for an old-form module (carry-fields.ts). */
+	readonly writes: readonly (readonly string[] | null)[];
 }
 
 /** `readsPattern`: per node, whether its module reads a pattern (and so holds tables). */
-export function engineFacts(parts: EngineParts, readsPattern: readonly boolean[]): EngineFacts {
+export function engineFacts(
+	parts: EngineParts,
+	readsPattern: readonly boolean[],
+	writes: readonly (readonly string[] | null)[],
+): EngineFacts {
 	return {
 		identities: parts.identities,
 		paired: [...parts.paired],
@@ -40,5 +46,6 @@ export function engineFacts(parts: EngineParts, readsPattern: readonly boolean[]
 		outputs: parts.layout,
 		sampleRate: parts.sampleRate,
 		slotSites: parts.liveSlots.map((slot) => slot.site),
+		writes,
 	};
 }

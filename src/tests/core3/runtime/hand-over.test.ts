@@ -75,3 +75,37 @@ describe("planCarry, applyCarry", () => {
 		expect([resized.phase, extra.phase, unpaired.phase]).toEqual([0, 0, 0]);
 	});
 });
+
+describe("planCarry, applyCarry: shape C (writes)", () => {
+	const shapeCLane = (phase: number, gain: number, buf: readonly number[]) => ({
+		phase,
+		gain,
+		buf: new Float32Array(buf),
+		__lane: 0,
+		__seed: 1,
+		__rng: { s: phase },
+	});
+	const carry = (fresh: Record<string, unknown>[], old: Record<string, unknown>[]) =>
+		applyCarry(planCarry(fresh, old, ["phase", "buf"]));
+
+	it("carries the written fields, rebuilds the read-only field fresh", () => {
+		const fresh = shapeCLane(0, 0.25, [0, 0]);
+		carry([fresh], [shapeCLane(5, 0.5, [1, 2])]);
+		expect(fresh.phase).toBe(5); // written: carried
+		expect([...fresh.buf]).toEqual([1, 2]); // written: carried
+		expect(fresh.gain).toBe(0.25); // read-only: rebuilt from the fresh setup, not carried
+	});
+
+	it("starts the lane fresh when a written buffer resizes", () => {
+		const fresh = shapeCLane(0, 0.25, [0, 0, 0]);
+		carry([fresh], [shapeCLane(5, 0.5, [1, 2])]);
+		expect(fresh.phase).toBe(0);
+		expect([...fresh.buf]).toEqual([0, 0, 0]);
+	});
+
+	it("carries __rng by default, regardless of writes", () => {
+		const fresh = shapeCLane(0, 0.25, [0, 0]);
+		carry([fresh], [shapeCLane(5, 0.5, [1, 2])]);
+		expect(fresh.__rng).toEqual({ s: 5 });
+	});
+});
