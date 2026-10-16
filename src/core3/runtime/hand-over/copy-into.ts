@@ -1,6 +1,6 @@
 /**
  * Copy a carried lane state's values into a fresh state of the same shape
- * (state-fits.ts) without allocating: numbers by assignment, typed arrays by
+ * (module/front/state/shape-fits.ts) without allocating: numbers by assignment, typed arrays by
  * `set`, nested records and arrays element by element. The fresh objects
  * were built ahead, off the swap's block; the swap only moves values.
  */

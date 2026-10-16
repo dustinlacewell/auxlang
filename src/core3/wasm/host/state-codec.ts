@@ -7,13 +7,14 @@
  * the sample count. A write makes a freshly initialised instance continue a
  * snapshot as the JS engine continues one (runtime/live-engine.ts
  * `handOver`): at the same rate, each paired node's lanes whose state fits
- * the fresh JS state (runtime/state-fits.ts) and the feedback values; at any
+ * the fresh JS state (module/front/state/shape-fits.ts) and the feedback values; at any
  * rate, the sample count.
  */
 
+import { shapeFits } from "../../module/front/state/shape-fits";
+import { laneShapeOf } from "../../module/front/state/state-shape-of";
 import { captureFeedback, restoreFeedback } from "../../runtime/feedback";
 import type { NodeRun } from "../../runtime/node-run";
-import { stateFits } from "../../runtime/state-fits";
 import type { EngineState, KeyedIdentity } from "../../types";
 import type { WasmLayout } from "../program/memory-layout";
 import { readLane, writeLane } from "./codec/lane-codec";
@@ -78,7 +79,8 @@ function carryNode(
 	fresh.forEach((to, l) => {
 		const from = old[l];
 		const lane = layout.nodes[node]?.lanes[l];
-		if (from === undefined || lane === undefined || !stateFits(from, to)) return;
+		if (from === undefined || lane === undefined || !shapeFits(laneShapeOf(from), laneShapeOf(to)))
+			return;
 		writeLane(memory, lane, from, from.__seed === to.__seed);
 	});
 }

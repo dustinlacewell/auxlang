@@ -2,7 +2,7 @@
  * State migration (MANIFESTO §6.2) as a hand-over into a built engine: each
  * new node paired with an old key (reeval-identities.ts) takes the old
  * node's lane values into its fresh lane states. A lane whose carried state
- * does not fit the fresh shape (state-fits.ts) stays fresh, alone; config is
+ * does not fit the fresh shape (module/front/state/shape-fits.ts) stays fresh, alone; config is
  * not consulted. A carried lane keeps its `__rng`, so its random stream
  * continues — unless its seed changed (a reroll, an edited `.seed(n)`): then
  * it keeps the fresh stream. The engine-injected fields stay the new
@@ -14,8 +14,10 @@
  * are copied, never shared.
  */
 
+import { ENGINE_FIELDS } from "../../module/front/state/engine-fields";
+import { shapeFits } from "../../module/front/state/shape-fits";
+import { laneShapeOf } from "../../module/front/state/state-shape-of";
 import { copyInto } from "./copy-into";
-import { stateFits } from "../state-fits";
 
 type LaneState = Record<string, unknown>;
 
@@ -26,7 +28,6 @@ export interface CarryPair {
 	readonly skip: ReadonlySet<string>;
 }
 
-const ENGINE_FIELDS: ReadonlySet<string> = new Set(["__lane", "__scratch", "__seed"]);
 const ENGINE_FIELDS_AND_STREAM: ReadonlySet<string> = new Set([...ENGINE_FIELDS, "__rng"]);
 
 /** The fitting lanes of one node: its fresh states against the old node's lanes. */
@@ -37,7 +38,7 @@ export function planCarry(
 	if (old === undefined) return [];
 	return fresh.flatMap((to, lane) => {
 		const from = old[lane];
-		if (from === undefined || !stateFits(from, to)) return [];
+		if (from === undefined || !shapeFits(laneShapeOf(from), laneShapeOf(to))) return [];
 		return [
 			{ to, from, skip: from.__seed === to.__seed ? ENGINE_FIELDS : ENGINE_FIELDS_AND_STREAM },
 		];
