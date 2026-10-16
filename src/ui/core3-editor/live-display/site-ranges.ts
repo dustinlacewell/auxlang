@@ -1,13 +1,13 @@
 /**
- * Static token-adjacency lookup for onsets-to-lights.ts: for one mini-notation
- * token site, its code range and (when it is a note) the ids of the `extend`/
- * `tie` tokens immediately after it in the same pattern that extend its light.
- * Built once per SourceMap (source/source-map.ts); nothing here reads a live
- * frame.
+ * Static site -> code range lookup, shared by the glow extension (a watch's
+ * call site) and onsets-to-lights (a pattern token's site), plus token
+ * adjacency: for a note token, the ids of the `extend`/`tie` tokens right
+ * after it in the same pattern that extend its light. Built once per
+ * SourceMap (source/source-map.ts); nothing here reads a live frame.
  */
 
-import type { SourceMap } from "@/core3/source/source-map";
 import type { SourceRange } from "@/core3/source/range";
+import type { SourceMap } from "@/core3/source/source-map";
 
 export interface SiteRanges {
 	rangeOf(site: number): SourceRange | undefined;
@@ -21,8 +21,8 @@ export function buildSiteRanges(sourceMap: SourceMap): SiteRanges {
 
 	const byPattern = new Map<number, { id: number; token: string }[]>();
 	for (const site of sourceMap.sites) {
-		if (site.kind !== "token") continue;
 		ranges.set(site.id, site.range);
+		if (site.kind !== "token") continue;
 		const list = byPattern.get(site.pattern) ?? [];
 		list.push({ id: site.id, token: site.token });
 		byPattern.set(site.pattern, list);

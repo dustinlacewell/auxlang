@@ -70,4 +70,10 @@ describe("glowOf", () => {
 		expect(decaying.flash).toBeGreaterThan(0);
 		expect(decaying.flash).toBeLessThan(1);
 	});
+
+	it("reduced motion: a trig hit reads with no flash sweep", () => {
+		const state = createGlowState();
+		const onHit = glowOf(levels({ hits: 1 }), "trig", state, 0, true);
+		expect(onHit.flash).toBe(0);
+	});
 });

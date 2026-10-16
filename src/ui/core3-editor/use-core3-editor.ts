@@ -12,6 +12,7 @@
  */
 
 import { play, playSeed, stop } from "@/core3/runtime/audio";
+import { EMPTY_SOURCE_MAP, type SourceMap } from "@/core3/source/source-map";
 import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
 import { useCallback, useState } from "react";
 import { errorText } from "./error-text";
@@ -25,6 +26,8 @@ interface Core3EditorState {
 	error: string | null;
 	isPlaying: boolean;
 	seed: ShownSeed | null;
+	/** The last successful eval's location tables (source/source-map.ts), for the live display's glow and pattern highlight. */
+	sourceMap: SourceMap;
 	run: () => Promise<void>;
 	reroll: () => Promise<void>;
 	halt: () => void;
@@ -35,11 +38,15 @@ export function useCore3Editor(): Core3EditorState {
 	const [error, setError] = useState<string | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [seed, setSeed] = useState<ShownSeed | null>(null);
+	const [sourceMap, setSourceMap] = useState<SourceMap>(EMPTY_SOURCE_MAP);
 
 	const run = useCallback(async () => {
 		try {
-			const { program, seedPinned } = evaluatePatch(code, { seed: playSeed.current() });
+			const { program, seedPinned, sourceMap: evaluated } = evaluatePatch(code, {
+				seed: playSeed.current(),
+			});
 			setError(null);
+			setSourceMap(evaluated);
 			await play(program);
 			setSeed({ value: program.seed, pinned: seedPinned });
 			setIsPlaying(true);
@@ -58,5 +65,5 @@ export function useCore3Editor(): Core3EditorState {
 		setIsPlaying(false);
 	}, []);
 
-	return { code, setCode, error, isPlaying, seed, run, reroll, halt };
+	return { code, setCode, error, isPlaying, seed, sourceMap, run, reroll, halt };
 }

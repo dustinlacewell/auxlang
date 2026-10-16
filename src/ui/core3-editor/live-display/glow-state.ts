@@ -44,8 +44,14 @@ export function createGlowState(): GlowState {
 	return { lastHitAt: null, prevGapMs: null, flashStartedAt: null };
 }
 
-export function glowOf(levels: Levels, kind: OutputKind, state: GlowState, now: number): Glow {
-	if (kind === "trig") return trigGlow(levels, state, now);
+export function glowOf(
+	levels: Levels,
+	kind: OutputKind,
+	state: GlowState,
+	now: number,
+	reducedMotion = false,
+): Glow {
+	if (kind === "trig") return trigGlow(levels, state, now, reducedMotion);
 	if (kind === "audio") return { intensity: clamp01(levels.peak), sign: 0, flash: 0 };
 	if (kind === "bipolar") {
 		const sign = levels.last > 0 ? 1 : levels.last < 0 ? -1 : 0;
@@ -57,10 +63,12 @@ export function glowOf(levels: Levels, kind: OutputKind, state: GlowState, now: 
 	return { intensity, sign: 0, flash: 0 };
 }
 
-function trigGlow(levels: Levels, state: GlowState, now: number): Glow {
+function trigGlow(levels: Levels, state: GlowState, now: number, reducedMotion: boolean): Glow {
 	if (levels.hits > 0) registerHits(state, levels.hits, now);
 	const steady = steadyAverage(state, now);
 	if (steady !== null) return { intensity: steady, sign: 0, flash: steady };
+	// Reduced motion: no per-hit flash sweep, only the (already-steady) rate reading above.
+	if (reducedMotion) return { intensity: 0, sign: 0, flash: 0 };
 	return { intensity: 0, sign: 0, flash: decayedFlash(state, now) };
 }
 

@@ -1,0 +1,76 @@
+/**
+ * Live pattern highlight (MANIFESTO §10.2/§10.3): a ViewPlugin that
+ * subscribes to the shared monitor tick (live-monitor-loop.ts) and lights the
+ * mini-notation token a seq is currently sounding, timed to `audibleFrame()`
+ * (runtime/audio.ts) so the light matches the sound leaving the speakers.
+ * Decorations rebuild only when the lit set actually changes.
+ */
+
+import { audibleFrame } from "@/core3/runtime/audio";
+import type { SourceMap } from "@/core3/source/source-map";
+import type { Extension } from "@codemirror/state";
+import {
+	Decoration,
+	type DecorationSet,
+	EditorView,
+	ViewPlugin,
+	type ViewUpdate,
+} from "@codemirror/view";
+import { watchMonitor } from "./live-monitor-loop";
+import { onsetsToLights } from "./onsets-to-lights";
+import { buildSiteRanges } from "./site-ranges";
+
+const litMark = Decoration.mark({ class: "aux-pattern-lit" });
+
+/** `sourceMapOf()` reads the mounted editor's latest sourceMap (rebuilt on every `run()`). */
+export function patternHighlightExtension(sourceMapOf: () => SourceMap): Extension {
+	const plugin = ViewPlugin.fromClass(
+		class {
+			decorations: DecorationSet = Decoration.none;
+			private lastLit: ReadonlySet<number> = new Set();
+			private unsubscribe: () => void;
+
+			constructor(private view: EditorView) {
+				this.unsubscribe = watchMonitor((snapshot) => {
+					const siteRanges = buildSiteRanges(sourceMapOf());
+					const lit = onsetsToLights(
+						snapshot.onsets,
+						siteRanges,
+						audibleFrame(),
+						performance.now(),
+					);
+					if (setsEqual(lit, this.lastLit)) return;
+					this.lastLit = lit;
+					this.decorations = Decoration.set(
+						[...lit]
+							.map((site) => siteRanges.rangeOf(site))
+							.filter((range): range is NonNullable<typeof range> => range !== undefined)
+							.sort((a, b) => a.start - b.start)
+							.map((range) => litMark.range(range.start, range.end)),
+					);
+				});
+			}
+
+			update(update: ViewUpdate) {
+				if (update.docChanged) this.decorations = this.decorations.map(update.changes);
+			}
+
+			destroy() {
+				this.unsubscribe();
+			}
+		},
+		{ decorations: (v) => v.decorations },
+	);
+
+	return [plugin, patternHighlightTheme];
+}
+
+function setsEqual(a: ReadonlySet<number>, b: ReadonlySet<number>): boolean {
+	if (a.size !== b.size) return false;
+	for (const x of a) if (!b.has(x)) return false;
+	return true;
+}
+
+const patternHighlightTheme = EditorView.baseTheme({
+	".aux-pattern-lit": { backgroundColor: "rgba(96, 165, 250, 0.35)", borderRadius: "2px" },
+});

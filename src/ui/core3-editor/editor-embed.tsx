@@ -5,6 +5,7 @@
  * the editable CodeMirror; Ctrl+Enter re-evaluates while playing.
  */
 
+import type { SourceMap } from "@/core3/source/source-map";
 import { TabButton } from "@/ui/design/tab-button";
 import { EmbedFrame } from "@/ui/docs-kit/embed-frame";
 import { PatchGraph } from "@/ui/docs-kit/patch-graph";
@@ -18,6 +19,7 @@ interface EditorEmbedProps {
 	code: string;
 	onChange: (code: string) => void;
 	isPlaying: boolean;
+	sourceMap: SourceMap;
 	onRun: () => void;
 	onStop: () => void;
 }
@@ -80,7 +82,7 @@ function ShareTab({ code }: { code: string }) {
 	);
 }
 
-export function EditorEmbed({ code, onChange, isPlaying, onRun, onStop }: EditorEmbedProps) {
+export function EditorEmbed({ code, onChange, isPlaying, sourceMap, onRun, onStop }: EditorEmbedProps) {
 	const [showGraph, setShowGraph] = useState(false);
 	return (
 		<EmbedFrame
@@ -123,6 +125,7 @@ export function EditorEmbed({ code, onChange, isPlaying, onRun, onStop }: Editor
 				onChange={onChange}
 				onRun={onRun}
 				onStop={onStop}
+				sourceMap={sourceMap}
 				className="text-xs"
 			/>
 		</EmbedFrame>

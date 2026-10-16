@@ -5,6 +5,7 @@
  * core2-only) — this editor drives audio through the core3 eval path.
  */
 
+import { EMPTY_SOURCE_MAP, type SourceMap } from "@/core3/source/source-map";
 import { auxlangTheme } from "@/ui/code-editor/auxlang-theme";
 import { createExtensions } from "@/ui/code-editor/extensions";
 import { attachModuleHover } from "@/ui/code-editor/module-highlight";
@@ -13,12 +14,16 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { glowExtension } from "./live-display/glow-extension";
+import { patternHighlightExtension } from "./live-display/pattern-highlight-extension";
 
 interface CodeMirrorProps {
 	value: string;
 	onChange: (value: string) => void;
 	onRun: () => void;
 	onStop: () => void;
+	/** The last successful eval's location tables; read live by the glow/pattern-highlight extensions. */
+	sourceMap: SourceMap;
 	className?: string;
 }
 
@@ -27,6 +32,7 @@ export function CodeMirror({
 	onChange,
 	onRun,
 	onStop,
+	sourceMap,
 	className = "",
 }: CodeMirrorProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -34,11 +40,13 @@ export function CodeMirror({
 	const onChangeRef = useRef(onChange);
 	const onRunRef = useRef(onRun);
 	const onStopRef = useRef(onStop);
+	const sourceMapRef = useRef<SourceMap>(EMPTY_SOURCE_MAP);
 	const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null);
 
 	onChangeRef.current = onChange;
 	onRunRef.current = onRun;
 	onStopRef.current = onStop;
+	sourceMapRef.current = sourceMap;
 
 	useEffect(() => {
 		if (!containerRef.current) return;
@@ -67,7 +75,14 @@ export function CodeMirror({
 		const view = new EditorView({
 			state: EditorState.create({
 				doc: value,
-				extensions: [...createExtensions(), auxlangTheme, runKeymap, updateListener],
+				extensions: [
+					...createExtensions(),
+					auxlangTheme,
+					runKeymap,
+					updateListener,
+					glowExtension(() => sourceMapRef.current),
+					patternHighlightExtension(() => sourceMapRef.current),
+				],
 			}),
 			parent: containerRef.current,
 		});

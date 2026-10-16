@@ -19,8 +19,8 @@ import {
 	ONSET_STRIDE,
 	ONSET_WATCH,
 } from "@/core3/runtime/live/live-contract";
-import type { Onset } from "./onsets-to-lights";
 import type { Levels } from "./glow-state";
+import type { Onset } from "./onsets-to-lights";
 
 export interface FrameSnapshot {
 	/** Levels by watch index, length === watches.length. */
