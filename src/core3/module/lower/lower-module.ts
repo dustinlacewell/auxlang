@@ -122,7 +122,7 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 		setupLocals,
 		configKeys,
 		scope,
-		new Set(closure.fileNames),
+		new Set(Object.keys(closure.helpers)),
 		input.name,
 	);
 

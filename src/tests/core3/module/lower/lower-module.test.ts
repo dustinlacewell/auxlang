@@ -103,6 +103,20 @@ describe("lowerModule", () => {
 		).toThrow(/default input/);
 	});
 
+	it("a tick calling a library helper lowers without error, and the helper appears in source.helpers", () => {
+		const setupText = ["({ sr }) => {", "  return ({ in: p = 0 }) => semisToHz(p)", "}"].join("\n");
+		const fileText = [`defmod("x", {}, ${setupText})`].join("\n");
+		const source: SourceText = { file: "patch", text: fileText };
+		const lowered = lowerModule({
+			name: "x",
+			meta: {},
+			setupText,
+			file: { text: fileText, program: fileProgram(source) },
+			library: false,
+		});
+		expect(lowered.source.helpers.semisToHz).toBeDefined();
+	});
+
 	it("feeding `source` into bindSource: the lowered echo is accepted", () => {
 		const lowered = lowerEcho();
 		const spec = {
