@@ -24,7 +24,7 @@ function defaultNode(src: string): AnyNode | null {
 	if (src === "") return null;
 	const program = parse(`(${src})`, { ecmaVersion: "latest" });
 	const stmt = program.body[0];
-	if (stmt.type !== "ExpressionStatement") throw new Error("bad test expr");
+	if (stmt?.type !== "ExpressionStatement") throw new Error("bad test expr");
 	return stmt.expression;
 }
 

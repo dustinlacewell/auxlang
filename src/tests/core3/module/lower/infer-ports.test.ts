@@ -11,7 +11,7 @@ import { inferPorts } from "@/core3/module/lower/infer-ports";
 function tickArrow(src: string) {
 	const program = parse(`(${src})`, { ecmaVersion: "latest" });
 	const stmt = program.body[0];
-	if (stmt.type !== "ExpressionStatement" || stmt.expression.type !== "ArrowFunctionExpression") {
+	if (stmt?.type !== "ExpressionStatement" || stmt.expression.type !== "ArrowFunctionExpression") {
 		throw new Error("test tick must be an arrow");
 	}
 	return stmt.expression;
