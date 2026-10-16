@@ -5,11 +5,13 @@
  * free name in the tick or a reached helper that is none of these — not a
  * port, a setup local, a config key, `sr`, `width`, `Math`, an allowed
  * global, a file function, a file const, or a library name — is a loud
- * error naming it. Scope decides what counts as free (`resolve-bindings`):
- * a tick local never reaches here even when it shares a name with a port.
+ * error naming it, at the file line it was read, same as other lowering
+ * errors carry a line (lower-module.ts's `originsOf` lines a tick/helper the
+ * same way). Scope decides what counts as free (`resolve-bindings`): a tick
+ * local never reaches here even when it shares a name with a port.
  */
 
-import type { ArrowFunctionExpression, FunctionDeclaration } from "acorn";
+import type { ArrowFunctionExpression, FunctionDeclaration, Identifier } from "acorn";
 import type { FunctionNode } from "../front/parse/parse-function";
 import { resolveBindings } from "../front/scope/resolve-bindings";
 import { LIBRARY_FUNCTIONS } from "../library-functions";
@@ -24,7 +26,7 @@ export interface HelperClosure {
 	readonly fileNames: readonly string[];
 }
 
-/** `fileText` lets same-file helper declarations be sliced out as their own text. */
+/** `fileText` lets same-file helper declarations be sliced out as their own text, and lines an unknown-name error. */
 export function helperClosure(
 	tick: ArrowFunctionExpression,
 	scope: FileScope,
@@ -41,7 +43,7 @@ export function helperClosure(
 	while (queue.length > 0) {
 		const fn = queue.shift() as FunctionNode;
 		const scopes = resolveBindings(fn, new Set());
-		for (const resolution of scopes.references.values()) {
+		for (const [id, resolution] of scopes.references) {
 			if (resolution.k !== "free") continue;
 			const name = resolution.name;
 			if (knownNames.has(name) || ALLOWED_FREE.has(name)) continue;
@@ -64,7 +66,7 @@ export function helperClosure(
 					? `${what}: '${name}' is not a port, state, config, or library name. If it is meant to be ` +
 						`a same-file helper or const, evaluate the patch text through evalPatch so the ` +
 						`lowering can see the file.`
-					: `${what}: '${name}' is not a port, state, config, file function/const, or library name`,
+					: `${what}: ${where(fileText, id)}: '${name}' is not a port, state, config, file function/const, or library name`,
 			);
 		}
 	}
@@ -85,4 +87,15 @@ export function helperClosure(
 		helpers[name] = (LIBRARY_FUNCTIONS[name] as (...args: never[]) => unknown).toString();
 	}
 	return { helpers, fileNames: [...fileNames] };
+}
+
+/** Where `id` sits in `fileText`, counting lines from the file's own start. */
+function where(fileText: string, id: Identifier): string {
+	return `line ${lineOf(fileText, id.start)}`;
+}
+
+function lineOf(text: string, at: number): number {
+	let line = 1;
+	for (let k = 0; k < at; k++) if (text.charCodeAt(k) === 10) line++;
+	return line;
 }
