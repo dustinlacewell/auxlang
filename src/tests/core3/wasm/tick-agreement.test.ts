@@ -98,6 +98,10 @@ const AGREED_REJECT: readonly Row[] = [
 	reject("a computed string key", 'o.out = s["n"]', /computed property names with non-numeric keys/),
 	reject("a runtime string", 'const v = "a" + i.in; o.out = 1', /string values may appear only in comparisons/),
 	reject("for...of", "for (const x of s.buf) o.out = x", /for\.\.\.of/),
+	reject("writing the state parameter, s = 0", "s = 0; o.out = 1", /assigns to 's', the tick's state record/),
+	reject("writing the inputs parameter, i = 0", "i = 0; o.out = 1", /assigns to 'i', the tick's inputs record/),
+	reject("writing the outputs parameter, o = 0", "o = 0", /assigns to 'o', the tick's outputs record/),
+	reject("updating the config parameter, cfg++", "cfg++; o.out = 1", /assigns to 'cfg', the tick's config record/),
 ];
 
 /** Rows the backends disagree on today: each states the agreed outcome. */
@@ -126,13 +130,6 @@ const DISAGREE_ACCEPT: readonly Row[] = [
 	accept("an out-of-range read as an exponent", "o.out = 1 ** s.buf[5]"),
 ];
 
-const DISAGREE_REJECT: readonly Row[] = [
-	reject("writing the state parameter, s = 0", "s = 0; o.out = 1"),
-	reject("writing the inputs parameter, i = 0", "i = 0; o.out = 1"),
-	reject("writing the outputs parameter, o = 0", "o = 0"),
-	reject("writing the config parameter, cfg = 0", "cfg = 0; o.out = 1"),
-];
-
 function expectAccepted(row: Row): void {
 	expectIdentical(evalPatch(patch(row.body, row.helpers)), SAMPLES);
 }
@@ -148,5 +145,4 @@ describe("tick forms: both backends agree", () => {
 
 describe("tick forms the backends disagree on today", () => {
 	for (const row of DISAGREE_ACCEPT) it.fails(`accept: ${row.what}`, () => expectAccepted(row));
-	for (const row of DISAGREE_REJECT) it.fails(`reject: ${row.what}`, () => expectRejected(row));
 });

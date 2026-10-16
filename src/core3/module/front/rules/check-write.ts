@@ -1,13 +1,21 @@
 /**
  * Writes. A tick writes its locals, its declared outputs, and fields its
  * fresh state already has — never a new field, never an array's length, never
- * its inputs or config. Field writes go through the state parameter by name,
+ * its inputs or config, never a role parameter itself (`s = 0`: only one
+ * state, inputs, outputs and config record exists). Field writes go through the state parameter by name,
  * so their path can be checked against the real fresh state; elsewhere only
  * indexed writes (`buf[k] = x`) are allowed.
  */
 
 import type { AnyNode, MemberExpression } from "acorn";
-import { type RuleContext, resolutionOf, roleOf } from "./rule-context";
+import { type Role, type RuleContext, resolutionOf, roleOf } from "./rule-context";
+
+const ROLE_NAMES: Readonly<Record<Role, string>> = {
+	state: "state record",
+	ins: "inputs record",
+	outs: "outputs record",
+	config: "config record",
+};
 
 interface Hop {
 	readonly computed: boolean;
@@ -18,6 +26,9 @@ export function checkWrite(target: AnyNode, ctx: RuleContext): void {
 	if (target.type === "Identifier") {
 		if (resolutionOf(ctx, target)?.k !== "binding")
 			ctx.fail(target, `assigns to '${target.name}', which is not a local`);
+		const role = roleOf(ctx, target);
+		if (role !== undefined)
+			ctx.fail(target, `assigns to '${target.name}', the tick's ${ROLE_NAMES[role]} — write its fields instead`);
 		return;
 	}
 	if (target.type !== "MemberExpression")
