@@ -7,9 +7,10 @@
  * `__scratch`, the engine's derived data that no tick reads as a field.
  */
 
+import { laneShapeOf } from "../state/state-shape-of";
 import type { LaneInput, TickInstance } from "./tick-instance";
 import { NUM, type RecordRef, type Ty, UNKNOWN, known } from "./ty";
-import { configTy, stateTy } from "./value-ty";
+import { configTy, recordRef } from "./value-ty";
 
 export interface TickRoot {
 	/** A state field's type; undefined when the state has no such field. */
@@ -22,24 +23,17 @@ export interface TickRoot {
 	readonly width: Ty;
 }
 
-const SCRATCH = "__scratch";
-
 export function instanceRoot(instance: TickInstance): TickRoot {
-	const stateRecord = stateRecordOf(instance.state);
+	const stateRecord = recordRef(laneShapeOf(instance.state));
 	return {
-		state: (field) => (Object.hasOwn(stateRecord.fields, field) ? stateRecord.fields[field] : undefined),
+		state: (field) =>
+			Object.hasOwn(stateRecord.fields, field) ? stateRecord.fields[field] : undefined,
 		input: (port) => inputTy(instance.inputs[port]),
 		config: (field) => configTy(instance.config[field]),
 		stateRecord,
 		sampleRate: known(instance.sampleRate),
 		width: known(instance.width),
 	};
-}
-
-function stateRecordOf(state: Readonly<Record<string, unknown>>): RecordRef {
-	const fields: Record<string, Ty> = {};
-	for (const [name, value] of Object.entries(state)) if (name !== SCRATCH) fields[name] = stateTy(value);
-	return { k: "record", fields };
 }
 
 function inputTy(input: LaneInput | undefined): Ty {

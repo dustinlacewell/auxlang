@@ -10,6 +10,7 @@
  * (host/table-heap.ts), not in the lane.
  */
 
+import { stateShapeOf } from "../../module/front/state/state-shape-of";
 import { elementTypeOf } from "../../module/front/types/element-type";
 import { tyKey } from "../../module/front/types/ty";
 import { stateTy } from "../../module/front/types/value-ty";
@@ -44,7 +45,9 @@ export function planAggregates(
 		const shape = shapeOf(value, name, rebound);
 		if (shape.k === "number") continue;
 		const offset = take(sizeOf(shape));
-		fields[name] = rebound.fields.has(name) ? { offset, shape, pointer: take(8) } : { offset, shape };
+		fields[name] = rebound.fields.has(name)
+			? { offset, shape, pointer: take(8) }
+			: { offset, shape };
 	}
 	return fields;
 }
@@ -71,7 +74,10 @@ export function sizeOf(shape: Shape): number {
 		case "record":
 			return shape.size;
 		case "records":
-			return shape.length * shape.element.size + (shape.pointers === undefined ? 0 : tableBytes(shape.length));
+			return (
+				shape.length * shape.element.size +
+				(shape.pointers === undefined ? 0 : tableBytes(shape.length))
+			);
 	}
 }
 
@@ -112,7 +118,8 @@ function recordsShape(list: readonly unknown[], path: string, rebound: Rebinds):
 			throw new Error(`wasm: state field '${path}' holds records of differing shapes`);
 	});
 	const length = list.length;
-	if (!rebound.elements.has(tyKey(stateTy(list)))) return { k: "records", length, element };
+	if (!rebound.elements.has(tyKey(stateTy(stateShapeOf(list)))))
+		return { k: "records", length, element };
 	return { k: "records", length, element, pointers: length * element.size };
 }
 
