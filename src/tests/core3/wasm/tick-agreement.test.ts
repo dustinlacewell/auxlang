@@ -1,9 +1,7 @@
 /**
  * The agreement table: each tick snippet either passes the shared checker and
  * renders on WASM bit-identical to the interpreter (accept), or the checker
- * refuses it, at eval or at build on both engines (reject). Rows whose
- * backends disagree today are `it.fails`; each one flips when the tick front
- * end closes it (card tick-front-end-2026-10-15, steps 5 to 7).
+ * refuses it, at eval or at build on both engines (reject).
  */
 
 import "@/core3/modules/all";
@@ -147,6 +145,23 @@ const AGREED_ACCEPT: readonly Row[] = [
 		"pick: (p, q) => { p = q; p.x += 1; return p.x }",
 	),
 	accept("a nested record written through a const", "const v = s.v; v.x += i.in; o.out = s.v.x"),
+	accept("swapping typed-array state, s.a = s.b", "s.a = s.b; o.out = s.a[0]"),
+	accept("a write through one name of a swapped pair", "s.a = s.b; s.b[0] = i.in; o.out = s.a[0]"),
+	accept(
+		"a three-way swap through a const",
+		"s.a[0] = s.n; s.b[0] = -s.n; s.n++; const t = s.a; s.a = s.b; s.b = t; s.a[1] += 1; o.out = s.a[0] * 10 + s.b[1]",
+	),
+	accept("a field rebind read as an array", "o.out = (s.a = s.b)[0] + s.a.length"),
+	accept("a field rebind inside an index reads the old array", "s.b[0] = 5; o.out = s.a[(s.a = s.b, 0)] + s.a[0] * 2"),
+	accept(
+		"a record field rebound to a record at a run-time index",
+		"s.v = s.voices[s.n % 2]; s.n++; s.v.x += 1; o.out = s.voices[0].x - s.voices[1].x",
+	),
+	accept(
+		"a swap in a helper given the state record",
+		"o.out = sw(s)",
+		"sw: (r) => { const t = r.a; r.a = r.b; r.b = t; r.a[0] += 1; return r.a[0] - r.b[0] }",
+	),
 ];
 
 /** Forms the checker refuses, so neither backend runs them. */
@@ -192,17 +207,14 @@ const AGREED_REJECT: readonly Row[] = [
 		/reads field 'n' of a value that is not a record/,
 		"f: (a, b) => a.n + b",
 	),
+	reject("a field rebound to a typed array of another type", "s.a = s.buf; o.out = 1", /takes only an array or record of the same type and length/),
+	reject("a record field rebound to a typed array", "s.v = s.a; o.out = 1", /takes only an array or record of the same type and length/),
 	reject(
 		"a helper array parameter rebound to another type",
 		"o.out = f(s.a, s.buf)",
 		/takes only an array or record of the same type and length/,
 		"f: (p, q) => { p = q; return p[0] }",
 	),
-];
-
-/** Rows the backends disagree on today: each states the agreed outcome. */
-const DISAGREE_ACCEPT: readonly Row[] = [
-	accept("swapping typed-array state, s.a = s.b", "s.a = s.b; o.out = s.a[0]"),
 ];
 
 function expectAccepted(row: Row): void {
@@ -226,8 +238,4 @@ function expectRejected(row: Row): void {
 describe("tick forms: both backends agree", () => {
 	for (const row of AGREED_ACCEPT) it(`accept: ${row.what}`, () => expectAccepted(row));
 	for (const row of AGREED_REJECT) it(`reject: ${row.what}`, () => expectRejected(row));
-});
-
-describe("tick forms the backends disagree on today", () => {
-	for (const row of DISAGREE_ACCEPT) it.fails(`accept: ${row.what}`, () => expectAccepted(row));
 });

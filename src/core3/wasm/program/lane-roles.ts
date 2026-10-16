@@ -15,7 +15,7 @@ import type { NodeRun } from "../../runtime/node-run";
 import type { TickRoles } from "../compile/emit-context";
 import type { FnEmitter } from "../compile/fn-emitter";
 import type { StaticValue } from "../../module/front/types/ty";
-import { type Value, fixed, inMemory, local } from "../compile/values";
+import { type Value, fixed, inMemory, local, throughPointer } from "../compile/values";
 import type { LaneMemory, NodeMemory } from "./memory-layout";
 import { stateRecord } from "./state-record";
 import type { ValueSlots } from "./value-slots";
@@ -43,7 +43,7 @@ export function laneRoles(
 	};
 }
 
-/** A number is a local mirror; an array or record is in memory at its absolute address. */
+/** A number is a local mirror; an array or record is in memory at its absolute address, a rebound one through its pointer slot. */
 function stateField(
 	e: FnEmitter,
 	lane: LaneMemory,
@@ -54,6 +54,8 @@ function stateField(
 	const addr = lane.state[field];
 	if (addr !== undefined) return local(mirror(addr), "f64");
 	const aggregate = lane.aggregates[field];
+	if (aggregate?.pointer !== undefined)
+		return throughPointer(aggregate.shape, { base: null, offset: aggregate.pointer });
 	if (aggregate !== undefined)
 		return inMemory(aggregate.shape, { base: null, offset: aggregate.offset });
 	return e.fail(

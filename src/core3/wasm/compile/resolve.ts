@@ -2,15 +2,17 @@
  * Names and fields to values, without emitting code: a local, a parameter
  * record, a tick's state field, input or output, a config value, state in
  * memory (a field of a record, a record of an array at a constant index), an
- * array's length, a Math constant. A record at a run-time index needs code
- * for its address: place.ts.
+ * array's length, a Math constant. A record at a run-time index, and a
+ * rebound field's value (here its pointer slot), need code for their
+ * address: place.ts.
  */
 
 import type { AnyNode, MemberExpression } from "acorn";
 import { MATH_CONSTANTS } from "../../math/math-constants";
 import type { FnEmitter } from "./fn-emitter";
 import { validIndex } from "../../module/front/types/valid-index";
-import { type MemoryValue, type Value, fixed, inMemory, local } from "./values";
+import type { Shape } from "../layout/state-shape";
+import { type MemoryValue, type Value, fixed, inMemory, local, throughPointer } from "./values";
 
 /** The value `node` names, when it is a name or a field; null for anything else. */
 export function resolve(e: FnEmitter, node: AnyNode): Value | null {
@@ -19,15 +21,22 @@ export function resolve(e: FnEmitter, node: AnyNode): Value | null {
 	return null;
 }
 
-/** Field `field` of state in memory: a record's field, or an array's length. */
+/** Field `field` of state in memory: a record's field (a rebound one through its pointer), or an array's length. */
 export function fieldOf(owner: MemoryValue, field: string): Value | null {
 	const shape = owner.shape;
-	if (shape.k === "array" || shape.k === "records")
-		return field === "length" ? fixed(shape.length) : null;
+	if (shape.k === "array" || shape.k === "records") return lengthOf(shape, field);
 	if (shape.k !== "record") return null;
 	const f = shape.fields[field];
 	if (f === undefined) return null;
-	return inMemory(f.shape, { base: owner.at.base, offset: owner.at.offset + f.offset });
+	const { base, offset } = owner.at;
+	if (f.pointer !== undefined) return throughPointer(f.shape, { base, offset: offset + f.pointer });
+	return inMemory(f.shape, { base, offset: offset + f.offset });
+}
+
+/** An array's length is its shape's, wherever the array is. */
+function lengthOf(shape: Shape, field: string): Value | null {
+	if (shape.k !== "array" && shape.k !== "records") return null;
+	return field === "length" ? fixed(shape.length) : null;
 }
 
 function resolveMember(e: FnEmitter, node: MemberExpression): Value | null {
@@ -42,6 +51,7 @@ function resolveMember(e: FnEmitter, node: MemberExpression): Value | null {
 	}
 	if (parent === null || parent === undefined) return null;
 	if (parent.k === "memory") return fieldOf(parent, field);
+	if (parent.k === "pointer") return lengthOf(parent.shape, field);
 	if (parent.k !== "role") return null;
 	const roles = e.ctx.roles;
 	if (roles === null) return e.fail(node, "parameter records exist only in a tick");

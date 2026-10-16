@@ -99,6 +99,8 @@ export function emitValue(e: FnEmitter, value: Value | undefined | null, at: Any
 			else e.code.get(value.at.base);
 			e.code.loadF64(value.at.offset);
 			return "f64";
+		case "pointer":
+			return e.fail(at, `a ${value.shape.k} is not a number`);
 		case "role":
 			return e.fail(at, `the ${value.role} record is not a number`);
 	}

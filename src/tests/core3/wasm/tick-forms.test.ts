@@ -177,6 +177,4 @@ describe("patch-defined ticks on WASM match the interpreter", () => {
 		const ref = expectIdentical(evalPatch(STATE_TO_HELPER), SR / 4);
 		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.01);
 	});
-
-	it.todo("swapped typed-array state references, `s.a = s.b` (WASM: 'this cannot be assigned')");
 });

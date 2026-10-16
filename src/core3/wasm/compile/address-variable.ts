@@ -10,6 +10,7 @@ import type { AnyNode, AssignmentExpression } from "acorn";
 import { OP } from "../encode/opcodes";
 import type { FnEmitter } from "./fn-emitter";
 import { placeOf } from "./place";
+import { emitFieldRebind, isFieldRebind } from "./pointer-field";
 import { type Address, type MemoryValue, inMemory } from "./values";
 import { referenceWritten } from "./written";
 
@@ -40,14 +41,15 @@ export function emitRebind(e: FnEmitter, node: AssignmentExpression): void {
 }
 
 /**
- * What a reassigned array or record variable, or a rebind (`(a = s.b)[0]`),
- * names now; null for any other node.
+ * What a reassigned array or record variable, or a rebind (`(a = s.b)[0]`,
+ * `(s.a = s.b)[0]`), names now; null for any other node.
  */
 export function placeOfAddress(e: FnEmitter, node: AnyNode, known: MemoryValue | null): MemoryValue | null {
 	if (node.type === "AssignmentExpression" && isRebind(e, node)) {
 		emitRebind(e, node);
 		return refAt(e, node.left);
 	}
+	if (node.type === "AssignmentExpression" && isFieldRebind(e, node)) return emitFieldRebind(e, node);
 	const fn = e.ctx.fn;
 	if (node.type !== "Identifier" || known === null || known.at.base === null) return null;
 	if (fn === null || !referenceWritten(fn, node)) return null;
@@ -57,14 +59,14 @@ export function placeOfAddress(e: FnEmitter, node: AnyNode, known: MemoryValue |
 }
 
 /** The array or record `node` names, emitting the code that finds it. */
-function refAt(e: FnEmitter, node: AnyNode): MemoryValue {
+export function refAt(e: FnEmitter, node: AnyNode): MemoryValue {
 	const value = placeOf(e, node);
 	if (value?.k !== "memory" || value.shape.k === "number")
 		return e.fail(node, "the plan gives an array or record here, but it names none (compiler bug)");
 	return value;
 }
 
-function pushAddress(e: FnEmitter, at: Address): void {
+export function pushAddress(e: FnEmitter, at: Address): void {
 	if (at.base === null) {
 		e.code.i32Const(at.offset);
 		return;

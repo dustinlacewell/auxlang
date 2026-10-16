@@ -33,16 +33,21 @@ export type Role = "state" | "ins" | "outs" | "config";
  * `local`: an `int` or `long` local holds a value its plan type gives an
  * integer range (front/types/int-range.ts). `memory`: state in linear memory (layout/state-shape.ts) — an f64 number, a
  * typed array, a record or an array of records. A reducer's gathered lanes
- * are an f64 array, as the engine's Float64Array.
+ * are an f64 array, as the engine's Float64Array. `pointer`: a rebound
+ * array or record field (layout/state-shape.ts `Field`), reached through the
+ * i32 slot at `slot`; place.ts loads the slot where JS evaluates the field.
  */
 export type Value =
 	| { readonly k: "local"; readonly index: number; readonly kind: Kind }
 	| { readonly k: "static"; readonly value: StaticValue }
 	| { readonly k: "memory"; readonly shape: Shape; readonly at: Address }
+	| { readonly k: "pointer"; readonly shape: Shape; readonly slot: Address }
 	| { readonly k: "role"; readonly role: Role };
 
 export type MemoryValue = Value & { readonly k: "memory" };
+export type PointerValue = Value & { readonly k: "pointer" };
 
 export const local = (index: number, kind: Kind): Value => ({ k: "local", index, kind });
 export const fixed = (value: StaticValue): Value => ({ k: "static", value });
 export const inMemory = (shape: Shape, at: Address): MemoryValue => ({ k: "memory", shape, at });
+export const throughPointer = (shape: Shape, slot: Address): PointerValue => ({ k: "pointer", shape, slot });
