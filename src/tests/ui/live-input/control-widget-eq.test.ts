@@ -32,8 +32,10 @@ describe("ControlWidgetType.eq", () => {
 		expect(a.eq(b)).toBe(false);
 	});
 
-	it("updateDOM always reports it handled the update (no redraw) when eq holds", () => {
+	// CodeMirror calls updateDOM only when eq is false, offering another
+	// control's element: adopting it turned a toggle into a slider.
+	it("never adopts another control's DOM", () => {
 		const a = typeFor(widgetFor(7, 0.2));
-		expect(a.updateDOM()).toBe(true);
+		expect(a.updateDOM({} as HTMLElement, {} as never)).toBe(false);
 	});
 });

@@ -25,7 +25,7 @@
  * remapped through every doc change after that (same approach as the
  * pattern-highlight extension's decorations), so a widget write still
  * finds the right text after an earlier edit has shifted it. Widget DOM is
- * built once per control and reused across updates (`eq`/`updateDOM`).
+ * built once per control and reused across updates (`eq`).
  */
 
 import { currentSlots, writeSlot } from "@/core3/runtime/audio";
@@ -87,9 +87,11 @@ export function controlWidgetExtension(host: ControlWidgetHost): Extension {
 						range.start = update.changes.mapPos(range.start);
 						range.end = update.changes.mapPos(range.end, 1);
 					}
+					// The sourceMap's call ranges predate this edit: move the
+					// widgets with the text, rebuild only from a fresh eval.
+					this.decorations = this.decorations.map(update.changes);
 				}
-				if (!update.docChanged && !carriesLiveProgram(update)) return;
-				this.rebuild();
+				if (carriesLiveProgram(update)) this.rebuild();
 			}
 
 			private rebuild() {
@@ -226,11 +228,6 @@ export class ControlWidgetType extends WidgetType {
 	/** Same control site: the DOM survives (no recreate) across a decoration rebuild. */
 	override eq(other: ControlWidgetType): boolean {
 		return other.widget.kind === this.widget.kind && other.widget.call.id === this.widget.call.id;
-	}
-
-	/** A value change alone (slot init moved under an unchanged site) never forces a redraw either. */
-	override updateDOM(): boolean {
-		return true;
 	}
 
 	override toDOM(): HTMLElement {
