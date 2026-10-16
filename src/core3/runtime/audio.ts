@@ -15,6 +15,7 @@
 import { getRegistry } from "../module/define";
 import type { Program } from "../types";
 import { withProgramSpecs } from "./hydrate-specs";
+import type { MonitorFrame, SlotDecl, Watch } from "./live/live-contract";
 import type { HostPrepared } from "./prepare/host-prepared";
 import { prepareWasmProgram } from "./prepare/prepare-wasm-program";
 import { type SeedSession, createSeedSession } from "./seed-session";
@@ -134,6 +135,32 @@ export function disablePerf(): void {
 	if (!host) return;
 	const message: WorkletMessage = { type: "perf", enabled: false };
 	host.node.port.postMessage(message);
+}
+
+// ---- Live channel (live/live-contract.ts). Stubs: the engine side fills them in. ----
+
+/** Write a slot of the playing program; coalesced to one message per animation frame. */
+export function writeSlot(_index: number, _value: number): void {}
+
+/** The slots of the program now playing (Program.slots), [] when none. */
+export function currentSlots(): readonly SlotDecl[] {
+	return [];
+}
+
+/**
+ * Listen to monitor frames. The listener reads the frame synchronously; its
+ * buffer goes back to the worklet when the listener returns. Returns an
+ * unsubscribe function. The monitor runs only while a listener is attached.
+ */
+export function onMonitor(
+	_listener: (frame: MonitorFrame, watches: readonly Watch[]) => void,
+): () => void {
+	return () => {};
+}
+
+/** The engine sample frame now leaving the speakers (AudioContext output timestamp). */
+export function audibleFrame(): number {
+	return 0;
 }
 
 /** Best-effort constant tempo of a program's clock node, else 0 (unknown). */
