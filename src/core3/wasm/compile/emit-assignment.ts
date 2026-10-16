@@ -1,6 +1,7 @@
 /**
  * `=`, compound assignment and `++`/`--` on locals, state fields, outputs,
- * cache slots and array elements. A compound assignment reads its target
+ * cache slots and array elements (`&&=`, `||=`, `??=` are
+ * emit-logical-assignment.ts). A compound assignment reads its target
  * before the right side, as JS does. With `keep`, the assigned value stays
  * on the stack. An int local that is written is a loop counter
  * (front/types/loop-counter.ts): only its
@@ -8,13 +9,14 @@
  * leave int32.
  */
 
-import type { AssignmentExpression, UpdateExpression } from "acorn";
+import type { AnyNode, AssignmentExpression, UpdateExpression } from "acorn";
 import { OP } from "../encode/opcodes";
 import { emitRebind, isRebind } from "./address-variable";
 import { coerce, toF64 } from "./coerce";
 import { combine } from "./emit-binary";
 import { emitExpr } from "./emit-expression";
 import { emitInt, isInt } from "./emit-int";
+import { emitLogicalAssignment } from "./emit-logical-assignment";
 import {
 	type Target,
 	beginWrite,
@@ -32,23 +34,40 @@ export function emitAssignment(
 	keep: boolean,
 ): Kind | null {
 	const op = node.operator;
-	if (op === "&&=" || op === "||=" || op === "??=")
-		return e.fail(node, `${op} is not supported by the WASM backend`);
+	if (op === "&&=" || op === "||=" || op === "??=") return emitLogicalAssignment(e, node, keep);
 	if (isRebind(e, node)) return rebind(e, node, keep);
 	const target = targetOf(e, node.left);
 	if (target.k === "local" && target.kind === "int") return stepCounter(e, node, target, keep);
-	beginWrite(e, target);
-	let value: Kind;
-	if (op === "=") value = emitExpr(e, node.right);
-	else {
+	if (op === "=") return writeTarget(e, target, keep, () => emitExpr(e, node.right), node);
+	return writeTarget(e, target, keep, () => {
 		const current = e.capture(() => readTarget(e, target));
 		const right = e.capture(() => emitExpr(e, node.right));
-		value = combine(e, op.slice(0, -1), current, right, node);
-	}
+		return combine(e, op.slice(0, -1), current, right, node);
+	}, node);
+}
+
+/**
+ * Stores the value `emitValue` leaves into `target`; with `keep`, the stored
+ * value stays on the stack. A boolean stored in an array element stays a
+ * boolean, as in JS: the expression's value is the one assigned.
+ */
+export function writeTarget(
+	e: FnEmitter,
+	target: Target,
+	keep: boolean,
+	emitValue: () => Kind,
+	at: AnyNode,
+): Kind | null {
+	beginWrite(e, target);
+	const value = emitValue();
 	const kind = kindToStore(target, value);
-	coerce(e, value, kind, node);
-	endWrite(e, target, keep, kind);
-	return keep ? kind : null;
+	const assigned = keep && value === "bool" && kind !== "bool" ? e.local("bool") : null;
+	if (assigned !== null) e.code.tee(assigned);
+	coerce(e, value, kind, at);
+	endWrite(e, target, keep && assigned === null, kind);
+	if (assigned === null) return keep ? kind : null;
+	e.code.get(assigned);
+	return "bool";
 }
 
 export function emitUpdate(e: FnEmitter, node: UpdateExpression, keep: boolean): Kind | null {

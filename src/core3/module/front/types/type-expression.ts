@@ -19,6 +19,7 @@ import type {
 } from "acorn";
 import { applyBinary } from "./fold-ops";
 import { rangeOf, union } from "./int-range";
+import { keepsLeft } from "./keeps-left";
 import type { PlanContext, Position } from "./plan-context";
 import { binaryRange } from "./range-binary";
 import { BOOL, NUM, type Ty, UNKNOWN, emittedClass, emittedTy, int, known, ref } from "./ty";
@@ -27,6 +28,8 @@ import { typeMember } from "./type-member";
 import { typeUnary } from "./type-unary";
 
 const COMPARISONS = new Set(["<", ">", "<=", ">=", "===", "==", "!==", "!="]);
+
+const LOGICAL_ASSIGNMENTS = new Set(["&&=", "||=", "??="]);
 
 const GLOBALS: Readonly<Record<string, Ty>> = {
 	undefined: known(undefined),
@@ -61,7 +64,7 @@ function typeNode(c: PlanContext, node: AnyNode, pos: Position): Ty {
 		case "CallExpression":
 			return typeCall(c, node);
 		case "AssignmentExpression":
-			return typeAssignment(c, node);
+			return typeAssignment(c, node, pos);
 		case "UpdateExpression":
 			return typeUpdate(c, node);
 		case "SequenceExpression":
@@ -98,12 +101,7 @@ function shiftOf(ty: Ty): number | null {
 /** A known left side picks the branch; otherwise two booleans give a boolean, anything else a number. */
 function typeLogical(c: PlanContext, node: LogicalExpression, pos: Position): Ty {
 	const left = typeExpr(c, node.left, pos);
-	if (left.k === "static") {
-		const v = left.v;
-		const op = node.operator;
-		const takeLeft = op === "&&" ? !v : op === "||" ? !!v : v !== undefined && v !== null;
-		return takeLeft ? left : typeExpr(c, node.right, pos);
-	}
+	if (left.k === "static") return keepsLeft(node.operator, left.v) ? left : typeExpr(c, node.right, pos);
 	const right = typeExpr(c, node.right, pos);
 	if (pos === "value") c.events.push({ k: "paths", node, a: left, b: right });
 	// Only an array element at an invalid index is nullish at run time: `??` gives a number.
@@ -130,8 +128,9 @@ function joined(a: Ty, b: Ty): Ty {
 	return int(union(rangeOf(a), rangeOf(b)));
 }
 
-function typeAssignment(c: PlanContext, node: AssignmentExpression): Ty {
+function typeAssignment(c: PlanContext, node: AssignmentExpression, pos: Position): Ty {
 	const place = typePlace(c, node.left);
+	if (LOGICAL_ASSIGNMENTS.has(node.operator)) return typeLogicalAssignment(c, node, place, pos);
 	const value = typeExpr(c, node.right, "value");
 	if (node.operator !== "=") {
 		c.events.push({ k: "compound", node, place });
@@ -139,6 +138,21 @@ function typeAssignment(c: PlanContext, node: AssignmentExpression): Ty {
 	}
 	c.events.push({ k: "store", node, place, value });
 	return value.k === "ref" ? ref(value.shape) : emittedTy(value);
+}
+
+/**
+ * `a &&= b`, `a ||= b`, `a ??= b`: `a = b` when the test on `a` passes, else
+ * `a` stays. A known `a` picks the branch, as for `&&`/`||`/`??`. The result
+ * is one of the two, so it mixes them like the logical operator.
+ */
+function typeLogicalAssignment(c: PlanContext, node: AssignmentExpression, place: Ty, pos: Position): Ty {
+	const current = c.types.get(node.left) ?? UNKNOWN;
+	if (current.k === "static" && keepsLeft(node.operator.slice(0, -1), current.v)) return current;
+	const value = typeExpr(c, node.right, "value");
+	c.events.push({ k: "store", node, place, value });
+	if (current.k === "static") return emittedTy(value);
+	if (pos === "value") c.events.push({ k: "paths", node, a: current, b: value });
+	return emittedClass(current) === "bool" && emittedClass(value) === "bool" ? BOOL : NUM;
 }
 
 function typeUpdate(c: PlanContext, node: UpdateExpression): Ty {

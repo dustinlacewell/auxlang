@@ -96,7 +96,20 @@ const AGREED_ACCEPT: readonly Row[] = [
 	accept("a rebind read as an array, (a = s.b)[k]", "s.b[1] = i.in; let a = s.a; o.out = (a = s.b)[s.n % 2] - a[1]; s.n++"),
 	accept("a rebind inside an index reads the old array", "s.b[0] = 5; let a = s.a; o.out = a[(a = s.b, 0)] + a[0] * 2"),
 	accept("a rebind inside a written value", "let a = s.a; a[0] = (a = s.b, i.in); o.out = s.a[0] * 10 + s.b[0]"),
-	accept("a config string in a let, let m = cfg.mode",'let m = cfg.mode; o.out = m === "a" ? 1 : 0'),
+	accept("&&= on an element", "s.buf[0] = 1; s.buf[0] &&= i.in; o.out = s.buf[0]"),
+	accept("||= on an element", "s.buf[1] ||= i.in; o.out = s.buf[1]"),
+	accept("??= on an element", "s.buf[2] ??= i.in; o.out = s.buf[2]"),
+	accept("&&= on a local", "let a = 1; a &&= i.in; o.out = a"),
+	accept("||= on a state field, kept", "s.acc = s.acc > 3 ? 0 : s.acc; o.out = (s.acc ||= i.in) + s.acc; s.acc += 1"),
+	accept("&&= on a boolean local", "let b = i.in > 40; b &&= i.in < 60; o.out = b ? 1 : 0"),
+	accept("??= at a run-time index runs its right side out of range", "s.buf[s.n % 6] ??= s.acc++; s.n++; o.out = s.acc"),
+	accept("??= at a known invalid index, kept", "o.out = (s.buf[9] ??= i.in) + s.buf[0]"),
+	accept("&&= at a known invalid index skips its right side", "s.buf[9] &&= s.acc++; o.out = s.acc"),
+	accept("a boolean stored in an element, kept", "o.out = (s.buf[0] = i.in > 3) ? 1 : 0"),
+	accept("||= of a boolean at a known invalid index, kept", "o.out = (s.buf[9] ||= i.in > 3) ? 1 : 0"),
+	accept("||= of a boolean in an element, kept", "o.out = (s.buf[s.n % 6] ||= i.in > 3) ? 1 : 0; s.n++"),
+	accept("||= on an element, kept","o.out = (s.buf[s.n % 6] ||= i.in * 2); s.n++"),
+	accept("a config string in a let, let m = cfg.mode", 'let m = cfg.mode; o.out = m === "a" ? 1 : 0'),
 ];
 
 /** Forms the checker refuses, so neither backend runs them. */
@@ -120,6 +133,7 @@ const AGREED_REJECT: readonly Row[] = [
 	reject("updating the config parameter, cfg++", "cfg++; o.out = 1", /assigns to 'cfg', the tick's config record/),
 	reject("a let rebound to a typed array of another type", "let a = s.a; a = s.buf; o.out = a[0]", /takes only an array or record of the same type and length/),
 	reject("arithmetic on a typed-array let", "let a = s.a; a = s.b; a += 1; o.out = 1", /takes only an array or record of the same type/),
+	reject("??= on a local", "let x = 0; x ??= i.in; o.out = x", /`\?\?` is allowed only on a direct array element/),
 	reject("a typed array stored in a number let", "let x = 0; x = s.buf; o.out = 1", /an array or record stored where a number is kept/),
 	reject("a written let holding a string", 'let m = cfg.mode; if (i.in > 50) m = cfg.mode; o.out = 1', /strings exist only while compiling/),
 ];
@@ -138,10 +152,6 @@ const DISAGREE_ACCEPT: readonly Row[] = [
 		"o.out = pick(s.a, s.b)",
 		"pick: (p, q) => { p = q; return p[0] }",
 	),
-	accept("&&= on an element", "s.buf[0] = 1; s.buf[0] &&= i.in; o.out = s.buf[0]"),
-	accept("||= on an element", "s.buf[1] ||= i.in; o.out = s.buf[1]"),
-	accept("??= on an element", "s.buf[2] ??= i.in; o.out = s.buf[2]"),
-	accept("&&= on a local", "let a = 1; a &&= i.in; o.out = a"),
 ];
 
 function expectAccepted(row: Row): void {

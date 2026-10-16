@@ -10,6 +10,7 @@
  */
 
 import type { AnyNode, ConditionalExpression, LogicalExpression } from "acorn";
+import { keepsLeft } from "../../module/front/types/keeps-left";
 import { OP } from "../encode/opcodes";
 import { toBool, toF64 } from "./coerce";
 import type { Operand } from "./emit-binary";
@@ -22,12 +23,8 @@ import type { Kind } from "./values";
 
 export function emitLogical(e: FnEmitter, node: LogicalExpression): Kind {
 	const known = e.fold(node.left);
-	if (known !== null) {
-		const v = known.v;
-		const takeLeft =
-			node.operator === "&&" ? !v : node.operator === "||" ? !!v : v !== undefined && v !== null;
-		return takeLeft ? emitStatic(e, v, node.left) : emitExpr(e, node.right);
-	}
+	if (known !== null)
+		return keepsLeft(node.operator, known.v) ? emitStatic(e, known.v, node.left) : emitExpr(e, node.right);
 	// Only an array element at an invalid index is nullish at run time.
 	if (node.operator === "??") return emitNullish(e, node.left, () => emitExpr(e, node.right));
 	const left = e.capture(() => emitExpr(e, node.left));

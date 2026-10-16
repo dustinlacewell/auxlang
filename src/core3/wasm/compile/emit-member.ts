@@ -72,12 +72,13 @@ export function targetOf(e: FnEmitter, node: AnyNode): Target {
 	return e.fail(node, "this cannot be assigned");
 }
 
-export function readTarget(e: FnEmitter, t: Target): Kind {
+/** The target's value; `orElse` runs where an element's index is invalid (`??`). */
+export function readTarget(e: FnEmitter, t: Target, orElse: (() => Kind) | null = null): Kind {
 	if (t.k === "local") {
 		e.code.get(t.index);
 		return t.kind;
 	}
-	if (t.k === "element") return readElement(e, t.shape, t.at, t.index, null);
+	if (t.k === "element") return readElement(e, t.shape, t.at, t.index, orElse);
 	pushBase(e, t.base);
 	e.code.loadF64(t.offset);
 	return "f64";
