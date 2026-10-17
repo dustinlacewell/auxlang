@@ -10,7 +10,7 @@ const LINKS = [
 	{ href: "/guide.html", label: "guide" },
 	{ href: "/patterns.html", label: "patterns" },
 	{ href: "/modules.html", label: "modules" },
-	{ href: "/module-code.html", label: "module code" },
+	{ href: "/module-dsp.html", label: "module dsp" },
 ] as const;
 
 export type SitePageName = (typeof LINKS)[number]["label"] | "home";

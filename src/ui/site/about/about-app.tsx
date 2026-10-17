@@ -44,10 +44,10 @@ export function AboutApp() {
 						<span className="text-gray-400"> — oscillators, filters, envelopes, effects, drums</span>
 					</li>
 					<li className="text-sm">
-						<TextLink href="/module-code.html" className="font-mono">
-							module code
+						<TextLink href="/module-dsp.html" className="font-mono">
+							module dsp
 						</TextLink>
-						<span className="text-gray-400"> — the JS rules for writing your own modules</span>
+						<span className="text-gray-400"> — write your own modules</span>
 					</li>
 				</ul>
 			</Section>

@@ -176,8 +176,8 @@ export function GuideApp() {
 					use: <C>ins</C>/<C>outs</C> with unit annotations (<C>sig</C>, <C>hz</C>, <C>unit</C>,
 					...), optional <C>state</C>, and a per-sample <C>tick</C> that runs in the audio engine.
 					It then chains like any built-in. <C>tick</C> runs once per sample, so it must not
-					allocate or close over patch variables. The full list of rules is on the{" "}
-					<TextLink href="/module-code.html">module code page</TextLink>.
+					allocate or close over patch variables. The full language is on the{" "}
+					<TextLink href="/module-dsp.html">module dsp page</TextLink>.
 				</P>
 				{ex("customModules")}
 				<P>
