@@ -1,46 +1,32 @@
 /**
- * Sub-patch definition and misuse (MANIFESTO §5). `defmod` with `patch` is
- * scope-aware like any defmod, and every misuse is loud: tick and patch
- * together, a returned record that does not match `outs`, effects inside
- * `patch`, a missing required input, a sub-patch that contains itself.
+ * Sub-patch definition and misuse (MANIFESTO §5). `defpatch` is scope-aware
+ * like any defmod, and every misuse is loud: an optional input, a name
+ * collision, effects inside the body, a missing required input, a
+ * sub-patch that contains itself.
+ *
+ * The old (object) form's `defmod({ patch })`-specific dispatch errors
+ * ("tick and patch together", "'state' does not apply to a sub-patch", a
+ * returned record disagreeing with a separately declared `outs`) have no
+ * defpatch equivalent: `outs` is inferred from the function's own return,
+ * so it can't disagree with itself, and there's no arbitrary-keys object
+ * to mis-dispatch on.
  */
 
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
-import { defmod, factory, out, runEval, runProgram, tempo } from "@/core3/api";
-import { optional, sig } from "@/core3/types";
+import { defpatch, factory, out, runEval, runProgram, tempo } from "@/core3/api";
+import type { Handle } from "@/core3/patch/handle-data";
 
 const saw = factory("saw");
 
-const half = {
-	name: "half",
-	ins: { in: sig(0) },
-	outs: { out: sig() },
-	patch: (i: { in: { mul: (x: number) => unknown } }) => ({ out: i.in.mul(0.5) }),
-};
+const half = ({ in: x }: { in: Handle }) => x.mul(0.5);
 
-describe("defmod({ patch }): definition", () => {
-	it("tick and patch together is a loud error", () => {
-		expect(() =>
-			runEval(() => {
-				defmod({ ...half, tick: () => {} } as never);
-			}),
-		).toThrow(/tick and patch together/);
-	});
-
-	it("a tick-only key on a sub-patch is a loud error naming what applies", () => {
-		expect(() =>
-			runEval(() => {
-				defmod({ ...half, state: () => ({}) } as never);
-			}),
-		).toThrow(/'state' does not apply to a sub-patch/);
-	});
-
+describe("defpatch: definition", () => {
 	it("an optional input is refused", () => {
 		expect(() =>
 			runEval(() => {
-				defmod({ ...half, ins: { in: optional(sig(null)) } } as never);
+				defpatch("half", (({ in: x = NaN }: { in: number }) => (x as unknown as Handle).mul(0.5)) as never);
 			}),
 		).toThrow(/input 'in' is optional/);
 	});
@@ -48,18 +34,13 @@ describe("defmod({ patch }): definition", () => {
 	it("a name taken by a registered module is refused", () => {
 		expect(() =>
 			runEval(() => {
-				defmod({ ...half, name: "lpf" } as never);
+				defpatch("lpf", half as never);
 			}),
 		).toThrow(/'lpf' collides with a registered module/);
 	});
 
 	it("at root scope it registers for every eval, call-style and by chaining", () => {
-		const halve = defmod({
-			name: "rootHalf",
-			ins: { in: sig(0) },
-			outs: { out: sig() },
-			patch: (i) => ({ out: i.in.mul(0.5) }),
-		});
+		const halve = defpatch("rootHalf", half as never);
 		const program = runProgram(() => {
 			halve(saw(40)).out();
 			saw(41).rootHalf().out();
@@ -69,12 +50,12 @@ describe("defmod({ patch }): definition", () => {
 	});
 });
 
-describe("defmod({ patch }): a sub-patch with no inputs", () => {
-	const drone = { name: "drone", ins: {}, outs: { out: sig() }, patch: () => ({ out: saw(40) }) };
+describe("defpatch: a sub-patch with no inputs", () => {
+	const drone = () => saw(40) as unknown as Handle;
 
 	it("is a self-contained source: called on its own, it builds its graph", () => {
 		const program = runProgram(() => {
-			defmod(drone as never)()
+			defpatch("drone", drone as never)()
 				.mul(0.5)
 				.out();
 		});
@@ -84,56 +65,38 @@ describe("defmod({ patch }): a sub-patch with no inputs", () => {
 	it("cannot be chained into, loudly", () => {
 		expect(() =>
 			runEval(() => {
-				defmod(drone as never);
+				defpatch("drone", drone as never);
 				saw(41).drone();
 			}),
 		).toThrow(/'drone' has no inputs, so nothing can be chained/);
 	});
-
-	it("still needs at least one output", () => {
-		expect(() =>
-			runEval(() => {
-				defmod({ ...drone, outs: {} } as never);
-			}),
-		).toThrow(/outs must be a record of at least 1 port/);
-	});
 });
 
-describe("defmod({ patch }): loud errors at compile", () => {
-	it("returned keys that differ from outs name both sets", () => {
+describe("defpatch: loud errors at compile", () => {
+	it("out() inside the body", () => {
 		expect(() =>
 			runProgram(() => {
-				defmod({ ...half, patch: (i: { in: unknown }) => ({ wrong: i.in }) } as never)(
-					saw(40),
-				).out();
-			}),
-		).toThrow(/patch returned \[wrong\], but outs declare \[out\]/);
-	});
-
-	it("out() inside patch", () => {
-		expect(() =>
-			runProgram(() => {
-				defmod({
-					...half,
-					patch: (i: { in: unknown }) => {
-						out(i.in);
-						return { out: i.in };
-					},
-				} as never)(saw(40)).out();
+				defpatch(
+					"half",
+					(({ in: x }: { in: Handle }) => {
+						out(x);
+						return x.mul(0.5);
+					}) as never,
+				)(saw(40)).out();
 			}),
 		).toThrow(/out\(\) inside patch/);
 	});
 
-	it("tempo() inside patch", () => {
+	it("tempo() inside the body", () => {
 		expect(() =>
 			runProgram(() => {
-				defmod({
-					...half,
-					patch: (i: { in: unknown }) => {
+				defpatch(
+					"half",
+					(({ in: x }: { in: Handle }) => {
 						tempo(120);
-						return { out: i.in };
-					},
-				} as never)(saw(40)).out();
+						return x.mul(0.5);
+					}) as never,
+				)(saw(40)).out();
 			}),
 		).toThrow(/tempo\(\) and seed\(\) are patch settings/);
 	});
@@ -141,7 +104,7 @@ describe("defmod({ patch }): loud errors at compile", () => {
 	it("a required input left unconnected", () => {
 		expect(() =>
 			runProgram(() => {
-				defmod({ ...half, ins: { in: sig(null) } } as never)().out();
+				defpatch("half", half as never)().out();
 			}),
 		).toThrow(/half\.in is required but unconnected/);
 	});
@@ -149,11 +112,10 @@ describe("defmod({ patch }): loud errors at compile", () => {
 	it("a sub-patch that contains itself", () => {
 		expect(() =>
 			runProgram(() => {
-				defmod({
-					...half,
-					name: "forever",
-					patch: (i: { in: { forever: () => unknown } }) => ({ out: i.in.forever() }),
-				} as never)(saw(40)).out();
+				defpatch(
+					"forever",
+					(({ in: x }: { in: Handle }) => (x as unknown as { forever(): Handle }).forever()) as never,
+				)(saw(40)).out();
 			}),
 		).toThrow(/sub-patch 'forever' contains itself/);
 	});
@@ -161,7 +123,7 @@ describe("defmod({ patch }): loud errors at compile", () => {
 	it(".width() on an instance is refused, naming why", () => {
 		expect(() =>
 			runProgram(() => {
-				defmod(half as never)(saw(40))
+				defpatch("half", half as never)(saw(40))
 					.width(2)
 					.out();
 			}),
@@ -171,13 +133,13 @@ describe("defmod({ patch }): loud errors at compile", () => {
 	it("an unused sub-patch never runs its patch", () => {
 		let ran = false;
 		runProgram(() => {
-			defmod({
-				...half,
-				patch: (i: { in: unknown }) => {
+			defpatch(
+				"half",
+				(({ in: x }: { in: Handle }) => {
 					ran = true;
-					return { out: i.in };
-				},
-			} as never)(saw(40));
+					return x.mul(0.5);
+				}) as never,
+			)(saw(40));
 			saw(40).out();
 		});
 		expect(ran).toBe(false);
