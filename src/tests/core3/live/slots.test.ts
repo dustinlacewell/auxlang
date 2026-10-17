@@ -2,8 +2,8 @@
  * Live slots (runtime/live/live-contract.ts): a control module or a dragged
  * number literal reads a slot the editor writes while the patch plays. A
  * write changes the output with no re-eval and no rebuild, on both engines
- * bit for bit; a range control clamps and slews, a toggle and a button do
- * not slew; a re-eval keeps a slot whose site is unchanged.
+ * bit for bit; every control clamps and slews; a re-eval keeps a slot whose
+ * site is unchanged.
  */
 
 import { describe, expect, it } from "vitest";
@@ -65,28 +65,49 @@ describe.each(Object.entries(ENGINES))("slots on the %s engine", (_name, make) =
 		expect(Math.max(...out)).toBeLessThanOrEqual(1);
 	});
 
-	it("a toggle switches on the next sample", () => {
+	it("a toggle ramps to its new value over the slew", () => {
 		const p = program("sin(60).gain(toggle(0)).out()");
 		expect(p.liveSlots).toEqual([expect.objectContaining({ init: 0, min: 0, max: 1 })]);
 		const toggle = nodeOf(p, "toggle");
-		const run = renderWithWrites(make(p), 300, [{ at: 100, slot: 0, value: 1 }], [
+		const run = renderWithWrites(make(p), 100 + MS20 + 10, [{ at: 100, slot: 0, value: 1 }], [
+			{ node: toggle, port: "out" },
+		]);
+		const out = run.taps[0] as Float64Array;
+		expect(out[99]).toBe(0);
+		expect(out[100 + Math.round(MS20 / 4)]).toBeGreaterThan(0);
+		expect(out[100 + Math.round(MS20 / 4)]).toBeLessThan(1);
+		expect(Math.abs((out[100 + MS20] as number) - 1)).toBeLessThanOrEqual(1e-9);
+	});
+
+	it("a toggle with slew 0 jumps in one sample", () => {
+		const p = program("sin(60).gain(toggle(0, { slew: secs(0) })).out()");
+		const toggle = nodeOf(p, "toggle");
+		const run = renderWithWrites(make(p), 150, [{ at: 100, slot: 0, value: 1 }], [
 			{ node: toggle, port: "out" },
 		]);
 		const out = run.taps[0] as Float64Array;
 		expect(out[99]).toBe(0);
 		expect(out[100]).toBe(1);
-		expect(out[299]).toBe(1);
+	});
+
+	it("a toggle's first sample equals its initial value, with no ramp from 0", () => {
+		const p = program("sin(60).gain(toggle(1)).out()");
+		const toggle = nodeOf(p, "toggle");
+		const run = renderWithWrites(make(p), 10, [], [{ node: toggle, port: "out" }]);
+		const out = run.taps[0] as Float64Array;
+		expect(out[0]).toBe(1);
 	});
 
 	it("a button holds its gate and fires one trigger per press", () => {
 		const p = program("sin(60).gain(button()).out()");
 		const button = nodeOf(p, "button");
+		const release = 100 + MS20 + 200;
 		const run = renderWithWrites(
 			make(p),
-			400,
+			release + MS20 + 10,
 			[
 				{ at: 100, slot: 0, value: 1 },
-				{ at: 300, slot: 0, value: 0 },
+				{ at: release, slot: 0, value: 0 },
 			],
 			[
 				{ node: button, port: "out" },
@@ -95,9 +116,8 @@ describe.each(Object.entries(ENGINES))("slots on the %s engine", (_name, make) =
 		);
 		const [gate, trig] = run.taps as [Float64Array, Float64Array];
 		expect(gate[99]).toBe(0);
-		expect(gate[100]).toBe(1);
-		expect(gate[299]).toBe(1);
-		expect(gate[300]).toBe(0);
+		expect(Math.abs((gate[100 + MS20] as number) - 1)).toBeLessThanOrEqual(1e-9);
+		expect(Math.abs((gate[release + MS20] as number) - 0)).toBeLessThanOrEqual(1e-9);
 		expect([...trig].filter((v) => v === 1)).toHaveLength(1);
 		expect(trig[100]).toBe(1);
 		expect(trig[101]).toBe(0);

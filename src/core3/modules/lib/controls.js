@@ -8,10 +8,10 @@
  * Every control clamps its value to its range at the module, so a bad write
  * cannot escape it (NaN reads as the range's minimum).
  *
- * slider/knob/xy ramp to each new value linearly over `slew` seconds (10 ms
- * default, 0 jumps), so a step write gives no click. toggle and button do
- * not slew. xy's two slots: x at the call's site, y at site + 0.5
- * (compile/bind-slots.ts).
+ * Every control ramps to each new value linearly over `slew` seconds (10 ms
+ * default, 0 jumps), so a step write gives no click. button's `trig` stays
+ * a one-sample pulse on the press edge, unramped. xy's two slots: x at the
+ * call's site, y at site + 0.5 (compile/bind-slots.ts).
  */
 
 /** `v` clamped to [lo, hi]; NaN reads as `lo`. */
@@ -92,22 +92,51 @@ defmod("xy", { cat: "sources", doc: "An x/y pad the editor sets while the patch 
 	}
 })
 
-defmod("toggle", { cat: "sources", doc: "An on/off switch the editor sets while the patch plays; outputs a gate.", args: ["on"] }, () => {
-	return ({ on = slot(gatePort(0), 0, 1) }) => {
-		return clampSlot(on, 0, 1) >= 0.5 ? 1 : 0
+defmod("toggle", { cat: "sources", doc: "An on/off switch the editor sets while the patch plays; ramps to a gate.", args: ["on"] }, ({ sr }) => {
+	let current = 0
+	let target = 0
+	let rampStepValue = 0
+	let started = 0
+	return ({ on = slot(gatePort(0), 0, 1), slew = secs(0.01) }) => {
+		const v = clampSlot(on, 0, 1) >= 0.5 ? 1 : 0
+		if (started === 0) {
+			current = v
+			target = v
+			started = 1
+		}
+		if (v !== target) {
+			target = v
+			rampStepValue = rampStep(current, v, slew, sr)
+		}
+		current = approach(current, target, rampStepValue)
+		return current
 	}
 })
 
 defmod(
 	"button",
-	{ cat: "sources", doc: "A button the editor presses while the patch plays: a gate while held, a trigger on press.", args: [] },
-	() => {
+	{ cat: "sources", doc: "A button the editor presses while the patch plays: ramps to a gate while held, a one-sample trigger on press.", args: [] },
+	({ sr }) => {
 		let held = 0
-		return ({ pressed = slot(gatePort(0), 0, 1) }) => {
+		let current = 0
+		let target = 0
+		let rampStepValue = 0
+		let started = 0
+		return ({ pressed = slot(gatePort(0), 0, 1), slew = secs(0.01) }) => {
 			const down = clampSlot(pressed, 0, 1) >= 0.5 ? 1 : 0
 			const trig = down === 1 && held === 0 ? 1 : 0
 			held = down
-			return { out: down, trig }
+			if (started === 0) {
+				current = down
+				target = down
+				started = 1
+			}
+			if (down !== target) {
+				target = down
+				rampStepValue = rampStep(current, down, slew, sr)
+			}
+			current = approach(current, target, rampStepValue)
+			return { out: current, trig }
 		}
 	},
 )
