@@ -16,7 +16,7 @@ import { EXAMPLES, SECTIONS, SECTION_GROUPS } from "./examples";
 const cardId = (section: string, title: string): string => `${section}::${title}`;
 
 export function PatternDocsApp() {
-	const { playingId, errors, run, halt } = useSharedAudio();
+	const { playingId, errors, sourceMap, liveSlots, run, halt, ensureSlotSite } = useSharedAudio();
 
 	const bySection = useMemo(() => {
 		const map = new Map<string, (typeof EXAMPLES)[number][]>();
@@ -47,6 +47,9 @@ export function PatternDocsApp() {
 								playing={playingId === id}
 								onRun={() => run(id, ex.code)}
 								onStop={halt}
+								sourceMap={sourceMap}
+								liveSlots={liveSlots}
+								onEnsureSlotSite={ensureSlotSite}
 								{...(errors[id] ? { error: errors[id] } : {})}
 							/>
 						);

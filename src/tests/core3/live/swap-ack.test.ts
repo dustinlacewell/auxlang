@@ -20,6 +20,7 @@ import { prepareWasmProgram } from "@/core3/runtime/prepare/prepare-wasm-program
 import { LiveHost } from "@/core3/runtime/worklet/live-host";
 import type { WorkletReply } from "@/core3/runtime/worklet/messages";
 import { MonitorWriter } from "@/core3/runtime/worklet/monitor-writer";
+import { displayWords } from "@/core3/wasm/program/memory-layout";
 import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
 import { describe, expect, it } from "vitest";
 
@@ -78,7 +79,7 @@ class Rig {
 
 	post(prepared: HostPrepared): void {
 		this.programs.posted(prepared);
-		this.writer.reserve(prepared.wasm.layout.monitor?.watches ?? 0);
+		this.writer.reserve(prepared.wasm.layout.monitor?.watches ?? 0, displayWords(prepared.wasm.layout.displays));
 		this.host.swap(prepared);
 	}
 
@@ -106,7 +107,7 @@ class Rig {
 		const outL = new Float32Array(BLOCK);
 		const outR = new Float32Array(BLOCK);
 		this.host.render(outL, outR, BLOCK, this.frame);
-		this.writer.afterBlock(this.host.monitor, this.host.serial, this.frame + BLOCK);
+		this.writer.afterBlock(this.host.monitor, this.host.displays, this.host.serial, this.frame + BLOCK);
 		this.frame += BLOCK;
 		this.l.push(...outL);
 	}

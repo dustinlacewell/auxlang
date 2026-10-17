@@ -10,7 +10,7 @@
 
 import type { ArrowFunctionExpression, FunctionExpression, Identifier, Program } from "acorn";
 import type { StateShape } from "../front/state/state-shape";
-import type { Category, ModuleSource, PortAnn, SourceOrigin } from "../../types";
+import type { Category, DisplayDecl, ModuleSource, PortAnn, SourceOrigin } from "../../types";
 import { assertAuthorNames } from "../assert-author-names";
 import { parseFunction } from "../front/parse/parse-function";
 import { isReference } from "../front/scope/is-reference";
@@ -38,6 +38,8 @@ export interface LowerModuleMeta {
 	readonly config?: Readonly<Record<string, unknown>>;
 	/** The state fields a live monitor watches for note events (ModuleSpec.monitor). */
 	readonly monitor?: Readonly<{ row: string; held: string; gate: string }>;
+	/** The state buffer a live display draws (ModuleSpec.display). */
+	readonly display?: DisplayDecl;
 }
 
 export interface LowerModuleFile {
@@ -66,6 +68,7 @@ export interface LoweredModule {
 	readonly policy?: "map" | "reduce";
 	readonly reads?: "pattern";
 	readonly monitor?: Readonly<{ row: string; held: string; gate: string }>;
+	readonly display?: DisplayDecl;
 	readonly stateText: string;
 	readonly source: ModuleSource;
 	readonly writes: readonly string[];
@@ -183,6 +186,7 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 		...(input.meta.reduce === true ? { policy: "reduce" as const } : {}),
 		...(input.meta.reads !== undefined ? { reads: input.meta.reads } : {}),
 		...(input.meta.monitor !== undefined ? { monitor: input.meta.monitor } : {}),
+		...(input.meta.display !== undefined ? { display: input.meta.display } : {}),
 	};
 }
 

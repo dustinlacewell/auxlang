@@ -19,8 +19,15 @@ import type { ModuleSpec } from "../types";
 import type { SubpatchSpec } from "./subpatch/subpatch-spec";
 
 export interface EvalResult {
-	/** The `out` nodes, in call order. Compile walks reachability from these. */
+	/** The `out` nodes, in call order. Compile walks reachability from these, and mixes them to the master bus. */
 	readonly roots: GNode[];
+	/**
+	 * Nodes that run but do not reach the master bus (patch/root-display.ts: a
+	 * display-declaring module, rooted whether or not it reaches `out()`).
+	 * Compile walks reachability from these too, but `program.outs` (the
+	 * master-bus mix) never does.
+	 */
+	readonly kept: GNode[];
 	/** Ambient clock: the eval's one tempo(bpm) setting, read when eval has finished. */
 	readonly clock: GNode | null;
 	/** The patch seed: the eval's one seed(n) setting, else the `seed` option, else DEFAULT_SEED. */
@@ -44,6 +51,7 @@ export interface EvalOptions {
 
 interface EvalCtx {
 	roots: GNode[];
+	kept: GNode[];
 	clock: GNode | null;
 	seed: number;
 	seedPinned: boolean;
@@ -61,6 +69,7 @@ export function runEval(fn: () => void, opts: EvalOptions = {}): EvalResult {
 	if (current !== null) throw new Error("runEval: nested runEval is not allowed");
 	const ctx: EvalCtx = {
 		roots: [],
+		kept: [],
 		clock: null,
 		seed: opts.seed ?? DEFAULT_SEED,
 		seedPinned: false,
@@ -81,6 +90,7 @@ export function runInScope<T>(base: EvalResult, scope: Scope, fn: () => T): T {
 	if (current !== null) throw new Error("runInScope: a context is already live (internal error)");
 	const ctx: EvalCtx = {
 		roots: [],
+		kept: [],
 		clock: null,
 		seed: base.seed,
 		seedPinned: false,
@@ -106,6 +116,11 @@ function assertNoEffects(ctx: EvalCtx, base: EvalResult, name: string): void {
 	const where = `sub-patch '${name}'`;
 	if (ctx.roots.length > 0) {
 		throw new Error(`${where}: out() inside patch. Return the outputs from patch instead.`);
+	}
+	if (ctx.kept.length > 0) {
+		throw new Error(
+			`${where}: a display module (e.g. scope()) inside patch. Call it outside patch, on the sub-patch's outputs.`,
+		);
 	}
 	if (ctx.clock !== null || ctx.seedPinned) {
 		throw new Error(`${where}: tempo() and seed() are patch settings. Set them outside patch.`);

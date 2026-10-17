@@ -7,7 +7,9 @@
  * an f64 array per port group (its members are fixed at eval), and per lane its numeric state fields, its typed arrays and records
  * (state-layout.ts), its math call cache, (a module that reads a pattern)
  * its table slot, and each lambda input's own math cache; then, only when
- * monitored, the monitor region (runtime/live/monitor-region.ts). The table heap
+ * monitored, the monitor region (runtime/live/monitor-region.ts). `displays`
+ * names no memory of its own: each entry just points at a display node's
+ * already-placed buffer and head fields, for a host to copy from. The table heap
  * starts above all of it (layout/table-format.ts, host/table-heap.ts); the
  * first pages hold each table lane's two tables at their initial size.
  * Everything is f64 except the f32 output blocks, which the JS engine also
@@ -81,6 +83,8 @@ export interface WasmLayout {
 	readonly nodes: readonly NodeMemory[];
 	/** The monitor region (runtime/live/monitor-region.ts); null when not monitored. */
 	readonly monitor: MonitorMemory | null;
+	/** Each display node's buffer/head addresses (display-list.ts order). */
+	readonly displays: readonly DisplayMemory[];
 	/** Where the table heap starts. */
 	readonly heap: number;
 }
@@ -89,6 +93,23 @@ export interface MonitorMemory {
 	/** The region's byte address. */
 	readonly at: number;
 	readonly watches: number;
+}
+
+/** One display node's field names (ModuleSpec.display), to resolve against its built lanes. */
+export interface DisplayPlan {
+	readonly node: number;
+	readonly buffer: string;
+	readonly head: string;
+}
+
+/** A display's buffer (byte offset, f32 length) and head (f64 word index), per lane. */
+export interface DisplayMemory {
+	readonly lanes: readonly { readonly buffer: number; readonly length: number; readonly head: number }[];
+}
+
+/** Words the layout's displays take in a posted frame (`[head, n, ...n floats]` per lane). */
+export function displayWords(displays: readonly DisplayMemory[]): number {
+	return displays.reduce((sum, d) => sum + d.lanes.reduce((s, l) => s + 2 + l.length, 0), 0);
 }
 
 export function planMemory(
@@ -100,6 +121,7 @@ export function planMemory(
 	size: number,
 	slotCount: number,
 	monitorWatches: number | null = null,
+	displayPlans: readonly DisplayPlan[] = [],
 ): WasmLayout {
 	let top = 0;
 	const take = (bytes: number): number => {
@@ -146,9 +168,24 @@ export function planMemory(
 		monitorWatches === null
 			? null
 			: { at: take(8 * regionWords(monitorWatches)), watches: monitorWatches };
+	const displays = displayPlans.map((plan) => resolveDisplay(plan, nodes[plan.node] as NodeMemory));
 	const heap = top;
 	const pages = Math.max(1, Math.ceil((heap + initialHeap(nodes)) / PAGE));
-	return { pages, outL, outR, cur, count, size, slots, slotCount, nodes, monitor, heap };
+	return { pages, outL, outR, cur, count, size, slots, slotCount, nodes, monitor, displays, heap };
+}
+
+/** A display's buffer/head addresses, per lane, already placed by its node's own build. */
+function resolveDisplay(plan: DisplayPlan, node: NodeMemory): DisplayMemory {
+	const lanes = node.lanes.map((lane) => {
+		const field = lane.aggregates[plan.buffer];
+		if (field === undefined || field.shape.k !== "array")
+			throw new Error(`wasm: display buffer '${plan.buffer}' is not a typed-array state field`);
+		const head = lane.state[plan.head];
+		if (head === undefined)
+			throw new Error(`wasm: display head '${plan.head}' is not a numeric state field`);
+		return { buffer: field.offset, length: field.shape.length, head };
+	});
+	return { lanes };
 }
 
 const NO_REBINDS: ReadonlySet<string> = new Set();

@@ -36,7 +36,13 @@ export const SECTION_GROUPS: readonly {
 	},
 	{
 		label: "Combinators",
-		sections: [{ name: "Combinators", label: "overview" }, { name: "Splicing" }],
+		sections: [
+			{ name: "Combinators", label: "overview" },
+			{ name: "Records" },
+			{ name: "Determinism" },
+			{ name: "Chord vocabulary" },
+			{ name: "Splicing" },
+		],
 	},
 	{
 		label: "Bridge",
@@ -198,6 +204,18 @@ s.tri()
   .gain(0.22)
   .out()`,
 	},
+	{
+		section: "[ Chords, ]",
+		title: 'voices: round-robin',
+		description:
+			'.voices("rr", 4) sends each note onset to the NEXT of 4 lanes in turn, so a lane\'s release keeps ringing under later notes instead of being cut off.',
+		code: `tempo(130)
+const s = seq(p\`c3 e3 g3 b3\`.voices("rr", 4))
+s.tri()
+  .mul(s.gate.ar(0.005, 0.5))
+  .gain(0.18)
+  .out()`,
+	},
 
 	// -- { Polymeter } -------------------------------------------------------
 	{
@@ -235,6 +253,18 @@ s.tri()
 const s = seq("[c3 g3]*2 e3")
 s.tri()
   .mul(s.gate.adsr(0.003, 0.05, 0.2, 0.05))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "*fast",
+		title: "/slow stretches a group in place",
+		description:
+			"Slash is star's mirror: a bracketed group spread across two steps' worth of time instead of packed into one — beat 2 drags, the rest stay put.",
+		code: `tempo(130)
+const s = seq("c3 [e3 g3]/2 c3 e3")
+s.tri()
+  .mul(s.gate.adsr(0.004, 0.08, 0.4, 0.1))
   .gain(0.3)
   .out()`,
 	},
@@ -509,6 +539,19 @@ s.tri()
 	},
 	{
 		section: "Combinators",
+		title: "early — ahead of the beat",
+		description:
+			".early(1/8) is .late's mirror: the line pulls an eighth AHEAD of the kick's grid instead of behind it.",
+		code: `const c = tempo(120)
+c.beat.kick().gain(0.5).out()
+const s = seq(p\`c3 e3 g3 b3\`.early(1 / 8))
+s.tri()
+  .mul(s.gate.adsr(0.004, 0.08, 0.4, 0.1))
+  .gain(0.25)
+  .out()`,
+	},
+	{
+		section: "Combinators",
 		title: "add",
 		description:
 			".add(7) transposes the payload by seven semitones — the same shape a fifth higher (pitch is semitones, so add is transpose).",
@@ -516,6 +559,113 @@ s.tri()
 const s = seq(p\`c3 e3 g3 e3\`.add(7))
 s.tri()
   .mul(s.gate.adsr(0.005, 0.1, 0.5, 0.15))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Combinators",
+		title: "mul",
+		description:
+			".mul(2) doubles the payload — on a plain number pattern used as an octave index, each step lands an octave further out.",
+		code: `tempo(120)
+const s = seq(p\`0 1 2 3\`.mul(12).add(48))
+s.tri()
+  .mul(s.gate.adsr(0.004, 0.08, 0.4, 0.1))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Combinators",
+		title: "compact — drop rests",
+		description:
+			".compact() removes rest steps instead of silencing them, so the remaining notes land back-to-back with no gap.",
+		code: `tempo(120)
+const s = seq(p\`c3 ~ g3 ~ e3 ~ b3 ~\`.compact())
+s.tri()
+  .mul(s.gate.adsr(0.004, 0.08, 0.4, 0.1))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Combinators",
+		title: "range — rescale a 0..1 signal",
+		description:
+			".range(60, 72) maps a 0..1 pattern-as-signal into an octave of MIDI notes — same shape, a different window.",
+		code: `tempo(100)
+tri({ pitch: p\`0 0.3 0.6 1 0.6 0.3\`.range(60, 72) })
+  .mul(lfo(0.5, 0.2, 0.5))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Combinators",
+		title: "mask — keep notes under a true region",
+		description:
+			".mask(bool) keeps events only where a second pattern is true — the melody survives on beats 1 and 3, rests elsewhere.",
+		code: `tempo(120)
+const s = seq(p\`c3 e3 g3 b3\`.mask(p\`1 0 1 0\`))
+s.tri()
+  .mul(s.gate.adsr(0.004, 0.08, 0.4, 0.1))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Combinators",
+		title: "struct — re-trigger a held value",
+		description:
+			".struct(bool) re-fires one held note on every true step of a rhythm pattern — one pitch, a euclidean gallop.",
+		code: `tempo(120)
+const s = seq(p\`c3\`.struct(p\`1 1 0 1 1 0 1 0\`))
+s.tri()
+  .mul(s.gate.adsr(0.003, 0.05, 0.2, 0.05))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Combinators",
+		title: "segment — sample into n steps",
+		description:
+			".segment(8) samples a slow-moving pattern into 8 discrete steps per cycle — a continuous sweep chopped into a stepped line.",
+		code: `tempo(110)
+const s = seq(p\`c3 g3\`.fast(0.5).segment(8))
+s.tri()
+  .mul(s.gate.adsr(0.003, 0.05, 0.2, 0.05))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Combinators",
+		title: "clip — shorten the gate",
+		description:
+			".clip(0.3) scales each note's sounding duration to 30% of its slot, leaving the rest of the step silent — a staccato cut.",
+		code: `tempo(110)
+const s = seq(p\`c3 e3 g3 e3\`.clip(0.3))
+s.tri()
+  .mul(s.gate.adsr(0.003, 0.03, 0.3, 0.03))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Combinators",
+		title: "chunk — every(n) on a rotating slice",
+		description:
+			".chunk(4, q => q.add(12)) transforms one quarter of the cycle each time through, octave-jumping a different slice on every cycle in turn.",
+		code: `tempo(120)
+const s = seq(p\`c3 e3 g3 b3\`.chunk(4, q => q.add(12)))
+s.tri()
+  .mul(s.gate.adsr(0.004, 0.08, 0.4, 0.1))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Combinators",
+		title: "sometimes / often / rarely / always",
+		description:
+			"Each is .someBy at a fixed probability (0.5 / 0.75 / 0.25 / 1) — seeded per-event coin flips that transform some notes and leave others alone.",
+		code: `tempo(115)
+const s = seq(p\`c3 e3 g3 b3 c3 e3 g3 b3\`.sometimes(q => q.add(12)))
+s.tri()
+  .mul(s.gate.adsr(0.003, 0.06, 0.3, 0.06))
   .gain(0.3)
   .out()`,
 	},
@@ -530,6 +680,118 @@ s.saw()
   .lpf({ cutoff: 91, res: 0.3 })
   .mul(s.gate.adsr(0.003, 0.06, 0.2, 0.05))
   .gain(0.25)
+  .out()`,
+	},
+
+	// -- Records --------------------------------------------------------------
+	{
+		section: "Records",
+		title: "a per-note velocity field",
+		description:
+			".with({ vel }) adds one output per field, sampled at each onset and held between notes — here it drives gain note by note.",
+		code: `tempo(110)
+const s = seq(p\`c3 e3 g3 b3\`.with({ vel: p\`1 0.4 0.7 0.5\` }))
+s.tri()
+  .mul(s.gate.adsr(0.004, 0.08, 0.4, 0.1))
+  .mul(s.vel)
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Records",
+		title: "two fields at once",
+		description:
+			"A record can carry several fields — vel drives gain, cv2 bends the filter, both read from the same seq.",
+		code: `tempo(110)
+const s = seq(p\`c3 e3 g3 b3\`.with({ vel: p\`1 0.5 0.8 0.4\`, cv2: p\`0 0.3 0.6 0.2\` }))
+s.saw()
+  .lpf({ cutoff: 79 })
+  .mod("cutoff", s.cv2, 24)
+  .mul(s.gate.adsr(0.004, 0.08, 0.4, 0.1))
+  .mul(s.vel)
+  .gain(0.3)
+  .out()`,
+	},
+
+	// -- Determinism ----------------------------------------------------------
+	{
+		section: "Determinism",
+		title: "seed(n) pins the patch",
+		description:
+			"seed(42) fixes every random choice in the patch — the degrade pattern thins out the same way on every run instead of drawing a fresh seed at play start.",
+		code: `seed(42)
+tempo(120)
+const s = seq(p\`c3 e3 g3 b3 c4 b3 g3 e3\`.degrade(0.4))
+s.saw()
+  .lpf({ cutoff: 91, res: 0.3 })
+  .mul(s.gate.adsr(0.003, 0.06, 0.2, 0.05))
+  .gain(0.25)
+  .out()`,
+	},
+	{
+		section: "Determinism",
+		title: "p.seed(n) pins one pattern",
+		description:
+			"p\`...\`.seed(n) gives ONE pattern its own seed, so it keeps its randomness even if the patch seed above it changes — the degrade here stays fixed at 9 regardless.",
+		code: `tempo(120)
+const s = seq(p\`c3 e3 g3 b3 c4 b3 g3 e3\`.degrade(0.4).seed(9))
+s.saw()
+  .lpf({ cutoff: 91, res: 0.3 })
+  .mul(s.gate.adsr(0.003, 0.06, 0.2, 0.05))
+  .gain(0.25)
+  .out()`,
+	},
+
+	// -- Chord vocabulary -------------------------------------------------------
+	{
+		section: "Chord vocabulary",
+		title: "chord(name).voicing()",
+		description:
+			"chord(\"Cm9\").voicing() realizes the named quality to its absolute tones and stacks them — a five-note chord from one word.",
+		code: `tempo(90)
+const s = seq(chord("Cm9").voicing())
+s.tri()
+  .lpf({ cutoff: 86, res: 0.2 })
+  .mul(s.gate.adsr(0.02, 0.2, 0.7, 0.4))
+  .gain(0.22)
+  .out()`,
+	},
+	{
+		section: "Chord vocabulary",
+		title: "offset and mode — octave and register",
+		description:
+			".offset(-1) drops the voicing an octave; .mode(\"root:g2\") sets which octave the root sits in before that shift.",
+		code: `tempo(90)
+const s = seq(chord("Fm9").mode("root:g2").offset(-1).voicing())
+s.tri()
+  .lpf({ cutoff: 84, res: 0.2 })
+  .mul(s.gate.adsr(0.02, 0.2, 0.7, 0.4))
+  .gain(0.22)
+  .out()`,
+	},
+	{
+		section: "Chord vocabulary",
+		title: "anchor — invert toward a note",
+		description:
+			".anchor(\"D5\") inverts the voicing so its top tone sits at or below D5, instead of always starting from the root's octave.",
+		code: `tempo(90)
+const s = seq(chord("Bbm9").anchor("D5").voicing())
+s.tri()
+  .lpf({ cutoff: 88, res: 0.2 })
+  .mul(s.gate.adsr(0.02, 0.2, 0.7, 0.4))
+  .gain(0.22)
+  .out()`,
+	},
+	{
+		section: "Chord vocabulary",
+		title: "n / set — index chord tones by pattern",
+		description:
+			"chord(\"Bbm9\").n(idx) plays one tone per step of idx (0 = lowest) instead of the whole stack — an arpeggio through the chord's own tones.",
+		code: `tempo(130)
+const s = seq(chord("Bbm9").n(p\`0 1 2 4\`))
+s.tri()
+  .mul(s.gate.adsr(0.003, 0.05, 0.2, 0.05))
+  .gain(0.3)
   .out()`,
 	},
 

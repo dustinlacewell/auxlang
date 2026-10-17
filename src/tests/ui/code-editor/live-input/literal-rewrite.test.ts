@@ -1,4 +1,4 @@
-import { literalRewrite } from "@/ui/core3-editor/live-input/literal-rewrite";
+import { literalRewrite } from "@/ui/code-editor/live-input/literal-rewrite";
 import { describe, expect, it } from "vitest";
 
 describe("literalRewrite", () => {

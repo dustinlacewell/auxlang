@@ -48,6 +48,7 @@ function serializedOf(spec: ModuleSpec): SerializedModuleSpec {
 		...(spec.policy !== undefined ? { policy: spec.policy } : {}),
 		...(spec.reads !== undefined ? { reads: spec.reads } : {}),
 		...(spec.state !== undefined ? { state: spec.state.toString() } : {}),
+		...(spec.display !== undefined ? { display: spec.display } : {}),
 		writes: spec.writes,
 	};
 }

@@ -21,6 +21,7 @@ import {
 import { prepareWasmProgram } from "@/core3/runtime/prepare/prepare-wasm-program";
 import { LiveHost } from "@/core3/runtime/worklet/live-host";
 import { MonitorWriter } from "@/core3/runtime/worklet/monitor-writer";
+import { displayWords } from "@/core3/wasm/program/memory-layout";
 import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
 import { describe, expect, it } from "vitest";
 
@@ -49,7 +50,7 @@ describe("monitor through the worklet host", () => {
 			},
 			SR,
 		);
-		writer.reserve(prepared.wasm.layout.monitor?.watches ?? 0);
+		writer.reserve(prepared.wasm.layout.monitor?.watches ?? 0, displayWords(prepared.wasm.layout.displays));
 		writer.enable(true);
 		host.swap(prepared);
 		const l = new Float32Array(BLOCK);
@@ -59,7 +60,7 @@ describe("monitor through the worklet host", () => {
 		while (frame < START + 3 * SR) {
 			host.render(l, r, BLOCK, frame);
 			if (swapped < 0 && host.monitor !== null) swapped = frame;
-			writer.afterBlock(host.monitor, host.serial, frame + BLOCK);
+			writer.afterBlock(host.monitor, host.displays, host.serial, frame + BLOCK);
 			frame += BLOCK;
 		}
 		expect(swapped).toBeGreaterThan(START);

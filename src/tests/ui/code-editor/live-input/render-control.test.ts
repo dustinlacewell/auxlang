@@ -1,4 +1,4 @@
-import { knobAngle, valueFraction, xyPuckPosition } from "@/ui/core3-editor/live-input/render-control";
+import { knobAngle, valueFraction, xyPuckPosition } from "@/ui/code-editor/live-input/render-control";
 import { describe, expect, it } from "vitest";
 
 describe("valueFraction", () => {

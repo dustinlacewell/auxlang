@@ -191,6 +191,23 @@ export interface ModuleSpec extends ModulePorts {
 	 * (seq); absent elsewhere.
 	 */
 	readonly monitor?: Readonly<{ row: string; held: string; gate: string }>;
+	/**
+	 * A state buffer the editor draws (patch/root-display.ts): `buffer` names a
+	 * typed-array state field, `head` a numeric state field (the next write
+	 * index), `traces` the max number of traces the buffer holds. Present only
+	 * on a module the editor can draw a live display for (scope). A module
+	 * with a `display` is always rooted at build, whether or not it reaches
+	 * `out()`.
+	 */
+	readonly display?: DisplayDecl;
+}
+
+/** A module's declared live-display state buffer (ModuleSpec.display). */
+export interface DisplayDecl {
+	readonly kind: string;
+	readonly buffer: string;
+	readonly head: string;
+	readonly traces: number;
 }
 
 /** A module's tick and named helpers as source text (MANIFESTO §5.1). */
@@ -232,6 +249,8 @@ export interface SerializedModuleSpec {
 	readonly reads?: "pattern";
 	readonly state?: string;
 	readonly tick: string;
+	/** `ModuleSpec.display`, carried across the crossing. */
+	readonly display?: DisplayDecl;
 	/** Helper name → function source. Present only when the module declares helpers. */
 	readonly helpers?: Readonly<Record<string, string>>;
 	/** ModuleSource `origins`. Present only when a part was found in its file. */

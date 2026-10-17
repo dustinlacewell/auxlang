@@ -9,13 +9,15 @@
 
 import { laneTable } from "../../bridge/lane-table";
 import { NO_NOTE } from "../../pattern/table/event-table";
-import type { Program, Registry } from "../../types";
+import type { DisplayDecl, Program, Registry } from "../../types";
 import { EngineBuild } from "../build/engine-build";
 import type { EngineParts } from "../engine-parts";
 import { LiveEngine } from "../live-engine";
 import type { NodeRun } from "../node-run";
 import { prepareProgram } from "../prepare/prepare-program";
 import { specialiseNodes } from "../specialise/specialise-nodes";
+import { displayList } from "./display-list";
+import type { DisplaySource } from "./display-source";
 import {
 	LEVEL_HITS,
 	LEVEL_LAST,
@@ -32,6 +34,7 @@ import {
 	ONSET_SITE,
 	ONSET_STRIDE,
 	ONSET_WATCH,
+	type DisplayWatch,
 	type Watch,
 } from "./live-contract";
 import { type MonitorPlan, type MonitorTarget, monitorPlan } from "./monitor-plan";
@@ -49,6 +52,7 @@ import { watchList } from "./watch-list";
 export class InterpretedMonitor {
 	readonly watches: readonly Watch[];
 	readonly region: MonitorRegion;
+	readonly displays: DisplaySource;
 	private readonly engine: LiveEngine;
 	private readonly parts: EngineParts;
 	private readonly plan: MonitorPlan;
@@ -70,6 +74,11 @@ export class InterpretedMonitor {
 		this.heldGate = this.plan.targets.map((t) => new Float64Array(t.laneCount));
 		this.region = { f64: new Float64Array(regionWords(this.watches.length)), at: 0, watches: this.watches.length };
 		initRegion(this.region);
+		this.displays = interpretedDisplaySource(
+			displayList(prepared.program, registry),
+			this.parts.runs,
+			build.nodeSpecs.map((spec) => spec.display),
+		);
 	}
 
 	/** Advance `n` samples, a sample at a time, monitoring each. */
@@ -153,4 +162,35 @@ function recordEvent(region: MonitorRegion, w: number, l: number, kind: number, 
 	f64[at + ONSET_SITE] = site;
 	f64[at + ONSET_FRAME] = f64[region.at + REGION_FRAME] as number;
 	f64[region.at + REGION_ONSETS] = count + 1;
+}
+
+/** A DisplaySource reading straight off each display node's lane state records. */
+function interpretedDisplaySource(
+	displays: readonly DisplayWatch[],
+	runs: readonly NodeRun[],
+	nodeDisplays: readonly (DisplayDecl | undefined)[],
+): DisplaySource {
+	const lanes = displays.map((d) => {
+		const decl = nodeDisplays[d.node] as DisplayDecl;
+		const states = (runs[d.node] as NodeRun).states;
+		return states.map((state) => ({
+			buffer: state[decl.buffer] as Float32Array,
+			head: decl.head,
+			state,
+		}));
+	});
+	const words = lanes.reduce((sum, ls) => sum + ls.reduce((s, l) => s + 2 + l.buffer.length, 0), 0);
+	return {
+		words,
+		copyInto(into: Float64Array, at: number): void {
+			let k = at;
+			for (const ls of lanes) {
+				for (const l of ls) {
+					into[k++] = l.state[l.head] as number;
+					into[k++] = l.buffer.length;
+					for (let j = 0; j < l.buffer.length; j++) into[k++] = l.buffer[j] as number;
+				}
+			}
+		},
+	};
 }

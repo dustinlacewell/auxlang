@@ -6,7 +6,6 @@
  * that would drop a channel, so it throws.
  */
 
-import { nodePorts } from "@/core3/module/node-ports";
 import type { InputValue } from "../graph/node";
 import type { ModulePorts } from "../types";
 import type { HandleData } from "./handle-data";
@@ -21,7 +20,7 @@ export function connectWhole(data: HandleData, dest: ModulePorts): Record<string
 		return { [defaultInOf(dest)]: refFromHandle(data, dest.name) };
 	}
 	if (!takesStereo(dest)) {
-		throw droppedChannelError(resolvePatchModule(data.node.module), intoDescription(dest));
+		throw droppedChannelError(resolvePatchModule(data.node.module), dest);
 	}
 	return byName(data);
 }
@@ -37,8 +36,4 @@ function byName(data: HandleData): Record<string, InputValue> {
 		bindings[port] = refFromHandle({ ...data, port }, port);
 	}
 	return bindings;
-}
-
-function intoDescription(dest: ModulePorts): string {
-	return `connecting into '${dest.name}' (inputs: [${Object.keys(nodePorts(dest).ins).join(", ")}], no l/r pair)`;
 }

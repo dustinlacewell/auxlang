@@ -35,7 +35,7 @@ function moduleOf(title: string): string | null {
 const cardId = (module: string, title: string): string => `${module}::${title}`;
 
 export function ModuleDocsApp() {
-	const { playingId, errors, run, halt } = useSharedAudio();
+	const { playingId, errors, sourceMap, liveSlots, run, halt, ensureSlotSite } = useSharedAudio();
 
 	const examplesByModule = useMemo(() => {
 		const map = new Map<string, DocExample[]>();
@@ -106,6 +106,9 @@ export function ModuleDocsApp() {
 													playing={playingId === id}
 													onRun={() => run(id, ex.code)}
 													onStop={halt}
+													sourceMap={sourceMap}
+													liveSlots={liveSlots}
+													onEnsureSlotSite={ensureSlotSite}
 													{...(errors[id] ? { error: errors[id] } : {})}
 												/>
 											);

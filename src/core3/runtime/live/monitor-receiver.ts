@@ -1,19 +1,29 @@
 /**
  * The main thread's side of the monitor transport (live-contract.ts): the
- * editor's listeners, and the watches of each monitored program posted to
- * the worklet, by serial. A frame's generation is the serial of the program
- * that filled it (worklet/monitor-writer.ts); a frame older than the latest
- * one seen is dropped, and so are the watches of programs older than that.
- * The audio host (audio.ts) posts each frame's buffer back after `receive`.
+ * editor's listeners, and the watches and displays of each monitored
+ * program posted to the worklet, by serial. A frame's generation is the
+ * serial of the program that filled it (worklet/monitor-writer.ts); a frame
+ * older than the latest one seen is dropped, and so are the programs older
+ * than that. The audio host (audio.ts) posts each frame's buffer back after
+ * `receive`.
  */
 
-import type { MonitorFrame, Watch } from "./live-contract";
+import type { DisplayWatch, MonitorFrame, Watch } from "./live-contract";
 
-export type MonitorListener = (frame: MonitorFrame, watches: readonly Watch[]) => void;
+export type MonitorListener = (
+	frame: MonitorFrame,
+	watches: readonly Watch[],
+	displays: readonly DisplayWatch[],
+) => void;
+
+interface Posted {
+	readonly watches: readonly Watch[];
+	readonly displays: readonly DisplayWatch[];
+}
 
 export class MonitorReceiver {
 	private readonly listeners = new Set<MonitorListener>();
-	private readonly programs = new Map<number, readonly Watch[]>();
+	private readonly programs = new Map<number, Posted>();
 	private latest = 0;
 
 	/** True while at least one listener is attached: programs are prepared monitored. */
@@ -32,9 +42,9 @@ export class MonitorReceiver {
 		return this.listeners.delete(listener) && this.listeners.size === 0;
 	}
 
-	/** A monitored program posted to the worklet, with its watches (watch-list.ts). */
-	posted(serial: number, watches: readonly Watch[]): void {
-		this.programs.set(serial, watches);
+	/** A monitored program posted to the worklet, with its watches (watch-list.ts) and displays (display-list.ts). */
+	posted(serial: number, watches: readonly Watch[], displays: readonly DisplayWatch[]): void {
+		this.programs.set(serial, { watches, displays });
 	}
 
 	/** Hand a frame to every listener, synchronously, unless it is stale or its program unknown. */
@@ -42,8 +52,8 @@ export class MonitorReceiver {
 		if (frame.generation < this.latest) return;
 		this.latest = frame.generation;
 		for (const serial of this.programs.keys()) if (serial < frame.generation) this.programs.delete(serial);
-		const watches = this.programs.get(frame.generation);
-		if (watches === undefined) return;
-		for (const listener of this.listeners) listener(frame, watches);
+		const posted = this.programs.get(frame.generation);
+		if (posted === undefined) return;
+		for (const listener of this.listeners) listener(frame, posted.watches, posted.displays);
 	}
 }

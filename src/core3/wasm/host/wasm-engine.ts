@@ -23,13 +23,14 @@
  * render and after the table work, never inside `render`.
  */
 
+import type { DisplaySource } from "../../runtime/live/display-source";
 import { type MonitorRegion, initRegion } from "../../runtime/live/monitor-region";
 import { type SlotTarget, applySlotWrites, isSlotIndex } from "../../runtime/live/slot-target";
 import type { NodeRun } from "../../runtime/node-run";
 import { slotOf } from "../../runtime/output-slots";
 import type { Engine, EngineState } from "../../types";
 import type { CompiledWasm } from "../program/compile-program";
-import type { MonitorMemory } from "../program/memory-layout";
+import { type DisplayMemory, type MonitorMemory, displayWords } from "../program/memory-layout";
 import type { CarrySide } from "./carry-plan";
 import { type CarryViews, bindCarry, carryCurrent, runCarry } from "./carry/run-carry";
 import type { EngineFacts } from "./engine-facts";
@@ -79,6 +80,7 @@ export class WasmEngine implements Engine, SlotTarget {
 	private carrySource: WasmMemory | null = null;
 	private carryViews: CarryViews | null = null;
 	private region: MonitorRegion | null = null;
+	private readonly displaySource: DisplaySource;
 
 	private readonly fillBudget: number;
 
@@ -106,11 +108,17 @@ export class WasmEngine implements Engine, SlotTarget {
 		this.syncViews();
 		this.region = monitorRegion(this.views.f64, layout.monitor);
 		if (this.region !== null) initRegion(this.region);
+		this.displaySource = wasmDisplaySource(layout.displays, () => this.f32, () => this.views.f64);
 	}
 
 	/** The monitor region in this instance's memory; null when not monitored. Re-read after each block: a grow moves it. */
 	get monitor(): MonitorRegion | null {
 		return this.region;
+	}
+
+	/** This instance's display buffers (live-contract.ts's third frame section), read live. */
+	get displays(): DisplaySource {
+		return this.displaySource;
 	}
 
 	/** This engine as the next program's carry plan sees it. */
@@ -279,4 +287,33 @@ export class WasmEngine implements Engine, SlotTarget {
 /** The monitor region over `f64` (the instance's memory), when the layout has one. */
 function monitorRegion(f64: Float64Array, memory: MonitorMemory | null): MonitorRegion | null {
 	return memory === null ? null : { f64, at: memory.at / 8, watches: memory.watches };
+}
+
+/**
+ * A DisplaySource over the instance's memory, each lane's buffer read as
+ * f32 (byte offset / 4), its head as f64 (byte offset / 8); `f32`/`f64`
+ * fetch the engine's current views, so a grow (which rebuilds them) is
+ * always read through.
+ */
+function wasmDisplaySource(
+	displays: readonly DisplayMemory[],
+	f32: () => Float32Array,
+	f64: () => Float64Array,
+): DisplaySource {
+	return {
+		words: displayWords(displays),
+		copyInto(into: Float64Array, at: number): void {
+			let k = at;
+			const buf = f32();
+			const state = f64();
+			for (const display of displays) {
+				for (const lane of display.lanes) {
+					into[k++] = state[lane.head / 8] as number;
+					into[k++] = lane.length;
+					const from = lane.buffer / 4;
+					for (let j = 0; j < lane.length; j++) into[k++] = buf[from + j] as number;
+				}
+			}
+		},
+	};
 }

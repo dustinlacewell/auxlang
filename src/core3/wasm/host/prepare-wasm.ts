@@ -18,9 +18,10 @@ import { watchList } from "../../runtime/live/watch-list";
 import { slotOf } from "../../runtime/output-slots";
 import { type PreparedProgram, prepareProgram } from "../../runtime/prepare/prepare-program";
 import { specialiseNodes } from "../../runtime/specialise/specialise-nodes";
-import type { KeyedIdentity, Program, Registry } from "../../types";
+import type { ModuleSpec, KeyedIdentity, Program, Registry } from "../../types";
 import { type CompiledWasm, type WasmInput, compileWasm } from "../program/compile-program";
 import { lambdaSources } from "../program/lambda-sources";
+import type { DisplayPlan } from "../program/memory-layout";
 import { type CarrySide, planCarry } from "./carry-plan";
 import { type EngineFacts, engineFacts } from "./engine-facts";
 import type { WasmStart } from "./wasm-engine";
@@ -110,6 +111,7 @@ function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 		monitor: prepared.monitor
 			? monitorPlan(watchList(program, layered), parts.runs, parts.layout)
 			: null,
+		displays: displayPlans(program, build.nodeSpecs),
 	};
 	const facts = engineFacts(
 		parts,
@@ -121,4 +123,13 @@ function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 		start: { runs: parts.runs, cur: parts.bufs.cur, slots: parts.bufs.slots },
 		facts,
 	};
+}
+
+/** Each display node's field names (display-list.ts's own node filter, by node index here). */
+function displayPlans(program: Program, nodeSpecs: readonly ModuleSpec[]): readonly DisplayPlan[] {
+	return program.nodes.flatMap((node, i) => {
+		const display = nodeSpecs[i]?.display;
+		if (node.site === undefined || display === undefined || node.lanes.length === 0) return [];
+		return [{ node: i, buffer: display.buffer, head: display.head }];
+	});
 }

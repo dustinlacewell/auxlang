@@ -16,13 +16,14 @@ import { expandInstance } from "./expand-instance";
 import { type Aliases, spliceAliases } from "./splice-aliases";
 
 export function expandSubpatches(result: EvalResult): void {
+	const allRoots = () => [...result.roots, ...result.kept];
 	for (let found = instancesInReach(result); found.length > 0; found = instancesInReach(result)) {
-		spliceAliases(result.roots, aliasesOf(found, result));
+		spliceAliases(allRoots(), aliasesOf(found, result));
 	}
 }
 
 function instancesInReach(result: EvalResult): [GNode, SubpatchSpec][] {
-	return collect(result.roots).flatMap((node) => {
+	return collect([...result.roots, ...result.kept]).flatMap((node) => {
 		const spec = findSubpatch(node.module, result.subpatches);
 		return spec === undefined ? [] : [[node, spec] as [GNode, SubpatchSpec]];
 	});

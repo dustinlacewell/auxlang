@@ -13,6 +13,12 @@
  * last frame. Two preallocated buffers ping-pong between the threads by
  * transfer; when the editor still holds both, the worklet skips the frame.
  * Nothing is allocated on the audio thread per frame.
+ *
+ * After the levels and onsets (`frameWords(watches)` words) comes a third
+ * section, one display's current buffer per display node (display-list.ts),
+ * in list order: for each of the display's lanes, `[head, n, ...n buffer
+ * floats]` (`n` the buffer's length). Copied whole at frame rate, not built
+ * up sample by sample like the levels and onsets.
  */
 
 import type { Unit } from "../../types";
@@ -49,6 +55,18 @@ export interface Watch {
 	/** The site of the call that made the node (PNode.site). */
 	readonly site: number;
 	readonly module: string;
+}
+
+/** One display node the monitor copies a buffer from (display-list.ts). */
+export interface DisplayWatch {
+	readonly node: number;
+	readonly site: number;
+	readonly module: string;
+	readonly kind: string;
+	/** The node's lane count: one buffer copy per lane. */
+	readonly lanes: number;
+	/** The node's config (PNode.config) — editor-only display settings (e.g. scope's width/height) live here. */
+	readonly config: Readonly<Record<string, unknown>>;
 }
 
 /** Per watched output, LEVEL_STRIDE f64s in this order. */

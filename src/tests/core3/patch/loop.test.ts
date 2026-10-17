@@ -54,6 +54,7 @@ describe("z-less cycle", () => {
 
 		const evaluated = {
 			roots: [root],
+			kept: [],
 			clock: null,
 			seed: 1,
 			seedPinned: false,

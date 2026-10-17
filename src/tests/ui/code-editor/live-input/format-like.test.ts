@@ -1,4 +1,4 @@
-import { formatLike } from "@/ui/core3-editor/live-input/format-like";
+import { formatLike } from "@/ui/code-editor/live-input/format-like";
 import { describe, expect, it } from "vitest";
 
 describe("formatLike", () => {

@@ -8,6 +8,7 @@ import "@/core3/modules/all";
 
 import { getRegistry } from "@/core3/module/define";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
+import { EMPTY_DISPLAY_SOURCE } from "@/core3/runtime/live/display-source";
 import { InterpretedMonitor } from "@/core3/runtime/live/interpreted-monitor";
 import {
 	LEVEL_HITS,
@@ -340,12 +341,12 @@ describe("MonitorWriter", () => {
 	const PER_FRAME = 7;
 
 	function blocks(writer: MonitorWriter, region: MonitorRegion, serial: number, n: number): void {
-		for (let k = 0; k < n; k++) writer.afterBlock(region, serial, (k + 1) * BLOCK);
+		for (let k = 0; k < n; k++) writer.afterBlock(region, EMPTY_DISPLAY_SOURCE, serial, (k + 1) * BLOCK);
 	}
 
 	it("posts a frame every ceil(sampleRate / 128 / 60) blocks, transferring its buffer", () => {
 		const { writer, region, posted } = setup(2);
-		writer.reserve(2);
+		writer.reserve(2, 0);
 		writer.enable(true);
 		blocks(writer, region, 1, PER_FRAME - 1);
 		expect(posted).toHaveLength(0);
@@ -360,7 +361,7 @@ describe("MonitorWriter", () => {
 
 	it("skips frames while the editor holds both buffers, allocating nothing", () => {
 		const { writer, region, posted, allocations } = setup(2);
-		writer.reserve(2);
+		writer.reserve(2, 0);
 		writer.enable(true);
 		const before = allocations();
 		blocks(writer, region, 1, 3 * PER_FRAME);
@@ -374,7 +375,7 @@ describe("MonitorWriter", () => {
 
 	it("a skipped frame keeps accumulating; a posted one restarts the region", () => {
 		const { writer, region, posted } = setup(1);
-		writer.reserve(1);
+		writer.reserve(1, 0);
 		writer.enable(true);
 		blocks(writer, region, 1, 2 * PER_FRAME);
 		region.f64[REGION_LEVELS + LEVEL_HITS] = 3;
@@ -389,7 +390,7 @@ describe("MonitorWriter", () => {
 
 	it("the generation moves on with every swap", () => {
 		const { writer, region, posted } = setup(1);
-		writer.reserve(1);
+		writer.reserve(1, 0);
 		writer.enable(true);
 		blocks(writer, region, 4, PER_FRAME);
 		writer.giveBack((posted[0] as Posted).frame.buffer);
@@ -401,10 +402,10 @@ describe("MonitorWriter", () => {
 
 	it("posts nothing while disabled or with no region", () => {
 		const { writer, region, posted } = setup(1);
-		writer.reserve(1);
+		writer.reserve(1, 0);
 		blocks(writer, region, 1, 2 * PER_FRAME);
 		writer.enable(true);
-		for (let k = 0; k < 2 * PER_FRAME; k++) writer.afterBlock(null, 1, 0);
+		for (let k = 0; k < 2 * PER_FRAME; k++) writer.afterBlock(null, EMPTY_DISPLAY_SOURCE, 1, 0);
 		expect(posted).toHaveLength(0);
 	});
 });

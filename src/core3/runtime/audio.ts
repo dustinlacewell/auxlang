@@ -18,7 +18,8 @@ import { getRegistry } from "../module/define";
 import type { Program } from "../types";
 import { withProgramSpecs } from "./hydrate-specs";
 import { BUILD_BUDGET } from "./build/build-budget";
-import type { MonitorFrame, SlotDecl, Watch } from "./live/live-contract";
+import { displayList } from "./live/display-list";
+import type { DisplayWatch, MonitorFrame, SlotDecl, Watch } from "./live/live-contract";
 import { MonitorReceiver } from "./live/monitor-receiver";
 import { watchList } from "./live/watch-list";
 import { PostedPrograms } from "./posted-programs";
@@ -112,7 +113,13 @@ async function playNext(program: Program, at: number): Promise<void> {
 	if (at !== session) return;
 	flushSlots();
 	programs.posted(prepared);
-	if (monitor) monitors.posted(prepared.wasm.serial, watchList(prepared.program, registry));
+	if (monitor) {
+		monitors.posted(
+			prepared.wasm.serial,
+			watchList(prepared.program, registry),
+			displayList(prepared.program, registry),
+		);
+	}
 	const message: WorkletMessage = { type: "swap", prepared };
 	node.port.postMessage(message);
 }
@@ -230,7 +237,7 @@ const monitors = new MonitorReceiver();
  * (a re-eval of itself: its state carries on).
  */
 export function onMonitor(
-	listener: (frame: MonitorFrame, watches: readonly Watch[]) => void,
+	listener: (frame: MonitorFrame, watches: readonly Watch[], displays: readonly DisplayWatch[]) => void,
 ): () => void {
 	if (monitors.add(listener)) {
 		if (host) postMonitor(host.node.port, true);

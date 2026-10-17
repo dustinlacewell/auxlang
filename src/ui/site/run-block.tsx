@@ -27,6 +27,9 @@ export function RunBlock({ id, code, audio, graphOpen = false }: RunBlockProps) 
 				graphOpen={graphOpen}
 				playing={playing}
 				onTogglePlay={() => (playing ? audio.halt() : audio.run(id, code))}
+				sourceMap={playing ? audio.sourceMap : undefined}
+				liveSlots={playing ? audio.liveSlots : undefined}
+				onEnsureSlotSite={playing ? audio.ensureSlotSite : undefined}
 			/>
 			{error && <ErrorDisplay message={error} />}
 		</div>

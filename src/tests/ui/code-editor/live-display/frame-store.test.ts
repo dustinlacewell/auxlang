@@ -15,7 +15,7 @@ import {
 	ONSET_STRIDE,
 	ONSET_WATCH,
 } from "@/core3/runtime/live/live-contract";
-import { createFrameStore } from "@/ui/core3-editor/live-display/frame-store";
+import { createFrameStore } from "@/ui/code-editor/live-display/frame-store";
 import { describe, expect, it } from "vitest";
 
 function buildFrame(site = 7, at = 48000, kind = ONSET_KIND_ON): MonitorFrame {

@@ -6,6 +6,7 @@
  */
 
 import { getRegistry } from "../../module/define";
+import { displayWords } from "../../wasm/program/memory-layout";
 import { LiveHost } from "./live-host";
 import type { HostPrepared } from "../prepare/host-prepared";
 import type { WorkletMessage, WorkletReply } from "./messages";
@@ -63,7 +64,7 @@ class Core3Processor extends AudioWorkletProcessor {
 
 	/** Size the monitor's buffers for the program here, never in process(). */
 	private swap(prepared: HostPrepared): void {
-		this.monitor.reserve(prepared.wasm.layout.monitor?.watches ?? 0);
+		this.monitor.reserve(prepared.wasm.layout.monitor?.watches ?? 0, displayWords(prepared.wasm.layout.displays));
 		this.host.swap(prepared);
 	}
 
@@ -91,7 +92,7 @@ class Core3Processor extends AudioWorkletProcessor {
 		const n = ch0.length;
 		if (ch1 !== null) this.host.render(ch0, ch1, n, currentFrame);
 		else this.renderMono(ch0, n);
-		this.monitor.afterBlock(this.host.monitor, this.host.serial, currentFrame + n);
+		this.monitor.afterBlock(this.host.monitor, this.host.displays, this.host.serial, currentFrame + n);
 
 		if (PERF && meter !== null) {
 			const report = meter.measure(this.meterWarm);

@@ -20,7 +20,7 @@ import { moduleBytes } from "../encode/module-bytes";
 import { F64, I32 } from "../encode/opcodes";
 import { emitRender } from "./emit-render";
 import type { LambdaSources } from "./lambda-sources";
-import { type WasmLayout, planMemory } from "./memory-layout";
+import { type DisplayPlan, type WasmLayout, planMemory } from "./memory-layout";
 import { ENTER_PARAMS, tableEnter } from "./table-enter";
 
 /** The host's `env.fill` import: the first function index. */
@@ -47,6 +47,8 @@ export interface WasmInput {
 	readonly sampleRate: number;
 	/** What the monitor reads (runtime/live/monitor-plan.ts); null: no monitor, no region. */
 	readonly monitor: MonitorPlan | null;
+	/** Each display node's field names (runtime/live/display-list.ts order). */
+	readonly displays: readonly DisplayPlan[];
 }
 
 export interface CompiledWasm {
@@ -64,6 +66,7 @@ export function compileWasm(input: WasmInput): CompiledWasm {
 		input.size,
 		input.slotCount,
 		input.monitor?.targets.length ?? null,
+		input.displays,
 	);
 	const table = new FunctionTable(1);
 	const fillType = table.typeIndex([I32, I32, F64], []);

@@ -6,6 +6,7 @@
  */
 
 import { nodePorts } from "@/core3/module/node-ports";
+import { openGroup } from "@/core3/module/group-decls";
 import type { ModulePorts } from "../types";
 
 export const STEREO_PORTS = ["l", "r"] as const;
@@ -22,11 +23,27 @@ export function takesStereo(spec: ModulePorts): boolean {
 	return "l" in ins && "r" in ins;
 }
 
-/** The loud error for a connection that would keep one channel of `source` and drop the other. */
-export function droppedChannelError(source: ModulePorts, into: string): Error {
-	return new Error(
-		`${into}: '${source.name}' is stereo (outputs l, r) and this connection takes one signal, ` +
-			"so it would drop a channel. Tap one channel (x.l or x.r), or connect it whole to a " +
-			"module with l and r inputs (e.g. .out()).",
-	);
+/**
+ * The loud error for a connection that would keep one channel of `source` and
+ * drop the other. `into` describes where the connection lands; when it is the
+ * destination module itself (a whole-module connection, connect.ts) and that
+ * module has an open input group, the error adds the member-passing fix.
+ */
+export function droppedChannelError(source: ModulePorts, into: string | ModulePorts): Error {
+	const where = typeof into === "string" ? into : intoDescription(into);
+	const base =
+		`${where}: '${source.name}' is stereo (outputs l, r) and this connection takes one signal, ` +
+		"so it would drop a channel. Tap one channel (x.l or x.r), or connect it whole to a " +
+		"module with l and r inputs (e.g. .out()).";
+	const hint = typeof into === "string" ? "" : openGroupHint(into);
+	return new Error(base + hint);
+}
+
+function intoDescription(dest: ModulePorts): string {
+	return `connecting into '${dest.name}' (inputs: [${Object.keys(nodePorts(dest).ins).join(", ")}], no l/r pair)`;
+}
+
+function openGroupHint(dest: ModulePorts): string {
+	const group = openGroup(dest, "ins");
+	return group === undefined ? "" : ` Or pass the channels as members: ${dest.name}({ l: x.l, r: x.r })`;
 }

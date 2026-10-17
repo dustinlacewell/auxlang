@@ -28,6 +28,7 @@ import { evalCtx } from "./context";
 import { handleData, isHandle } from "./handle-data";
 import { isNamedArgs } from "./is-named-args";
 import { newNode } from "./new-node";
+import { rootDisplay } from "./root-display";
 import { bindRecordMembers } from "./record-members";
 
 export function buildNode(
@@ -60,11 +61,13 @@ export function buildNode(
 	bindRecordMembers(spec, into.config, into.inputs, into.groups);
 	assertGroupPorts(spec, into.inputs, into.groups);
 
-	return {
+	const node: GNode = {
 		...newNode(spec.name, into.inputs, into.config),
 		...(Object.keys(into.groups).length > 0 ? { groups: into.groups } : {}),
 		...sourceSites(args, positional),
 	};
+	rootDisplay(spec, node);
+	return node;
 }
 
 /** What the arguments bind into: a node's inputs, config and port group members. */

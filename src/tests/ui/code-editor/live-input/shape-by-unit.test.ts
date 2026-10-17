@@ -1,4 +1,4 @@
-import { shapeByUnit } from "@/ui/core3-editor/live-input/shape-by-unit";
+import { shapeByUnit } from "@/ui/code-editor/live-input/shape-by-unit";
 import { describe, expect, it } from "vitest";
 
 describe("shapeByUnit", () => {

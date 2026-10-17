@@ -213,6 +213,108 @@ s.fm({ index: s.gate.ad(0.005, 0.3).mul(5), ratio: 1.5 })
   .gain(s.gate.ad(0.005, 0.3))
   .out()`,
 	},
+	{
+		section: "Sources",
+		title: "slider — default",
+		description:
+			"A slider the editor sets while the patch plays, starting at 0.5 in [0, 1] — a steady gain until you drag it.",
+		code: `sin(60)
+  .gain(slider(0.5, 0, 1))
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "slider — all params",
+		description:
+			"Range narrowed to [50, 110] and a slower 0.3 s ramp — the same slider, a coarser filter sweep that glides instead of jumping.",
+		code: `saw(45)
+  .lpf(slider(80, 50, 110, { slew: secs(0.3) }))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "slider — slew modulated",
+		description:
+			"An LFO sweeps the ramp time itself, 0→0.3 s — the same step write glides at a different speed each cycle.",
+		code: `sin(60)
+  .gain(slider(0.4, 0, 1, { slew: lfo(0.2, 0, 0.3) }))
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "knob — default",
+		description:
+			"A knob the editor sets while the patch plays, starting at 0.5 in [0, 1] — identical to slider, a different widget.",
+		code: `sin(60)
+  .gain(knob(0.5, 0, 1))
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "knob — all params",
+		description: "Range [0.1, 0.4] — the knob sweeps a narrower slice of gain.",
+		code: `sin(60)
+  .gain(knob(0.3, 0.1, 0.4))
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "xy — default",
+		description:
+			"An x/y pad the editor sets while the patch plays — x drives one voice's gain, y another's, from a single control.",
+		code: `const pad = xy(0.2, 0.4, 0, 1)
+sin(60).gain(pad.x).out()
+sin(67).gain(pad.y).out()`,
+	},
+	{
+		section: "Sources",
+		title: "xy — all params",
+		description: "Range narrowed to [50, 110]: x and y each steer a filter cutoff over the same saw.",
+		code: `saw(45)
+  .lpf(xy(80, 90, 50, 110).x)
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "toggle — default",
+		description:
+			"An on/off switch the editor sets while the patch plays — the gate starts high (1), so the tone sounds until you flip it.",
+		code: `sin(60)
+  .gain(toggle(1))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "toggle — all params",
+		description:
+			"Two voices on two switches: one on, one off at start — only the first sounds until the editor flips the other.",
+		code: `sin(60).gain(toggle(1)).gain(0.2).out()
+tri(72).gain(toggle(0)).gain(0.2).out()`,
+	},
+	{
+		section: "Sources",
+		title: "button — default",
+		description:
+			"A button the editor presses while the patch plays: a gate while held — pressed, it gates a tone straight through at full level.",
+		code: `sin(60)
+  .mul(button({ pressed: 1 }))
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Sources",
+		title: "button — showcase",
+		description:
+			"The one-sample press trigger fires a fresh decay envelope every time the editor clicks it — a percussive blip on each press.",
+		code: `const b = button({ pressed: 1 })
+sin(72)
+  .mul(ad({ gate: b.trig, attack: 0.003, decay: 0.4 }))
+  .gain(0.3)
+  .out()`,
+	},
 
 	// ======================================================================
 	// Filters — lpf/hpf/bpf/notch
@@ -284,11 +386,31 @@ s.saw()
 	},
 	{
 		section: "Filters",
+		title: "hpf — all params",
+		description:
+			"Cutoff 74 semis (≈590 Hz) with high resonance — a thin, whistling peak sits right at the cutoff over the scooped saw.",
+		code: `saw(45)
+  .hpf({ cutoff: 74, res: 0.85 })
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Filters",
 		title: "hpf — cutoff modulated",
 		description:
 			"An LFO sweeps the highpass cutoff 55→102 semitones (200 Hz→3 kHz) — the low end drains away as the sweep rises.",
 		code: `saw(45)
   .hpf(lfo(0.2, 55, 102), 0.4)
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Filters",
+		title: "hpf — res modulated",
+		description:
+			"Fixed cutoff at 79 semis (≈780 Hz), but an LFO opens resonance 0→0.9 — the thin top grows a sharp whistling peak.",
+		code: `saw(45)
+  .hpf(79, lfo(0.2, 0, 0.9))
   .gain(0.3)
   .out()`,
 	},
@@ -1026,25 +1148,107 @@ sin()
 		section: "Utils",
 		title: "quantize — default",
 		description:
-			"A smooth LFO pitch snapped to the major scale — the continuous glide becomes a staircase of in-key notes.",
-		code: `const c = tempo(240)
+			"A clocked random-note generator: noise sampled on every beat, snapped to the major scale — a bright, always-in-key arp.",
+		code: `const c = tempo(140)
 sin()
-  .pitch(lfo(0.3, 48, 72).quantize({ scaleName: "major", root: 0, octave: 4, range: 2 }))
-  .mul(c.beat.ad(0.005, 0.12))
+  .pitch(noise().scale({ min: 48, max: 84 }).sah(c.beat).quantize())
+  .mul(c.beat.ad(0.003, 0.15))
+  .gain(0.4)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "quantize — all params",
+		description:
+			"Every port set: snapped to A minor pentatonic, root 9 (A), window two octaves starting at octave 3 — a tight, rootsy random riff.",
+		code: `const c = tempo(140)
+sin()
+  .pitch(noise().scale({ min: 36, max: 84 }).sah(c.beat).quantize({ scaleName: "minor pentatonic", root: 9, octave: 3, range: 2 }))
+  .mul(c.beat.ad(0.003, 0.15))
+  .gain(0.4)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "quantize — root modulated (key change)",
+		description:
+			"Same random arp, but the root steps up a fourth on beat 3 of every bar — the whole riff modulates to a new key without ever leaving it.",
+		code: `const c = tempo(140)
+const key = p\`0 0 5 5\`.steps()
+sin()
+  .pitch(noise().scale({ min: 48, max: 84 }).sah(c.beat).quantize({ scaleName: "dorian", root: key }))
+  .mul(c.beat.ad(0.003, 0.15))
+  .gain(0.4)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "quantize — range modulated (riser)",
+		description:
+			"The playable window opens from one octave to four over eight bars — the same random arp starts tight and spreads wide, a classic buildup.",
+		code: `const c = tempo(140)
+sin()
+  .pitch(noise().scale({ min: 24, max: 96 }).sah(c.beat).quantize({ scaleName: "major pentatonic", range: lfo(0.02, 1, 4) }))
+  .mul(c.beat.ad(0.003, 0.15))
+  .gain(0.4)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "quantize — showcase (generative bassline)",
+		description:
+			"A clocked random bassline over a blues scale, played through a filtered saw with a short decay — the idiom for a generative bass part that never leaves the key.",
+		code: `const c = tempo(100)
+const note = noise().scale({ min: 28, max: 52 }).sah(c.beat).quantize({ scaleName: "minor blues", root: 7, octave: 2, range: 2 })
+note.saw()
+  .lpf({ cutoff: note.add(24), res: 0.3 })
+  .mul(c.beat.ad(0.002, 0.2))
   .gain(0.5)
   .out()`,
 	},
 	{
 		section: "Utils",
-		title: "quantize — scale modulated (showcase)",
+		title: "scope — default",
 		description:
-			"An LFO-swept pitch snapped to a blues scale, root walking with another LFO — a wandering but always in-key line.",
-		code: `const c = tempo(300)
-sin()
-  .pitch(lfo(0.2, 40, 76).quantize({ scaleName: "pentatonic blues", root: lfo(0.07, 0, 11), octave: 4, range: 3 }))
-  .mul(c.beat.ad(0.004, 0.1))
-  .gain(0.5)
+			"A small waveform appears right after the call: a steady sine, held still by the scope's trigger. The signal passes through to the speakers unchanged.",
+		code: `sin()
+  .scope()
+  .gain(0.2)
   .out()`,
+	},
+	{
+		section: "Utils",
+		title: "scope — all params",
+		description:
+			"A 50 ms sweep in a bigger widget, on a fixed -1..1 scale instead of the default fit.",
+		code: `tri(57)
+  .scope({ time: 0.05, width: 200, height: 60, min: -1, max: 1 })
+  .gain(0.2)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "scope — time modulated",
+		description: "The sweep length swings from 5 ms to 50 ms: the picture zooms in and out of the wave.",
+		code: `tri()
+  .scope({ time: lfo(0.2, 0.005, 0.05) })
+  .gain(0.2)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "scope — showcase (probing a voice)",
+		description:
+			"One scope taps the oscillator mid-chain; a second, with no output of its own, draws the envelope and an LFO as two colored traces.",
+		code: `tempo(120)
+const s = seq("c3 e3 g3 <b2 a2>")
+s.tri()
+  .scope()
+  .lpf({ cutoff: 81, res: 0.3 })
+  .mul(s.gate.adsr(0.005, 0.12, 0.5, 0.2))
+  .gain(0.3)
+  .out()
+scope({ env: s.gate.adsr(0.01, 0.1, 0.5, 0.2), lfo: lfo(0.5) })`,
 	},
 	{
 		section: "Utils",
@@ -1136,6 +1340,49 @@ s.tri()
   .mul(s.gate.adsr(0.02, 0.1, 0.6, 0.2))
   .gain(0.5)
   .spread()
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "mixer — default",
+		description:
+			"Two named channels summed at their default level (1 each) — a sine and a triangle, equally loud.",
+		code: `mixer({ a: sin({ pitch: hz(220) }), b: tri({ pitch: hz(222) }) })
+  .gain(0.2)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "mixer — all params",
+		description:
+			".level sets each channel's own gain — here b is turned down to a quarter, so the triangle sits under the sine instead of beside it.",
+		code: `mixer({ a: sin({ pitch: hz(220) }), b: tri({ pitch: hz(222) }) })
+  .level({ a: 1, b: 0.25 })
+  .gain(0.2)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "mixer — level modulated",
+		description:
+			'.mod("level.a", lfo, depth) rides one channel\'s level up and down — the sine fades in and out while the triangle holds steady underneath.',
+		code: `mixer({ a: sin({ pitch: hz(220) }), b: tri({ pitch: hz(222) }) })
+  .level({ a: 0.5, b: 0.3 })
+  .mod("level.a", lfo(0.2, -0.4, 0.4), 1)
+  .gain(0.3)
+  .out()`,
+	},
+	{
+		section: "Utils",
+		title: "mixer — showcase",
+		description:
+			"A drum bus and a bass bus summed into one mix, the bass turned down against the beat — the way a real mixer channel-strips a patch.",
+		code: `const c = tempo(120)
+const drums = c.beat.kick().gain(1)
+const bass = seq("c1 c1 eb1 g0").tri().mul(seq("c1 c1 eb1 g0").gate.adsr(0.005, 0.1, 0.6, 0.15))
+mixer({ drums, bass })
+  .level({ bass: 0.5 })
+  .gain(0.3)
   .out()`,
 	},
 
@@ -1611,6 +1858,17 @@ c.beat.clap()
 		code: `const c = tempo(120)
 clap({ trig: c.beat, decay: 0.35, tone: 0.8 })
   .gain(0.9)
+  .out()`,
+	},
+	{
+		section: "Drums",
+		title: "clap — tone modulated",
+		description:
+			"An LFO opens tone 0.2→1 — the clap darkens and brightens from a dull thump to an open, airy snap.",
+		code: `const c = tempo(120)
+c.beat.clap()
+  .tone(lfo(0.2, 0.2, 1))
+  .gain(1.3)
   .out()`,
 	},
 	{

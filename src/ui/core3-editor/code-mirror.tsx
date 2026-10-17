@@ -15,9 +15,13 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { patternHighlightExtension } from "./live-display/pattern-highlight-extension";
-import { controlWidgetExtension, setLiveProgram } from "./live-input/control-widget-extension";
-import { numberDragExtension } from "./live-input/number-drag-extension";
+import { patternHighlightExtension } from "@/ui/code-editor/live-display/pattern-highlight-extension";
+import { scopeWidgetExtension } from "@/ui/code-editor/live-display/scope-widget-extension";
+import {
+	controlWidgetExtension,
+	setLiveProgram,
+} from "@/ui/code-editor/live-input/control-widget-extension";
+import { numberDragExtension } from "@/ui/code-editor/live-input/number-drag-extension";
 
 interface CodeMirrorProps {
 	value: string;
@@ -97,6 +101,7 @@ export function CodeMirror({
 					runKeymap,
 					updateListener,
 					patternHighlightExtension(() => sourceMapRef.current),
+					scopeWidgetExtension(() => sourceMapRef.current),
 					numberDragExtension({
 						sourceMapOf: () => sourceMapRef.current,
 						ensureSlotSite: (site) => ensureSlotSiteRef.current(site),

@@ -33,6 +33,7 @@ import { EngineBuild } from "../build/engine-build";
 import { StepRunner } from "../build/step-runner";
 import { type WasmStep, wasmSteps } from "../build/wasm-steps";
 import type { EngineParts } from "../engine-parts";
+import type { DisplaySource } from "../live/display-source";
 import type { MonitorRegion } from "../live/monitor-region";
 import type { HostPrepared } from "../prepare/host-prepared";
 import type { WasmCarry, WasmPrepared } from "../prepare/wasm-prepared";
@@ -101,6 +102,11 @@ export class WasmHostProgram {
 	/** The engine's monitor region; null when not monitored. Once swapped in. */
 	get monitor(): MonitorRegion | null {
 		return this.live.monitor;
+	}
+
+	/** The engine's display buffers (live/display-source.ts). Once swapped in. */
+	get displays(): DisplaySource {
+		return this.live.displays;
 	}
 
 	/** Advance `n` samples; write l/r into `outL`/`outR` from `offset`. Once swapped in. */

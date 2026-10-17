@@ -96,6 +96,7 @@ function side({
 			slotCount: 0,
 			nodes,
 			monitor: null,
+			displays: [],
 			heap: 2048,
 		},
 		facts: {

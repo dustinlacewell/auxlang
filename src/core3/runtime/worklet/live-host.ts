@@ -17,6 +17,7 @@
  */
 
 import type { Registry } from "../../types";
+import { type DisplaySource, EMPTY_DISPLAY_SOURCE } from "../live/display-source";
 import { type MonitorRegion, setRegionFrame } from "../live/monitor-region";
 import type { HostPrepared } from "../prepare/host-prepared";
 import { PendingSlots } from "./pending-slots";
@@ -90,6 +91,11 @@ export class LiveHost {
 	/** The live engine's monitor region; null with none (live/monitor-region.ts). */
 	get monitor(): MonitorRegion | null {
 		return this.engine?.monitor ?? null;
+	}
+
+	/** The live engine's display buffers; empty with none (live/display-source.ts). */
+	get displays(): DisplaySource {
+		return this.engine?.displays ?? EMPTY_DISPLAY_SOURCE;
 	}
 
 	/** The live engine's program serial (prepare/wasm-prepared.ts); 0 with none. */

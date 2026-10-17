@@ -66,24 +66,25 @@ interface Resolved {
 
 export function compile(evalResult: EvalResult): Program {
 	const specs = evalResult.specs;
+	const allRoots = [...evalResult.roots, ...evalResult.kept];
 	expandSubpatches(evalResult);
-	bindSlots(collect(evalResult.roots), specs, evalResult.slotSites);
-	expandMods(collect(evalResult.roots), specs);
-	const reachable = collect(evalResult.roots); // re-walk: the mod arithmetic nodes are new
+	bindSlots(collect(allRoots), specs, evalResult.slotSites);
+	expandMods(collect(allRoots), specs);
+	const reachable = collect(allRoots); // re-walk: the mod arithmetic nodes are new
 	expandPatterns(reachable, evalResult.clock);
-	const lifted = collect(evalResult.roots); // re-walk: the knob seq nodes are new
+	const lifted = collect(allRoots); // re-walk: the knob seq nodes are new
 	prepareSeqs(lifted, evalResult.seed);
 	resolveAmbientClocks(lifted, evalResult.clock, specs);
 	markClocked(lifted);
 	copyMeter(lifted, specs);
-	const nodes = collect(evalResult.roots); // re-walk: the ambient clock may be new
+	const nodes = collect(allRoots); // re-walk: the ambient clock may be new
 	cutZ1Edges(nodes);
 
 	const order = toposort(nodes);
 	const resolved: Resolved = {
 		widths: resolveWidths(nodes, specs),
 		index: indexByPosition(order),
-		identities: identities(evalResult.roots, order, specs),
+		identities: identities(allRoots, order, specs),
 		specs,
 		slots: new SlotTable(),
 	};

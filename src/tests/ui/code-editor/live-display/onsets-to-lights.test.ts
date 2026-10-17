@@ -1,5 +1,5 @@
-import { onsetsToLights } from "@/ui/core3-editor/live-display/onsets-to-lights";
-import type { SiteRanges } from "@/ui/core3-editor/live-display/site-ranges";
+import { onsetsToLights } from "@/ui/code-editor/live-display/onsets-to-lights";
+import type { SiteRanges } from "@/ui/code-editor/live-display/site-ranges";
 import { describe, expect, it } from "vitest";
 
 /**

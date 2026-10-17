@@ -35,8 +35,8 @@ describe("MonitorReceiver", () => {
 		const receiver = new MonitorReceiver();
 		const seen: [number, number][] = [];
 		receiver.add((f, w) => seen.push([f.generation, w[0]?.node as number]));
-		receiver.posted(3, watches(30));
-		receiver.posted(4, watches(40));
+		receiver.posted(3, watches(30), []);
+		receiver.posted(4, watches(40), []);
 		receiver.receive(frame(3));
 		receiver.receive(frame(4));
 		receiver.receive(frame(3));

@@ -21,6 +21,7 @@ import { hydrateFn } from "../module/serialize";
 import { laneShapeOf } from "../module/front/state/state-shape-of";
 import { fileProgram } from "../module/lower/file-program";
 import { lowerModule, resolveTickWrites, type LowerModuleMeta } from "../module/lower/lower-module";
+import { validateDisplay } from "../module/lower/validate-display";
 import type { ReadTime } from "../module/front/module/check-module";
 import type { ModuleSpec } from "../types";
 
@@ -51,6 +52,8 @@ export function defineModule(
 	const shapes = new Map(Object.entries(laneShapeOf(trialState).fields));
 	const writes = resolveTickWrites(lowered, shapes);
 
+	if (lowered.display !== undefined) validateDisplay(name, lowered.display, shapes);
+
 	const spec: ModuleSpec = {
 		name: lowered.name,
 		category: lowered.category,
@@ -63,6 +66,7 @@ export function defineModule(
 		...(lowered.policy !== undefined ? { policy: lowered.policy } : {}),
 		...(lowered.reads !== undefined ? { reads: lowered.reads } : {}),
 		...(lowered.monitor !== undefined ? { monitor: lowered.monitor } : {}),
+		...(lowered.display !== undefined ? { display: lowered.display } : {}),
 		...(lowered.doc !== undefined ? { doc: lowered.doc } : {}),
 		writes,
 		state,

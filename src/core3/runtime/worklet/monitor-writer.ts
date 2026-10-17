@@ -1,10 +1,11 @@
 /**
  * The worklet's side of the monitor transport (live/live-contract.ts). Two
  * buffers ping-pong with the editor: every `ceil(sampleRate / 128 / 60)`
- * blocks the live engine's region (live/monitor-region.ts) is copied into a
- * free buffer, posted as a MonitorFrame transferring it, and restarted. The
- * editor's MonitorReturn gives the buffer back. With no free buffer the frame
- * is skipped and the region keeps accumulating into the next one.
+ * blocks the live engine's region (live/monitor-region.ts) and display
+ * buffers (live/display-source.ts) are copied into a free buffer, posted as
+ * a MonitorFrame transferring it, and restarted. The editor's MonitorReturn
+ * gives the buffer back. With no free buffer the frame is skipped and the
+ * region keeps accumulating into the next one.
  *
  * Nothing is allocated in `afterBlock` but the posted message itself:
  * buffers are made by `enable`, `reserve` and `giveBack`, which run in the
@@ -16,6 +17,7 @@
  * finds the frame's program, and its watches, by it.
  */
 
+import type { DisplaySource } from "../live/display-source";
 import type { MonitorFrame } from "../live/live-contract";
 import { type MonitorRegion, copyFrame, frameWords, startFrame } from "../live/monitor-region";
 
@@ -64,9 +66,9 @@ export class MonitorWriter {
 		}
 	}
 
-	/** Size the buffers for a program of `watches` watches (on its swap message, before it plays). */
-	reserve(watches: number): void {
-		const words = frameWords(watches);
+	/** Size the buffers for a program of `watches` watches and `displayWords` of display data (on its swap message, before it plays). */
+	reserve(watches: number, displayWords: number): void {
+		const words = frameWords(watches) + displayWords;
 		if (words <= this.capacity) return;
 		this.capacity = words;
 		for (let k = 0; k < this.free.length; k++) this.free[k] = this.make();
@@ -80,17 +82,20 @@ export class MonitorWriter {
 
 	/**
 	 * After each block: `region` is the live engine's (null when it has none),
-	 * `serial` its program's, `frame` the AudioContext frame after the block.
+	 * `displays` its display buffers, `serial` its program's, `frame` the
+	 * AudioContext frame after the block.
 	 */
-	afterBlock(region: MonitorRegion | null, serial: number, frame: number): void {
+	afterBlock(region: MonitorRegion | null, displays: DisplaySource, serial: number, frame: number): void {
 		if (!this.enabled || region === null) return;
 		if (++this.blocks < this.blocksPerFrame) return;
 		this.blocks = 0;
-		if (frameWords(region.watches) > this.capacity) return;
+		const total = frameWords(region.watches) + displays.words;
+		if (total > this.capacity) return;
 		const free = this.free.pop();
 		if (free === undefined) return;
 		const onsetCount = copyFrame(region, free.words);
 		startFrame(region);
+		displays.copyInto(free.words, frameWords(region.watches));
 		const message: MonitorFrame = {
 			type: "monitor",
 			generation: serial,
