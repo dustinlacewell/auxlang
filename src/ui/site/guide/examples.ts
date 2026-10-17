@@ -68,16 +68,8 @@ s.tri()
   .out()`,
 
 	customModules: `tempo(120)
-defmod({
-  name: "wavefold",
-  category: "effects",
-  doc: "sine-shaper wavefolder",
-  ins: { in: sig(0), amount: unit(0.5) },
-  outs: { out: sig() },
-  defaultIn: "in",
-  defaultOut: "out",
-  positional: ["amount"],
-  tick: (s, i, o) => { o.out = Math.sin(i.in * (1 + i.amount * 6)) },
+defmod("wavefold", { cat: "effects", doc: "sine-shaper wavefolder" }, () => {
+  return ({ in: x = 0, amount = unit(0.5) }) => Math.sin(x * (1 + amount * 6))
 })
 const n = seq("c2 e2 g2 c3")
 n.saw().wavefold(0.7)

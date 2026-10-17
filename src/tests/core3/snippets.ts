@@ -94,12 +94,7 @@ loop((fb) =>
 		audible: true,
 		code: `tempo(120)
 
-defmod({
-  name: "voice",
-  ins: { pitch: semis(57), cutoff: semis(84) },
-  outs: { out: sig() },
-  patch: (i) => ({ out: i.pitch.saw().lpf({ cutoff: i.cutoff, res: 0.3 }) }),
-})
+defpatch("voice", ({ pitch = 57, cutoff = 84 }) => pitch.saw().lpf({ cutoff, res: 0.3 }))
 
 const s = seq("c3 e3 g3 <b2 a2>")
 s.voice({ cutoff: 79 })
@@ -383,25 +378,24 @@ s.tri()
 		id: "guide-defmod-helpers",
 		audible: true,
 		code: `tempo(120)
-const beat = seq("c3*8")
-const pick = defmod({
-  name: "pick",
-  category: "utils",
-  ins: { trig: trigPort(), lo: semis(48), hi: semis(72) },
-  outs: { out: semis(60) },
-  defaultIn: "trig",
-  defaultOut: "out",
-  state: () => ({ step: 0, value: 60, was: 0 }),
-  helpers: { lerp: (a, b, t) => a + (b - a) * t },
-  tick: (s, i, o) => {
-    if (i.trig > 0.5 && s.was <= 0.5) {
-      s.step = (s.step + 1) % 16
-      s.value = Math.round(lerp(i.lo, i.hi, hashRandom(s.step)))
+
+function lerp(a, b, t) { return a + (b - a) * t }
+
+defmod("pick", { cat: "utils" }, () => {
+  let step = 0
+  let value = 60
+  let was = 0
+  return ({ trig = trigPort(0), lo = semis(48), hi = semis(72) }) => {
+    if (trig > 0.5 && was <= 0.5) {
+      step = (step + 1) % 16
+      value = Math.round(lerp(lo, hi, hashRandom(step)))
     }
-    s.was = i.trig
-    o.out = s.value
-  },
+    was = trig
+    return value
+  }
 })
+
+const beat = seq("c3*8")
 beat.trig.pick().tri()
   .mul(beat.gate.adsr(0.005, 0.08, 0.3, 0.1))
   .gain(0.3)

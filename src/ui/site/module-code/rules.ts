@@ -3,22 +3,17 @@
  * Each row is [form, what happens]. Keep rows to one line of rule.
  */
 
-export const SKELETON = `const wrapIndex = (k, n) => ((Math.floor(k) % n) + n) % n
-defmod({
-  name: "echo",
-  category: "effects",
-  ins: { in: sig(0), time: secs(0.25) },
-  outs: { out: sig() },
-  defaultIn: "in",
-  defaultOut: "out",
-  state: (sr) => ({ buf: new Float64Array(sr), w: 0 }),
-  helpers: { wrapIndex },
-  tick: (s, i, o, cfg, sr) => {
-    const r = wrapIndex(s.w - i.time * sr, s.buf.length)
-    o.out = i.in + s.buf[r] * 0.5
-    s.buf[s.w] = o.out
-    s.w = (s.w + 1) % s.buf.length
-  },
+export const SKELETON = `function wrapIndex(k, n) { return ((Math.floor(k) % n) + n) % n }
+
+defmod("echo", { cat: "effects" }, ({ sr }) => {
+  const buf = new Float64Array(sr)
+  let w = 0
+  return ({ in: x = 0, time = secs(0.25) }) => {
+    const y = x + buf[wrapIndex(w - time * sr, buf.length)] * 0.5
+    buf[w] = y
+    w = (w + 1) % buf.length
+    return y
+  }
 })
 tri(60).echo().gain(0.2).out()`;
 
@@ -30,68 +25,66 @@ export interface RuleTopic {
 
 export const RULES: readonly RuleTopic[] = [
 	{
+		title: "Shape",
+		note: "Setup runs once per voice and builds its memory. The tick it returns runs every sample.",
+		rows: [
+			["({ sr, shape = \"sin\" }) => {...}", "Setup's parameters are sr, width (reduce modules) and config, each with its default."],
+			["let w = 0  const buf = new Float64Array(n)", "A setup local — number, boolean, typed array, record — is the voice's memory."],
+			["return ({ in: x = 0, time = secs(0.25) }) => ...", "The tick's parameters name the inputs; a default sets the port's value, a unit tag its unit."],
+			["fb = range(0.5, 0, 1)", "A range gives a dragged number or knob its travel."],
+			["return y   return { l, r }", "A tick's return value is its output: one value is out; a record names several."],
+			["function wrapIndex(k, n) { ... }", "A same-file top-level function is a helper, written alongside the module."],
+		],
+	},
+	{
 		title: "Names",
 		rows: [
-			[
-				"outer",
-				"No closures. A tick sees its parameters, its locals, Math, its helpers and hashRandom.",
-			],
-			[
-				"Math.sin(x)",
-				"Math members are auxlang's own versions, so both engines agree. An unknown name lists the ones that exist.",
-			],
+			["Math.sin(x)", "Math members are auxlang's own versions, so both engines agree. An unknown name lists the ones that exist."],
 			["const m = Math", "Math is used only as Math.name."],
-			["const f = helper", "Helpers are called, never kept as values."],
-			["s.buf.fill(0)", "No method calls. Only Math.*, helpers and hashRandom(key) can be called."],
-			["let x\nx = 1", "Every variable needs a start value: let x = 0."],
+			["s.buf.fill(0)", "Only Math.*, your helpers, hashRandom(key) and the array methods below can be called."],
 		],
 	},
 	{
-		title: "Allocation",
-		note: "Build every object and array once, in state(). The tick only reads and writes them.",
+		title: "Setup builds the memory",
+		note: "Setup allocates; the tick reads and writes what setup built. Sizes never change after setup runs.",
 		rows: [
-			["new Float64Array(n)", "Only in state()."],
-			["{ a: 1 }  [1, 2]", "Object and array literals only in state()."],
-			["`x${n}`  ...xs  { a } = r", "No template strings, spread or destructuring."],
-			["(x) => x", "No nested functions. Put them in helpers."],
+			["new Float64Array(n)  { a: 1 }  [1, 2]", "Build typed arrays, records and arrays once, in setup."],
+			["buf.length = 2", "Array lengths are fixed once setup has run."],
+			["let zz = 1  // added later", "A tick reads and writes only the locals setup declared; add new memory in setup."],
 		],
 	},
 	{
-		title: "State, records and arrays",
-		note: "state() fixes the shape: numbers, nested records, typed arrays. Sizes never change.",
+		title: "Locals, records and arrays",
 		rows: [
-			["s.zz = 1", "Adding a field is an error. Declare it in state()."],
-			["o.out = s.zz", "Reading a field that does not exist is an error, not undefined."],
-			["s.buf.length = 2", "Array lengths are fixed."],
-			['s.v[0]  s["n"]', "Record fields are named, never computed. Arrays take number indexes."],
-			["s.buf + 1", "An array or record is not a number. Read an element or field."],
-			[
-				"s.a = s.b",
-				"Allowed for arrays or records of the same type and length. Both names then share one array, as in JS.",
-			],
-			["const t = s", "Allowed. t is the same record. Write fields through it; never reassign t."],
-			["s.voices[k].x += 1", "Allowed: write a field of a record in an array."],
-			[
-				"s.voices[0] = s.voices[1]",
-				"Allowed for records of the same shape. The index must be provably in range: a constant, or k & 1.",
-			],
-			[
-				"c ? s.a : s.b",
-				"Not allowed. An array or record moves only by =, by const, or as a helper argument. Not through ?:, &&, ||, ?? or return.",
-			],
-			["delete  in  instanceof", "Not allowed. Shapes are fixed, so there is nothing to probe."],
+			['const { a, b: bb } = v   const [x, y] = buf', "Destructuring reads each field or index, including nested patterns and a default."],
+			["for (const v of voices) { v.x += 1 }", "for…of walks an array; break and continue work as usual."],
+			['v["n"]', "A valid-identifier string key reads the same field as v.n."],
+			["a?.b  a?.[i]  f?.()", "Optional chaining reads through: a path through memory, inputs or outputs is never null."],
+			["x **= 2  x &&= 1  x ??= 0", "Compound assignment, including exponent and logical assignment."],
+			["[a, b] = [b, a]", "The two-element swap idiom."],
+			["buf.fill(0)  buf.set(other, 2)  buf.copyWithin(0, 2)  buf.forEach((v, k) => ...)", "These run in place as index loops — no new array is allocated."],
+			["c ? voices[0] : voices[1]", "A ternary between two array/record addresses picks one to read or write."],
+			["return c ? { l: a, r: b } : { l: b, r: a }", "A returned record chosen by a ternary lifts field by field, with no allocation."],
 		],
 	},
 	{
-		title: "Writes",
+		title: "Functions",
 		rows: [
-			["s = 0  i = 0  cfg++", "The parameter records are never reassigned. Write their fields."],
-			["i.in = 1", "Inputs and config are read-only, also through an alias."],
-			["o[k] = 1", "Outputs are written by name: o.out."],
-			["o.out = s", "A whole parameter record cannot be stored."],
-			["sr = sr * 2", "Allowed. sr is a plain number parameter."],
-			["x **= 2", "Not allowed. Write x = x ** 2."],
-			["&&=  ||=  ??=", "Allowed. ??= only on an array element."],
+			["function lerp(a, b, t) { return a + (b - a) * t }", "A same-file top-level function is a helper; helpers may call each other, never in a cycle."],
+			["const peek = (k) => buf[k % 4]", "A small arrow inside the tick reads the tick's own locals and params."],
+			["function f(x, k = 0.5) { ... }", "A helper's own parameter default — a constant or an earlier param — fills in at a call that omits it."],
+			["(a) => { s.n = a }", "A nested arrow may read a setup local; writing one is a loud error naming the arrow and the name."],
+			["async  function*", "No async functions or generators."],
+			["class  this  await  with  try  throw", "Not allowed. A tick never throws."],
+			["recursion: f calls g calls f", "Not allowed, directly or through a cycle of helpers."],
+		],
+	},
+	{
+		title: "Control flow",
+		rows: [
+			["for (k = 0; k < n; k++)  while  do…while  switch  labels", "All allowed, alongside for…of."],
+			["if (v > 0) return 1\nreturn 2", "An unbraced if-return keeps its branch; it does not fall through."],
+			["let x\nx = 1", "An uninitialised let needs a value on every path before it is read, or give it a starting value."],
 		],
 	},
 	{
@@ -99,9 +92,9 @@ export const RULES: readonly RuleTopic[] = [
 		note: "A variable, field or output keeps the type of its first value: number, boolean, or array/record of one type and length.",
 		rows: [
 			["let x = 0\nx = true", "A boolean in a number variable is an error. Write cond ? 1 : 0."],
-			["let a = s.buf\na = s.other", "Allowed if s.other has the same type and length."],
+			["let a = buf\na = other", "Allowed if other has the same type and length."],
 			["if (x)  !x  a && b", "Tests may mix numbers and booleans."],
-			["a[j] ?? 0", "?? works only directly on an element read, not on a local."],
+			["buf[9] ?? 0.5", "?? reads a possibly out-of-range element, falling back to a plain value."],
 			['typeof x === "number"', "typeof only inside a comparison."],
 			["10n  /re/", "No BigInt, no regular expressions."],
 		],
@@ -113,38 +106,15 @@ export const RULES: readonly RuleTopic[] = [
 			['cfg.mode === "fold"', "Allowed: compare a string."],
 			["switch (cfg.mode)", "Allowed."],
 			["const m = cfg.mode", "Allowed, if never reassigned."],
-			['"a" + i.in', "No string building at run time."],
-		],
-	},
-	{
-		title: "Functions",
-		rows: [
-			["helpers: { f, g }", "Helpers may call each other, never in a cycle. No recursion."],
-			["f(s, s)", "Allowed. A helper can take a record or array, and write its fields."],
-			["(p) => { p = q }", "Allowed if q has the same type and length as p."],
-			["async  function*", "No async functions or generators."],
-			[
-				"({ a }) => a  (x = 1) => x",
-				"Parameters are plain names: no destructuring, defaults or rest.",
-			],
-		],
-	},
-	{
-		title: "Control flow",
-		rows: [
-			["for (k = 0; k < n; k++)", "Index loops, while, do…while, labels, switch: all allowed."],
-			["for…of  for…in", "Not allowed. Use an index loop and fixed field names."],
-			["try  throw", "Not allowed. A tick never throws."],
-			["a?.b  f?.()", "No optional chaining. Shapes are fixed."],
-			["class  this  await  with", "Not allowed."],
+			['"a" + x', "No string building at run time."],
 		],
 	},
 	{
 		title: "Randomness",
 		note: "Random values are seeded, so a patch sounds the same each time it plays.",
 		rows: [
-			["Math.random()", "The lane's seeded stream. Only in tick. Pass values to helpers."],
-			["hashRandom(key)", "The same value each time the same key comes back. Only in tick."],
+			["Math.random()", "The lane's seeded stream. Only in the tick."],
+			["hashRandom(key)", "The same value each time the same key comes back. Only in the tick."],
 		],
 	},
 ];

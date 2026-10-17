@@ -142,16 +142,11 @@ s.tri()
   .out()
 `;
 
-/** defmod with patch: a sub-patch saved as a module, used twice. */
-const subpatch = `// defmod with patch: save a sub-patch as a module, use it like any module
+/** defpatch: a sub-patch saved as a module, used twice. */
+const subpatch = `// defpatch: save a sub-patch as a module, use it like any module
 tempo(110)
 
-defmod({
-  name: "pluck",
-  ins: { pitch: semis(48), bright: semis(91) },
-  outs: { out: sig() },
-  patch: (i) => ({ out: i.pitch.saw().lpf({ cutoff: i.bright, res: 0.4 }) }),
-})
+defpatch("pluck", ({ pitch = 48, bright = 91 }) => pitch.saw().lpf({ cutoff: bright, res: 0.4 }))
 
 const lead = seq("c4 e4 g4 <b4 a4>")
 const bass = seq("c2 ~ g1 ~")
