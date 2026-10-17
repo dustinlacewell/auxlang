@@ -47,9 +47,9 @@ describe("liftForOf", () => {
 		expect(after).toContain("const b = a.cols[__sg_i1];");
 	});
 
-	it("a destructuring head throws, naming the fix", () => {
+	it("a destructuring head reaching liftForOf unlowered throws, naming the fix (lift-destructuring runs first in bind-sugar)", () => {
 		expect(() => lift("for (const {x} of s.voices) { o.out = x }")).toThrow(
-			/destructuring head is not lifted yet/,
+			/lift-destructuring should have run first/,
 		);
 	});
 

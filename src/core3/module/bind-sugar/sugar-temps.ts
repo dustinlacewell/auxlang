@@ -38,7 +38,7 @@ export function declareTemps(
 }
 
 /** The offset just past an arrow function's `=>`. */
-function arrowEnd(text: string, from: number, to: number): number {
+export function arrowEnd(text: string, from: number, to: number): number {
 	const head = text.slice(from, to);
 	for (const token of tokenizer(head, { ecmaVersion: "latest" })) {
 		if (token.type.label === "=>") return from + token.end;

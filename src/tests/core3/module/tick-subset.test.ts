@@ -68,10 +68,8 @@ describe("tick subset: each forbidden form throws with its patch line", () => {
 		expect(() => evalPatch(patch(body))).toThrow(reason);
 	});
 
-	it("for...of with a destructuring head", () => {
-		expect(() => evalPatch(patch("for (const {a} of s.arr) o.out = a;"))).toThrow(
-			/defmod\('t'\) tick: for\.\.\.of with a destructuring head is not lifted yet/,
-		);
+	it("a destructuring declaration runs, lifted to a plain field read (lift-destructuring)", () => {
+		expect(() => evalPatch(patch("const { gain } = s.voice; o.out = gain;"))).not.toThrow();
 	});
 
 	it("a name of auxlang's library, beside a call the binding gives that name", () => {

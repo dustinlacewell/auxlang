@@ -273,6 +273,57 @@ describe("tickWrites", () => {
 		expect(writes.has("buf")).toBe(false);
 	});
 
+	it("a destructured alias `const { env } = voice; env.t += 1` counts the root `voice` (the shape-gated alias rule reached through a pattern, lift-destructuring's own kind of declaration)", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const voice = { env: { t: 0 }, gain: 1 }",
+				"  return ({ in: i = 0 }) => {",
+				"    const { env } = voice",
+				"    env.t += 1",
+				"    return voice.env.t",
+				"  }",
+				"}",
+			].join("\n"),
+			["voice"],
+			new Map<string, StateShape>([
+				[
+					"voice",
+					{
+						k: "record",
+						fields: { env: { k: "record", fields: { t: { k: "number" } } }, gain: { k: "number" } },
+					},
+				],
+			]),
+		);
+		expect(writes.has("voice")).toBe(true);
+	});
+
+	it("a destructured number field `const { gain } = voice` does not count: a plain number is never an alias", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const voice = { env: { t: 0 }, gain: 1 }",
+				"  return ({ in: i = 0 }) => {",
+				"    const { gain } = voice",
+				"    return gain",
+				"  }",
+				"}",
+			].join("\n"),
+			["voice"],
+			new Map<string, StateShape>([
+				[
+					"voice",
+					{
+						k: "record",
+						fields: { env: { k: "record", fields: { t: { k: "number" } } }, gain: { k: "number" } },
+					},
+				],
+			]),
+		);
+		expect(writes.has("voice")).toBe(false);
+	});
+
 	it("a shadowed tick local of the same name does not count", () => {
 		const writes = lowerTick(
 			[

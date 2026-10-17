@@ -231,6 +231,36 @@ const AGREED_ACCEPT: readonly Row[] = [
 		"a string literal initialising a never-reassigned const, read later in a comparison",
 		'const target = "a"; o.out = cfg.mode === target ? 1 : 0',
 	),
+	accept(
+		"an object declaration destructures, a renamed field keeps its own name",
+		"const { x: vx } = s.v; o.out = vx; s.v.x += 1",
+	),
+	accept("an array declaration destructures by index", "const [first, second] = s.buf; o.out = first + second; s.buf[0] += 1"),
+	accept(
+		"a destructuring default fires only when the read is undefined",
+		"const { x = 7 } = s.v; o.out = x",
+	),
+	accept(
+		"an array-destructure default at an out-of-range index agrees with an element read's own ?? default",
+		"const [a, b, c, d, outOfRange = 9] = s.buf; o.out = a + b + c + d + outOfRange; s.buf[0] += 1",
+	),
+	accept(
+		"a nested object pattern reads through the outer field",
+		"const { v: { x } } = s; o.out = x; s.v.x += 1",
+	),
+	accept(
+		"a helper's destructured params become plain names with declarations at the top",
+		"o.out = f(s.v, s.buf)",
+		"f: ({ x }, [p, q]) => x + p + q",
+	),
+	accept(
+		"a for...of destructuring head lifts to a plain local, then an index loop",
+		"let acc = 0; for (const { x } of s.voices) acc += x; o.out = acc",
+	),
+	accept(
+		"the two-element swap idiom lifts to a temp exchange, no array literal",
+		"let a = s.n, b = s.acc; [a, b] = [b, a]; o.out = a - b; s.n++",
+	),
 ];
 
 /** Forms the checker refuses, so neither backend runs them. */
@@ -247,9 +277,14 @@ const AGREED_REJECT: readonly Row[] = [
 	reject("a computed string key not an identifier", 'o.out = s["1a"]', /computed property names with non-numeric keys/),
 	reject("a runtime string", 'const v = "a" + i.in; o.out = 1', /string values may appear only in comparisons/),
 	reject(
-		"a for...of destructuring head",
-		"for (const {x} of s.voices) o.out = x",
-		/destructuring head is not lifted yet/,
+		"a rest element in a destructuring declaration",
+		"const { x, ...r } = s.v; o.out = x",
+		/rest element in destructuring allocates/,
+	),
+	reject(
+		"a non-swap destructuring assignment",
+		"let a = 0, b = 0, c = 0; [a, b] = [b, c]; o.out = a",
+		/only the two-element swap/,
 	),
 	reject("writing the state parameter, s = 0", "s = 0; o.out = 1", /assigns to 's', the tick's state record/),
 	reject("writing the inputs parameter, i = 0", "i = 0; o.out = 1", /assigns to 'i', the tick's inputs record/),

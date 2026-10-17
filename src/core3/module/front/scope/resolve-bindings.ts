@@ -5,10 +5,15 @@
  * (a use before the declaration is still that binding — the name rule turns
  * it away). An unbound name falls through to the module's names
  * (unbound-name.ts). Nested functions and classes are not entered: the form
- * rule refuses them.
+ * rule refuses them. A `let`/`const` pattern (`const { a, b } = rec`) declares
+ * every name the pattern names, same as a plain identifier would — bind-sugar
+ * lowers patterns away before the checker ever runs resolveBindings on real
+ * author code, so this only matters to a caller reading the ORIGINAL AST
+ * (tick-writes.ts, the shape-gated alias rule), where the pattern is still
+ * there to resolve.
  */
 
-import type { AnyNode, Identifier, Node as AcornNode, VariableDeclaration } from "acorn";
+import type { AnyNode, Identifier, Node as AcornNode, Pattern, VariableDeclaration } from "acorn";
 import type { FunctionNode } from "@/core3/module/front/parse/parse-function";
 import { eachChild } from "@/core3/module/front/parse/walk";
 import type { Binding, BindingKind, Resolution, Scopes } from "./binding";
@@ -87,12 +92,44 @@ class Resolver {
 		const lexical: Binding[] = [];
 		for (const s of statements) {
 			if (s.type !== "VariableDeclaration" || s.kind === "var") continue;
-			for (const d of s.declarations)
-				if (d.id.type === "Identifier") lexical.push(this.declare(d.id, lexicalKind(s), d));
+			for (const d of s.declarations) this.declarePattern(d.id as Pattern, lexicalKind(s), d, lexical);
 		}
 		this.stack.push(byName(lexical));
 		body();
 		this.stack.pop();
+	}
+
+	/** Every name `pattern` names, declared with `kind`, all against the same `declarator` (bindingDeclaredBy matches by identifier, not by declarator, so a pattern's several names sharing one declarator is fine). */
+	private declarePattern(
+		pattern: Pattern,
+		kind: BindingKind,
+		declarator: Binding["declarator"],
+		into: Binding[],
+	): void {
+		if (pattern.type === "Identifier") {
+			into.push(this.declare(pattern, kind, declarator));
+			return;
+		}
+		if (pattern.type === "AssignmentPattern") {
+			this.declarePattern(pattern.left as Pattern, kind, declarator, into);
+			return;
+		}
+		if (pattern.type === "ObjectPattern") {
+			for (const prop of pattern.properties)
+				this.declarePattern(
+					(prop.type === "RestElement" ? prop.argument : prop.value) as Pattern,
+					kind,
+					declarator,
+					into,
+				);
+			return;
+		}
+		if (pattern.type === "ArrayPattern") {
+			for (const el of pattern.elements) {
+				if (el === null) continue;
+				this.declarePattern((el.type === "RestElement" ? el.argument : el) as Pattern, kind, declarator, into);
+			}
+		}
 	}
 
 	private declare(

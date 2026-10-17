@@ -8,8 +8,10 @@
  * once per index) and is read in place; anything else is hoisted into a
  * `const` right before the loop, so it is evaluated once. A loop nested in
  * another's body lifts first, so its own index loop lands in the outer
- * loop's text. A destructuring head (`for (const {a} of ...)`) has no lift
- * yet and is a loud error naming the fix.
+ * loop's text. A destructuring head (`for (const {a} of ...)`) is already
+ * plain by the time this runs: lift-destructuring (bind-sugar.ts runs it
+ * first) replaces the pattern with a plain local and puts its fields' own
+ * declarations at the top of the body.
  */
 
 import type { AnyNode, ForOfStatement, VariableDeclaration } from "acorn";
@@ -47,7 +49,7 @@ function loopText(node: ForOfStatement, text: string, site: { next: number }, wh
 	const declarator = left.declarations[0];
 	if (declarator === undefined || declarator.id.type !== "Identifier")
 		throw new Error(
-			`${what}: for...of with a destructuring head is not lifted yet — read the element in a local, then its fields one by one`,
+			`${what}: for...of with a destructuring head reached lift-for-of unlowered — lift-destructuring should have run first`,
 		);
 	const name = declarator.id.name;
 	const n = site.next++;

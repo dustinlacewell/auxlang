@@ -23,12 +23,15 @@
 
 import type {
 	AnyNode,
+	ArrayPattern,
 	ArrowFunctionExpression,
 	AssignmentExpression,
+	AssignmentProperty,
 	CallExpression,
 	ForOfStatement,
 	Identifier,
 	MemberExpression,
+	Pattern,
 	UpdateExpression,
 	VariableDeclarator,
 } from "acorn";
@@ -78,7 +81,7 @@ export function tickWrites(
 		assignmentTarget(node, nameOf, written);
 		updateTarget(node, nameOf, written);
 		callArguments(node, nameOf, written);
-		aliasDeclarator(node, scopes, fieldReadBy, aliasOf);
+		aliasDeclarator(node, scopes, fieldReadAt, aliasOf);
 		aliasForOfHead(node, scopes, fieldReadAtElement, aliasOf);
 	});
 
@@ -139,21 +142,75 @@ function callArguments(node: AnyNode, nameOf: (id: Identifier) => string | null,
  * `const v = <expr>` records `v`'s binding as an alias of the field `<expr>`
  * reads through, when the read can be a reference — so a later write through
  * `v` (an assignment, an update, a further alias, a call argument) marks the
- * field written, same as writing through the field's own name would.
+ * field written, same as writing through the field's own name would. `const
+ * { env } = voice` (lift-destructuring's own kind of declaration, bind-sugar
+ * lowers it before the tick subset ever sees it, so this runs on the
+ * original pattern) is the same rule applied once per binding the pattern
+ * names, each reading `<expr>`'s chain plus one more access step per level
+ * of pattern nesting (bindPatternAliases).
  */
 function aliasDeclarator(
 	node: AnyNode,
 	scopes: Scopes,
-	fieldReadBy: (expr: AnyNode) => string | null,
+	fieldReadAt: (expr: AnyNode, extra: readonly AccessStep[]) => string | null,
 	aliasOf: Map<Binding, string>,
 ): void {
 	if (node.type !== "VariableDeclarator") return;
 	const decl = node as VariableDeclarator;
-	if (decl.id.type !== "Identifier" || decl.init === null || decl.init === undefined) return;
-	const field = fieldReadBy(decl.init as AnyNode);
-	if (field === null) return;
-	const binding = bindingDeclaredBy(scopes, decl.id as Identifier);
-	if (binding !== undefined) aliasOf.set(binding, field);
+	if (decl.init === null || decl.init === undefined) return;
+	bindPatternAliases(decl.id as Pattern, decl.init as AnyNode, [], scopes, fieldReadAt, aliasOf);
+}
+
+/**
+ * `pattern` destructures `source` through `extra`, the access steps already
+ * taken to reach this level of nesting: each binding the pattern names
+ * aliases the field `source` reads through at `extra` plus its own one more
+ * step into the property or element it reads. A default (`c = 1`) carries
+ * no extra step of its own. A rest element allocates and is refused at
+ * bind-sugar, so lowered code never carries one — a raw author's tick that
+ * reaches this unlowered simply skips it (no step to add, nothing to alias).
+ */
+function bindPatternAliases(
+	pattern: Pattern,
+	source: AnyNode,
+	extra: readonly AccessStep[],
+	scopes: Scopes,
+	fieldReadAt: (expr: AnyNode, extra: readonly AccessStep[]) => string | null,
+	aliasOf: Map<Binding, string>,
+): void {
+	if (pattern.type === "Identifier") {
+		const field = fieldReadAt(source, extra);
+		if (field === null) return;
+		const binding = bindingDeclaredBy(scopes, pattern as Identifier);
+		if (binding !== undefined) aliasOf.set(binding, field);
+		return;
+	}
+	if (pattern.type === "AssignmentPattern") {
+		bindPatternAliases(pattern.left as Pattern, source, extra, scopes, fieldReadAt, aliasOf);
+		return;
+	}
+	if (pattern.type === "ObjectPattern") {
+		for (const prop of pattern.properties) {
+			if (prop.type === "RestElement") continue;
+			const property = prop as AssignmentProperty;
+			if (property.key.type !== "Identifier" || property.computed) continue;
+			bindPatternAliases(
+				property.value as Pattern,
+				source,
+				[...extra, { computed: false, name: property.key.name }],
+				scopes,
+				fieldReadAt,
+				aliasOf,
+			);
+		}
+		return;
+	}
+	if (pattern.type === "ArrayPattern") {
+		for (const el of (pattern as ArrayPattern).elements) {
+			if (el === null || el.type === "RestElement") continue;
+			bindPatternAliases(el as Pattern, source, [...extra, { computed: true }], scopes, fieldReadAt, aliasOf);
+		}
+	}
 }
 
 /**

@@ -249,6 +249,49 @@ bumper({ hz: 110 }).out()`);
 		expect(xAfterSwap).toBe(xBefore); // carried, not reset to 0
 	});
 
+	it("a destructured alias write carries the field it aliases (write analysis reaches through the pattern on the original AST, not the lowered plain declaration)", () => {
+		const laneOf = (state: ReturnType<Core3Engine["collectState"]>) =>
+			(Object.values(state.nodes)[0] as Record<string, unknown>[])[0] as Record<string, unknown>;
+
+		const bumper = (gain: number) => `const bumper = defmod("bumper", {}, ({ sr, gain = ${gain} }) => {
+  const voice = { env: { t: 0 }, gain: 1 }
+  return ({ hz = 110 }) => {
+    const { env } = voice
+    env.t += 1
+    return voice.env.t * gain
+  }
+})
+bumper({ hz: 110 }).out()`;
+
+		const before = () => evalPatch(bumper(0.5));
+		// an unrelated setup constant changes: a new unused local, same shape, same kind
+		const after = () =>
+			evalPatch(`const bumper = defmod("bumper", {}, ({ sr, gain = 0.5 }) => {
+  const voice = { env: { t: 0 }, gain: 1 }
+  const unused = 42
+  return ({ hz = 110 }) => {
+    const { env } = voice
+    env.t += 1
+    return voice.env.t * gain + unused * 0
+  }
+})
+bumper({ hz: 110 }).out()`);
+
+		const a = before();
+		const js = new Core3Engine(a, SR, registry(a));
+		const l = new Float32Array(BLOCK);
+		const r = new Float32Array(BLOCK);
+		js.renderBlock(l, r, 0, BLOCK);
+		const tBefore = (laneOf(js.collectState()).voice as Record<string, unknown>).env;
+		expect((tBefore as Record<string, unknown>).t).toBeGreaterThan(0); // the aliased write moved it off its initial 0
+
+		const b = after();
+		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const tAfterSwap = ((laneOf(swapped.collectState()).voice as Record<string, unknown>).env as Record<string, unknown>)
+			.t;
+		expect(tAfterSwap).toBe((tBefore as Record<string, unknown>).t); // carried, not reset to 0
+	});
+
 	it("two different shape-C modules with different names keep separate compiled code", () => {
 		const PATCH = `const a = defmod("modA", {}, ({ sr }) => {
   let n = 0
