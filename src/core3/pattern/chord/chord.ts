@@ -5,8 +5,8 @@
  * chord never crosses a serialization boundary; only plain-number Pats do.
  */
 
+import { noteNameToSemis } from "../../units/note-name";
 import { chordidx, pure, slowcat, stack } from "../combinators";
-import { LETTER_SEMITONE } from "../notation/note";
 import { parseNotation } from "../notation/parse";
 import { P, toP } from "../pat-class";
 import { type ChordCfg, DEFAULT_CFG, toneTables } from "./compile";
@@ -62,13 +62,11 @@ export function chord(spec: string | readonly string[]): ChordP {
 	return new ChordP(parseChordSpec(spec));
 }
 
-/** MIDI note of a note name with octave (`D5` = 74). */
+/** MIDI note of a note name (`D5` = 74, `D` = D4 = 62 — octave defaults to 4). */
 function midiOf(note: string): number {
-	const m = /^([a-gA-G])([#b]*)(-?\d+)$/.exec(note.trim());
-	if (!m) throw new Error(`chord.anchor: invalid note '${note}'`);
-	let pc = LETTER_SEMITONE[m[1]!.toLowerCase()]!;
-	for (const acc of m[2]!) pc += acc === "#" ? 1 : -1;
-	return 12 + Number(m[3]) * 12 + pc;
+	const semis = noteNameToSemis(note.trim());
+	if (semis === undefined) throw new Error(`chord.anchor: invalid note '${note}'`);
+	return semis;
 }
 
 export type { ChordSym };

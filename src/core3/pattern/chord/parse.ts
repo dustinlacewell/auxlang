@@ -6,7 +6,7 @@
  *     bare name (one slot, per 1). No nesting — that's what the port needs.
  */
 
-import { LETTER_SEMITONE } from "../notation/note";
+import { LETTER_SEMITONE } from "../../units/note-name";
 
 /** A parsed chord: root pitch-class (0..11) and a dictionary quality key. */
 export interface ChordSym {
