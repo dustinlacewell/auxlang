@@ -7,7 +7,7 @@
  */
 
 import type { AnyNode } from "acorn";
-import { type PortAnn, gatePort, optional, phasePort, sig, sigs, slotted, trigPort } from "../../types";
+import { type PortAnn, type PortGroup, gatePort, group, optional, phasePort, sig, sigs, slotted, trigPort } from "../../types";
 
 const UNIT_TAGS = new Set(["hz", "semis", "secs", "beats"]);
 
@@ -33,6 +33,7 @@ export function markerAnn(node: AnyNode | null, what: string): PortAnn {
 		const arg0 = call.arguments[0] ?? null;
 
 		if (UNIT_TAGS.has(name)) return withRange({ unit: name as PortAnn["unit"], ...tagged(arg0) }, call.arguments, what);
+		if (name === "sig") return withRange({ unit: "sig", ...tagged(arg0) }, call.arguments, what);
 		if (name === "unit") return withRange({ unit: "unit", ...tagged(arg0) }, call.arguments, what);
 		if (name === "gatePort") return merge(gatePort(numberOrNull(arg0)), arg0);
 		if (name === "trigPort") return merge(trigPort(numberOrNull(arg0)), arg0);
@@ -40,6 +41,7 @@ export function markerAnn(node: AnyNode | null, what: string): PortAnn {
 		if (name === "sigs") return sigs(call.arguments.length === 0 ? 0 : numberOrNull(arg0));
 		if (name === "slot") return slot(call.arguments, what);
 		if (name === "range") return withRange({ unit: "sig", ...tagged(arg0) }, call.arguments, what);
+		if (name === "group") return groupAnn(call.arguments, what);
 	}
 
 	return fail(what, node);
@@ -72,6 +74,48 @@ function rangeBound(node: AnyNode | undefined, what: string): number {
 	const value = node === undefined ? null : numberOrNull(node);
 	if (value === null) throw new Error(`${what}: range bounds must be number literals`);
 	return value;
+}
+
+/** `group(ann, { open, like })` — `ann` is a nested marker expression; the 2nd arg (optional) is an
+ *  object literal naming the group's `open`/`like` options, same meaning as today's `group()` helper. */
+function groupAnn(args: AnyNode[], what: string): PortAnn {
+	const [annNode, optsNode] = args;
+	if (annNode === undefined) {
+		throw new Error(`${what}: 'group' needs an annotation, e.g. group(sig(0), { open: true })`);
+	}
+	const ann = markerAnn(annNode, what);
+	const opts = optsNode === undefined ? {} : groupOpts(optsNode, what);
+	return group(ann, opts);
+}
+
+function groupOpts(node: AnyNode, what: string): PortGroup {
+	if (node.type !== "ObjectExpression") {
+		throw new Error(`${what}: 'group's 2nd arg must be an object literal, e.g. { open: true } or { like: "ch" }`);
+	}
+	const opts: { open?: true; like?: string } = {};
+	for (const prop of (node as unknown as { properties: AnyNode[] }).properties) {
+		if (prop.type !== "Property" || prop.key.type !== "Identifier") {
+			throw new Error(`${what}: 'group's options must be plain keys, e.g. { open: true }`);
+		}
+		const key = prop.key.name as string;
+		const value = (prop as unknown as { value: AnyNode }).value;
+		if (key === "open") {
+			if (value.type !== "Literal" || (value as { value: unknown }).value !== true) {
+				throw new Error(`${what}: 'group's 'open' option must be 'true'`);
+			}
+			opts.open = true;
+			continue;
+		}
+		if (key === "like") {
+			if (value.type !== "Literal" || typeof (value as { value: unknown }).value !== "string") {
+				throw new Error(`${what}: 'group's 'like' option must be a string naming another group`);
+			}
+			opts.like = (value as { value: string }).value;
+			continue;
+		}
+		throw new Error(`${what}: 'group' does not support option '${key}'; use 'open' or 'like'`);
+	}
+	return opts;
 }
 
 function slot(args: AnyNode[], what: string): PortAnn {
@@ -127,6 +171,7 @@ function isNaNLiteral(node: AnyNode): boolean {
 function fail(what: string, node: AnyNode): never {
 	throw new Error(
 		`${what}: unrecognized port default '${(node as { type: string }).type}'; use a number, NaN, ` +
-			`hz/semis/secs/beats/unit(n), gatePort/trigPort/phasePort(n), sigs(n), or slot(def, "min", "max")`,
+			`hz/semis/secs/beats/unit(n), gatePort/trigPort/phasePort(n), sigs(n), slot(def, "min", "max"), ` +
+			`or group(ann, { open, like })`,
 	);
 }

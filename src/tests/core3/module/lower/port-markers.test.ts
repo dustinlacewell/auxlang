@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { markerAnn } from "@/core3/module/lower/port-markers";
 import {
 	gatePort,
+	group,
 	optional,
 	phasePort,
 	sig,
@@ -143,5 +144,29 @@ describe("markerAnn", () => {
 
 	it("a range with a non-literal bound throws", () => {
 		expect(() => markerAnn(defaultNode("range(0.5, 0, someCall())"), "input 'fb'")).toThrow(/input 'fb'/);
+	});
+
+	it("group(sig(0), { open: true }) -> an open signal group", () => {
+		expect(markerAnn(defaultNode("group(sig(0), { open: true })"), "t")).toEqual(
+			group(sig(0), { open: true }),
+		);
+	});
+
+	it("group(unit(1), { like: 'ch' }) -> a group mirroring another group's members", () => {
+		expect(markerAnn(defaultNode('group(unit(1), { like: "ch" })'), "t")).toEqual(
+			group(unit(1), { like: "ch" }),
+		);
+	});
+
+	it("group with no annotation arg throws, naming the port", () => {
+		expect(() => markerAnn(defaultNode("group()"), "input 'ch'")).toThrow(/input 'ch'/);
+	});
+
+	it("group with a non-object 2nd arg throws", () => {
+		expect(() => markerAnn(defaultNode("group(sig(0), 1)"), "input 'ch'")).toThrow(/input 'ch'/);
+	});
+
+	it("group with an unsupported option throws", () => {
+		expect(() => markerAnn(defaultNode("group(sig(0), { foo: true })"), "input 'ch'")).toThrow(/input 'ch'/);
 	});
 });
