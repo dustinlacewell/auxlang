@@ -55,69 +55,42 @@ for (const [name, shape, doc] of [
 	["tri", "tri", "Triangle oscillator."],
 	["sqr", "sqr", "Square oscillator, band-limited."],
 ]) {
-	defmod({
-		name,
-		category: "sources",
-		doc,
-		ins: {
-			pitch: semis(69),
-			fm: hz(0),
-			min: sig(-1),
-			max: sig(1),
-			phase: unit(0),
-		},
-		outs: { out: sig() },
-		defaultIn: "pitch",
-		defaultOut: "out",
-		positional: ["pitch", "min", "max"],
-		config: { shape },
-		state: () => ({ phase: 0, started: 0 }),
-		helpers: { sample, polyBLEP, semisToHz },
-		tick: (s, i, o, cfg, sr) => {
-			if (s.started === 0) {
-				s.phase = ((i.phase % 1) + 1) % 1;
-				s.started = 1;
+	defmod(name, { cat: "sources", doc, args: ["pitch", "min", "max"], config: { shape } }, ({ sr, shape }) => {
+		let phase = 0
+		let started = 0
+		return ({ pitch = semis(69), fm = hz(0), min = -1, max = 1, phase: phaseIn = unit(0) }) => {
+			if (started === 0) {
+				phase = ((phaseIn % 1) + 1) % 1
+				started = 1
 			}
-			const freq = semisToHz(i.pitch) + i.fm;
-			const dt = Math.min(0.5, Math.abs(freq) / sr);
-			const phase = s.phase;
-			const raw = sample(cfg.shape, phase, dt);
-			let next = phase + freq / sr;
-			next -= Math.floor(next);
-			s.phase = next;
-			o.out = i.min + ((raw + 1) / 2) * (i.max - i.min);
-		},
-	});
+			const freq = semisToHz(pitch) + fm
+			const dt = Math.min(0.5, Math.abs(freq) / sr)
+			const raw = sample(shape, phase, dt)
+			let next = phase + freq / sr
+			next -= Math.floor(next)
+			phase = next
+			return min + ((raw + 1) / 2) * (max - min)
+		}
+	})
 }
 
-defmod({
-	name: "lfo",
-	category: "sources",
-	doc: "LFO; frequency-first (Hz), shape via config (sin default).",
-	ins: {
-		freq: hz(1),
-		min: sig(-1),
-		max: sig(1),
-		phase: unit(0),
-	},
-	outs: { out: sig() },
-	defaultIn: "freq",
-	defaultOut: "out",
-	positional: ["freq", "min", "max"],
-	config: { shape: "sin" },
-	state: () => ({ phase: 0, started: 0 }),
-	helpers: { sample, polyBLEP },
-	tick: (s, i, o, cfg, sr) => {
-		if (s.started === 0) {
-			s.phase = ((i.phase % 1) + 1) % 1;
-			s.started = 1;
+defmod(
+	"lfo",
+	{ cat: "sources", doc: "LFO; frequency-first (Hz), shape via config (sin default).", args: ["freq", "min", "max"], config: { shape: "sin" } },
+	({ sr, shape }) => {
+		let phase = 0
+		let started = 0
+		return ({ freq = hz(1), min = -1, max = 1, phase: phaseIn = unit(0) }) => {
+			if (started === 0) {
+				phase = ((phaseIn % 1) + 1) % 1
+				started = 1
+			}
+			const dt = Math.min(0.5, Math.abs(freq) / sr)
+			const raw = sample(shape, phase, dt)
+			let next = phase + freq / sr
+			next -= Math.floor(next)
+			phase = next
+			return min + ((raw + 1) / 2) * (max - min)
 		}
-		const dt = Math.min(0.5, Math.abs(i.freq) / sr);
-		const phase = s.phase;
-		const raw = sample(cfg.shape, phase, dt);
-		let next = phase + i.freq / sr;
-		next -= Math.floor(next);
-		s.phase = next;
-		o.out = i.min + ((raw + 1) / 2) * (i.max - i.min);
 	},
-});
+)

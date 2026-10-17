@@ -10,29 +10,20 @@
  * Default input is `pitch`, so `seq.pitch.fm(...)` plays the sequence as an FM
  * voice.
  */
-defmod({
-	name: "fm",
-	category: "sources",
-	doc: "Two-operator FM sine voice — modulation index and carrier:modulator ratio.",
-	ins: {
-		pitch: semis(69),
-		index: sig(2),
-		ratio: sig(1),
+defmod(
+	"fm",
+	{ cat: "sources", doc: "Two-operator FM sine voice — modulation index and carrier:modulator ratio.", args: ["index", "ratio"] },
+	({ sr }) => {
+		let cphase = 0
+		let mphase = 0
+		return ({ pitch = semis(69), index = 2, ratio = 1 }) => {
+			const carrier = semisToHz(pitch)
+			const modFreq = carrier * ratio
+			const mod = Math.sin(mphase * Math.PI * 2) * index
+			const out = Math.sin((cphase + mod) * Math.PI * 2)
+			cphase = (cphase + carrier / sr) % 1
+			mphase = (mphase + modFreq / sr) % 1
+			return out
+		}
 	},
-	outs: { out: sig() },
-	defaultIn: "pitch",
-	defaultOut: "out",
-	positional: ["index", "ratio"],
-	state: () => ({ cphase: 0, mphase: 0 }),
-	helpers: { semisToHz },
-	tick: (s, i, o, _cfg, sr) => {
-		const carrier = semisToHz(i.pitch);
-		const modFreq = carrier * i.ratio;
-		const mphase = s.mphase;
-		const mod = Math.sin(mphase * Math.PI * 2) * i.index;
-		const cphase = s.cphase;
-		o.out = Math.sin((cphase + mod) * Math.PI * 2);
-		s.cphase = (cphase + carrier / sr) % 1;
-		s.mphase = (mphase + modFreq / sr) % 1;
-	},
-});
+)

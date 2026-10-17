@@ -21,154 +21,137 @@ function step(dist, secs, sr) {
 	return Math.abs(dist) / Math.max(1, Math.max(1e-4, secs) * sr);
 }
 
-const envelope = {
-	category: "envelopes",
-	outs: { out: sig() },
-	defaultIn: "gate",
-	defaultOut: "out",
-	helpers: { step },
-};
-
 /** AD: rising-edge triggered attack→decay→0, ignores gate duration. */
-defmod({
-	...envelope,
-	name: "ad",
-	doc: "Attack-decay envelope, fired by each trigger.",
-	ins: { gate: gatePort(), attack: secs(0.01), decay: secs(0.1) },
-	positional: ["attack", "decay"],
-	state: () => ({ level: 0, stage: 0, wasGate: 0 }),
-	tick: (s, i, o, _cfg, sr) => {
-		const IDLE = 0;
-		const ATTACK = 1;
-		const DECAY = 2;
-		const gateOn = i.gate > 0.5;
-		if (gateOn && s.wasGate <= 0.5) s.stage = ATTACK;
-		let level = s.level;
-		let stage = s.stage;
-		if (stage === ATTACK) {
-			level += step(1, i.attack, sr);
-			if (level >= 1) {
-				level = 1;
-				stage = DECAY;
+defmod(
+	"ad",
+	{ cat: "envelopes", doc: "Attack-decay envelope, fired by each trigger.", args: ["attack", "decay"] },
+	({ sr }) => {
+		let level = 0
+		let stage = 0
+		let wasGate = 0
+		return ({ gate = gatePort(), attack = secs(0.01), decay = secs(0.1) }) => {
+			const IDLE = 0
+			const ATTACK = 1
+			const DECAY = 2
+			const gateOn = gate > 0.5
+			if (gateOn && wasGate <= 0.5) stage = ATTACK
+			if (stage === ATTACK) {
+				level += step(1, attack, sr)
+				if (level >= 1) {
+					level = 1
+					stage = DECAY
+				}
+			} else if (stage === DECAY) {
+				level -= step(1, decay, sr)
+				if (level <= 0) {
+					level = 0
+					stage = IDLE
+				}
+			} else {
+				level = 0
 			}
-		} else if (stage === DECAY) {
-			level -= step(1, i.decay, sr);
-			if (level <= 0) {
-				level = 0;
-				stage = IDLE;
-			}
-		} else {
-			level = 0;
+			wasGate = gate
+			return level
 		}
-		s.level = level;
-		s.stage = stage;
-		s.wasGate = i.gate;
-		o.out = level;
 	},
-});
+)
 
 /** AR: attack while gate high, release from current level when it drops. */
-defmod({
-	...envelope,
-	name: "ar",
-	doc: "Attack-release envelope that follows the gate.",
-	ins: { gate: gatePort(), attack: secs(0.01), release: secs(0.1) },
-	positional: ["attack", "release"],
-	state: () => ({ level: 0, stage: 0, wasGate: 0, relStart: 0 }),
-	tick: (s, i, o, _cfg, sr) => {
-		const IDLE = 0;
-		const ATTACK = 1;
-		const SUSTAIN = 3;
-		const RELEASE = 4;
-		const gateOn = i.gate > 0.5;
-		const wasOn = s.wasGate > 0.5;
-		if (gateOn && !wasOn) s.stage = ATTACK;
-		if (!gateOn && wasOn) {
-			s.stage = RELEASE;
-			s.relStart = s.level; // capture level so release reaches 0 in `release` secs
-		}
-		let level = s.level;
-		let stage = s.stage;
-		if (stage === ATTACK) {
-			level += step(1, i.attack, sr);
-			if (level >= 1) {
-				level = 1;
-				stage = SUSTAIN;
+defmod(
+	"ar",
+	{ cat: "envelopes", doc: "Attack-release envelope that follows the gate.", args: ["attack", "release"] },
+	({ sr }) => {
+		let level = 0
+		let stage = 0
+		let wasGate = 0
+		let relStart = 0
+		return ({ gate = gatePort(), attack = secs(0.01), release = secs(0.1) }) => {
+			const IDLE = 0
+			const ATTACK = 1
+			const SUSTAIN = 3
+			const RELEASE = 4
+			const gateOn = gate > 0.5
+			const wasOn = wasGate > 0.5
+			if (gateOn && !wasOn) stage = ATTACK
+			if (!gateOn && wasOn) {
+				stage = RELEASE
+				relStart = level // capture level so release reaches 0 in `release` secs
 			}
-		} else if (stage === SUSTAIN) {
-			level = 1;
-		} else if (stage === RELEASE) {
-			level -= step(s.relStart, i.release, sr);
-			if (level <= 0) {
-				level = 0;
-				stage = IDLE;
+			if (stage === ATTACK) {
+				level += step(1, attack, sr)
+				if (level >= 1) {
+					level = 1
+					stage = SUSTAIN
+				}
+			} else if (stage === SUSTAIN) {
+				level = 1
+			} else if (stage === RELEASE) {
+				level -= step(relStart, release, sr)
+				if (level <= 0) {
+					level = 0
+					stage = IDLE
+				}
+			} else {
+				level = 0
 			}
-		} else {
-			level = 0;
+			wasGate = gate
+			return level
 		}
-		s.level = level;
-		s.stage = stage;
-		s.wasGate = i.gate;
-		o.out = level;
 	},
-});
+)
 
 /** ADSR: full gate-driven envelope; decay and release step over fixed spans. */
-defmod({
-	...envelope,
-	name: "adsr",
-	doc: "Attack-decay-sustain-release envelope that follows the gate.",
-	ins: {
-		gate: gatePort(),
-		attack: secs(0.01),
-		decay: secs(0.1),
-		sustain: unit(0.7),
-		release: secs(0.3),
+defmod(
+	"adsr",
+	{
+		cat: "envelopes",
+		doc: "Attack-decay-sustain-release envelope that follows the gate.",
+		args: ["attack", "decay", "sustain", "release"],
 	},
-	positional: ["attack", "decay", "sustain", "release"],
-	state: () => ({ level: 0, stage: 0, wasGate: 0, relStart: 0 }),
-	tick: (s, i, o, _cfg, sr) => {
-		const IDLE = 0;
-		const ATTACK = 1;
-		const DECAY = 2;
-		const SUSTAIN = 3;
-		const RELEASE = 4;
-		const sustain = Math.max(0, Math.min(1, i.sustain));
-		const gateOn = i.gate > 0.5;
-		const wasOn = s.wasGate > 0.5;
-		if (gateOn && !wasOn) s.stage = ATTACK;
-		if (!gateOn && wasOn) {
-			s.stage = RELEASE;
-			s.relStart = s.level;
+	({ sr }) => {
+		let level = 0
+		let stage = 0
+		let wasGate = 0
+		let relStart = 0
+		return ({ gate = gatePort(), attack = secs(0.01), decay = secs(0.1), sustain = unit(0.7), release = secs(0.3) }) => {
+			const IDLE = 0
+			const ATTACK = 1
+			const DECAY = 2
+			const SUSTAIN = 3
+			const RELEASE = 4
+			const sustainClamped = Math.max(0, Math.min(1, sustain))
+			const gateOn = gate > 0.5
+			const wasOn = wasGate > 0.5
+			if (gateOn && !wasOn) stage = ATTACK
+			if (!gateOn && wasOn) {
+				stage = RELEASE
+				relStart = level
+			}
+			if (stage === ATTACK) {
+				level += step(1, attack, sr)
+				if (level >= 1) {
+					level = 1
+					stage = DECAY
+				}
+			} else if (stage === DECAY) {
+				level -= step(1 - sustainClamped, decay, sr)
+				if (level <= sustainClamped) {
+					level = sustainClamped
+					stage = SUSTAIN
+				}
+			} else if (stage === SUSTAIN) {
+				level = sustainClamped
+			} else if (stage === RELEASE) {
+				level -= step(relStart, release, sr)
+				if (level <= 0) {
+					level = 0
+					stage = IDLE
+				}
+			} else {
+				level = 0
+			}
+			wasGate = gate
+			return level
 		}
-		let level = s.level;
-		let stage = s.stage;
-		if (stage === ATTACK) {
-			level += step(1, i.attack, sr);
-			if (level >= 1) {
-				level = 1;
-				stage = DECAY;
-			}
-		} else if (stage === DECAY) {
-			level -= step(1 - sustain, i.decay, sr);
-			if (level <= sustain) {
-				level = sustain;
-				stage = SUSTAIN;
-			}
-		} else if (stage === SUSTAIN) {
-			level = sustain;
-		} else if (stage === RELEASE) {
-			level -= step(s.relStart, i.release, sr);
-			if (level <= 0) {
-				level = 0;
-				stage = IDLE;
-			}
-		} else {
-			level = 0;
-		}
-		s.level = level;
-		s.stage = stage;
-		s.wasGate = i.gate;
-		o.out = level;
 	},
-});
+)
