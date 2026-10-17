@@ -1,7 +1,7 @@
 /**
- * Sub-patch modules (MANIFESTO §5): `defmod({ name, ins, outs, patch })` is a
- * module with the same ports, chaining, positional args and identity as any
- * other. Compile expands each instance into plain nodes, so it renders exactly
+ * Sub-patch modules (MANIFESTO §5): `defpatch(name, meta?, fn)` is a module
+ * with the same ports, chaining, positional args and identity as any other.
+ * Compile expands each instance into plain nodes, so it renders exactly
  * like the same graph written inline. Each instance is its own machine; its
  * inner nodes take places nested under it, so an unchanged re-eval is
  * bit-exact and a constant edit inside keeps their state.
@@ -10,14 +10,15 @@
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
-import { type Handle, defmod, factory, loop, runProgram, seq } from "@/core3/api";
+import { factory, loop, runProgram, seq } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
+import { defpatch } from "@/core3/patch/defpatch";
+import type { Handle } from "@/core3/patch/handle-data";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { match } from "@/core3/runtime/match";
 import type { EngineState, Program } from "@/core3/types";
-import { sig } from "@/core3/types";
-import { hz, semis } from "@/core3/units/tag";
+import { hz } from "@/core3/units/tag";
 
 const SR = 48000;
 const saw = factory("saw");
@@ -58,23 +59,30 @@ function expectSameSound(a: Program, b: Program): void {
 	expect(bitExact(left, render(b))).toBe(true);
 }
 
+// `fn.toString()` feeds the port-text parser (markerAnn): a `semis(...)` default
+// must stay literal text, so these two are built from raw strings rather than
+// written as TS closures — vitest's own SSR transform would otherwise rewrite
+// the bare `semis` identifier into an import-wrapped expression the parser
+// can't read as a plain name (the same issue `group(...)` hits elsewhere).
+
 /** A filtered saw voice; `res` lets a test edit one constant inside. */
-const defVoice = (res = 0.3) =>
-	defmod({
-		name: "voice",
-		ins: { pitch: semis(57), cutoff: semis(84) },
-		outs: { out: sig() },
-		patch: (i) => ({ out: i.pitch.saw().lpf({ cutoff: i.cutoff, res }).mul(0.5) }),
-	});
+const defVoice = (res = 0.3): ((...args: unknown[]) => Handle) =>
+	defpatch(
+		"voice",
+		new Function(
+			"res",
+			`return ({ pitch = semis(57), cutoff = semis(84) }) => pitch.saw().lpf({ cutoff, res }).mul(0.5)`,
+		)(res) as (ins: Readonly<Record<string, Handle>>) => unknown,
+	);
 
 /** A filter whose first input takes a chain. */
-const defFilt = () =>
-	defmod({
-		name: "filt",
-		ins: { in: sig(0), cutoff: semis(84) },
-		outs: { out: sig() },
-		patch: (i) => ({ out: i.in.lpf({ cutoff: i.cutoff, res: 0.4 }) }),
-	});
+const defFilt = (): ((...args: unknown[]) => Handle) =>
+	defpatch(
+		"filt",
+		new Function(`return ({ in: x = 0, cutoff = semis(84) }) => x.lpf({ cutoff, res: 0.4 })`)() as (
+			ins: Readonly<Record<string, Handle>>,
+		) => unknown,
+	);
 
 describe("a sub-patch renders like the same graph inline", () => {
 	it("constant inputs", () => {
@@ -100,12 +108,9 @@ describe("a sub-patch renders like the same graph inline", () => {
 
 	it("a loop inside the sub-patch", () => {
 		const sub = runProgram(() => {
-			const echo = defmod({
-				name: "echo",
-				ins: { in: sig(0) },
-				outs: { out: sig() },
-				patch: (i) => ({ out: loop((fb) => i.in.add(fb.delay({ time: 0.01, mix: 1 }).mul(0.5))) }),
-			});
+			const echo = defpatch("echo", ({ in: x = 0 }) =>
+				loop((fb) => (x as Handle).add(fb.delay({ time: 0.01, mix: 1 }).mul(0.5))),
+			);
 			echo(saw(45).mul(0.3)).out();
 		});
 		const inline = runProgram(() => {
@@ -118,12 +123,7 @@ describe("a sub-patch renders like the same graph inline", () => {
 	it("a sub-patch inside a sub-patch", () => {
 		const sub = runProgram(() => {
 			defFilt();
-			defmod({
-				name: "bright",
-				ins: { pitch: semis(57) },
-				outs: { out: sig() },
-				patch: (i) => ({ out: i.pitch.saw().filt(96).mul(0.5) }),
-			})(45).out();
+			defpatch("bright", ({ pitch = 57 }) => (pitch as Handle).saw().filt(96).mul(0.5))(45).out();
 		});
 		const inline = runProgram(() => {
 			saw(45).lpf({ cutoff: 96, res: 0.4 }).mul(0.5).out();
@@ -133,11 +133,9 @@ describe("a sub-patch renders like the same graph inline", () => {
 
 	it("a stereo sub-patch (outs l, r) connects to out by name", () => {
 		const sub = runProgram(() => {
-			defmod({
-				name: "wide",
-				ins: { in: sig(0) },
-				outs: { l: sig(), r: sig() },
-				patch: (i) => i.in.pan(0.5).apply((p: Handle) => ({ l: p.l, r: p.r })),
+			defpatch("wide", ({ in: x = 0 }) => {
+				const p = (x as Handle).pan(0.5);
+				return { l: p.l, r: p.r };
 			})(saw(45).mul(0.3)).out();
 		});
 		const inline = runProgram(() => {
@@ -293,14 +291,9 @@ describe(".id() on an instance: inner places hang under the pin", () => {
 });
 
 describe(".seed() on an instance seeds every node inside", () => {
-	const defHiss = (inner?: number) =>
-		defmod({
-			name: "hiss",
-			ins: { amp: sig(0.3) },
-			outs: { out: sig() },
-			patch: (i) => ({ out: (inner === undefined ? noise() : noise().seed(inner)).mul(i.amp) }),
-		});
 	const noise = factory("noise");
+	const defHiss = (inner?: number) =>
+		defpatch("hiss", ({ amp = 0.3 }) => (inner === undefined ? noise() : noise().seed(inner)).mul(amp));
 
 	it("renders like the inner node seeded inline", () => {
 		const sub = runProgram(() => {
