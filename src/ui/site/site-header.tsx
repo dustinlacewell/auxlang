@@ -7,6 +7,7 @@
 const LINKS = [
 	{ href: "/editor.html", label: "editor" },
 	{ href: "/guide.html", label: "guide" },
+	{ href: "/guide2.html", label: "guide 2" },
 	{ href: "/patterns.html", label: "patterns" },
 	{ href: "/modules.html", label: "modules" },
 	{ href: "/module-dsp.html", label: "module dsp" },
