@@ -11,83 +11,37 @@
  */
 
 import { defmod } from "@/core3/patch/defmod";
-import { sig, unit } from "@/core3/types";
-import { hz, semis } from "@/core3/units/tag";
-
-const noop = () => {};
+import { gatePort } from "@/core3/types";
 
 /** Registers the shared toy set. Call once at the top of a test file. */
 export function registerToyModules(): void {
 	// Oscillator: default-in `pitch`, positional [freq, min, max] (osc idiom).
-	defmod({
-		name: "tosc",
-		category: "utils",
-		ins: { pitch: semis(69), freq: hz(0), min: sig(-1), max: sig(1) },
-		outs: { out: sig() },
-		defaultIn: "pitch",
-		defaultOut: "out",
-		positional: ["freq", "min", "max"],
-		tick: noop,
+	defmod("tosc", { args: ["freq", "min", "max"] }, () => {
+		return ({ pitch = 69, freq = 0, min = -1, max = 1 }) => 0;
 	});
 
 	// Filter: default-in `in`, a required (def:null) `cutoff` for the honesty test.
-	defmod({
-		name: "tlpf",
-		category: "utils",
-		ins: { in: sig(0), cutoff: hz(1000), res: unit(0.2) },
-		outs: { out: sig() },
-		defaultIn: "in",
-		defaultOut: "out",
-		positional: ["cutoff", "res"],
-		tick: noop,
+	defmod("tlpf", { args: ["cutoff", "res"] }, () => {
+		return ({ in: x = 0, cutoff = 1000, res = 0.2 }) => 0;
 	});
 
 	// A gain-like map module with a required input, to exercise def:null errors.
-	defmod({
-		name: "treq",
-		category: "utils",
-		ins: { in: sig(null), amt: unit(1) },
-		outs: { out: sig() },
-		defaultIn: "in",
-		defaultOut: "out",
-		positional: ["amt"],
-		tick: noop,
+	defmod("treq", { args: ["amt"] }, () => {
+		return ({ in: x, amt = 1 }) => 0;
 	});
 
 	// A multi-output tap source: pitch/gate outputs, like a sequencer.
-	defmod({
-		name: "tseq",
-		category: "utils",
-		ins: { clk: sig(0) },
-		outs: { out: semis(0), gate: gateLike() },
-		defaultIn: "clk",
-		defaultOut: "out",
-		tick: noop,
+	defmod("tseq", { outs: { gate: gatePort() } }, () => {
+		return ({ clk = 0 }) => ({ out: 0, gate: 0 });
 	});
 
 	// Unit delay — the loop() back-edge target. Must be named "z1".
-	defmod({
-		name: "z1",
-		category: "utils",
-		ins: { in: sig(0) },
-		outs: { out: sig() },
-		defaultIn: "in",
-		defaultOut: "out",
-		tick: noop,
+	defmod("z1", {}, () => {
+		return ({ in: x = 0 }) => 0;
 	});
 
 	// Master output — reduce policy, named "out". Required by out()/.out().
-	defmod({
-		name: "out",
-		category: "utils",
-		ins: { in: sig(0), gain: unit(0.8) },
-		outs: { l: sig(), r: sig() },
-		defaultIn: "in",
-		policy: "reduce",
-		tick: noop,
+	defmod("out", { reduce: true }, () => {
+		return ({ in: x = 0, gain = 0.8 }) => ({ l: 0, r: 0 });
 	});
-}
-
-function gateLike() {
-	return { unit: "gate" as const, def: 0 };
 }

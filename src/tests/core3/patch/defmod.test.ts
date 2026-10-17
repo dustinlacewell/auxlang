@@ -1,42 +1,34 @@
 /**
- * defmod(spec) — THE module registration function, scope-aware. Inside an eval
- * a spec chains like any built-in, compiles to ordinary nodes, ships inside
- * Program.specs (only when used), folds its tick source into its kind
- * (identity), is loud on every misuse, and never leaks between evals; at root
- * scope the same call registers into the realm registry. A closure-capturing
- * tick fails at its definition (the tick subset check); a closure-capturing
- * state fails at compile when a reachable node uses it, never in the audio
- * thread. Compositions need no registration: they are plain JS functions used
- * call-style or via `.apply`.
+ * defmod(name, meta?, setup) — THE module registration function, scope-aware
+ * (shape C, MANIFESTO §5.1). Inside an eval a module chains like any
+ * built-in, compiles to ordinary nodes, ships inside Program.specs (only
+ * when used), and is loud on every misuse, and never leaks between evals; at
+ * root scope the same call registers into the realm registry. Compositions
+ * need no registration: they are plain JS functions used call-style or via
+ * `.apply`.
+ *
+ * A shape-C module's kind is just its name (MANIFESTO §7: a module's code is
+ * not its identity) — unlike the old object form, editing its tick is not a
+ * re-eval identity change. That carry behavior is proven in
+ * runtime/shape-c-reeval.test.ts, not here.
  */
 
 import { defmod, factory, out, runEval, runProgram } from "@/core3/api";
-import type { DefmodSpec } from "@/core3/patch/defmod";
 import type { Handle } from "@/core3/patch/handle-data";
-import { sig, unit } from "@/core3/types";
 import { beforeAll, describe, expect, it } from "vitest";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);
 
-/** A minimal well-formed spec; tests override what they exercise. */
-const boostSpec = {
-	name: "boost",
-	category: "utils",
-	ins: { in: sig(0), amt: unit(2) },
-	outs: { out: sig() },
-	defaultIn: "in",
-	defaultOut: "out",
-	positional: ["in", "amt"],
-	tick: (_s: Record<string, unknown>, i: { in: number; amt: number }, o: { out: number }) => {
-		o.out = i.in * i.amt;
-	},
-} as const;
+/** A minimal well-formed module: default-in `in`, positional `amt`. */
+const boostSetup1 = () => {
+	return ({ in: x = 0, amt = 2 }: { in: number; amt: number }) => x * amt;
+};
 
-const defBoost = () => defmod(boostSpec);
+const defBoost = () => defmod("boost", {}, boostSetup1 as never);
 
 describe("defmod chaining", () => {
-	it("a spec defined in-eval chains like a built-in and compiles to a real node", () => {
+	it("a module defined in-eval chains like a built-in and compiles to a real node", () => {
 		const program = runProgram(() => {
 			defBoost();
 			const tosc = factory("tosc");
@@ -77,13 +69,13 @@ describe("Program.specs", () => {
 	it("carries only the specs reachable nodes use, tick as source", () => {
 		const program = runProgram(() => {
 			defBoost();
-			defmod({ ...boostSpec, name: "unused" });
+			defmod("unused", {}, boostSetup1 as never);
 			const tosc = factory("tosc");
 			out(tosc(220).boost(3));
 		});
 		expect(program.specs!.map((s) => s.name)).toEqual(["boost"]);
 		expect(typeof program.specs![0]!.tick).toBe("string");
-		expect(program.specs![0]!.tick).toContain("i.in * i.amt");
+		expect(program.specs![0]!.tick).toContain("__dsp_i.in * __dsp_i.amt");
 	});
 
 	it("is absent when no patch-defined module is used", () => {
@@ -94,138 +86,31 @@ describe("Program.specs", () => {
 	});
 });
 
-describe("identity", () => {
-	const patch = (tick: (typeof boostSpec)["tick"]) => () => {
-		defmod({ ...boostSpec, tick });
-		out(factory("tosc")(220).boost(3));
-	};
-	const boostKind = (p: ReturnType<typeof runProgram>) =>
-		p.nodes.find((n) => n.module === "boost")!.kind;
-
-	it("identical source across re-evals yields an identical kind (state migrates)", () => {
-		const tick = boostSpec.tick;
-		expect(boostKind(runProgram(patch(tick)))).toBe(boostKind(runProgram(patch(tick))));
-	});
-
-	it("a changed tick source yields a new kind (fresh state — different machine)", () => {
-		const a = runProgram(
-			patch((_s, i, o) => {
-				o.out = i.in * i.amt;
-			}),
-		);
-		const b = runProgram(
-			patch((_s, i, o) => {
-				o.out = i.in * i.amt * 2;
-			}),
-		);
-		expect(boostKind(a)).not.toBe(boostKind(b));
-	});
-});
-
-describe("closure fence", () => {
-	it("a tick capturing a patch variable fails loudly at its definition, used or not", () => {
-		expect(() =>
-			runProgram(() => {
-				const gain = 0.5;
-				const tick: (typeof boostSpec)["tick"] = (_s, i, o) => {
-					o.out = i.in * gain;
-				};
-				defmod({ ...boostSpec, tick });
-			}),
-		).toThrow(/defmod\('boost'\): tick line 2: 'gain' is not defined here/);
-	});
-
-	it("a used state constructor capturing a patch variable fails the same way", () => {
-		expect(() =>
-			runProgram(() => {
-				const init = 3;
-				defmod({
-					...boostSpec,
-					state: () => ({ v: init }),
-				});
-				out(factory("tosc")(220).boost(1));
-			}),
-		).toThrow(/closure-free.*init/s);
-	});
-
-	it("an unused state closure compiles fine — nothing crosses", () => {
-		const program = runProgram(() => {
-			const init = 3;
-			defmod({ ...boostSpec, state: () => ({ v: init }) });
-			out(factory("tosc")(220));
-		});
-		expect(program.specs).toBeUndefined();
-	});
-});
-
 describe("defmod loud failures", () => {
-	const bad = (over: Record<string, unknown>) =>
-		({ ...boostSpec, ...over }) as unknown as DefmodSpec;
-
-	it("empty name", () => {
-		expect(() => runEval(() => defmod(bad({ name: "" })))).toThrow(/name.*non-empty string/s);
-	});
-
-	it("missing category", () => {
-		expect(() => runEval(() => defmod(bad({ category: undefined })))).toThrow(
-			/category is required/s,
-		);
-	});
-
-	it("tick not a function", () => {
-		expect(() => runEval(() => defmod(bad({ tick: 42 })))).toThrow(/tick must be a function/s);
-	});
-
-	it("name colliding with a bundled module", () => {
-		expect(() => runEval(() => defmod(bad({ name: "tlpf" })))).toThrow(
-			/tlpf.*collides with a registered module/s,
-		);
-	});
-
-	it("name colliding with a reserved patch-scope helper", () => {
-		// `sig` is a PortAnn helper in the user scope, not a module.
-		expect(() => runEval(() => defmod(bad({ name: "sig" })))).toThrow(
-			/sig.*reserved patch-scope helper/s,
-		);
-	});
-
-	it("name colliding with a reserved handle name", () => {
-		expect(() => runEval(() => defmod(bad({ name: "apply" })))).toThrow(
-			/apply.*reserved handle name/s,
-		);
-	});
-
-	it("duplicate defmod in one eval", () => {
-		expect(() =>
-			runEval(() => {
-				defBoost();
-				defBoost();
-			}),
-		).toThrow(/boost.*already defined in this patch/s);
-	});
-
-	it("defaultIn that is not an input", () => {
-		expect(() => runEval(() => defmod(bad({ defaultIn: "nope" })))).toThrow(
-			/defaultIn 'nope' is not an input/s,
-		);
-	});
-
 	it("a port named like a reserved handle name fails at the definition", () => {
 		expect(() =>
-			runEval(() => defmod(bad({ ins: { in: sig(0), apply: unit(1) }, positional: ["in"] }))),
-		).toThrow(/input 'apply' collides with a reserved handle name/s);
+			runEval(() =>
+				defmod("boost", {}, (() => {
+					return ({ in: x = 0, apply = 1 }: { in: number; apply: number }) => x * apply;
+				}) as never),
+			),
+		).toThrow(/apply.*reserved handle name/s);
 	});
 
 	it("non-JSON config", () => {
-		expect(() => runEval(() => defmod(bad({ config: { fn: () => 1 } })))).toThrow(
-			/config\.fn.*JSON-serializable/s,
-		);
+		expect(() =>
+			runEval(() => {
+				defmod("boost", { config: { fn: () => 1 } }, (() => {
+					return () => 0;
+				}) as never);
+			}),
+		).toThrow(/config\.fn.*JSON-serializable/s);
 	});
 });
 
 describe("defmod at root scope", () => {
 	it("registers into the realm registry and returns the factory", () => {
-		const rootboost = defmod({ ...boostSpec, name: "rootboost" });
+		const rootboost = defmod("rootboost", {}, boostSetup1 as never);
 		expect(typeof rootboost).toBe("function");
 		const program = runProgram(() => {
 			out(factory("tosc")(220).rootboost(2));
@@ -236,15 +121,15 @@ describe("defmod at root scope", () => {
 	});
 
 	it("a duplicate root-scope name is a loud error", () => {
-		defmod({ ...boostSpec, name: "rootdup" });
-		expect(() => defmod({ ...boostSpec, name: "rootdup" })).toThrow(
+		defmod("rootdup", {}, boostSetup1 as never);
+		expect(() => defmod("rootdup", {}, boostSetup1 as never)).toThrow(
 			/module 'rootdup' already defined/s,
 		);
 	});
 });
 
 describe("defmod eval isolation", () => {
-	it("a spec from one eval is invisible in a second", () => {
+	it("a module from one eval is invisible in a second", () => {
 		runEval(() => {
 			defBoost();
 		});
