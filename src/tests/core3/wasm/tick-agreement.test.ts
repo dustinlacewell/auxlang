@@ -269,6 +269,42 @@ const AGREED_ACCEPT: readonly Row[] = [
 		"an uninitialised let assigned on every branch of an if lifts",
 		"let x; if (i.in > 0) { x = 1 } else { x = 2 } o.out = x",
 	),
+	accept(
+		"a typed-array fill lifts to an index loop over the whole length",
+		"s.buf.fill(2); o.out = s.buf[0] + s.buf[3]",
+	),
+	accept(
+		"a typed-array fill with start and end lifts to an index loop between them",
+		"s.buf.fill(5, 1, 3); o.out = s.buf[0] + s.buf[1] + s.buf[3]",
+	),
+	accept(
+		"a typed-array set copies another array in, lifts to an index loop",
+		"s.a[0] = 1; s.a[1] = 2; s.b.set(s.a); o.out = s.b[0] + s.b[1]",
+	),
+	accept(
+		"a typed-array set with an offset shifts the write index",
+		"s.a[0] = 1; s.buf.set(s.a, 1); o.out = s.buf[1]",
+	),
+	accept(
+		"a typed-array copyWithin shifts a range forward, lifts to a direction-aware loop",
+		"s.buf[0] = 1; s.buf[1] = 2; s.buf[2] = 3; s.buf.copyWithin(1, 0, 2); o.out = s.buf[1] + s.buf[2]",
+	),
+	accept(
+		"a typed-array copyWithin shifts a range backward, overlapping",
+		"s.buf[0] = 1; s.buf[1] = 2; s.buf[2] = 3; s.buf.copyWithin(0, 1); o.out = s.buf[0] + s.buf[1] + s.buf[2]",
+	),
+	accept(
+		"a typed-array forEach with one parameter sums into a state field",
+		"s.acc = 0; s.buf.forEach((v) => { s.acc += v }); o.out = s.acc; s.buf[s.n % 4] = i.in; s.n++",
+	),
+	accept(
+		"a typed-array forEach with two parameters doubles each element in place",
+		"s.buf.forEach((v, k) => { s.buf[k] = v * 2 }); o.out = s.buf[0] + s.buf[1]",
+	),
+	accept(
+		"an array-of-records forEach writes through the element parameter",
+		"s.voices.forEach((v) => { v.x += 1 }); o.out = s.voices[0].x + s.voices[1].x",
+	),
 ];
 
 /** Forms the checker refuses, so neither backend runs them. */
@@ -343,6 +379,17 @@ const AGREED_REJECT: readonly Row[] = [
 		"o.out = f(s.a, s.buf)",
 		/takes only an array or record of the same type and length/,
 		"f: (p, q) => { p = q; return p[0] }",
+	),
+	reject(
+		"a fill used as a value, not its own statement",
+		"let x = s.buf.fill(0); o.out = x",
+		/is lifted only as its own statement, not as a value/,
+	),
+	reject(
+		"a forEach callback that is not an inline arrow",
+		"s.buf.forEach(double); o.out = s.buf[0]",
+		/callback must be an inline arrow/,
+		"double: (v) => v",
 	),
 ];
 

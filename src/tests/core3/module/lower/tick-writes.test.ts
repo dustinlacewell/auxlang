@@ -324,6 +324,109 @@ describe("tickWrites", () => {
 		expect(writes.has("voice")).toBe(false);
 	});
 
+	it("buf.fill(0) counts the receiver buf, same as an element write", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const buf = new Float64Array(sr)",
+				"  return ({ in: x = 0 }) => {",
+				"    buf.fill(0)",
+				"    return buf[0]",
+				"  }",
+				"}",
+			].join("\n"),
+			["buf"],
+		);
+		expect(writes.has("buf")).toBe(true);
+	});
+
+	it("buf.set(src) counts the receiver buf (the existing call-argument rule also counts src, conservatively, the same as any call passing a local)", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const buf = new Float64Array(sr)",
+				"  const src = new Float64Array(sr)",
+				"  return ({ in: x = 0 }) => {",
+				"    buf.set(src)",
+				"    return buf[0]",
+				"  }",
+				"}",
+			].join("\n"),
+			["buf", "src"],
+		);
+		expect(writes.has("buf")).toBe(true);
+	});
+
+	it("buf.copyWithin(...) counts the receiver buf", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const buf = new Float64Array(sr)",
+				"  return ({ in: x = 0 }) => {",
+				"    buf.copyWithin(0, 1)",
+				"    return buf[0]",
+				"  }",
+				"}",
+			].join("\n"),
+			["buf"],
+		);
+		expect(writes.has("buf")).toBe(true);
+	});
+
+	it("buf.forEach((v) => { acc += v }) counts acc, a setup local the callback writes directly", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const buf = new Float64Array(sr)",
+				"  let acc = 0",
+				"  return ({ in: x = 0 }) => {",
+				"    buf.forEach((v) => { acc += v })",
+				"    return acc",
+				"  }",
+				"}",
+			].join("\n"),
+			["buf", "acc"],
+		);
+		expect(writes.has("acc")).toBe(true);
+	});
+
+	it("voices.forEach((v) => { v.x += 1 }) counts voices, the array the callback's element parameter aliases", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const voices = [{ x: 0 }, { x: 0 }]",
+				"  return ({ in: i = 0 }) => {",
+				"    voices.forEach((v) => { v.x += 1 })",
+				"    return voices[0].x",
+				"  }",
+				"}",
+			].join("\n"),
+			["voices"],
+			new Map<string, StateShape>([
+				["voices", { k: "records", length: 2, element: { k: "record", fields: { x: { k: "number" } } } }],
+			]),
+		);
+		expect(writes.has("voices")).toBe(true);
+	});
+
+	it("buf.forEach((v) => { acc += v }) over a typed array does not count buf: a number element is never an alias", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const buf = new Float64Array(4)",
+				"  let acc = 0",
+				"  return ({ in: i = 0 }) => {",
+				"    buf.forEach((v) => { acc += v })",
+				"    return acc",
+				"  }",
+				"}",
+			].join("\n"),
+			["buf", "acc"],
+			new Map<string, StateShape>([["buf", { k: "array", type: "f64", length: 4 }]]),
+		);
+		expect(writes.has("buf")).toBe(false);
+	});
+
 	it("a shadowed tick local of the same name does not count", () => {
 		const writes = lowerTick(
 			[

@@ -5,6 +5,7 @@
  * their lines, so a later error still names the author's own line.
  */
 
+import { liftArrayMethods } from "./lift-array-methods";
 import { liftDestructuring } from "./lift-destructuring";
 import { liftExponentAssign } from "./lift-exponent-assign";
 import { liftForOf } from "./lift-for-of";
@@ -19,6 +20,7 @@ export function bindSugar(src: string, what: string): string {
 	text = liftOptionalChaining(text, what);
 	text = liftLetNoValue(text, what);
 	text = liftDestructuring(text, what);
+	text = liftArrayMethods(text, what);
 	text = liftForOf(text, what);
 	return text;
 }

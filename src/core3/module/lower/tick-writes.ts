@@ -7,8 +7,14 @@
  * is aliased by a declaration (`const v = voices[0]`, `const e = v.env`) or a
  * `for...of` head (`for (const v of voices) ...`, read on the ORIGINAL AST
  * before bind-sugar lowers the loop — the head's name aliases an element the
- * same way `voices[0]` does), from where a write through the local reaches
- * back into the field. The tick's own `return` is its output, not an alias site (infer-outs.ts lowers
+ * same way `voices[0]` does), or the receiver of `.fill`/`.set`/`.copyWithin`
+ * (`buf.fill(0)` writes `buf` the same way `buf[0] = 0` does) — from where a
+ * write through the local reaches back into the field. `.forEach`'s callback
+ * is read on the ORIGINAL AST too (bind-sugar lowers it to an index loop):
+ * its first parameter aliases an element of the receiver, the same rule as a
+ * `for...of` head, resolved separately (resolveBindings does not enter a
+ * nested function) by arrayMethodWrites' own small walk over the callback
+ * body alone. The tick's own `return` is its output, not an alias site (infer-outs.ts lowers
  * it to an output write, never an escaping reference), so it is not tracked
  * here. A declaration aliases a field only when the shape read through the access
  * chain can hold a reference (alias-shape.ts): a typed-array element or a
@@ -83,6 +89,7 @@ export function tickWrites(
 		callArguments(node, nameOf, written);
 		aliasDeclarator(node, scopes, fieldReadAt, aliasOf);
 		aliasForOfHead(node, scopes, fieldReadAtElement, aliasOf);
+		arrayMethodWrites(node, nameOf, fieldReadAtElement, setupLocals, written);
 	});
 
 	return written;
@@ -234,4 +241,59 @@ function aliasForOfHead(
 	if (field === null) return;
 	const binding = bindingDeclaredBy(scopes, id as Identifier);
 	if (binding !== undefined) aliasOf.set(binding, field);
+}
+
+/**
+ * `buf.fill(...)` / `buf.set(...)` / `buf.copyWithin(...)` write `buf` the
+ * same way an element assignment does; `buf.forEach(cb)` writes `buf` only
+ * when a write inside `cb`'s body reaches back into the element its first
+ * parameter aliases (forEachCallbackWrites). Bind-sugar lowers every one of
+ * these to an index loop before the tick subset ever sees it, so this runs
+ * on the original `CallExpression`.
+ */
+function arrayMethodWrites(
+	node: AnyNode,
+	nameOf: (id: Identifier) => string | null,
+	fieldReadAtElement: (expr: AnyNode) => string | null,
+	setupLocals: ReadonlySet<string>,
+	written: Set<string>,
+): void {
+	if (node.type !== "CallExpression") return;
+	const call = node as CallExpression;
+	const callee = call.callee;
+	if (callee.type !== "MemberExpression" || callee.computed || callee.property.type !== "Identifier") return;
+	const method = callee.property.name;
+	const root = rootIdentifier(callee.object as unknown as AnyNode);
+	if (root === null) return;
+	if (method === "fill" || method === "set" || method === "copyWithin") {
+		const name = nameOf(root);
+		if (name !== null) written.add(name);
+		return;
+	}
+	if (method !== "forEach") return;
+	const callback = call.arguments[0];
+	if (callback === undefined || callback.type !== "ArrowFunctionExpression") return;
+	const param = callback.params[0];
+	if (param === undefined || param.type !== "Identifier") return;
+	const field = fieldReadAtElement(callee.object as unknown as AnyNode);
+	forEachCallbackWrites(callback, param.name, field, setupLocals, written);
+}
+
+/** Every setup local `callback`'s body writes directly, plus `field` (through `elementParam`, when `field` is not null) when the body writes through the alias — same rule as `aliasForOfHead`, resolved by name alone: `resolveBindings` does not enter a nested function, so this is its own small walk, scoped to the callback alone. */
+function forEachCallbackWrites(
+	callback: ArrowFunctionExpression,
+	elementParam: string,
+	field: string | null,
+	setupLocals: ReadonlySet<string>,
+	written: Set<string>,
+): void {
+	const nameOf = (id: Identifier): string | null => {
+		if (id.name === elementParam) return field;
+		return setupLocals.has(id.name) ? id.name : null;
+	};
+	walk(callback.body as AnyNode, (node) => {
+		assignmentTarget(node, nameOf, written);
+		updateTarget(node, nameOf, written);
+		callArguments(node, nameOf, written);
+	});
 }
