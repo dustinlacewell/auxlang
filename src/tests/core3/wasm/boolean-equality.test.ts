@@ -8,17 +8,17 @@
 
 import { describe, expect, it } from "vitest";
 
-import { defmod, factory, runProgram } from "@/core3/api";
+import { factory, runProgram } from "@/core3/api";
 import type { Program } from "@/core3/types";
 import { sig } from "@/core3/types";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { defineInternalModule, evalInternal } from "../fixtures/internal-module";
 import { firstSlotDifference, interpreterSeries } from "./slot-differential";
 
 const SAMPLES = 200;
 
 function equality(): Program {
 	return runProgram(() => {
-		const m = defmod({
+		const m = defineInternalModule({
 			name: "be.eq",
 			category: "utils",
 			ins: { in: sig(0) },
@@ -70,7 +70,7 @@ function equality(): Program {
 
 /** A module whose tick holds `body`, fed a fast lfo, through the patch path. */
 function allowed(body: string): Program {
-	return evalPatch(`const b = defmod({
+	return evalInternal(`const b = defineInternalModule({
   name: "be.ok",
   category: "utils",
   ins: { in: sig(0) },

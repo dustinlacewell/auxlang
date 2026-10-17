@@ -7,12 +7,12 @@
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalInternal } from "../fixtures/internal-module";
 
 /** A patch defining module `t`; the tick body starts on patch line 11. */
 function patch(body: string, helpers = ""): string {
 	return [
-		"defmod({",
+		"defineInternalModule({",
 		'  name: "t",',
 		'  category: "utils",',
 		"  ins: { in: sig(0) },",
@@ -45,23 +45,23 @@ const REJECTED: readonly [string, string, RegExp][] = [
 
 describe("tick subset: block scopes", () => {
 	it.each(REJECTED)("rejects %s", (_label, body, reason) => {
-		expect(() => evalPatch(patch(body))).toThrow(/defmod\('t'\): tick at patch line 11: /);
-		expect(() => evalPatch(patch(body))).toThrow(reason);
+		expect(() => evalInternal(patch(body))).toThrow(/defmod\('t'\): tick at patch line 11: /);
+		expect(() => evalInternal(patch(body))).toThrow(reason);
 	});
 
 	it("accepts a block const shadowing a parameter", () => {
-		expect(() => evalPatch(patch("{ const i = 2; o.out = i; } o.out += i.in;"))).not.toThrow();
+		expect(() => evalInternal(patch("{ const i = 2; o.out = i; } o.out += i.in;"))).not.toThrow();
 	});
 
 	it("accepts a block const shadowing a helper", () => {
-		expect(() => evalPatch(patch("o.out = f(1); { const f = 2; o.out += f; }", "f: (x) => x"))).not.toThrow();
+		expect(() => evalInternal(patch("o.out = f(1); { const f = 2; o.out += f; }", "f: (x) => x"))).not.toThrow();
 	});
 
 	it("does not take a local named like the outputs parameter for the outputs", () => {
-		expect(() => evalPatch(patch("{ const o = 1; s.n = o; } o.out = s.n;"))).not.toThrow();
+		expect(() => evalInternal(patch("{ const o = 1; s.n = o; } o.out = s.n;"))).not.toThrow();
 	});
 
 	it("does not take a local named like the state parameter for the state", () => {
-		expect(() => evalPatch(patch("{ const s = i.in; o.out = s; }"))).not.toThrow();
+		expect(() => evalInternal(patch("{ const s = i.in; o.out = s; }"))).not.toThrow();
 	});
 });

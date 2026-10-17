@@ -12,7 +12,7 @@
 
 import "@/core3/modules/all";
 
-import { compile, defmod, out, runEval } from "@/core3/api";
+import { compile, out, runEval } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
@@ -25,6 +25,7 @@ import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples";
 import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples";
 import { SKELETON as MODULE_CODE_SKELETON } from "@/ui/site/module-code/rules";
 import { describe, expect, it } from "vitest";
+import { defineInternalModule } from "../fixtures/internal-module";
 import { SNIPPETS } from "../snippets";
 import {
 	type Run,
@@ -117,7 +118,7 @@ s.saw()
 		const hostile = '"]; globalThis.__portPwned = 1; //';
 		const program = compile(
 			runEval(() => {
-				const echo = defmod({
+				const echo = defineInternalModule({
 					name: "echoport",
 					category: "effects",
 					ins: { in: sig(0), [hostile]: sig(0) },

@@ -16,7 +16,7 @@ import { slotOf } from "@/core3/runtime/output-slots";
 import type { Program } from "@/core3/types";
 import { createWasmEngine, swapWasmEngine } from "@/core3/wasm/host/create-wasm-engine";
 import type { WasmEngine } from "@/core3/wasm/host/wasm-engine";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalInternal } from "../fixtures/internal-module";
 
 const SR = 48000;
 const BLOCK = 128;
@@ -66,7 +66,7 @@ const effects = (pattern: string) => () => {
  * so the edits are downstream and the module's lane carries.
  */
 const swapper = (body: string, gain: number) => `tempo(180)
-const sw = defmod({
+const sw = defineInternalModule({
   name: "sw",
   category: "utils",
   ins: { in: sig(0) },
@@ -159,24 +159,24 @@ const EDITS: Record<string, Edit> = {
 		after: patch(effects("c3 e3 a3 c4")),
 	},
 	"swapped arrays carried": {
-		before: () => evalPatch(swapper(SWAP_ARRAYS, 0.1)),
-		after: () => evalPatch(swapper(SWAP_ARRAYS, 0.2)),
+		before: () => evalInternal(swapper(SWAP_ARRAYS, 0.1)),
+		after: () => evalInternal(swapper(SWAP_ARRAYS, 0.2)),
 	},
 	"one array under two names carried as two": {
-		before: () => evalPatch(swapper(ALIAS_ARRAYS, 0.1)),
-		after: () => evalPatch(swapper(ALIAS_ARRAYS, 0.2)),
+		before: () => evalInternal(swapper(ALIAS_ARRAYS, 0.1)),
+		after: () => evalInternal(swapper(ALIAS_ARRAYS, 0.2)),
 	},
 	"swapped records holding swapped arrays carried": {
-		before: () => evalPatch(swapper(SWAP_RECORDS, 0.1)),
-		after: () => evalPatch(swapper(SWAP_RECORDS, 0.2)),
+		before: () => evalInternal(swapper(SWAP_RECORDS, 0.1)),
+		after: () => evalInternal(swapper(SWAP_RECORDS, 0.2)),
 	},
 	"swapped elements of an array of records carried": {
-		before: () => evalPatch(swapper(SWAP_ELEMENTS, 0.1)),
-		after: () => evalPatch(swapper(SWAP_ELEMENTS, 0.2)),
+		before: () => evalInternal(swapper(SWAP_ELEMENTS, 0.1)),
+		after: () => evalInternal(swapper(SWAP_ELEMENTS, 0.2)),
 	},
 	"one record under two elements carried as two": {
-		before: () => evalPatch(swapper(ALIAS_ELEMENTS, 0.1)),
-		after: () => evalPatch(swapper(ALIAS_ELEMENTS, 0.2)),
+		before: () => evalInternal(swapper(ALIAS_ELEMENTS, 0.1)),
+		after: () => evalInternal(swapper(ALIAS_ELEMENTS, 0.2)),
 	},
 	"sample-rate change": {
 		before: patch(() => saw(48).lpf(80).delay(DELAY).out()),

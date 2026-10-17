@@ -5,8 +5,11 @@
  * hashed into the module kind), so a trace call inserted there would change
  * the program. Three rules find them:
  *
- *  - every argument of a `defmod(...)` call, and the declarations its spec
- *    names by identifier (`defmod(spec)`, `{ tick }`, `helpers: { fold }`);
+ *  - every argument of a `defmod(...)` call (also `defineInternalModule(...)`,
+ *    the test-only entry an evalPatch extraScope may bind to the same
+ *    object-spec shape — module/define-internal-module), and the
+ *    declarations its spec names by identifier (`defmod(spec)`, `{ tick }`,
+ *    `helpers: { fold }`);
  *  - a `defpatch(...)` call's last argument's PARAM LIST only (not its body,
  *    which is ordinary patch code and stays traced): `fn.toString()` is read
  *    back for port inference (patch/defpatch), so a trace wrapper inserted in
@@ -46,7 +49,8 @@ function survey(program: AnyNode, scope: ReadonlySet<string>): Survey {
 	walk(program, (node) => {
 		if (isFunction(node)) found.functions.push(node);
 		if (isBuilderCall(node, scope)) found.builderCalls.push(node);
-		if (node.type === "CallExpression" && calleeIs(node, "defmod")) found.defmods.push(node);
+		if (node.type === "CallExpression" && (calleeIs(node, "defmod") || calleeIs(node, "defineInternalModule")))
+			found.defmods.push(node);
 		if (node.type === "CallExpression" && calleeIs(node, "defpatch")) found.defpatches.push(node);
 		const declared = declaration(node);
 		if (declared !== null) {

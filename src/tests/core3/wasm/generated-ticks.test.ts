@@ -8,8 +8,8 @@
 
 import "@/core3/modules/all";
 
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { describe, it } from "vitest";
+import { evalInternal } from "../fixtures/internal-module";
 import { expectIdentical } from "./differential-harness";
 import { generatePatch } from "./tick-generator";
 
@@ -19,9 +19,9 @@ const SAMPLES = 1024;
 
 function expectAgreement(seed: number): void {
 	const source = generatePatch(seed);
-	let program: ReturnType<typeof evalPatch>;
+	let program: ReturnType<typeof evalInternal>;
 	try {
-		program = evalPatch(source);
+		program = evalInternal(source);
 	} catch {
 		return; // refused by the checker: neither backend runs it
 	}

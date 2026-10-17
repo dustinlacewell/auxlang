@@ -9,12 +9,12 @@
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalInternal } from "../fixtures/internal-module";
 
 /** A patch defining module `t`; the tick body is on patch line 10. */
 function patch(body: string): string {
 	return [
-		"const t = defmod({",
+		"const t = defineInternalModule({",
 		'  name: "t",',
 		'  category: "utils",',
 		"  ins: { in: sig(0) },",
@@ -49,12 +49,12 @@ const REJECTED: readonly [string, string][] = [
 describe("tick subset: `??`", () => {
 	for (const [what, body] of ALLOWED)
 		it(`allows ${what}`, () => {
-			expect(() => evalPatch(patch(body))).not.toThrow();
+			expect(() => evalInternal(patch(body))).not.toThrow();
 		});
 
 	for (const [what, body] of REJECTED)
 		it(`rejects ${what}, naming the module and line`, () => {
-			expect(() => evalPatch(patch(body))).toThrow(
+			expect(() => evalInternal(patch(body))).toThrow(
 				/defmod\('t'\): tick at patch line 10: `\?\?` is allowed only on a direct array element read/,
 			);
 		});

@@ -12,7 +12,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { defmod, runProgram } from "@/core3/api";
+import { runProgram } from "@/core3/api";
 import { analyseLibrary } from "@/core3/module/front/module/analyse-library";
 import type { Program } from "@/core3/types";
 import { sig } from "@/core3/types";
@@ -21,6 +21,7 @@ import { FunctionTable } from "@/core3/wasm/compile/function-table";
 import { Functions } from "@/core3/wasm/compile/functions";
 import { helperSet } from "@/core3/wasm/compile/helper-set";
 import { I32, I64 } from "@/core3/wasm/encode/opcodes";
+import { defineInternalModule } from "../fixtures/internal-module";
 import { exportFunctions } from "./function-module";
 import { firstSlotDifference } from "./slot-differential";
 
@@ -171,7 +172,7 @@ describe("WASM integer typing", () => {
 /** Integer array state through counters: in-range, possibly out-of-range and descending indices. */
 function ring(): Program {
 	return runProgram(() => {
-		const m = defmod({
+		const m = defineInternalModule({
 			name: "ii.ring",
 			category: "utils",
 			ins: { in: sig(0) },

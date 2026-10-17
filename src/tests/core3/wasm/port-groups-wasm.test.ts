@@ -13,9 +13,9 @@ import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { renderTap } from "@/core3/runtime/render";
 import type { EngineState, Program } from "@/core3/types";
 import { createWasmEngine, swapWasmEngine } from "@/core3/wasm/host/create-wasm-engine";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { describe, expect, it } from "vitest";
 import { nodeIndex } from "../bridge/helpers";
+import { evalInternal } from "../fixtures/internal-module";
 import {
 	type Run,
 	SR,
@@ -35,7 +35,7 @@ const MIX_TICK =
 
 function defIn(name: string, tick: string): string {
 	return [
-		`const ${name} = defmod({`,
+		`const ${name} = defineInternalModule({`,
 		`  name: "${name}",`,
 		'  category: "utils",',
 		'  ins: { ch: group(sig(0), { open: true }), level: group(unit(1), { like: "ch" }) },',
@@ -52,7 +52,7 @@ function defIn(name: string, tick: string): string {
 const GMIX = defIn("gmix", MIX_TICK);
 
 const GFAN = [
-	"const gfan = defmod({",
+	"const gfan = defineInternalModule({",
 	'  name: "gfan",',
 	'  category: "utils",',
 	"  ins: { ch: group(sig(0), { open: true }) },",
@@ -65,7 +65,7 @@ const GFAN = [
 ].join("\n");
 
 function patch(...lines: string[]): Program {
-	return evalPatch(lines.join("\n"));
+	return evalInternal(lines.join("\n"));
 }
 
 /** The largest absolute sample (a loop: spreading 384000 samples into Math.max overflows the stack). */

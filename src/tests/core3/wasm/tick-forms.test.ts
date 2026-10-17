@@ -11,12 +11,12 @@
 
 import "@/core3/modules/all";
 
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { describe, expect, it } from "vitest";
+import { evalInternal } from "../fixtures/internal-module";
 import { SR, expectIdentical } from "./differential-harness";
 
 const CONTROL_FLOW = `tempo(120)
-const edgy = defmod({
+const edgy = defineInternalModule({
   name: "edgy",
   category: "utils",
   ins: { in: sig(0) },
@@ -65,7 +65,7 @@ const e = seq("[c3,e4] <g3 a4>").edgy()
 e.add(e.hits).mul(0.001).out()`;
 
 const RANDOM_AND_SHAPES = `tempo(120)
-const rnd = defmod({
+const rnd = defineInternalModule({
   name: "rnd",
   category: "sources",
   ins: { in: sig(0) },
@@ -89,7 +89,7 @@ const rnd = defmod({
 seq("[c3,e3,g3]").rnd().mul(0.1).out()`;
 
 const REDUCER = `tempo(120)
-const sum2 = defmod({
+const sum2 = defineInternalModule({
   name: "sum2",
   category: "utils",
   policy: "reduce",
@@ -110,7 +110,7 @@ const sum2 = defmod({
 seq("[c3,e3,g3]").sin().sum2().mul(0.3).out()`;
 
 const REASSIGNED_PARAMS = `tempo(120)
-const srmod = defmod({
+const srmod = defineInternalModule({
   name: "srmod",
   category: "utils",
   ins: { in: sig(0) },
@@ -129,7 +129,7 @@ const srmod = defmod({
 seq("c3 <e3 g3>").srmod().mul(0.2).out()`;
 
 const STATE_TO_HELPER = `tempo(120)
-const stepper = defmod({
+const stepper = defineInternalModule({
   name: "stepper",
   category: "utils",
   ins: { in: sig(0) },
@@ -155,26 +155,26 @@ seq("[c3,e3] <g3 a3>").stepper().mul(0.1).out()`;
 
 describe("patch-defined ticks on WASM match the interpreter", () => {
 	it("control flow, shadowing, outputs read back or left unwritten", () => {
-		const ref = expectIdentical(evalPatch(CONTROL_FLOW), SR / 4);
+		const ref = expectIdentical(evalInternal(CONTROL_FLOW), SR / 4);
 		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.01);
 	});
 
 	it("Math.random, hashRandom, array-of-object and typed-array state", () => {
-		const ref = expectIdentical(evalPatch(RANDOM_AND_SHAPES), SR / 4);
+		const ref = expectIdentical(evalInternal(RANDOM_AND_SHAPES), SR / 4);
 		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.01);
 	});
 
 	it("a patch-defined reducer", () => {
-		expectIdentical(evalPatch(REDUCER), SR / 4);
+		expectIdentical(evalInternal(REDUCER), SR / 4);
 	});
 
 	it("reassigned parameters: the tick's sample rate, a helper's known argument", () => {
-		const ref = expectIdentical(evalPatch(REASSIGNED_PARAMS), SR / 4);
+		const ref = expectIdentical(evalInternal(REASSIGNED_PARAMS), SR / 4);
 		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.01);
 	});
 
 	it("a tick passing its state record to helpers that read and write it", () => {
-		const ref = expectIdentical(evalPatch(STATE_TO_HELPER), SR / 4);
+		const ref = expectIdentical(evalInternal(STATE_TO_HELPER), SR / 4);
 		expect(Math.max(...ref.l.map(Math.abs))).toBeGreaterThan(0.01);
 	});
 });

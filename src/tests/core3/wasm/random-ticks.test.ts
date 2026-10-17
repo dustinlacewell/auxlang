@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
-import { defmod, out, runProgram, seq, tempo } from "@/core3/api";
+import { out, runProgram, seq, tempo } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
 import { hashRandom as hostHashRandom } from "@/core3/random/hash-random";
 import { Core3Engine } from "@/core3/runtime/engine";
@@ -19,6 +19,7 @@ import type { Program } from "@/core3/types";
 import { sig } from "@/core3/types";
 import { createWasmEngine, swapWasmEngine } from "@/core3/wasm/host/create-wasm-engine";
 import type { WasmEngine } from "@/core3/wasm/host/wasm-engine";
+import { defineInternalModule } from "../fixtures/internal-module";
 
 /** The tick's own binding: one argument, the patch seed implied. */
 declare const hashRandom: (key: number | string) => number;
@@ -31,7 +32,7 @@ const BLOCKS = 40;
 function patch(seed: number): Program {
 	return runProgram(
 		() => {
-			const jitter = defmod({
+			const jitter = defineInternalModule({
 				name: "rt.jitter",
 				category: "sources",
 				ins: { in: sig(0) },
@@ -42,7 +43,7 @@ function patch(seed: number): Program {
 					o.out = i.in * 0 + Math.random() - 0.5;
 				},
 			});
-			const steps = defmod({
+			const steps = defineInternalModule({
 				name: "rt.steps",
 				category: "utils",
 				ins: { hold: sig(64) },

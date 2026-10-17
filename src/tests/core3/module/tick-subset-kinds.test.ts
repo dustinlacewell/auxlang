@@ -17,6 +17,7 @@ import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import type { Program } from "@/core3/types";
 import { prepareWasm } from "@/core3/wasm/host/prepare-wasm";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalInternal } from "../fixtures/internal-module";
 
 const SR = 48000;
 
@@ -29,7 +30,7 @@ function patch(
 	use = "t().out()",
 ): string {
 	return [
-		"const t = defmod({",
+		"const t = defineInternalModule({",
 		'  name: "t",',
 		'  category: "utils",',
 		"  ins: { in: sig(0) },",
@@ -125,41 +126,41 @@ const REJECTED: readonly [string, string, RegExp][] = [
 describe("tick subset: booleans and initial values", () => {
 	for (const [what, body] of ALLOWED)
 		it(`allows ${what}`, () => {
-			expectBuilds(evalPatch(patch(body, HELPERS)));
+			expectBuilds(evalInternal(patch(body, HELPERS)));
 		});
 
 	for (const [what, body, error] of REJECTED)
 		it(`rejects ${what} at build on both engines, naming the module and line`, () => {
 			expectBuildsToThrow(
-				evalPatch(patch(body, HELPERS)),
+				evalInternal(patch(body, HELPERS)),
 				new RegExp(`defmod\\('t'\\): tick at patch line 12: ${error.source}`),
 			);
 		});
 
 	it("rejects a helper returning booleans and numbers at build, at its line", () => {
 		expectBuildsToThrow(
-			evalPatch(patch("o.out = mixed(i.in) ? 1 : 0;", HELPERS)),
+			evalInternal(patch("o.out = mixed(i.in) ? 1 : 0;", HELPERS)),
 			/defmod\('t'\): helper 'mixed' at patch line 10: it returns booleans and numbers/,
 		);
 	});
 
 	it("rejects at build a form only a non-default config selects", () => {
 		const config = (use: string) => patch("o.out = c.on;", "", "{ n: 0 }", "{ on: 0 }", use);
-		expectBuilds(evalPatch(config("t().out()")));
+		expectBuilds(evalInternal(config("t().out()")));
 		expectBuildsToThrow(
-			evalPatch(config("t({ on: true }).out()")),
+			evalInternal(config("t({ on: true }).out()")),
 			/defmod\('t'\): tick at patch line 12: a boolean stored where a number is kept/,
 		);
 	});
 
 	it("rejects a let that may be read before it is assigned", () => {
-		expect(() => evalPatch(patch("let x; if (i.in > 0) { x = 1; } o.out = x;", HELPERS))).toThrow(
+		expect(() => evalInternal(patch("let x; if (i.in > 0) { x = 1; } o.out = x;", HELPERS))).toThrow(
 			/defmod\('t'\) tick: 'x' may be read before it has a value/,
 		);
 	});
 
 	it("rejects a boolean state field", () => {
-		expect(() => evalPatch(patch("o.out = 0;", "", "{ on: false }"))).toThrow(
+		expect(() => evalInternal(patch("o.out = 0;", "", "{ on: false }"))).toThrow(
 			"defmod('t'): state field 'on' is a boolean",
 		);
 	});

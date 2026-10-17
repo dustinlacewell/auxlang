@@ -16,7 +16,7 @@ export function generatePatch(seed: number): string {
 
 function patchAround(body: string): string {
 	return `tempo(120)
-const gen = defmod({
+const gen = defineInternalModule({
   name: "gen",
   category: "utils",
   ins: { in: sig(0), k: sig(0) },

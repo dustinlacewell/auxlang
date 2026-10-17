@@ -8,11 +8,11 @@
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalInternal } from "../fixtures/internal-module";
 
 function patch(state: string): string {
 	return [
-		"const t = defmod({",
+		"const t = defineInternalModule({",
 		'  name: "t",',
 		'  category: "utils",',
 		"  ins: { in: sig(0) },",
@@ -37,17 +37,17 @@ const NO_FORM: readonly [string, string, string, string][] = [
 describe("tick subset: state values", () => {
 	for (const [what, state, field, kind] of NO_FORM)
 		it(`rejects ${what}, naming the module and field`, () => {
-			expect(() => evalPatch(patch(state))).toThrow(
+			expect(() => evalInternal(patch(state))).toThrow(
 				`defmod('t'): state field '${field}' is ${kind} — state holds numbers, typed arrays, records and arrays of records`,
 			);
 		});
 
 	it("rejects records of differing shapes in one array", () => {
-		expect(() => evalPatch(patch("{ vs: [{ a: 0 }, { b: 0 }] }"))).toThrow(
+		expect(() => evalInternal(patch("{ vs: [{ a: 0 }, { b: 0 }] }"))).toThrow(
 			"defmod('t'): state field 'vs' holds records of differing shapes",
 		);
 		expect(() =>
-			evalPatch(patch("{ vs: [{ a: new Float32Array(2) }, { a: new Float32Array(3) }] }")),
+			evalInternal(patch("{ vs: [{ a: new Float32Array(2) }, { a: new Float32Array(3) }] }")),
 		).toThrow("holds records of differing shapes");
 	});
 });

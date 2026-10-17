@@ -10,15 +10,16 @@
 
 import { describe, expect, it } from "vitest";
 
-import { defmod, runProgram } from "@/core3/api";
+import { runProgram } from "@/core3/api";
 import type { Program } from "@/core3/types";
 import { sig } from "@/core3/types";
+import { defineInternalModule } from "../fixtures/internal-module";
 import { firstSlotDifference, interpreterSeries } from "./slot-differential";
 
 /** Edge values for every element type: ties, wraps, clamps, f32 overflow and underflow, NaN. */
 function kinds(): Program {
 	return runProgram(() => {
-		const m = defmod({
+		const m = defineInternalModule({
 			name: "as.kinds",
 			category: "utils",
 			ins: { in: sig(0) },
@@ -125,7 +126,7 @@ function kinds(): Program {
 /** Valid, out-of-range, fractional, NaN, infinite and -0 indices, constant and run time. */
 function indices(): Program {
 	return runProgram(() => {
-		const m = defmod({
+		const m = defineInternalModule({
 			name: "as.index",
 			category: "utils",
 			ins: { in: sig(0) },
@@ -178,7 +179,7 @@ function indices(): Program {
 /** Nested records and an array of records, at constant and run-time indices, and through a helper. */
 function records(): Program {
 	return runProgram(() => {
-		const m = defmod({
+		const m = defineInternalModule({
 			name: "as.records",
 			category: "utils",
 			ins: { in: sig(0) },

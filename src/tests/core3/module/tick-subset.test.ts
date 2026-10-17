@@ -10,11 +10,12 @@ import { describe, expect, it } from "vitest";
 import "@/core3/modules/all";
 import { render } from "@/core3/runtime/render";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalInternal } from "../fixtures/internal-module";
 
 /** A patch defining module `t`; the tick body starts on patch line 11. */
 function patch(body: string, helpers = "", after = ""): string {
 	return [
-		"defmod({",
+		"defineInternalModule({",
 		'  name: "t",',
 		'  category: "utils",',
 		"  ins: { in: sig(0) },",
@@ -64,49 +65,49 @@ const FORBIDDEN: readonly [string, string, RegExp][] = [
 
 describe("tick subset: each forbidden form throws with its patch line", () => {
 	it.each(FORBIDDEN)("%s", (_label, body, reason) => {
-		expect(() => evalPatch(patch(body))).toThrow(/defmod\('t'\): tick at patch line 11: /);
-		expect(() => evalPatch(patch(body))).toThrow(reason);
+		expect(() => evalInternal(patch(body))).toThrow(/defmod\('t'\): tick at patch line 11: /);
+		expect(() => evalInternal(patch(body))).toThrow(reason);
 	});
 
 	it("a destructuring declaration runs, lifted to a plain field read (lift-destructuring)", () => {
-		expect(() => evalPatch(patch("const { gain } = s.voice; o.out = gain;"))).not.toThrow();
+		expect(() => evalInternal(patch("const { gain } = s.voice; o.out = gain;"))).not.toThrow();
 	});
 
 	it("a nested arrow with no captured writes runs, lifted to a helper (lift-nested-arrows)", () => {
 		expect(() =>
-			evalPatch(patch("const lerp = (a, b, t) => a + (b - a) * t; o.out = lerp(0, i.in, 0.5);")),
+			evalInternal(patch("const lerp = (a, b, t) => a + (b - a) * t; o.out = lerp(0, i.in, 0.5);")),
 		).not.toThrow();
 	});
 
 	it("a name of auxlang's library, beside a call the binding gives that name", () => {
-		expect(() => evalPatch(patch("o.out = Math.sin(1) + __math_sin(1);"))).toThrow(
+		expect(() => evalInternal(patch("o.out = Math.sin(1) + __math_sin(1);"))).toThrow(
 			/defmod\('t'\) tick: the name '__math_sin' is reserved/,
 		);
-		expect(() => evalPatch(patch("o.out = hashRandom(1) + __random_hashNumber(1, 2);"))).toThrow(
+		expect(() => evalInternal(patch("o.out = hashRandom(1) + __random_hashNumber(1, 2);"))).toThrow(
 			/defmod\('t'\) tick: the name '__random_hashNumber' is reserved/,
 		);
 	});
 
 	it("a closure over a patch variable", () => {
-		expect(() => evalPatch(patch("o.out = depth;", "", "const depth = 2"))).toThrow(
+		expect(() => evalInternal(patch("o.out = depth;", "", "const depth = 2"))).toThrow(
 			/tick at patch line 11: 'depth' is not defined here/,
 		);
 	});
 
 	it("a helper that recurses", () => {
-		expect(() => evalPatch(patch("o.out = a(1);", "a: (x) => b(x), b: (x) => a(x)"))).toThrow(
+		expect(() => evalInternal(patch("o.out = a(1);", "a: (x) => b(x), b: (x) => a(x)"))).toThrow(
 			/helper 'b' at patch line 9: helpers may not recurse \(a → b → a\)/,
 		);
 	});
 
 	it("Math.random() in a helper", () => {
-		expect(() => evalPatch(patch("o.out = r();", "r: () => Math.random()"))).toThrow(
+		expect(() => evalInternal(patch("o.out = r();", "r: () => Math.random()"))).toThrow(
 			/helper 'r' at patch line 9: Math\.random\(\) is available only in tick/,
 		);
 	});
 
 	it("a helper closing over a patch variable", () => {
-		expect(() => evalPatch(patch("o.out = h();", "h: () => depth", "const depth = 2"))).toThrow(
+		expect(() => evalInternal(patch("o.out = h();", "h: () => depth", "const depth = 2"))).toThrow(
 			/helper 'h' at patch line 9: 'depth' is not defined here/,
 		);
 	});
@@ -115,7 +116,7 @@ describe("tick subset: each forbidden form throws with its patch line", () => {
 describe("tick subset: the forms inside it compile and run", () => {
 	it("arithmetic, Math, branches, loops, for...of, switch on config, typeof, state arrays and helpers", () => {
 		const code = [
-			"const ok = defmod({",
+			"const ok = defineInternalModule({",
 			'  name: "ok",',
 			'  category: "utils",',
 			"  ins: { in: sig(0) },",
@@ -141,7 +142,7 @@ describe("tick subset: the forms inside it compile and run", () => {
 			"})",
 			"ok({ in: 0.5 }).out()",
 		].join("\n");
-		const { l } = render(evalPatch(code), 0.01);
+		const { l } = render(evalInternal(code), 0.01);
 		expect(Math.max(...l)).toBeGreaterThan(0.1);
 	});
 });

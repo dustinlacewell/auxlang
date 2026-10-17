@@ -8,11 +8,11 @@
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalInternal } from "../fixtures/internal-module";
 
 function patch(state: string): string {
 	return [
-		"const t = defmod({",
+		"const t = defineInternalModule({",
 		'  name: "t",',
 		'  category: "utils",',
 		"  ins: { in: sig(0) },",
@@ -46,12 +46,12 @@ const REJECTED: readonly [string, string, string][] = [
 describe("tick subset: state arrays", () => {
 	for (const [what, state] of ALLOWED)
 		it(`allows ${what}`, () => {
-			expect(() => evalPatch(patch(state))).not.toThrow();
+			expect(() => evalInternal(patch(state))).not.toThrow();
 		});
 
 	for (const [what, state, field] of REJECTED)
 		it(`rejects ${what}, naming the module and field`, () => {
-			expect(() => evalPatch(patch(state))).toThrow(
+			expect(() => evalInternal(patch(state))).toThrow(
 				`defmod('t'): state field '${field}' is a plain array — make it a typed array`,
 			);
 		});

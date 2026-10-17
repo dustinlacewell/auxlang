@@ -8,16 +8,17 @@
 import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
-import { compile, defmod, factory, out, runEval } from "@/core3/api";
+import { compile, factory, out, runEval } from "@/core3/api";
 import { getRegistry } from "@/core3/module/define";
 import { keptIR } from "@/core3/module/front/module/kept-ir";
 import { specIR } from "@/core3/module/front/module/spec-ir";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import type { ModuleSpec, Program } from "@/core3/types";
 import { sig } from "@/core3/types";
+import { defineInternalModule } from "../fixtures/internal-module";
 
 const patch = () => {
-	defmod({
+	defineInternalModule({
 		name: "shaper",
 		category: "effects",
 		ins: { in: sig(0) },

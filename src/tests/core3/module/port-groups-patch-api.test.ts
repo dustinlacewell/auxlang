@@ -13,15 +13,15 @@ import { getRegistry } from "@/core3/module/define";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { renderTap } from "@/core3/runtime/render";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { nodeIndex } from "../bridge/helpers";
+import { evalInternal } from "../fixtures/internal-module";
 
 const MIX_TICK =
 	"let sum = 0; for (let k = 0; k < i.ch.length; k++) sum += i.ch[k] * i.level[k]; o.out = sum;";
 
 function defMix(): string {
 	return [
-		"const gmix = defmod({",
+		"const gmix = defineInternalModule({",
 		'  name: "gmix",',
 		'  category: "utils",',
 		'  ins: { ch: group(sig(0), { open: true }), level: group(unit(1), { like: "ch" }) },',
@@ -38,7 +38,7 @@ function defMix(): string {
 describe("port groups through the patch API", () => {
 	it("sums ch[k]*level[k] with a real tick: level.a defaults to 1", () => {
 		const code = [defMix(), "gmix({ a: 0.5, b: 0.25 }).level({ b: 2 }).out()"].join("\n");
-		const program = evalPatch(code);
+		const program = evalInternal(code);
 		expect(renderTap(program, nodeIndex(program, "gmix"), "out", 0, 1)[0]).toBeCloseTo(1, 5);
 	});
 
@@ -48,7 +48,7 @@ describe("port groups through the patch API", () => {
 			'const m = gmix({ a: 1, b: 1 }).mod("level.b", lfo(0.3, -1, 1), 1)',
 			"m.out()",
 		].join("\n");
-		const program = evalPatch(code);
+		const program = evalInternal(code);
 		const gmixNode = nodeIndex(program, "gmix");
 		const lfoNode = nodeIndex(program, "lfo");
 		const engine = new Core3Engine(program, 48000, withProgramSpecs(getRegistry(), program));
@@ -62,7 +62,7 @@ describe("port groups through the patch API", () => {
 
 	it("an out-group member taps by name through the patch API", () => {
 		const code = [
-			"const gfan = defmod({",
+			"const gfan = defineInternalModule({",
 			'  name: "gfan",',
 			'  category: "utils",',
 			"  ins: { ch: group(sig(0), { open: true }) },",
@@ -74,7 +74,7 @@ describe("port groups through the patch API", () => {
 			"})",
 			"gfan({ ch: { a: 3, b: 5 }, g: ['a', 'b'] }).a.out()",
 		].join("\n");
-		const program = evalPatch(code);
+		const program = evalInternal(code);
 		const i = nodeIndex(program, "gfan");
 		expect(renderTap(program, i, "a", 0, 1)[0]).toBeCloseTo(6, 5);
 		expect(renderTap(program, i, "b", 0, 1)[0]).toBeCloseTo(10, 5);

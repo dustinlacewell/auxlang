@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import "@/core3/modules/all";
 import { getModule } from "@/core3/module/define";
 import { hydrateSpec, serializeSpec } from "@/core3/module/serialize";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalInternal } from "../fixtures/internal-module";
 
 /** A patch defining module `t`; the tick body starts on patch line 10. */
 function patch(
@@ -19,7 +19,7 @@ function patch(
 	opts: { reads?: boolean; helpers?: string; params?: string } = {},
 ): string {
 	return [
-		"defmod({",
+		"defineInternalModule({",
 		'  name: "t",',
 		'  category: "utils",',
 		"  ins: { in: sig(0) },",
@@ -51,11 +51,11 @@ const FORBIDDEN: readonly [string, string, Parameters<typeof patch>[1], RegExp][
 
 describe("table intrinsics in the tick subset", () => {
 	it.each(FORBIDDEN)("%s throws", (_label, body, opts, reason) => {
-		expect(() => evalPatch(patch(body, opts))).toThrow(reason);
+		expect(() => evalInternal(patch(body, opts))).toThrow(reason);
 	});
 
 	it("only the tick may call them", () => {
-		expect(() => evalPatch(patch("o.out = h();", { helpers: "h: () => __tableCount()" }))).toThrow(
+		expect(() => evalInternal(patch("o.out = h();", { helpers: "h: () => __tableCount()" }))).toThrow(
 			/helper 'h' at patch line 9: __tableCount\(\) is available only in tick/,
 		);
 	});
@@ -63,7 +63,7 @@ describe("table intrinsics in the tick subset", () => {
 	it("a pattern-reading tick passes the check", () => {
 		const body =
 			'if (__tableCycle() !== 0) __tableFill(0); o.out = __tableRow("value", __tableCount() - 1);';
-		expect(() => evalPatch(patch(body))).not.toThrow();
+		expect(() => evalInternal(patch(body))).not.toThrow();
 	});
 
 	it("reads crosses to the engine with the spec", () => {

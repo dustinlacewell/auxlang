@@ -9,6 +9,7 @@ import "@/core3/modules/all";
 import type { Program } from "@/core3/types";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { describe, expect, it } from "vitest";
+import { evalInternal } from "../fixtures/internal-module";
 import { expectIdentical, interpreterRun, wasmRun } from "./differential-harness";
 
 const SAMPLES = 1024;
@@ -16,7 +17,7 @@ const SAMPLES = 1024;
 /** A patch whose module `ag` has `body` as its tick and `helpers` as its helpers. */
 function patch(body: string, helpers = ""): string {
 	return `tempo(120)
-const ag = defmod({
+const ag = defineInternalModule({
   name: "ag",
   category: "utils",
   ins: { in: sig(0) },
@@ -435,7 +436,7 @@ const AGREED_REJECT: readonly Row[] = [
 ];
 
 function expectAccepted(row: Row): void {
-	expectIdentical(evalPatch(patch(row.body, row.helpers)), SAMPLES);
+	expectIdentical(evalInternal(patch(row.body, row.helpers)), SAMPLES);
 }
 
 /** Refused at eval (the rules), or at build on both engines (the kind check). */
@@ -443,7 +444,7 @@ function expectRejected(row: Row): void {
 	const message = row.message ?? /./;
 	let program: Program;
 	try {
-		program = evalPatch(patch(row.body, row.helpers));
+		program = evalInternal(patch(row.body, row.helpers));
 	} catch (error) {
 		expect(String(error)).toMatch(message);
 		return;
