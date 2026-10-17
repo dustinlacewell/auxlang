@@ -39,7 +39,8 @@ export function inferOuts(tick: ArrowFunctionExpression, moduleName: string): In
 	assertEndsInReturn(tick, what);
 
 	const isExprBody = tick.body.type !== "BlockStatement";
-	const edits = returns.flatMap((ret) => editsFor(ret, what, isExprBody));
+	const unbraced = unbracedReturns(tick);
+	const edits = returns.flatMap((ret) => editsFor(ret, what, isExprBody || unbraced.has(ret)));
 	return { outs: first, edits, outParam };
 }
 
@@ -62,6 +63,25 @@ function collectReturns(tick: ArrowFunctionExpression): ReturnStatement[] {
 	const found: ReturnStatement[] = [];
 	walk(tick.body, (node) => {
 		if (node.type === "ReturnStatement") found.push(node as ReturnStatement);
+	});
+	return found;
+}
+
+/**
+ * Returns that sit as the direct (unbraced) body of an `if`/`else`, loop, or
+ * labeled statement — e.g. `if (cond) return a;` — rather than inside a
+ * `{ ... }` block. Rewriting `return a;` there as `o.out = a; return;` would
+ * put the bare `return;` outside the `if`, making the early return
+ * unconditional, so these need their rewrite wrapped in its own `{ }`.
+ */
+function unbracedReturns(tick: ArrowFunctionExpression): ReadonlySet<ReturnStatement> {
+	const direct = new Set(["consequent", "alternate", "body"]);
+	const found = new Set<ReturnStatement>();
+	if (tick.body.type !== "BlockStatement") return found;
+	walk(tick.body, (node, parent, key) => {
+		if (node.type !== "ReturnStatement") return;
+		if (parent === null || key === null) return;
+		if (direct.has(key) && parent.type !== "BlockStatement") found.add(node as ReturnStatement);
 	});
 	return found;
 }
@@ -109,16 +129,18 @@ function assertEndsInReturn(tick: ArrowFunctionExpression, what: string): void {
 
 /**
  * Wraps each value expression in the return with `__dsp_o.<key> = (` ... `)`,
- * never touching the expression's own span. An expression-bodied arrow's
- * synthetic return (exprBodyAsReturn) has no enclosing braces or `return`
- * keyword in the source, so its edit wraps the whole thing in a block too —
- * `=> expr` becomes `=> { __dsp_o.out = (expr); return; }` — keeping the
- * rewritten source a valid function body.
+ * never touching the expression's own span. Two cases need the whole
+ * rewrite wrapped in its own `{ }`: an expression-bodied arrow's synthetic
+ * return (exprBodyAsReturn), which has no enclosing braces or `return`
+ * keyword in the source (`=> expr` becomes `=> { __dsp_o.out = (expr); return; }`),
+ * and a return that is the unbraced direct body of an `if`/`else`/loop
+ * (`if (c) return a;` becomes `if (c) { __dsp_o.out = (a); return; }`) —
+ * otherwise the bare `return;` would land outside the `if`.
  */
-function editsFor(ret: ReturnStatement, what: string, isExprBody: boolean): TextEdit[] {
+function editsFor(ret: ReturnStatement, what: string, needsBraces: boolean): TextEdit[] {
 	const arg = ret.argument as NonNullable<ReturnStatement["argument"]>;
-	const open = isExprBody ? "{ " : "";
-	const close = isExprBody ? " }" : "";
+	const open = needsBraces ? "{ " : "";
+	const close = needsBraces ? " }" : "";
 	if (arg.type !== "ObjectExpression") {
 		return [
 			{ start: ret.start, end: arg.start, text: `${open}__dsp_o.out = (` },

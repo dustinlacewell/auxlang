@@ -170,6 +170,67 @@ x(1).out()`;
 		);
 	});
 
+	it("an unbraced 'if' return keeps its early return conditional, not falling through to the next statement", () => {
+		const PATCH = `const x = defmod("x", {}, ({ sr }) => {
+  return ({ in: v = 0 }) => {
+    if (v > 0) return 1
+    return 2
+  }
+})
+x(5).out()`;
+		const positive = evalPatch(PATCH);
+		const positiveRegistry = withProgramSpecs(getRegistry(), positive);
+		const positiveEngine = new Core3Engine(positive, SR, positiveRegistry);
+		positiveEngine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
+		expect(positiveEngine.peek(0, "out", 0)).toBe(1);
+
+		const negative = evalPatch(`const x = defmod("x", {}, ({ sr }) => {
+  return ({ in: v = 0 }) => {
+    if (v > 0) return 1
+    return 2
+  }
+})
+x(-5).out()`);
+		const negativeRegistry = withProgramSpecs(getRegistry(), negative);
+		const negativeEngine = new Core3Engine(negative, SR, negativeRegistry);
+		negativeEngine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
+		expect(negativeEngine.peek(0, "out", 0)).toBe(2);
+	});
+
+	it("an unbraced three-way 'if/else if/else' return picks the right branch in each case", () => {
+		const makePatch = (v: number) => `const x = defmod("x", {}, ({ sr }) => {
+  return ({ in: w = 0 }) => {
+    if (w > 0) return 1
+    else if (w < 0) return -1
+    return 0
+  }
+})
+x(${v}).out()`;
+		for (const [v, expected] of [[3, 1], [-3, -1], [0, 0]] as const) {
+			const program = evalPatch(makePatch(v));
+			const registry = withProgramSpecs(getRegistry(), program);
+			const engine = new Core3Engine(program, SR, registry);
+			engine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
+			expect(engine.peek(0, "out", 0)).toBe(expected);
+		}
+	});
+
+	it("an unbraced 'if' arm returning a group output ({ l, r }) writes both ports, not falling through", () => {
+		const PATCH = `const x = defmod("x", {}, ({ sr }) => {
+  return ({ in: v = 0 }) => {
+    if (v > 0) return { l: v, r: -v }
+    return { l: 0, r: 0 }
+  }
+})
+x(7).out({ l: x.l, r: x.r })`;
+		const program = evalPatch(PATCH);
+		const registry = withProgramSpecs(getRegistry(), program);
+		const engine = new Core3Engine(program, SR, registry);
+		engine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
+		expect(engine.peek(0, "l", 0)).toBe(7);
+		expect(engine.peek(0, "r", 0)).toBe(-7);
+	});
+
 	it("meta.args naming a setup config param: a positional call (config before the default input, seq-style) sets both", () => {
 		const PATCH = `const x = defmod("x", { args: ["mul", "in"] }, ({ sr, mul = 2 }) => {
   return ({ in: p = 0 }) => p * mul

@@ -58,4 +58,34 @@ describe("inferOuts", () => {
 		const result = inferOuts(tick, "echo");
 		expect(result.outs).toEqual(["out"]);
 	});
+
+	it("an unbraced 'if' return wraps its rewrite in braces, keeping the early return conditional", () => {
+		const src = "({ in: x = 0 }) => { if (x > 0) return 1; return 2 }";
+		const tick = tickArrow(src);
+		const result = inferOuts(tick, "echo");
+		const rewritten = applyEdits(src, result.edits);
+		expect(rewritten).toBe(
+			"({ in: x = 0 }) => { if (x > 0) { __dsp_o.out = (1); return; } __dsp_o.out = (2); return; }",
+		);
+	});
+
+	it("an unbraced 'else' return also wraps its rewrite in braces", () => {
+		const src = "({ in: x = 0 }) => { if (x > 0) return 1; else return 2; return 3 }";
+		const tick = tickArrow(src);
+		const result = inferOuts(tick, "echo");
+		const rewritten = applyEdits(src, result.edits);
+		expect(rewritten).toBe(
+			"({ in: x = 0 }) => { if (x > 0) { __dsp_o.out = (1); return; } else { __dsp_o.out = (2); return; } __dsp_o.out = (3); return; }",
+		);
+	});
+
+	it("an unbraced loop-body return wraps its rewrite in braces", () => {
+		const src = "({ in: x = 0 }) => { for (let i = 0; i < 1; i++) if (x > 0) return 1; return 2 }";
+		const tick = tickArrow(src);
+		const result = inferOuts(tick, "echo");
+		const rewritten = applyEdits(src, result.edits);
+		expect(rewritten).toBe(
+			"({ in: x = 0 }) => { for (let i = 0; i < 1; i++) if (x > 0) { __dsp_o.out = (1); return; } __dsp_o.out = (2); return; }",
+		);
+	});
 });
