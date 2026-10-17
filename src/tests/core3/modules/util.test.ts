@@ -113,8 +113,8 @@ describe("scale", () => {
 	});
 });
 
-describe("clip / cmp are stateless (no state fn)", () => {
-	it("clip has no state", () => expect(clip.state).toBeUndefined());
+describe("clip / cmp are stateless", () => {
+	it("clip carries no state fields", () => expect(clip.state?.(SR, clip.config ?? {})).toEqual({}));
 });
 
 describe("slew", () => {

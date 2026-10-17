@@ -1,14 +1,4 @@
 /** Modulo — remainder of `in` by `by` (0 → 0). Named `wrap` so `.mod` means modulation. */
-defmod({
-	name: "wrap",
-	category: "utils",
-	doc: "Wraps a signal by modulo — the arithmetic remainder of in by `by`.",
-	ins: { in: sig(0), by: sig(1) },
-	outs: { out: sig() },
-	defaultIn: "in",
-	defaultOut: "out",
-	positional: ["by"],
-	tick: (_s, i, o) => {
-		o.out = i.by === 0 ? 0 : i.in % i.by;
-	},
-});
+defmod("wrap", { doc: "Wraps a signal by modulo — the arithmetic remainder of in by `by`.", args: ["by"] }, () => {
+	return ({ in: x = 0, by = 1 }) => (by === 0 ? 0 : x % by)
+})

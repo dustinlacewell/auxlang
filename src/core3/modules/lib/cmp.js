@@ -1,36 +1,18 @@
 /** Comparators — each emits a 0/1 gate. gt/lt compare `in` against `than`, eq with tolerance. */
-const comparator = {
-	category: "utils",
-	ins: { in: sig(0), than: sig(0) },
-	outs: { out: sig() },
-	defaultIn: "in",
-	defaultOut: "out",
-	positional: ["than"],
-};
-
-defmod({
-	...comparator,
-	name: "gt",
-	doc: "Emits a gate when the input is greater than the threshold.",
-	tick: (_s, i, o) => {
-		o.out = i.in > i.than ? 1 : 0;
-	},
-});
-
-defmod({
-	...comparator,
-	name: "lt",
-	doc: "Emits a gate when the input is less than the threshold.",
-	tick: (_s, i, o) => {
-		o.out = i.in < i.than ? 1 : 0;
-	},
-});
-
-defmod({
-	...comparator,
-	name: "eq",
-	doc: "Emits a gate when the input equals the threshold.",
-	tick: (_s, i, o) => {
-		o.out = Math.abs(i.in - i.than) < 1e-4 ? 1 : 0;
-	},
-});
+for (const [name, mode, doc] of [
+	["gt", "gt", "Emits a gate when the input is greater than the threshold."],
+	["lt", "lt", "Emits a gate when the input is less than the threshold."],
+	["eq", "eq", "Emits a gate when the input equals the threshold."],
+]) {
+	defmod(name, { doc, args: ["than"], config: { mode } }, ({ mode }) => {
+		return ({ in: x = 0, than = 0 }) => {
+			if (mode === "gt") {
+				return x > than ? 1 : 0
+			}
+			if (mode === "lt") {
+				return x < than ? 1 : 0
+			}
+			return Math.abs(x - than) < 1e-4 ? 1 : 0
+		}
+	})
+}

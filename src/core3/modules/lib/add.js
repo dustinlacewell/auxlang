@@ -1,14 +1,4 @@
 /** Add two signals. */
-defmod({
-	name: "add",
-	category: "utils",
-	doc: "Adds two signals.",
-	ins: { in: sig(0), to: sig(0) },
-	outs: { out: sig() },
-	defaultIn: "in",
-	defaultOut: "out",
-	positional: ["to"],
-	tick: (_s, i, o) => {
-		o.out = i.in + i.to;
-	},
-});
+defmod("add", { doc: "Adds two signals.", args: ["to"] }, () => {
+	return ({ in: x = 0, to = 0 }) => x + to
+})

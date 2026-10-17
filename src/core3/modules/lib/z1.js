@@ -5,15 +5,6 @@
  * same way. The tick itself is a passthrough, so a cycle through z1 is delayed
  * exactly once, whether written as `loop(...)` or a hand-chained `.z1()`.
  */
-defmod({
-	name: "z1",
-	category: "utils",
-	doc: "One-sample delay.",
-	ins: { in: sig(0) },
-	outs: { out: sig() },
-	defaultIn: "in",
-	defaultOut: "out",
-	tick: (_s, i, o) => {
-		o.out = i.in;
-	},
-});
+defmod("z1", { doc: "One-sample delay." }, () => {
+	return ({ in: x = 0 }) => x
+})
