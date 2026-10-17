@@ -61,11 +61,12 @@ export const LEVEL_PEAK = 3;
 export const LEVEL_HITS = 4;
 export const LEVEL_STRIDE = 5;
 
-/** Per onset, ONSET_STRIDE f64s: watch index of the seq, event site, sample frame. */
+/** Per onset, ONSET_STRIDE f64s: watch index of the seq, its lane, event site, sample frame. */
 export const ONSET_WATCH = 0;
-export const ONSET_SITE = 1;
-export const ONSET_FRAME = 2;
-export const ONSET_STRIDE = 3;
+export const ONSET_LANE = 1;
+export const ONSET_SITE = 2;
+export const ONSET_FRAME = 3;
+export const ONSET_STRIDE = 4;
 /** Onsets past this many in one frame are dropped (the count says how many were kept). */
 export const ONSET_CAPACITY = 256;
 

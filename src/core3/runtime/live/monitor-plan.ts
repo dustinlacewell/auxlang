@@ -2,14 +2,17 @@
  * What each engine's monitor reads per sample, one target per watch
  * (watch-list.ts), from the built engine: the watched output's value slot
  * (lane 0), and for a seq whose tables carry sites (monitored-program.ts)
- * the node it reads onsets from and its tables' site column. Both engines
- * run the same per-sample steps over it:
+ * the node it reads onsets from, its lane count and its tables' site
+ * column. A chord seq has one lane per stacked note; the onset step walks
+ * every lane so each note of a chord gets its own onset. Both engines run
+ * the same per-sample steps over it:
  *
- *   before the walk   each reader's held note id (seq state `heldId`)
- *   after the walk    each target's level summary from its slot, then each
- *                     reader's onset: its held note id changed to a note
- *                     (not a rest; a tie keeps its note's id), and the row
- *                     under it (state `lastRow`) has a site
+ *   before the walk   each reader lane's held note id (seq state `heldId`)
+ *   after the walk    each target's level summary from its slot (lane 0),
+ *                     then each reader lane's onset: its held note id
+ *                     changed to a note (not a rest; a tie keeps its
+ *                     note's id), and the row under it (state `lastRow`)
+ *                     has a site
  *
  * The seq's own state is what says a new note began, so a note that plays
  * on across a re-eval swap makes no onset. Pure.
@@ -23,8 +26,10 @@ import type { Watch } from "./live-contract";
 export interface MonitorTarget {
 	/** The watched output's value slot. */
 	readonly slot: number;
-	/** The node whose lane 0 reports onsets for this watch; -1 for none. */
+	/** The node whose lanes report onsets for this watch; -1 for none. */
 	readonly reader: number;
+	/** The reader's lane count; 0 for none. */
+	readonly laneCount: number;
 	/** The reader's site column (bridge/lane-table.ts `siteColumn`); -1 for none. */
 	readonly siteColumn: number;
 }
@@ -44,9 +49,9 @@ export function monitorPlan(
 ): MonitorPlan {
 	const targets = watches.map((w) => {
 		const slot = slotOf(layout, w.node, w.port, 0);
-		const config = (runs[w.node] as NodeRun).config;
-		if (!hasSites(config)) return { slot, reader: -1, siteColumn: -1 };
-		return { slot, reader: w.node, siteColumn: siteColumn(config) };
+		const run = runs[w.node] as NodeRun;
+		if (!hasSites(run.config)) return { slot, reader: -1, laneCount: 0, siteColumn: -1 };
+		return { slot, reader: w.node, laneCount: run.laneCount, siteColumn: siteColumn(run.config) };
 	});
 	return { targets };
 }

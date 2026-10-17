@@ -11,6 +11,7 @@ import {
 	LEVEL_STRIDE,
 	type MonitorFrame,
 	ONSET_FRAME,
+	ONSET_LANE,
 	ONSET_SITE,
 	ONSET_STRIDE,
 	ONSET_WATCH,
@@ -51,6 +52,7 @@ function appendOnsets(floats: Float64Array, levelCount: number, onsetCount: numb
 		const base = base0 + i * ONSET_STRIDE;
 		into.push({
 			watch: floats[base + ONSET_WATCH] as number,
+			lane: floats[base + ONSET_LANE] as number,
 			site: floats[base + ONSET_SITE] as number,
 			frame: floats[base + ONSET_FRAME] as number,
 		});

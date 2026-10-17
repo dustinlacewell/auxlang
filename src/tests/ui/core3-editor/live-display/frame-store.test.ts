@@ -7,6 +7,7 @@ import {
 	LEVEL_STRIDE,
 	type MonitorFrame,
 	ONSET_FRAME,
+	ONSET_LANE,
 	ONSET_SITE,
 	ONSET_STRIDE,
 	ONSET_WATCH,
@@ -34,6 +35,7 @@ function buildFrame(site = 7, at = 48000): MonitorFrame {
 
 	const onsetBase = levelCount * LEVEL_STRIDE;
 	floats[onsetBase + ONSET_WATCH] = 1;
+	floats[onsetBase + ONSET_LANE] = 0;
 	floats[onsetBase + ONSET_SITE] = site;
 	floats[onsetBase + ONSET_FRAME] = at;
 
@@ -46,7 +48,7 @@ describe("frame store", () => {
 		store.append(buildFrame());
 		const snapshot = store.take();
 
-		expect(snapshot.onsets).toEqual([{ watch: 1, site: 7, frame: 48000 }]);
+		expect(snapshot.onsets).toEqual([{ watch: 1, lane: 0, site: 7, frame: 48000 }]);
 		expect(snapshot.engineFrame).toBe(48000);
 	});
 

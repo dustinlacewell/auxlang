@@ -18,6 +18,7 @@ import {
 	LEVEL_STRIDE,
 	type MonitorFrame,
 	ONSET_FRAME,
+	ONSET_LANE,
 	ONSET_SITE,
 	ONSET_STRIDE,
 	ONSET_WATCH,
@@ -232,6 +233,20 @@ describe("onsets", () => {
 	// factory). Whether a palette slot's own token should light like a note is
 	// a separate highlight-mechanism question (switching a live cable, not a
 	// note onset) — left out of scope for this bug.
+
+	it("a chord's stacked notes each report their own onset, one per lane", () => {
+		const src = 'tempo(120)\nseq("[c3,e3,g3]").tri().out()';
+		const { program, sourceMap } = evaluatePatch(src);
+		const w = watchOf(program, "seq");
+		const samples = SR; // one cycle of 2 s is plenty for the chord's one onset per lane
+		const onsets = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		expect(onsets).toHaveLength(3);
+		expect(onsets.map((o) => o[ONSET_WATCH])).toEqual([w, w, w]);
+		expect(onsets.map((o) => o[ONSET_LANE]).sort()).toEqual([0, 1, 2]);
+		const byLane = new Map(onsets.map((o) => [o[ONSET_LANE], o]));
+		const texts = [0, 1, 2].map((l) => siteText(src, sourceMap, byLane.get(l)?.[ONSET_SITE] as number));
+		expect(texts).toEqual(["c3", "e3", "g3"]);
+	});
 });
 
 describe("both engines", () => {

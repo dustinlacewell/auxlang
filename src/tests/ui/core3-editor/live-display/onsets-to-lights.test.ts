@@ -17,8 +17,8 @@ const siteRanges: SiteRanges = {
 describe("onsetsToLights", () => {
 	it("lights c3 then e3 (with its extend chain); the rest never lights", () => {
 		const onsets = [
-			{ watch: 0, site: 0, frame: 0 },
-			{ watch: 0, site: 2, frame: 1000 },
+			{ watch: 0, lane: 0, site: 0, frame: 0 },
+			{ watch: 0, lane: 0, site: 2, frame: 1000 },
 		];
 
 		const atC3 = onsetsToLights(onsets, siteRanges, 500, 0);
@@ -33,10 +33,21 @@ describe("onsetsToLights", () => {
 	});
 
 	it("a light is not on before its audible frame", () => {
-		const onsets = [{ watch: 0, site: 2, frame: 1000 }];
+		const onsets = [{ watch: 0, lane: 0, site: 2, frame: 1000 }];
 		const before = onsetsToLights(onsets, siteRanges, 999, 0);
 		expect(before.size).toBe(0);
 		const after = onsetsToLights(onsets, siteRanges, 1000, 0);
 		expect(after.has(2)).toBe(true);
+	});
+
+	it("a chord's stacked notes light together, one per lane", () => {
+		const onsets = [
+			{ watch: 0, lane: 0, site: 0, frame: 0 },
+			{ watch: 0, lane: 1, site: 2, frame: 0 },
+		];
+		const lit = onsetsToLights(onsets, siteRanges, 0, 0);
+		expect(lit.has(0)).toBe(true);
+		expect(lit.has(2)).toBe(true);
+		expect(lit.has(3)).toBe(true); // lane 1's tie/extend chain
 	});
 });
