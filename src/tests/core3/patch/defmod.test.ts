@@ -87,6 +87,25 @@ describe("Program.specs", () => {
 });
 
 describe("defmod loud failures", () => {
+	it("the deleted object form (a spec object as the first argument) throws, naming the shape-C and defpatch forms", () => {
+		expect(() =>
+			runEval(() =>
+				defmod(
+					{
+						name: "old",
+						ins: { in: { unit: "sig", def: 0 } },
+						outs: { out: { unit: "sig", def: 0 } },
+						defaultIn: "in",
+						tick: (_s: unknown, i: { in: number }, o: { out: number }) => {
+							o.out = i.in;
+						},
+					} as never,
+					(() => 0) as never,
+				),
+			),
+		).toThrow(/defpatch/);
+	});
+
 	it("a port named like a reserved handle name fails at the definition", () => {
 		expect(() =>
 			runEval(() =>

@@ -7,26 +7,14 @@ import { laneShapeOf } from "@/core3/module/front/state/state-shape-of";
 function picked(
 	old: Record<string, unknown>,
 	fresh: Record<string, unknown>,
-	writes?: readonly string[],
+	writes: readonly string[],
 ): readonly string[] | null {
 	const fields = carryFields(laneShapeOf(old), laneShapeOf(fresh), writes);
 	return fields === null ? null : [...fields].sort();
 }
 
 describe("carryFields", () => {
-	describe("writes undefined (old-form module)", () => {
-		it("carries every key when the whole shape fits", () => {
-			expect(picked({ n: 1, buf: new Float32Array(2) }, { n: 0, buf: new Float32Array(2) })).toEqual(
-				["buf", "n"],
-			);
-		});
-
-		it("carries nothing when the shape does not fit", () => {
-			expect(picked({ n: 1, buf: new Float32Array(3) }, { n: 0, buf: new Float32Array(2) })).toBeNull();
-		});
-	});
-
-	describe("writes defined (shape C)", () => {
+	describe("writes (shape C)", () => {
 		it("carries only the written fields present in both", () => {
 			expect(picked({ phase: 1, k: 2 }, { phase: 0, k: 0 }, ["phase"])).toEqual(["phase"]);
 		});

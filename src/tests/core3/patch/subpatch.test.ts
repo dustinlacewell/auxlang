@@ -4,12 +4,8 @@
  * collision, effects inside the body, a missing required input, a
  * sub-patch that contains itself.
  *
- * The old (object) form's `defmod({ patch })`-specific dispatch errors
- * ("tick and patch together", "'state' does not apply to a sub-patch", a
- * returned record disagreeing with a separately declared `outs`) have no
- * defpatch equivalent: `outs` is inferred from the function's own return,
- * so it can't disagree with itself, and there's no arbitrary-keys object
- * to mis-dispatch on.
+ * `outs` is inferred from the function's own return, so it can't disagree
+ * with itself, and there's no arbitrary-keys object to mis-dispatch on.
  */
 
 import { describe, expect, it } from "vitest";

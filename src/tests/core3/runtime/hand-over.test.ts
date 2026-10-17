@@ -34,58 +34,16 @@ describe("copyInto", () => {
 	});
 });
 
-describe("planCarry, applyCarry", () => {
-	const lane = (phase: number, seed: number, rng: number) => ({
-		phase,
-		buf: new Float32Array([phase, phase]),
-		__lane: 0,
-		__scratch: { table: phase },
-		__seed: seed,
-		__rng: { s: rng },
-	});
-	const carry = (fresh: Record<string, unknown>[], old: Record<string, unknown>[] | undefined) =>
-		applyCarry(planCarry(fresh, old));
-
-	it("carries values and the stream, keeps the engine's fields", () => {
-		const fresh = lane(0, 1, 0);
-		const scratch = fresh.__scratch;
-		carry([fresh], [{ ...lane(5, 1, 9), __lane: 3 }]);
-		expect(fresh.phase).toBe(5);
-		expect([...fresh.buf]).toEqual([5, 5]);
-		expect(fresh.__rng).toEqual({ s: 9 });
-		expect(fresh.__scratch).toBe(scratch);
-		expect(fresh.__scratch).toEqual({ table: 0 });
-		expect(fresh.__lane).toBe(0);
-	});
-
-	it("keeps the fresh stream when the seed changed", () => {
-		const fresh = lane(0, 2, 0);
-		carry([fresh], [lane(5, 1, 9)]);
-		expect(fresh.phase).toBe(5);
-		expect(fresh.__rng).toEqual({ s: 0 });
-		expect(fresh.__seed).toBe(2);
-	});
-
-	it("leaves a lane that does not fit, a lane the old node lacks, and an unpaired node, fresh", () => {
-		const resized = { ...lane(0, 1, 0), buf: new Float32Array(3) };
-		const extra = lane(0, 1, 0);
-		const unpaired = lane(0, 1, 0);
-		carry([resized, extra], [lane(5, 1, 9)]);
-		carry([unpaired], undefined);
-		expect([resized.phase, extra.phase, unpaired.phase]).toEqual([0, 0, 0]);
-	});
-});
-
 describe("planCarry, applyCarry: shape C (writes)", () => {
-	const shapeCLane = (phase: number, gain: number, buf: readonly number[]) => ({
+	const shapeCLane = (phase: number, gain: number, buf: readonly number[], seed = 1) => ({
 		phase,
 		gain,
 		buf: new Float32Array(buf),
 		__lane: 0,
-		__seed: 1,
+		__seed: seed,
 		__rng: { s: phase },
 	});
-	const carry = (fresh: Record<string, unknown>[], old: Record<string, unknown>[]) =>
+	const carry = (fresh: Record<string, unknown>[], old: Record<string, unknown>[] | undefined) =>
 		applyCarry(planCarry(fresh, old, ["phase", "buf"]));
 
 	it("carries the written fields, rebuilds the read-only field fresh", () => {
@@ -107,5 +65,19 @@ describe("planCarry, applyCarry: shape C (writes)", () => {
 		const fresh = shapeCLane(0, 0.25, [0, 0]);
 		carry([fresh], [shapeCLane(5, 0.5, [1, 2])]);
 		expect(fresh.__rng).toEqual({ s: 5 });
+	});
+
+	it("keeps the fresh stream when the seed changed", () => {
+		const fresh = shapeCLane(0, 0.25, [0, 0], 2);
+		carry([fresh], [shapeCLane(5, 0.5, [1, 2], 1)]);
+		expect(fresh.phase).toBe(5);
+		expect(fresh.__rng).toEqual({ s: 0 });
+		expect(fresh.__seed).toBe(2);
+	});
+
+	it("leaves an unpaired node fresh", () => {
+		const unpaired = shapeCLane(0, 0.25, [0, 0]);
+		carry([unpaired], undefined);
+		expect(unpaired.phase).toBe(0);
 	});
 });

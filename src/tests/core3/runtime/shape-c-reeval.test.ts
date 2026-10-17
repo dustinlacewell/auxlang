@@ -409,29 +409,4 @@ b().out()`;
 		expect(js.peek(0, "out", 0)).toBe(5); // a's own count, unaffected by b
 		expect(js.peek(2, "out", 0)).toBe(10); // b's own count: 2,4,6,8,10
 	});
-
-	it("an old-form patch-defined module with a changed tick still resets", () => {
-		const OLD = (body: string) => `const sw = defmod({
-  name: "sw",
-  category: "utils",
-  ins: { in: sig(0) },
-  outs: { out: sig() },
-  defaultIn: "in",
-  defaultOut: "out",
-  state: () => ({ n: 0 }),
-  tick: (s, i, o) => {
-    ${body}
-  },
-})
-sw({ in: 0 }).out()`;
-		const pair = swapAtK(
-			() => evalPatch(OLD("s.n++\n    o.out = s.n")),
-			() => evalPatch(OLD("s.n += 2\n    o.out = s.n")),
-		);
-		const l = new Float32Array(1);
-		const r = new Float32Array(1);
-		pair.js.renderBlock(l, r, 0, 1);
-		// a different tick source makes a different kind (today's behavior): fresh state, not continuing BEFORE*BLOCK's count
-		expect(pair.js.peek(0, "out", 0)).toBe(2);
-	});
 });

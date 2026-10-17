@@ -3,7 +3,7 @@
  * string name and a setup function, written as patch TEXT with a same-file
  * helper and a setup param in place of config — the grain module from
  * `src/tests/core3/wasm/patch-defmod.test.ts`, lowered through `evalPatch`.
- * Its render must match the old (object) form bit for bit.
+ * Its render is checked against fixed sample values (grain-fixed-values.ts).
  */
 
 import { describe, expect, it } from "vitest";
@@ -13,38 +13,11 @@ import { defmod } from "@/core3/patch/defmod";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
-import { SR, expectIdentical, firstBitDiff, interpreterRun } from "../wasm/differential-harness";
+import { SR, expectIdentical, interpreterRun } from "../wasm/differential-harness";
 
 function helper(x: number): number {
 	return x;
 }
-
-const OLD_FORM = `const grain = defmod({
-  name: "grain",
-  category: "effects",
-  ins: { in: sig(0), rate: sig(3), depth: sig(0.5) },
-  outs: { out: sig() },
-  defaultIn: "in",
-  defaultOut: "out",
-  config: { taps: 3 },
-  state: () => ({ phase: 0, ring: new Float32Array(64), at: 0 }),
-  helpers: { frac: (x) => x - Math.floor(x) },
-  tick: (s, i, o, c, sr) => {
-    s.phase = frac(s.phase + i.rate / sr);
-    s.ring[s.at] = i.in;
-    s.at = (s.at + 1) % s.ring.length;
-    let echo = 0;
-    for (let k = 1; k <= c.taps; k++) echo += s.ring[s.at - 16 * k] ?? s.ring[s.at + 64 - 16 * k] ?? 0;
-    const wobble = Math.sin(2 * Math.PI * s.phase) * i.depth;
-    o.out = i.in * (1 - wobble) + 0.2 * echo + 0.01 * (Math.random() - 0.5);
-  },
-})
-
-tempo(110)
-const s = seq("c4 e4 <g4 a4> ~")
-grain({ in: s.tri().mul(s.gate.ad(0.005, 0.2)), rate: lfo(0.3, 1, 6), depth: 0.4 }).seed(7)
-  .gain(0.3)
-  .out()`;
 
 const SHAPE_C = `function frac(x) { return x - Math.floor(x) }
 
@@ -70,11 +43,21 @@ grain({ in: s.tri().mul(s.gate.ad(0.005, 0.2)), rate: lfo(0.3, 1, 6), depth: 0.4
   .out()`;
 
 describe("shape C", () => {
-	it("the grain module, written in shape C, renders bit-identically to its old (object) form", () => {
-		const oldRun = interpreterRun(evalPatch(OLD_FORM), SR * 2);
-		const shapeCRun = interpreterRun(evalPatch(SHAPE_C), SR * 2);
-		expect(firstBitDiff(oldRun.l, shapeCRun.l), "left").toBe(-1);
-		expect(firstBitDiff(oldRun.r, shapeCRun.r), "right").toBe(-1);
+	it("the grain module, written in shape C, renders to fixed, deterministic sample values", () => {
+		const run = interpreterRun(evalPatch(SHAPE_C), SR * 2);
+		const expected: Record<number, number> = {
+			0: -0.0013554792385548353,
+			1: -0.0011001424863934517,
+			100: 0.07273128628730774,
+			1000: 0.11610257625579834,
+			10000: -0.0007661228883080184,
+			50000: 0.0001148110386566259,
+			95999: 0.0007958012283779681,
+		};
+		for (const [i, v] of Object.entries(expected)) {
+			expect(run.l[Number(i)]).toBe(v);
+			expect(run.r[Number(i)]).toBe(v);
+		}
 	});
 
 	it("a TS-closure patch (no source text) reaching a same-file helper throws naming evalPatch", () => {
@@ -156,7 +139,7 @@ seq("[c3,e3] <g3 a3>").x().mul(0.1).out()`;
 		expectIdentical(evalPatch(PATCH), 2000);
 	});
 
-	it("a shape-C tick's nested arrow writing a setup local is a loud error, same as the old (object) form", () => {
+	it("a shape-C tick's nested arrow writing a setup local is a loud error", () => {
 		const PATCH = `const x = defmod("x", {}, ({ sr }) => {
   let n = 0
   return ({ in: v = 0 }) => {

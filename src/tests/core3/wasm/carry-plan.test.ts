@@ -111,9 +111,15 @@ function side({
 			},
 			sampleRate: rate,
 			slotSites: [],
-			writes: writes ?? nodes.map(() => null),
+			writes: writes ?? nodes.map((n) => allFields(n.lanes[0])),
 		},
 	};
+}
+
+/** Every field a lane's shape names, as "written": these mechanics tests exercise the
+ *  field-matching and record/pointer traversal, not a module's real `writes` list. */
+function allFields(lane: LaneMemory | undefined): readonly string[] {
+	return lane === undefined ? [] : Object.keys(lane.shape.fields);
 }
 
 const node = (...lanes: LaneMemory[]): NodeMemory => ({ outs: {}, views: {}, groups: {}, lanes });
@@ -156,7 +162,7 @@ describe("planCarry", () => {
 		expect(runs(planCarry(old, fresh))).toEqual([COUNT, [2000, 3000, 16, CARRY_F64]]);
 	});
 
-	it("leaves fresh a lane that does not fit, a lane the old node lacks, and an unpaired node", () => {
+	it("leaves fresh a field that does not fit or is new, a lane the old node lacks, and an unpaired node", () => {
 		const wrongType: Field = { offset: 3040, shape: { k: "array", type: "i32", length: 3 } };
 		const old = side({ nodes: [node(lane(2000, { buf: f32s(3, 2040) }))], keys: ["a"] });
 		const resized = side({
@@ -181,7 +187,12 @@ describe("planCarry", () => {
 		});
 		expect(runs(planCarry(old, resized))).toEqual([COUNT]);
 		expect(runs(planCarry(old, retyped))).toEqual([COUNT]);
-		expect(runs(planCarry(old, extraKey))).toEqual([COUNT]);
+		// `more` is new (absent on old) and stays fresh; `n`/`phase`/`buf` still fit and carry
+		expect(runs(planCarry(old, extraKey))).toEqual([
+			COUNT,
+			[2000, 3000, 24, CARRY_F64],
+			[2040, 3040, 16, CARRY_WORD],
+		]);
 		expect(runs(planCarry(old, wider))).toHaveLength(3); // lane 0 carries, lane 1 stays fresh
 	});
 
