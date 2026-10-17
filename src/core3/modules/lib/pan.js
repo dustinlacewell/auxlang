@@ -9,18 +9,10 @@
  * one input would drop a channel (patch/stereo.ts). It declares no default
  * output (MANIFESTO §5).
  */
-defmod({
-	name: "pan",
-	category: "effects",
-	doc: "Constant-power stereo placement.",
-	ins: { in: sig(0), pos: sig(0) },
-	outs: { l: sig(), r: sig() },
-	defaultIn: "in",
-	positional: ["pos"],
-	tick: (_s, i, o) => {
-		const p = Math.max(-1, Math.min(1, i.pos));
-		const theta = ((p + 1) / 2) * (Math.PI / 2);
-		o.l = i.in * Math.cos(theta);
-		o.r = i.in * Math.sin(theta);
-	},
-});
+defmod("pan", { cat: "effects", doc: "Constant-power stereo placement.", args: ["pos"] }, () => {
+	return ({ in: x = 0, pos = 0 }) => {
+		const p = Math.max(-1, Math.min(1, pos))
+		const theta = ((p + 1) / 2) * (Math.PI / 2)
+		return { l: x * Math.cos(theta), r: x * Math.sin(theta) }
+	}
+})
