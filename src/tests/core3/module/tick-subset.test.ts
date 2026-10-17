@@ -40,7 +40,7 @@ const FORBIDDEN: readonly [string, string, RegExp][] = [
 	["runtime string", 'const v = "a" + i.in;', /string values may appear only in comparisons/],
 	[
 		"computed string key",
-		'o.out = s.voice["gain"];',
+		'o.out = s.voice["not an identifier"];',
 		/computed property names with non-numeric keys/,
 	],
 	["adding a field", "s.extra = 1;", /adds field 's\.extra'/],

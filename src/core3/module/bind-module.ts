@@ -13,6 +13,7 @@ import type { ModuleSource, ModuleSpec, SourceOrigin } from "../types";
 import { assertAuthorNames } from "./assert-author-names";
 import { bindModuleMath } from "./bind-math/bind-module-math";
 import { bindModuleRandom } from "./bind-random/bind-module-random";
+import { bindSugar } from "./bind-sugar/bind-sugar";
 import { libraryPrefixOf } from "./library-names";
 import { locateInSource } from "./source-text";
 import { buildTick } from "./tick-build/build-tick";
@@ -38,12 +39,23 @@ export function bindModule(written: WrittenSpec, read: ReadTime): ModuleSpec {
  */
 export function bindSource(spec: ModuleSpec, written: ModuleSource, read: ReadTime): ModuleSpec {
 	const owner = `defmod('${spec.name}')`;
-	const bound = bindModuleRandom(bindModuleMath(written, owner), owner);
+	const sugared = sugarSource(written, owner);
+	const bound = bindModuleRandom(bindModuleMath(sugared, owner), owner);
 	const source =
 		written.origins !== undefined ? { ...bound, origins: written.origins } : withOrigins(bound, written);
 	const result = { ...spec, tick: buildTick(source, owner), source };
 	checkModule(result, source, read);
 	return result;
+}
+
+/** Lifts the tick's and each helper's compiler shortcuts (bind-sugar/) into forms the tick subset already accepts. */
+function sugarSource(written: ModuleSource, owner: string): ModuleSource {
+	const tick = bindSugar(written.tick, `${owner} tick`);
+	const helpers: Record<string, string> = {};
+	for (const [name, src] of Object.entries(written.helpers)) {
+		helpers[name] = bindSugar(src, `${owner} helper '${name}'`);
+	}
+	return { ...written, tick, helpers };
 }
 
 /** Where the written parts start in the file being evaluated; binding keeps their lines. */

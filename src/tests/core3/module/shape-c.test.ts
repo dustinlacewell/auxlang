@@ -97,6 +97,23 @@ describe("shape C", () => {
 		expect(() => evalPatch(PATCH)).toThrow(/reserved/);
 	});
 
+	it("a shape-C tick using **= and ?. on a setup local renders through the lifted forms", () => {
+		const PATCH = `const x = defmod("x", {}, ({ sr }) => {
+  let gain = 2
+  const held = { n: 3 }
+  return ({ in: p = 0 }) => {
+    gain **= 1.5
+    return p * gain + held?.n
+  }
+})
+x(10).out()`;
+		const program = evalPatch(PATCH);
+		const registry = withProgramSpecs(getRegistry(), program);
+		const engine = new Core3Engine(program, SR, registry);
+		engine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
+		expect(engine.peek(0, "out", 0)).toBeCloseTo(10 * 2 ** 1.5 + 3, 10);
+	});
+
 	it("meta.args naming a setup config param: a positional call (config before the default input, seq-style) sets both", () => {
 		const PATCH = `const x = defmod("x", { args: ["mul", "in"] }, ({ sr, mul = 2 }) => {
   return ({ in: p = 0 }) => p * mul

@@ -11,7 +11,7 @@ import { MATH_HELPER_PREFIX } from "./bind-math/math-helpers";
 import { RANDOM_HELPER_PREFIX } from "./bind-random/random-helpers";
 import { walk } from "./front/parse/walk";
 
-const LIBRARY_PREFIXES = [MATH_HELPER_PREFIX, RANDOM_HELPER_PREFIX, "__dsp_"];
+const LIBRARY_PREFIXES = [MATH_HELPER_PREFIX, RANDOM_HELPER_PREFIX, "__dsp_", "__sg_"];
 
 /** The library prefix `name` starts with, if any. */
 export function libraryPrefixOf(name: string): string | undefined {

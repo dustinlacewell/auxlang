@@ -8,11 +8,13 @@
 
 import type { BoundLambda } from "../../types";
 import { assertAuthorNames } from "../assert-author-names";
+import { bindSugar } from "../bind-sugar/bind-sugar";
 import { rewriteMath } from "./rewrite-math";
 
 export function bindLambdaMath(src: string): BoundLambda {
 	assertAuthorNames(src, "lambda");
-	const { text, uses, slots } = rewriteMath(src, "lambda");
-	if (uses.size === 0) return { fn: src, math: [], slots: 0 };
+	const sugared = bindSugar(src, "lambda");
+	const { text, uses, slots } = rewriteMath(sugared, "lambda");
+	if (uses.size === 0) return sugared === src ? { fn: src, math: [], slots: 0 } : { fn: sugared, math: [], slots: 0 };
 	return { fn: text, math: [...uses].sort(), slots };
 }

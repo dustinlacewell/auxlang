@@ -196,12 +196,26 @@ const AGREED_ACCEPT: readonly Row[] = [
 	),
 	accept("a record field stored into an array of records", "s.voices[0] = s.v; s.v.x += 1; o.out = s.voices[0].x"),
 	accept("&&= on an element of an array of records", "s.voices[0] &&= s.voices[1]; s.voices[1].x += 1; o.out = s.voices[0].x"),
+	accept("**= on a local, lifted to x = x ** y", "let x = 2; x **= 1 + (i.in > 50 ? 1 : 0); o.out = x"),
+	accept("**= on a state field, lifted", "s.acc = 2; s.acc **= 2; o.out = s.acc"),
+	accept(
+		"**= on an element at a side-effecting index, lifted with the index hoisted",
+		"s.buf[0] = 2; o.out = (s.buf[s.n++ % 4] **= 2) + s.n; s.n = s.n % 4",
+	),
+	accept("a computed state field with a string-literal key, lifted to the dot form", 'o.out = s["n"]; s.n++'),
+	accept("a computed record field with a string-literal key, lifted to the dot form", 'const v = s.v; o.out = v["x"]'),
+	accept("optional chaining on a named member, stripped", "o.out = s?.n; s.n++"),
+	accept("optional chaining on a computed member, stripped", "o.out = s.buf?.[s.n]; s.n++"),
+	accept(
+		"optional chaining on a helper call, stripped",
+		"o.out = f?.(i.in)",
+		"f: (x) => x * 2",
+	),
 ];
 
 /** Forms the checker refuses, so neither backend runs them. */
 const AGREED_REJECT: readonly Row[] = [
 	reject("an uninitialised let", "let x; x = 1; o.out = x", /every variable needs an initial value/),
-	reject("**=", "let x = 2; x **= 2; o.out = x", /`\*\*=` is not allowed/),
 	reject("a recursive helper", "o.out = f(i.in)", /helpers may not recurse \(f → f\)/, "f: (x) => x > 0 ? f(x - 1) : 0"),
 	reject("Math.random in a helper", "o.out = f(1)", /Math\.random\(\) is available only in tick/, "f: (x) => Math.random() * x"),
 	reject("a closure", "const f = (x) => x; o.out = f(1)", /nested functions are closures/),
@@ -210,7 +224,7 @@ const AGREED_REJECT: readonly Row[] = [
 	reject("delete", "delete s.n; o.out = 1", /`delete` removes fields/),
 	reject("the in operator", 'o.out = "n" in s ? 1 : 0', /`in` is not allowed/),
 	reject("this", "o.out = this.x", /`this` is not available/),
-	reject("a computed string key", 'o.out = s["n"]', /computed property names with non-numeric keys/),
+	reject("a computed string key not an identifier", 'o.out = s["1a"]', /computed property names with non-numeric keys/),
 	reject("a runtime string", 'const v = "a" + i.in; o.out = 1', /string values may appear only in comparisons/),
 	reject("for...of", "for (const x of s.buf) o.out = x", /for\.\.\.of/),
 	reject("writing the state parameter, s = 0", "s = 0; o.out = 1", /assigns to 's', the tick's state record/),
