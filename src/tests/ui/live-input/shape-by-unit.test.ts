@@ -18,10 +18,10 @@ describe("shapeByUnit", () => {
 		expect(shapeByUnit(60, -1, "semis")).toBe(59);
 	});
 
-	it("moves secs and hz by a percentage and never crosses 0", () => {
-		const up = shapeByUnit(100, 1, "hz");
-		expect(up).toBeGreaterThan(100);
-		const down = shapeByUnit(100, -1000, "secs");
-		expect(down).toBeGreaterThan(0);
+	it("moves secs and hz by the grabbed digit's step and stops at 0", () => {
+		expect(shapeByUnit(100, 1, "hz")).toBe(101);
+		expect(shapeByUnit(0.005, 0.001, "secs")).toBeCloseTo(0.006);
+		expect(shapeByUnit(0.005, -0.003, "secs")).toBeCloseTo(0.002);
+		expect(shapeByUnit(100, -1000, "secs")).toBe(0);
 	});
 });
