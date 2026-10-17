@@ -112,13 +112,22 @@ const liveModule = `// defmod: write your own module — its inputs are its knob
 // "let spare = 0" keeps the echo going, Float64Array(sr / 2) starts fresh
 tempo(110)
 
-function wrapIndex(k, n) { return ((Math.floor(k) % n) + n) % n }
+// read between two samples, so a moving read point glides
+function readAt(buf, pos) {
+  const n = buf.length
+  const i = Math.floor(pos)
+  const a = buf[((i % n) + n) % n]
+  const b = buf[(((i + 1) % n) + n) % n]
+  return a + (b - a) * (pos - i)
+}
 
 defmod("echo", ({ sr }) => {
   const buf = new Float64Array(sr)
   let w = 0
+  let t = 0.3
   return ({ in: x = 0, time = secs(0.3), fb = 0.5 }) => {
-    const y = x + buf[wrapIndex(w - time * sr, buf.length)] * fb
+    t += (time - t) * 0.001 // glide toward the new time, no jumps
+    const y = x + readAt(buf, w - t * sr) * fb
     buf[w] = y
     w = (w + 1) % buf.length
     return y
