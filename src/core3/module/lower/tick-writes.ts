@@ -4,9 +4,11 @@
  * (`w = …`, `w++`, `w += …`), when it is the root identifier of an assigned
  * member target (`buf[w] = …`, `rec.x += …`), when it is passed as a call
  * argument (`fill(buf)`, which may mutate it through the callee), or when it
- * is aliased by a declaration (`const v = voices[0]`, `const e = v.env`),
- * from where a write through the local reaches back into the field. The
- * tick's own `return` is its output, not an alias site (infer-outs.ts lowers
+ * is aliased by a declaration (`const v = voices[0]`, `const e = v.env`) or a
+ * `for...of` head (`for (const v of voices) ...`, read on the ORIGINAL AST
+ * before bind-sugar lowers the loop — the head's name aliases an element the
+ * same way `voices[0]` does), from where a write through the local reaches
+ * back into the field. The tick's own `return` is its output, not an alias site (infer-outs.ts lowers
  * it to an output write, never an escaping reference), so it is not tracked
  * here. A declaration aliases a field only when the shape read through the access
  * chain can hold a reference (alias-shape.ts): a typed-array element or a
@@ -24,6 +26,7 @@ import type {
 	ArrowFunctionExpression,
 	AssignmentExpression,
 	CallExpression,
+	ForOfStatement,
 	Identifier,
 	MemberExpression,
 	UpdateExpression,
@@ -55,21 +58,28 @@ export function tickWrites(
 	};
 
 	/** The setup field `expr` reads from, through a chain of member accesses off an aliasing root. */
-	const fieldReadBy = (expr: AnyNode): string | null => {
-		const { root, path } = chainOf(expr);
+	const fieldReadBy = (expr: AnyNode): string | null => fieldReadAt(expr, []);
+
+	/** The setup field `expr[…]` reads from: `expr`'s own chain, one more computed hop into an element. */
+	const fieldReadAtElement = (expr: AnyNode): string | null => fieldReadAt(expr, [{ computed: true }]);
+
+	function fieldReadAt(expr: AnyNode, extra: readonly AccessStep[]): string | null {
+		const { root, path: own } = chainOf(expr);
+		const path = extra.length === 0 ? own : [...own, ...extra];
 		const field = root.type === "Identifier" ? nameOf(root as Identifier) : null;
 		if (field === null) return null;
 		if (path.length === 0) return field; // a bare alias local or setup field, not narrowed by access
 		const fieldShape = shapes.get(field);
 		const shape = fieldShape === undefined ? null : shapeAtPath(fieldShape, path);
 		return shapeCanAlias(shape) ? field : null;
-	};
+	}
 
 	walk(tick.body as AnyNode, (node) => {
 		assignmentTarget(node, nameOf, written);
 		updateTarget(node, nameOf, written);
 		callArguments(node, nameOf, written);
 		aliasDeclarator(node, scopes, fieldReadBy, aliasOf);
+		aliasForOfHead(node, scopes, fieldReadAtElement, aliasOf);
 	});
 
 	return written;
@@ -143,5 +153,28 @@ function aliasDeclarator(
 	const field = fieldReadBy(decl.init as AnyNode);
 	if (field === null) return;
 	const binding = bindingDeclaredBy(scopes, decl.id as Identifier);
+	if (binding !== undefined) aliasOf.set(binding, field);
+}
+
+/**
+ * `for (const v of voices) ...`: `v` aliases an element of `voices`, the same
+ * way `const v = voices[0]` does — a later write through `v` marks `voices`
+ * written. Bind-sugar lowers the loop to an index loop before the tick
+ * subset ever sees it, so this runs on the original `ForOfStatement`.
+ */
+function aliasForOfHead(
+	node: AnyNode,
+	scopes: Scopes,
+	fieldReadAtElement: (expr: AnyNode) => string | null,
+	aliasOf: Map<Binding, string>,
+): void {
+	if (node.type !== "ForOfStatement") return;
+	const left = (node as ForOfStatement).left;
+	if (left.type !== "VariableDeclaration" || left.declarations.length !== 1) return;
+	const id = left.declarations[0]?.id;
+	if (id === undefined || id.type !== "Identifier") return;
+	const field = fieldReadAtElement((node as ForOfStatement).right as unknown as AnyNode);
+	if (field === null) return;
+	const binding = bindingDeclaredBy(scopes, id as Identifier);
 	if (binding !== undefined) aliasOf.set(binding, field);
 }

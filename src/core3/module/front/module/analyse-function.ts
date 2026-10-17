@@ -23,10 +23,12 @@ export function resolvePart(parsed: ParsedPart, helpers: ReadonlySet<string>): R
 }
 
 export function analyseFunction(part: ResolvedPart, facts: FunctionFacts): FunctionIR {
+	const writes = writeSites(part.node, part.scopes);
 	const ctx: RuleContext = {
 		...facts,
 		scopes: part.scopes,
 		roles: rolesOf(facts.kind, part.scopes),
+		writes,
 		fail: part.fail,
 		calls: [],
 	};
@@ -34,7 +36,7 @@ export function analyseFunction(part: ResolvedPart, facts: FunctionFacts): Funct
 	return {
 		...part,
 		kind: facts.kind,
-		writes: writeSites(part.node, part.scopes),
+		writes,
 		calls: ctx.calls,
 	};
 }

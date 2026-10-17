@@ -216,6 +216,63 @@ describe("tickWrites", () => {
 		expect(writes.has("buf")).toBe(false);
 	});
 
+	it("a for...of head `for (const v of voices) v.x += 1` counts the root `voices`", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const voices = [{ x: 0 }, { x: 0 }]",
+				"  return ({ in: i = 0 }) => {",
+				"    for (const v of voices) v.x += 1",
+				"    return voices[0].x",
+				"  }",
+				"}",
+			].join("\n"),
+			["voices"],
+			new Map<string, StateShape>([
+				["voices", { k: "records", length: 2, element: { k: "record", fields: { x: { k: "number" } } } }],
+			]),
+		);
+		expect(writes.has("voices")).toBe(true);
+	});
+
+	it("a for...of head that is only read does not count: reading through it is not a write", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const voices = [{ x: 0 }, { x: 0 }]",
+				"  return ({ in: i = 0 }) => {",
+				"    let acc = 0",
+				"    for (const v of voices) acc += v.x",
+				"    return acc",
+				"  }",
+				"}",
+			].join("\n"),
+			["voices"],
+			new Map<string, StateShape>([
+				["voices", { k: "records", length: 2, element: { k: "record", fields: { x: { k: "number" } } } }],
+			]),
+		);
+		expect(writes.has("voices")).toBe(false);
+	});
+
+	it("a for...of head over a typed array does not count: a number element is never an alias", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const buf = new Float64Array(4)",
+				"  return ({ in: i = 0 }) => {",
+				"    let acc = 0",
+				"    for (const x of buf) acc += x",
+				"    return acc",
+				"  }",
+				"}",
+			].join("\n"),
+			["buf"],
+			new Map<string, StateShape>([["buf", { k: "array", type: "f64", length: 4 }]]),
+		);
+		expect(writes.has("buf")).toBe(false);
+	});
+
 	it("a shadowed tick local of the same name does not count", () => {
 		const writes = lowerTick(
 			[

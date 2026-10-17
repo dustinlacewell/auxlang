@@ -51,7 +51,6 @@ const FORBIDDEN: readonly [string, string, RegExp][] = [
 		"s.arr.push(1);",
 		/only Math\.\*, helpers and hashRandom\(key\) may be called/,
 	],
-	["for...of", "for (const x of s.arr) o.out = x;", /for\.\.\.of/],
 	["delete", "delete s.n;", /`delete` removes fields/],
 	["writing an input", "i.in = 2;", /inputs and config are read-only/],
 	["unknown input", "o.out = i.nope;", /unknown input 'nope'/],
@@ -67,6 +66,12 @@ describe("tick subset: each forbidden form throws with its patch line", () => {
 	it.each(FORBIDDEN)("%s", (_label, body, reason) => {
 		expect(() => evalPatch(patch(body))).toThrow(/defmod\('t'\): tick at patch line 11: /);
 		expect(() => evalPatch(patch(body))).toThrow(reason);
+	});
+
+	it("for...of with a destructuring head", () => {
+		expect(() => evalPatch(patch("for (const {a} of s.arr) o.out = a;"))).toThrow(
+			/defmod\('t'\) tick: for\.\.\.of with a destructuring head is not lifted yet/,
+		);
 	});
 
 	it("a name of auxlang's library, beside a call the binding gives that name", () => {
@@ -104,7 +109,7 @@ describe("tick subset: each forbidden form throws with its patch line", () => {
 });
 
 describe("tick subset: the forms inside it compile and run", () => {
-	it("arithmetic, Math, branches, loops, switch on config, typeof, state arrays and helpers", () => {
+	it("arithmetic, Math, branches, loops, for...of, switch on config, typeof, state arrays and helpers", () => {
 		const code = [
 			"const ok = defmod({",
 			'  name: "ok",',
@@ -118,7 +123,7 @@ describe("tick subset: the forms inside it compile and run", () => {
 			"  helpers: { twice: (x) => x * 2, clampUnit: (x) => Math.max(0, Math.min(1, twice(x) / 2)) },",
 			"  tick: (s, i, o, c) => {",
 			"    let acc = 0;",
-			"    for (let k = 0; k < s.buf.length; k++) acc += s.buf[k];",
+			"    for (const x of s.buf) acc += x;",
 			"    s.buf[s.k] = i.in;",
 			"    s.k = (s.k + 1) % s.buf.length;",
 			"    let v = acc / 4;",
@@ -126,7 +131,8 @@ describe("tick subset: the forms inside it compile and run", () => {
 			'      case "double": v = twice(v); break;',
 			"      default: v = 0;",
 			"    }",
-			'    if (typeof v === "number") o.out = clampUnit(v) * 0.5;',
+			'    const kind = "number";',
+			"    if (typeof v === kind) o.out = clampUnit(v) * 0.5;",
 			"  },",
 			"})",
 			"ok({ in: 0.5 }).out()",

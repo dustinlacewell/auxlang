@@ -7,6 +7,7 @@
 import type { AnyNode, Identifier } from "acorn";
 import type { Fail } from "@/core3/module/front/parse/parse-part";
 import type { Binding, Resolution, Scopes } from "@/core3/module/front/scope/binding";
+import type { WriteSites } from "@/core3/module/front/scope/writes";
 
 export type FunctionKind = "tick" | "helper" | "lambda";
 
@@ -33,6 +34,8 @@ export interface RuleContext {
 	readonly state: Record<string, unknown>;
 	/** The module declares `reads: "pattern"`: its tick may call the table intrinsics. */
 	readonly tables: boolean;
+	/** Every binding's assignment/update sites, for a rule that needs "never reassigned". */
+	readonly writes: WriteSites;
 	readonly fail: Fail;
 	/** Helper calls seen, for the recursion check. */
 	readonly calls: HelperCallSite[];

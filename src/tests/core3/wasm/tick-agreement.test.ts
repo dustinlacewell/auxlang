@@ -211,6 +211,26 @@ const AGREED_ACCEPT: readonly Row[] = [
 		"o.out = f?.(i.in)",
 		"f: (x) => x * 2",
 	),
+	accept(
+		"for...of summing a typed array, lifted to an index loop",
+		"let acc = 0; for (const x of s.buf) acc += x; o.out = acc; s.buf[s.n % 4] = i.in; s.n++",
+	),
+	accept(
+		"for...of mutating an array of records, lifted to an index loop",
+		"for (const v of s.voices) v.x += 1; o.out = s.voices[0].x + s.voices[1].x",
+	),
+	accept(
+		"for...of with continue and break, lifted to an index loop",
+		"let acc = 0; for (const v of s.voices) { if (v.x > 100) continue; if (v.x > 1000) break; acc += v.x; v.x += 1 } o.out = acc",
+	),
+	accept(
+		"nested for...of, both loops lifted",
+		"let acc = 0; for (const v of s.voices) { for (const w of s.voices) acc += w.x } o.out = acc",
+	),
+	accept(
+		"a string literal initialising a never-reassigned const, read later in a comparison",
+		'const target = "a"; o.out = cfg.mode === target ? 1 : 0',
+	),
 ];
 
 /** Forms the checker refuses, so neither backend runs them. */
@@ -226,7 +246,11 @@ const AGREED_REJECT: readonly Row[] = [
 	reject("this", "o.out = this.x", /`this` is not available/),
 	reject("a computed string key not an identifier", 'o.out = s["1a"]', /computed property names with non-numeric keys/),
 	reject("a runtime string", 'const v = "a" + i.in; o.out = 1', /string values may appear only in comparisons/),
-	reject("for...of", "for (const x of s.buf) o.out = x", /for\.\.\.of/),
+	reject(
+		"a for...of destructuring head",
+		"for (const {x} of s.voices) o.out = x",
+		/destructuring head is not lifted yet/,
+	),
 	reject("writing the state parameter, s = 0", "s = 0; o.out = 1", /assigns to 's', the tick's state record/),
 	reject("writing the inputs parameter, i = 0", "i = 0; o.out = 1", /assigns to 'i', the tick's inputs record/),
 	reject("writing the outputs parameter, o = 0", "o = 0", /assigns to 'o', the tick's outputs record/),
