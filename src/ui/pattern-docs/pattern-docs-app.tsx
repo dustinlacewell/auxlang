@@ -45,7 +45,7 @@ export function PatternDocsApp() {
 								key={id}
 								example={ex}
 								playing={playingId === id}
-								onRun={() => run(id, ex.code)}
+								onRun={(code) => run(id, code)}
 								onStop={halt}
 								sourceMap={sourceMap}
 								liveSlots={liveSlots}

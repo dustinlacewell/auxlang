@@ -1,17 +1,17 @@
 /**
- * Read-only code display for a doc example. Reuses the app's CodeMirror stack
+ * Editable code block for a doc example. Reuses the app's CodeMirror stack
  * (auxlang theme + the shared extensions) so patches look identical to the
- * playground/editor. Still non-editable by typing, but while a `sourceMap` is
- * supplied (the example is the one playing) it carries the same live-feedback
- * extensions as the main editor (core3-editor/code-mirror.tsx): pattern
- * highlight, draggable numbers, and control widgets — a number drag still
- * edits the doc (CodeMirror's `readOnly` only blocks keyboard/IME input, not
- * programmatic dispatch), so docs examples get the same affordances live.
+ * editor. `code` is the starting text; the reader's edits are what Run plays.
+ * While a `sourceMap` is supplied (the example is the one playing) it carries
+ * the same live-feedback extensions as the main editor
+ * (core3-editor/code-mirror.tsx): pattern highlight, draggable numbers, and
+ * control widgets.
  *
  * Tab buttons sit attached outside the top-right edge: a playback toggle
- * (shown when `onTogglePlay` is provided) and a graph toggle revealing the
- * patch's compiled signal graph (PatchGraph). `graphOpen` starts the graph
- * expanded for examples where the graph is the point.
+ * (shown when `onRun` is provided) and a graph toggle revealing the patch's
+ * compiled signal graph (PatchGraph). `graphOpen` starts the graph expanded
+ * for examples where the graph is the point. Ctrl+Enter runs the edited text
+ * (re-evaluating while playing); Ctrl+. stops.
  */
 
 import type { SlotDecl } from "@/core3/runtime/live/live-contract";
@@ -40,10 +40,11 @@ interface CodeBlockProps {
 	code: string;
 	/** Start with the signal graph expanded. */
 	graphOpen?: boolean;
-	/** Playback state for the toggle tab; only meaningful with onTogglePlay. */
+	/** Playback state for the toggle tab; only meaningful with onRun. */
 	playing?: boolean;
-	/** When provided, a playback toggle tab appears (run when idle, stop when playing). */
-	onTogglePlay?: () => void;
+	/** Plays the current (edited) text. When provided, a playback toggle tab appears. */
+	onRun?: (code: string) => void;
+	onStop?: () => void;
 	/** The playing program's location tables, for pattern highlight/control widgets. Omit for a silent example. */
 	sourceMap?: SourceMap | undefined;
 	/** The playing program's live slots, for control widgets. */
@@ -56,17 +57,21 @@ export function CodeBlock({
 	code,
 	graphOpen = false,
 	playing = false,
-	onTogglePlay,
+	onRun,
+	onStop,
 	sourceMap = EMPTY_SOURCE_MAP,
 	liveSlots = [],
 	onEnsureSlotSite,
 }: CodeBlockProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const viewRef = useRef<EditorView | null>(null);
+	const [text, setText] = useState(code);
 	const [showGraph, setShowGraph] = useState(graphOpen);
 	const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null);
-	const onTogglePlayRef = useRef(onTogglePlay);
-	onTogglePlayRef.current = onTogglePlay;
+	const onRunRef = useRef(onRun);
+	onRunRef.current = onRun;
+	const onStopRef = useRef(onStop);
+	onStopRef.current = onStop;
 	const sourceMapRef = useRef(sourceMap);
 	sourceMapRef.current = sourceMap;
 	const liveSlotsRef = useRef(liveSlots);
@@ -78,13 +83,31 @@ export function CodeBlock({
 
 	useEffect(() => {
 		if (!containerRef.current) return;
+		setText(code);
 		const state = EditorState.create({
 			doc: code,
 			extensions: [
 				...createExtensions(),
 				auxlangTheme,
-				EditorState.readOnly.of(true),
-				keymap.of([{ key: "Mod-Enter", run: () => (onTogglePlayRef.current?.(), true) }]),
+				keymap.of([
+					{
+						key: "Mod-Enter",
+						run: (v) => {
+							onRunRef.current?.(v.state.doc.toString());
+							return true;
+						},
+					},
+					{
+						key: "Mod-.",
+						run: () => {
+							onStopRef.current?.();
+							return true;
+						},
+					},
+				]),
+				EditorView.updateListener.of((update) => {
+					if (update.docChanged) setText(update.state.doc.toString());
+				}),
 				patternHighlightExtension(() => sourceMapRef.current),
 				scopeWidgetExtension(() => sourceMapRef.current),
 				numberDragExtension({
@@ -117,8 +140,12 @@ export function CodeBlock({
 		<EmbedFrame
 			tabsRight={
 				<>
-					{onTogglePlay && (
-						<TabButton active={playing} title={playing ? "Stop" : "Run"} onClick={onTogglePlay}>
+					{onRun && (
+						<TabButton
+							active={playing}
+							title={playing ? "Stop (Ctrl+.)" : "Run (Ctrl+Enter)"}
+							onClick={() => (playing ? onStop?.() : onRun(text))}
+						>
 							{playing ? <Square size={12} className="text-white" /> : <Play size={12} />}
 						</TabButton>
 					)}
@@ -131,7 +158,7 @@ export function CodeBlock({
 					</TabButton>
 				</>
 			}
-			panel={showGraph ? <PatchGraph code={code} /> : undefined}
+			panel={showGraph ? <PatchGraph code={text} /> : undefined}
 		>
 			<div ref={containerRef} />
 			{hover &&

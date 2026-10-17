@@ -2,7 +2,7 @@
  * The standard code-embed skeleton: a tab row riding the top edge (left and
  * right slots for TabButtons), the bordered content box, and an optional panel
  * that expands below the content behind a divider (the signal graph). Both the
- * read-only doc CodeBlock and the live editor compose this frame, so every
+ * doc CodeBlock and the live editor compose this frame, so every
  * code embed on the site carries the same silhouette.
  */
 

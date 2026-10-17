@@ -1,7 +1,7 @@
 /**
  * One documentation example: status dot + title, gray description, and the
  * code block — whose tab buttons carry the playback and graph toggles — with
- * the loud error below. The code is read-only: these are docs, not an editor.
+ * the loud error below. The code is editable; Run plays the edited text.
  *
  * Titles following the "module — facet" law get their module name rendered
  * through ModName (registry-checked, so a title that merely looks like one
@@ -24,7 +24,7 @@ interface DocCardProps {
 	example: DocExample;
 	playing: boolean;
 	error?: string;
-	onRun: () => void;
+	onRun: (code: string) => void;
 	onStop: () => void;
 	/** The playing program's location tables, for pattern highlight/control widgets. Only meaningful while `playing`. */
 	sourceMap?: SourceMap | undefined;
@@ -70,7 +70,8 @@ export function DocCard({
 			<CodeBlock
 				code={example.code}
 				playing={playing}
-				onTogglePlay={playing ? onStop : onRun}
+				onRun={onRun}
+				onStop={onStop}
 				sourceMap={playing ? sourceMap : undefined}
 				liveSlots={playing ? liveSlots : undefined}
 				onEnsureSlotSite={playing ? onEnsureSlotSite : undefined}

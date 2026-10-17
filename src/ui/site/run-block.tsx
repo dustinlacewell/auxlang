@@ -26,7 +26,8 @@ export function RunBlock({ id, code, audio, graphOpen = false }: RunBlockProps) 
 				code={code}
 				graphOpen={graphOpen}
 				playing={playing}
-				onTogglePlay={() => (playing ? audio.halt() : audio.run(id, code))}
+				onRun={(edited) => audio.run(id, edited)}
+				onStop={audio.halt}
 				sourceMap={playing ? audio.sourceMap : undefined}
 				liveSlots={playing ? audio.liveSlots : undefined}
 				onEnsureSlotSite={playing ? audio.ensureSlotSite : undefined}
