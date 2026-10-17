@@ -26,7 +26,7 @@
 
 /** True when `x` is a finite number (Inf - Inf and NaN - NaN are NaN). */
 function finite(x) {
-	return x - x === 0;
+	return x - x === 0
 }
 
 /**
@@ -35,11 +35,13 @@ function finite(x) {
  * [-1, 1] and normal levels are never bent.
  */
 function safetyClip(x, threshold) {
-	const a = Math.abs(x);
-	if (a <= threshold) return x;
-	const room = 1 - threshold;
-	const y = threshold + room * Math.tanh((a - threshold) / room);
-	return x < 0 ? -y : y;
+	const a = Math.abs(x)
+	if (a <= threshold) {
+		return x
+	}
+	const room = 1 - threshold
+	const y = threshold + room * Math.tanh((a - threshold) / room)
+	return x < 0 ? -y : y
 }
 
 /**
@@ -52,85 +54,80 @@ function safetyClip(x, threshold) {
  * exactly as it does for the `in` path.
  */
 function mixdownJack(jack) {
-	if (typeof jack === "number") return finite(jack) ? jack : 0;
-	const n = jack.length;
-	let s = 0;
-	for (let l = 0; l < n; l++) s += jack[l];
-	return s / Math.sqrt(Math.max(1, n));
+	if (typeof jack === "number") {
+		return finite(jack) ? jack : 0
+	}
+	const n = jack.length
+	let s = 0
+	for (let l = 0; l < n; l++) s += jack[l]
+	return s / Math.sqrt(Math.max(1, n))
 }
 
-defmod({
-	name: "out",
-	category: "utils",
-	doc: "The master output; the only thing that makes sound. `in` lanes sum to center — widen with spread() or pan first.",
-	policy: "reduce",
-	ins: { in: optional(sig(null)), gain: unit(0.8), l: optional(sig(null)), r: optional(sig(null)) },
-	outs: { l: sig(), r: sig() },
-	defaultIn: "in",
-	state: (sr) => ({
-		dcxL: 0,
-		dcyL: 0,
-		dcxR: 0,
-		dcyR: 0,
-		dcPole: Math.exp((-2 * Math.PI * 5) / sr),
-		clipThreshold: 10 ** (-1 / 20),
-	}),
-	helpers: { finite, safetyClip, mixdownJack },
-	tick: (s, ins, o, _cfg, _sr, _width) => {
-		const lanes = ins.in;
-		const gains = ins.gain;
-		const gain = typeof gains === "number" ? gains : (gains[0] ?? 0.8);
-		// Center path: mono/poly `in` lanes summed and placed dead center — no
-		// spread (that is spread()/pan's job upstream of out). The center gain is
-		// the old width-1 case's theta = π/4, hoisted outside the lane loop so
-		// width-1 renders stay bit-identical; a literal-argument Math.cos/sin call
-		// is cache-cheap (cache-call.ts: a literal is never compared, every call
-		// takes the fast path), so this costs the same as a baked-in constant. An
-		// unconnected `in` is the number NaN sentinel — contributes nothing; a
-		// connected lane array sums raw so a diverging lane still trips the flush.
-		const inAbsent = typeof lanes === "number" && !finite(lanes);
-		const inWidth = typeof lanes === "number" ? 1 : lanes.length;
-		const norm = 1 / Math.sqrt(Math.max(1, inWidth));
-		const centerTheta = Math.PI / 4;
-		const centerL = Math.cos(centerTheta);
-		const centerR = Math.sin(centerTheta);
-		let sumL = 0;
-		let sumR = 0;
-		if (!inAbsent) {
-			for (let l = 0; l < inWidth; l++) {
-				const v = typeof lanes === "number" ? lanes : lanes[l];
-				sumL += v;
-				sumR += v;
-			}
-		}
-		sumL *= norm * centerL;
-		sumR *= norm * centerR;
-		// Stereo jack path: pre-panned l/r lanes mix straight into each channel.
-		sumL += mixdownJack(ins.l);
-		sumR += mixdownJack(ins.r);
-		sumL *= gain;
-		sumR *= gain;
-		// A non-finite bus sample (user NaN lambda, diverging feedback) must not
-		// poison the master path: Inf/NaN entering the DC blocker turns into NaN
-		// forever (Inf - Inf). Flush to silence and reset the blocker instead.
-		if (!finite(sumL) || !finite(sumR)) {
-			s.dcxL = 0;
-			s.dcyL = 0;
-			s.dcxR = 0;
-			s.dcyR = 0;
-			o.l = 0;
-			o.r = 0;
-			return;
-		}
-		// One-pole DC block per channel: y = x - x1 + pole*y1
-		const pole = s.dcPole;
-		const yL = sumL - s.dcxL + pole * s.dcyL;
-		s.dcxL = sumL;
-		s.dcyL = yL;
-		const yR = sumR - s.dcxR + pole * s.dcyR;
-		s.dcxR = sumR;
-		s.dcyR = yR;
-		o.l = safetyClip(yL, s.clipThreshold);
-		o.r = safetyClip(yR, s.clipThreshold);
+defmod(
+	"out",
+	{
+		cat: "utils",
+		doc: "The master output; the only thing that makes sound. `in` lanes sum to center — widen with spread() or pan first.",
+		reduce: true,
 	},
-});
+	({ sr }) => {
+		let dcxL = 0
+		let dcyL = 0
+		let dcxR = 0
+		let dcyR = 0
+		const dcPole = Math.exp((-2 * Math.PI * 5) / sr)
+		const clipThreshold = 10 ** (-1 / 20)
+		return ({ in: lanes = NaN, gain = unit(0.8), l: lJack = NaN, r: rJack = NaN }) => {
+			const gains = gain
+			const theGain = typeof gains === "number" ? gains : (gains[0] ?? 0.8)
+			// Center path: mono/poly `in` lanes summed and placed dead center — no
+			// spread (that is spread()/pan's job upstream of out). The center gain is
+			// the old width-1 case's theta = π/4, hoisted outside the lane loop so
+			// width-1 renders stay bit-identical; a literal-argument Math.cos/sin call
+			// is cache-cheap (cache-call.ts: a literal is never compared, every call
+			// takes the fast path), so this costs the same as a baked-in constant. An
+			// unconnected `in` is the number NaN sentinel — contributes nothing; a
+			// connected lane array sums raw so a diverging lane still trips the flush.
+			const inAbsent = typeof lanes === "number" && !finite(lanes)
+			const inWidth = typeof lanes === "number" ? 1 : lanes.length
+			const norm = 1 / Math.sqrt(Math.max(1, inWidth))
+			const centerTheta = Math.PI / 4
+			const centerL = Math.cos(centerTheta)
+			const centerR = Math.sin(centerTheta)
+			let sumL = 0
+			let sumR = 0
+			if (!inAbsent) {
+				for (let l = 0; l < inWidth; l++) {
+					const v = typeof lanes === "number" ? lanes : lanes[l]
+					sumL += v
+					sumR += v
+				}
+			}
+			sumL *= norm * centerL
+			sumR *= norm * centerR
+			// Stereo jack path: pre-panned l/r lanes mix straight into each channel.
+			sumL += mixdownJack(lJack)
+			sumR += mixdownJack(rJack)
+			sumL *= theGain
+			sumR *= theGain
+			// A non-finite bus sample (user NaN lambda, diverging feedback) must not
+			// poison the master path: Inf/NaN entering the DC blocker turns into NaN
+			// forever (Inf - Inf). Flush to silence and reset the blocker instead.
+			if (!finite(sumL) || !finite(sumR)) {
+				dcxL = 0
+				dcyL = 0
+				dcxR = 0
+				dcyR = 0
+				return { l: 0, r: 0 }
+			}
+			// One-pole DC block per channel: y = x - x1 + pole*y1
+			const yL = sumL - dcxL + dcPole * dcyL
+			dcxL = sumL
+			dcyL = yL
+			const yR = sumR - dcxR + dcPole * dcyR
+			dcxR = sumR
+			dcyR = yR
+			return { l: safetyClip(yL, clipThreshold), r: safetyClip(yR, clipThreshold) }
+		}
+	},
+)
