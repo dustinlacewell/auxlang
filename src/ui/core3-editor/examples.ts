@@ -125,7 +125,7 @@ defmod("echo", ({ sr }) => {
   const buf = new Float64Array(sr)
   let w = 0
   let t = 0.3
-  return ({ in: x = 0, time = secs(0.3), fb = 0.5 }) => {
+  return ({ in: x = 0, time = secs(0.3, 0.05, 1), fb = range(0.5, 0, 0.95) }) => {
     t += (time - t) * 0.001 // glide toward the new time, no jumps
     const y = x + readAt(buf, w - t * sr) * fb
     buf[w] = y
