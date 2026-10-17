@@ -5,9 +5,16 @@ import { defineConfig } from "vite";
 import { configDefaults } from "vitest/config";
 import { interactiveTestsPlugin } from "./src/tests/interactive/vite-plugin";
 import { patternTestsPlugin } from "./src/tests/patterns/vite-plugin";
+import { siteMetaPlugin } from "./src/ui/site/meta/vite-plugin";
 
 export default defineConfig(({ command }) => ({
-	plugins: [react(), tailwindcss(), interactiveTestsPlugin(), patternTestsPlugin()],
+	plugins: [
+		react(),
+		tailwindcss(),
+		interactiveTestsPlugin(),
+		patternTestsPlugin(),
+		siteMetaPlugin(),
+	],
 	test: {
 		exclude: [...configDefaults.exclude, "**/.claude/worktrees/**"],
 		// Renders of heavy patches near 5 s when the full suite runs in parallel.
