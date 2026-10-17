@@ -10,27 +10,27 @@
  * Both trigs fire on the first sample. The meter is read every tick, never
  * cached in state.
  */
-defmod({
-	name: "clock",
-	category: "timing",
-	doc: "A position in bars at a tempo; outputs position, beat trig, and bar trig.",
-	ins: { bpm: sig(120) },
-	outs: { out: phasePort(), beat: trigPort(), bar: trigPort() },
-	defaultIn: "bpm",
-	defaultOut: "out",
-	positional: ["bpm"],
-	config: { beatsPerBar: 4 },
-	state: () => ({ pos: 0, lastBeat: -1, lastBar: -1 }),
-	tick: (s, i, o, cfg, sr) => {
-		const beatsPerBar = cfg.beatsPerBar;
-		const pos = s.pos + i.bpm / 60 / sr / beatsPerBar;
-		const bar = Math.floor(pos);
-		const beat = Math.floor(pos * beatsPerBar);
-		o.out = pos;
-		o.beat = beat !== s.lastBeat ? 1 : 0;
-		o.bar = bar !== s.lastBar ? 1 : 0;
-		s.pos = pos;
-		s.lastBeat = beat;
-		s.lastBar = bar;
+defmod(
+	"clock",
+	{
+		cat: "timing",
+		doc: "A position in bars at a tempo; outputs position, beat trig, and bar trig.",
+		args: ["bpm"],
+		outs: { out: phasePort(), beat: trigPort(), bar: trigPort() },
 	},
-});
+	({ sr, beatsPerBar = 4 }) => {
+		let pos = 0
+		let lastBeat = -1
+		let lastBar = -1
+		return ({ bpm = sig(120) }) => {
+			pos = pos + bpm / 60 / sr / beatsPerBar
+			const bar = Math.floor(pos)
+			const beat = Math.floor(pos * beatsPerBar)
+			const beatTrig = beat !== lastBeat ? 1 : 0
+			const barTrig = bar !== lastBar ? 1 : 0
+			lastBeat = beat
+			lastBar = bar
+			return { out: pos, beat: beatTrig, bar: barTrig }
+		}
+	},
+)
