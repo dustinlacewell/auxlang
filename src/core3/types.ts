@@ -178,8 +178,9 @@ export interface ModuleSpec extends ModulePorts {
 	readonly source?: ModuleSource;
 	/**
 	 * Setup-local fields the tick writes (shape-C lowering, lower/tick-writes.ts):
-	 * the re-eval carry rule reads this list. Absent on an old-form spec, whose
-	 * carry rule keeps today's whole-shape-fits behavior.
+	 * the re-eval carry rule reads this list. Every module built through
+	 * `defmod`/`defineInternalModule` sets it; absent only on a spec built by
+	 * hand (a test's own spec) that skips the carry rule entirely.
 	 */
 	readonly writes?: readonly string[];
 	/**

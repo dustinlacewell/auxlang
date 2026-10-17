@@ -1,5 +1,5 @@
 /**
- * The realm's root-scope sub-patch table: what `defmod({ patch })` writes when
+ * The realm's root-scope sub-patch table: what `defpatch` writes when
  * no eval is live. Kept apart from the module registry (module/define),
  * which the worklet bundle reads: a sub-patch never reaches the engine.
  */

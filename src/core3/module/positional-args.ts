@@ -1,7 +1,7 @@
 /**
  * `positionalArgs`: a module's full positional-argument order (MANIFESTO
- * §5). Shared by shape-C `defmod` (lower-module), `defpatch`, and the old
- * object-form sub-patch (`patch/subpatch/define-subpatch`).
+ * §5). Shared by shape-C `defmod` (lower-module), `defpatch`, and its
+ * sub-patch backend (`patch/subpatch/define-subpatch`).
  *
  * `meta.args`, when given, IS the complete positional list, written out as
  * the author wants it: an entry may be the default input at any slot or

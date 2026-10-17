@@ -2,7 +2,7 @@
  * `defpatch(name, meta?, fn)` (MANIFESTO §5, shape C): a sub-patch module
  * whose body is ordinary patch JS, written as a plain function of its input
  * handles — `defpatch("bright", ({ in: pitch, cutoff = 84 }) => pitch.saw().lpf(cutoff))`.
- * It maps onto today's `defmod({ name, doc, category, ins, outs, patch })`
+ * It maps onto `{ name, doc, category, ins, outs, patch }`
  * (subpatch/define-subpatch): `ins` comes from `fn`'s destructured param via
  * the same port inference a shape-C tick uses (lower/infer-ports); `outs` is
  * the key set of a top-level object-literal return, or `{ out }` for a bare

@@ -1,5 +1,5 @@
 /**
- * `defmod({ name, ins, outs, patch })` — saving a sub-patch as a module
+ * `defpatch`'s backend: a sub-patch module built from `{ name, ins, outs, patch }`
  * (MANIFESTO §5). It gets the ports of any module: the first input is the
  * default input (the chain target), positional args follow `ins` order, the
  * first output is the default output, and outputs `l`/`r` make it stereo (no
@@ -8,7 +8,7 @@
  * self-contained source: nothing chains into it.
  *
  * A sub-patch has no tick, state, helpers, policy or config: `patch` is the
- * whole body. Registration is scope-aware like every defmod: root scope
+ * whole body. Registration is scope-aware like `defmod`: root scope
  * writes the realm's sub-patch table, an eval writes its own.
  */
 
@@ -36,13 +36,13 @@ function subpatchSpec(written: Readonly<Record<string, unknown>>): SubpatchSpec 
 	const name = written.name as string;
 	assertKeys(name, written);
 	if (typeof written.patch !== "function") {
-		throw new Error(`defmod('${name}'): patch must be a function of the input handles`);
+		throw new Error(`defpatch('${name}'): patch must be a function of the input handles`);
 	}
 	const ins = portRecord(name, "ins", written.ins, 0);
 	const outs = portRecord(name, "outs", written.outs, 1);
 	assertNoOptionalIns(name, ins);
 	const inNames = Object.keys(ins);
-	const positional = positionalArgs(inNames, written.positional as readonly string[] | undefined, `defmod('${name}')`);
+	const positional = positionalArgs(inNames, written.positional as readonly string[] | undefined, `defpatch('${name}')`);
 	return {
 		name,
 		...(typeof written.doc === "string" ? { doc: written.doc } : {}),
@@ -59,13 +59,13 @@ function subpatchSpec(written: Readonly<Record<string, unknown>>): SubpatchSpec 
 function assertKeys(name: string, written: Readonly<Record<string, unknown>>): void {
 	if ("tick" in written) {
 		throw new Error(
-			`defmod('${name}'): tick and patch together. A module is either a tick or a sub-patch.`,
+			`defpatch('${name}'): tick and patch together. A module is either a tick or a sub-patch.`,
 		);
 	}
 	for (const key of Object.keys(written)) {
 		if (!KEYS.has(key)) {
 			throw new Error(
-				`defmod('${name}'): '${key}' does not apply to a sub-patch. ` +
+				`defpatch('${name}'): '${key}' does not apply to a sub-patch. ` +
 					`A sub-patch takes [${[...KEYS].join(", ")}].`,
 			);
 		}
@@ -81,12 +81,12 @@ function portRecord(
 ): Record<string, PortAnn> {
 	if (typeof value !== "object" || value === null || Object.keys(value).length < least) {
 		throw new Error(
-			`defmod('${name}'): ${field} must be a record of at least ${least} port annotation(s)`,
+			`defpatch('${name}'): ${field} must be a record of at least ${least} port annotation(s)`,
 		);
 	}
 	for (const [port, ann] of Object.entries(value as Record<string, PortAnn>)) {
 		if (ann.group !== undefined) {
-			throw new Error(`defmod('${name}'): ${field} '${port}' is a port group. A sub-patch takes no port groups.`);
+			throw new Error(`defpatch('${name}'): ${field} '${port}' is a port group. A sub-patch takes no port groups.`);
 		}
 	}
 	return value as Record<string, PortAnn>;
@@ -97,7 +97,7 @@ function assertNoOptionalIns(name: string, ins: Record<string, PortAnn>): void {
 	for (const [port, ann] of Object.entries(ins)) {
 		if (ann.opt) {
 			throw new Error(
-				`defmod('${name}'): input '${port}' is optional. A sub-patch input has a default or is required.`,
+				`defpatch('${name}'): input '${port}' is optional. A sub-patch input has a default or is required.`,
 			);
 		}
 	}

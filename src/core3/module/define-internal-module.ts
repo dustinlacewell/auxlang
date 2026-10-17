@@ -1,25 +1,87 @@
 /**
  * `defineInternalModule(spec)` — the backend's own entry point for an INTERNAL
  * spec (ins/outs, defaults, optional state/config/policy, tick + helpers as
- * closures), the same shape the old public object-form `defmod` dispatched
- * on. `defmod.ts`'s object branch calls this today (a later step deletes that
- * branch); the test fixture (tests/core3/fixtures/internal-module.ts) is the
- * other caller, reaching it from patch text. Not part of the patch language.
+ * closures): used by the lowering path (patch/define-module.ts, every
+ * `writes` already resolved there) and by the test fixture
+ * (tests/core3/fixtures/internal-module.ts), reaching it from patch text.
+ * Not part of the patch language.
  *
- * `writes` is passed through as given — absent keeps today's hash-kind
- * carry behavior (compile/kind.ts), matching the object form this replaces.
+ * `writes` is required on every spec that reaches here: the re-eval carry
+ * rule (module/front/state/carry-fields.ts) reads it directly, with no
+ * whole-shape fallback.
  */
 
 import { type WrittenSpec, bindModule } from "./bind-module";
 import { type ReadTime } from "./front/module/check-module";
 import { registerSpec, validateSpec } from "./define";
-import type { ModuleSpec } from "../types";
+import type { Category, ModuleSpec, PortAnn } from "../types";
 import { currentSpecs, evalCtx } from "../patch/context";
 import { assertNoReservedPorts } from "../patch/handle";
 import { assertEvalNameFree, assertRootNameFree } from "../patch/name-free";
 
-export function defineInternalModule(spec: WrittenSpec): ModuleSpec {
-	return currentSpecs() === null ? registerRootSpec(spec) : registerEvalSpec(spec);
+type Ins<I extends Record<string, PortAnn>> = { [K in keyof I]: number };
+type Outs<O extends Record<string, PortAnn>> = { [K in keyof O]: number };
+type St = Record<string, unknown>;
+type Cfg = Record<string, unknown>;
+
+/** Shared shape of the internal spec's non-tick fields; `writes` is required, unlike the general `ModuleSpec`. */
+interface InternalModuleBase<I extends Record<string, PortAnn>, O extends Record<string, PortAnn>> {
+	readonly name: string;
+	readonly doc?: string;
+	readonly category: Category;
+	readonly ins: I;
+	readonly outs: O;
+	readonly config?: Cfg;
+	readonly positional?: readonly string[];
+	readonly defaultIn: keyof I & string;
+	readonly defaultOut?: keyof O & string;
+	readonly state?: (sampleRate: number) => St;
+	readonly reads?: "pattern";
+	readonly helpers?: Readonly<Record<string, (...args: never[]) => unknown>>;
+	readonly monitor?: Readonly<{ row: string; held: string; gate: string }>;
+	readonly writes: readonly string[];
+}
+
+export interface InternalModuleMapSpec<I extends Record<string, PortAnn>, O extends Record<string, PortAnn>>
+	extends InternalModuleBase<I, O> {
+	readonly policy?: "map";
+	readonly tick: (s: St, i: Ins<I>, o: Outs<O>, config: Cfg, sampleRate: number) => void;
+}
+
+export interface InternalModuleReduceSpec<
+	I extends Record<string, PortAnn>,
+	O extends Record<string, PortAnn>,
+> extends InternalModuleBase<I, O> {
+	readonly policy: "reduce";
+	readonly tick: (
+		s: St,
+		i: { [K in keyof I]: Float64Array | number },
+		o: Outs<O>,
+		config: Cfg,
+		sampleRate: number,
+		width: number,
+	) => void;
+}
+
+export type InternalModuleSpec<
+	I extends Record<string, PortAnn> = Record<string, PortAnn>,
+	O extends Record<string, PortAnn> = Record<string, PortAnn>,
+> = InternalModuleMapSpec<I, O> | InternalModuleReduceSpec<I, O>;
+
+/** The same two shapes, `writes` optional: the test fixture defaults it before calling in. */
+export type InternalModuleSpecWithoutWrites<
+	I extends Record<string, PortAnn> = Record<string, PortAnn>,
+	O extends Record<string, PortAnn> = Record<string, PortAnn>,
+> =
+	| (Omit<InternalModuleMapSpec<I, O>, "writes"> & { readonly writes?: readonly string[] })
+	| (Omit<InternalModuleReduceSpec<I, O>, "writes"> & { readonly writes?: readonly string[] });
+
+export function defineInternalModule<
+	I extends Record<string, PortAnn>,
+	O extends Record<string, PortAnn>,
+>(spec: InternalModuleSpec<I, O>): ModuleSpec {
+	const written = spec as unknown as WrittenSpec;
+	return currentSpecs() === null ? registerRootSpec(written) : registerEvalSpec(written);
 }
 
 /** Root-scope write (the library, at import): contract checks, the tick build, the realm registry; the tick is read on first use. */
