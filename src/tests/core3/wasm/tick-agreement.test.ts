@@ -356,3 +356,46 @@ describe("tick forms: both backends agree", () => {
 	for (const row of AGREED_ACCEPT) it(`accept: ${row.what}`, () => expectAccepted(row));
 	for (const row of AGREED_REJECT) it(`reject: ${row.what}`, () => expectRejected(row));
 });
+
+/**
+ * Helper param defaults (card step 11, lowered in `lower-module.ts`'s
+ * `helper-param-defaults.ts`, not bind-sugar): a default is inserted at an
+ * omitted call-site argument, never applied to an explicit argument that
+ * happens to read `undefined` at run time. The known trap: `s.buf[99]` is
+ * `undefined` in JS and NaN on WASM — an EXPLICIT argument reading past the
+ * end must stay that way on both engines, never silently become the
+ * default.
+ */
+const SHAPE_C_PARAM_DEFAULTS = `function env(x, k = 0.5) { return x * k }
+
+const m = defmod("m", { cat: "utils" }, ({ sr }) => {
+  return ({ in: x = 0 }) => env(x) + env(x, 2) + env(x, x)
+})
+
+tempo(110)
+const s = seq("c4 e4 <g4 a4> ~")
+m(s.tri().mul(s.gate.ad(0.005, 0.2))).gain(0.3).out()`;
+
+const SHAPE_C_PARAM_DEFAULT_PAST_END = `function pick(x, k = 0) { return x === undefined ? k : x }
+
+const m = defmod("m", { cat: "utils" }, ({ sr }) => {
+  const buf = new Float64Array(4)
+  return ({ in: x = 0 }) => {
+    buf[0] = x
+    return pick(buf[99]) + pick(buf[0], 7)
+  }
+})
+
+tempo(110)
+const s = seq("c4 e4 <g4 a4> ~")
+m(s.tri().mul(s.gate.ad(0.005, 0.2))).gain(0.3).out()`;
+
+describe("shape C: helper param defaults, both backends agree", () => {
+	it("a call omitting a defaulted trailing arg agrees with an explicit one", () => {
+		expectIdentical(evalPatch(SHAPE_C_PARAM_DEFAULTS), SAMPLES);
+	});
+
+	it("an explicit argument reading past an array's end stays undefined-on-JS/NaN-on-WASM, never the default", () => {
+		expectIdentical(evalPatch(SHAPE_C_PARAM_DEFAULT_PAST_END), SAMPLES);
+	});
+});

@@ -19,6 +19,7 @@ import { walk } from "../front/parse/walk";
 import { fileScope, type FileScope } from "./file-scope";
 import { findSetup } from "./find-setup";
 import { helperClosure } from "./helper-closure";
+import { applyHelperParamDefaults, helperParamDefaults } from "./helper-param-defaults";
 import { inferOuts, type InferredOuts } from "./infer-outs";
 import { inferPorts } from "./infer-ports";
 import { positionalArgs } from "../positional-args";
@@ -116,7 +117,7 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 
 	const writes = [...tickWrites(parts.tick, setupLocals)];
 
-	const tick = tickText(
+	const tickBeforeDefaults = tickText(
 		parts.tick,
 		fileText,
 		ports,
@@ -128,11 +129,18 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 		input.name,
 	);
 
+	const defaults = helperParamDefaults(closure.fileNames, scope, fileText, what);
+	const tick = applyHelperParamDefaults(tickBeforeDefaults, defaults, null);
+	const helpers: Record<string, string> = { ...closure.helpers };
+	for (const name of closure.fileNames) {
+		helpers[name] = applyHelperParamDefaults(helpers[name] as string, defaults, name);
+	}
+
 	const state = stateText(parts.statements, fileText, parts.params.config, tickFreeNames, parts.locals, scope);
 
 	const originsFound = originsOf(input, parts.tick, closure, scope);
 	const source: ModuleSource =
-		originsFound === undefined ? { tick, helpers: closure.helpers } : { tick, helpers: closure.helpers, origins: originsFound };
+		originsFound === undefined ? { tick, helpers } : { tick, helpers, origins: originsFound };
 
 	const outsAnn = outsAnnotation(what, outs, input.meta.outs);
 	assertGroupWritesDeclared(what, parts.tick, outs.outParam, outsAnn);

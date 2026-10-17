@@ -190,6 +190,23 @@ describe("lowerModule", () => {
 		expect(lowered.source.helpers.semisToHz).toBeDefined();
 	});
 
+	it("a helper's param default is lifted to the call site, stripped from its own param list", () => {
+		const setupText = ["({ sr }) => {", "  return ({ in: x = 0 }) => env(x)", "}"].join("\n");
+		const fileText = ["function env(x, k = 0.5) { return x * k }", "", `defmod("x", {}, ${setupText})`].join(
+			"\n",
+		);
+		const source: SourceText = { file: "patch", text: fileText };
+		const lowered = lowerModule({
+			name: "x",
+			meta: {},
+			setupText,
+			file: { text: fileText, program: fileProgram(source) },
+			library: false,
+		});
+		expect(lowered.source.helpers.env).toBe("function env(x, k) { return x * k }");
+		expect(lowered.source.tick).toContain("env(__dsp_i.in, 0.5)");
+	});
+
 	it("feeding `source` into bindSource: the lowered echo is accepted", () => {
 		const lowered = lowerEcho();
 		const spec = {

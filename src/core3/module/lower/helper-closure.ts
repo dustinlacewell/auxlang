@@ -43,10 +43,11 @@ export function helperClosure(
 	while (queue.length > 0) {
 		const fn = queue.shift() as FunctionNode;
 		const scopes = resolveBindings(fn, new Set());
+		const defaultedParams = defaultedParamNames(fn);
 		for (const [id, resolution] of scopes.references) {
 			if (resolution.k !== "free") continue;
 			const name = resolution.name;
-			if (knownNames.has(name) || ALLOWED_FREE.has(name)) continue;
+			if (knownNames.has(name) || ALLOWED_FREE.has(name) || defaultedParams.has(name)) continue;
 			if (scope.functions.has(name)) {
 				fileNames.add(name);
 				if (!seenFile.has(name)) {
@@ -87,6 +88,18 @@ export function helperClosure(
 		helpers[name] = (LIBRARY_FUNCTIONS[name] as (...args: never[]) => unknown).toString();
 	}
 	return { helpers, fileNames: [...fileNames] };
+}
+
+/** `resolveBindings` only declares a plain-identifier param; a defaulted one (`function f(x, k =
+ *  0.5)`, card step 11, lifted at the call site in `helper-param-defaults.ts`) falls through
+ *  undeclared and its body uses would read as free. Named here so this closure walk treats them
+ *  as bound, same as any other param, while the raw AST still carries the default. */
+function defaultedParamNames(fn: FunctionNode): ReadonlySet<string> {
+	const names = new Set<string>();
+	for (const param of fn.params) {
+		if (param.type === "AssignmentPattern" && param.left.type === "Identifier") names.add(param.left.name);
+	}
+	return names;
 }
 
 /** Where `id` sits in `fileText`, counting lines from the file's own start. */
