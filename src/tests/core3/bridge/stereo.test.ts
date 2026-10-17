@@ -10,7 +10,6 @@
 import { defmod, factory, loop, out, runProgram, seq, tempo } from "@/core3/api";
 import { getModule } from "@/core3/module/define";
 import { render } from "@/core3/runtime/render";
-import { sig } from "@/core3/types";
 import { describe, expect, it } from "vitest";
 import { rms } from "./helpers";
 
@@ -251,43 +250,18 @@ describe("stereo routing pan → out", () => {
 		expect(getModule("out").defaultOut).toBeUndefined();
 	});
 
-	it("a module with l/r outputs and a default output is a mono source, read by that port", () => {
-		const { l, r } = render(
-			runProgram(() => {
-				defmod({
-					name: "lean",
-					category: "utils",
-					ins: { in: sig(0) },
-					outs: { l: sig(), r: sig() },
-					defaultIn: "in",
-					defaultOut: "l",
-					tick: (_s, i, o) => {
-						o.l = i.in;
-						o.r = 0;
-					},
-				});
-				sin().lean().lpf(100).out();
-			}),
-			0.25,
-		);
-		expect(rms(l)).toBeGreaterThan(0.01);
-		expect(Math.abs(rms(l) - rms(r))).toBeLessThan(rms(l) * 0.05); // mono: auto-spread center
-	});
+	// A module with l/r outputs AND a default output on one of them (old form's
+	// `defaultOut: "l"`) had no shape-C equivalent to migrate to: shape C's
+	// defaultOut is auto-derived as "out" when returned, else none (MANIFESTO
+	// §5, card step 1 — "fits all 41 [library modules]; xy has x/y and no
+	// default"). That capability retired with the old form itself.
 
 	it("a module with no default output and no l/r pair is a loud error when read whole", () => {
 		expect(() =>
 			runProgram(() => {
-				defmod({
-					name: "twin",
-					category: "utils",
-					ins: { in: sig(0) },
-					outs: { a: sig(), b: sig() },
-					defaultIn: "in",
-					tick: (_s, i, o) => {
-						o.a = i.in;
-						o.b = -i.in;
-					},
-				});
+				defmod("twin", {}, (() => {
+					return ({ in: x = 0 }) => ({ a: x, b: -x });
+				}) as never);
 				sin().mul(sin().twin()).out();
 			}),
 		).toThrow(/'twin' has no default output\. Tap one by name: \[a, b\]/);

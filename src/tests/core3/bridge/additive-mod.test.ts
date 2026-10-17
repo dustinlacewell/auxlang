@@ -9,7 +9,6 @@ import "@/core3/modules/all";
 import { buildUserScope, defmod, factory, runProgram } from "@/core3/api";
 import { handleData } from "@/core3/patch/handle-data";
 import { render, renderTap } from "@/core3/runtime/render";
-import { sig } from "@/core3/types";
 import { describe, expect, it } from "vitest";
 import { nodeIndex } from "./helpers";
 
@@ -87,17 +86,9 @@ describe(".mod(port, signal, depth)", () => {
 	it("a required port with no base has nothing to modulate: loud error", () => {
 		expect(() =>
 			runProgram(() => {
-				const need = defmod({
-					name: "need",
-					category: "utils",
-					ins: { x: sig(null) },
-					outs: { out: sig() },
-					defaultIn: "x",
-					defaultOut: "out",
-					tick: (_s, i, o) => {
-						o.out = i.x;
-					},
-				});
+				const need = defmod("need", {}, (() => {
+					return ({ x }: { x: number }) => x;
+				}) as never);
 				need().mod("x", 1).out();
 			}),
 		).toThrow(/need\.mod\('x', \.\.\.\): 'x' has no base value/);

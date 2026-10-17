@@ -8,10 +8,11 @@ import "@/core3/modules/all";
 
 import { defmod, factory, runProgram, tempo } from "@/core3/api";
 import { render, renderTap } from "@/core3/runtime/render";
-import { sig, unit } from "@/core3/types";
+import { sig } from "@/core3/types";
 import { hzToSemis } from "@/core3/units/pitch";
 import { beats, hz, semis } from "@/core3/units/tag";
 import { describe, expect, it } from "vitest";
+import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { nodeIndex } from "./helpers";
 
 const saw = factory("saw");
@@ -20,52 +21,51 @@ const period = factory("period");
 
 const SECONDS = 0.1;
 
-/** The pre-semitone lpf, verbatim (cutoff in Hz), as a patch-defined module. */
-function defineHzLpf(): void {
-	defmod({
-		name: "hzlpf",
-		category: "filters",
-		ins: { in: sig(0), cutoff: hz(1000), res: unit(0) },
-		outs: { out: sig() },
-		defaultIn: "in",
-		defaultOut: "out",
-		positional: ["cutoff", "res"],
-		state: () => ({ ic1: 0, ic2: 0, lastCut: -1, lastRes: -1, a1: 0, a2: 0, a3: 0, k: 0 }),
-		tick: (s, i, o, _cfg, sr) => {
-			const cutoff = Math.min(i.cutoff, 0.49 * sr);
-			const res = i.res;
-			if (cutoff !== (s.lastCut as number) || res !== (s.lastRes as number)) {
-				const g = Math.tan((Math.PI * cutoff) / sr);
-				const k = 1 / (0.5 + res * 9.5);
-				const a1 = 1 / (1 + g * (g + k));
-				s.k = k;
-				s.a1 = a1;
-				s.a2 = g * a1;
-				s.a3 = g * (g * a1);
-				s.lastCut = cutoff;
-				s.lastRes = res;
-			}
-			const ic1 = s.ic1 as number;
-			const ic2 = s.ic2 as number;
-			const v3 = i.in - ic2;
-			const v1 = (s.a1 as number) * ic1 + (s.a2 as number) * v3;
-			const v2 = ic2 + (s.a2 as number) * ic1 + (s.a3 as number) * v3;
-			s.ic1 = 2 * v1 - ic1;
-			s.ic2 = 2 * v2 - ic2;
-			o.out = v2;
-		},
-	});
-}
+/**
+ * The pre-semitone lpf, verbatim (cutoff in Hz), as a shape-C module. Written
+ * as patch text (not a TS closure): `hz`/`unit` in a tick's param defaults
+ * are read as source text (module/lower/port-markers), and Vitest's SSR
+ * import transform would rewrite a real `hz` import into
+ * `__vite_ssr_import_N__.hz(...)`, which that text parser doesn't recognize.
+ */
+const HZLPF = `const hzlpf = defmod("hzlpf", { cat: "filters", args: ["cutoff", "res"] }, ({ sr }) => {
+  let ic1 = 0
+  let ic2 = 0
+  let lastCut = -1
+  let lastRes = -1
+  let a1 = 0
+  let a2 = 0
+  let a3 = 0
+  return ({ in: x = 0, cutoff = hz(1000), res = unit(0) }) => {
+    const c = Math.min(cutoff, 0.49 * sr)
+    if (c !== lastCut || res !== lastRes) {
+      const g = Math.tan((Math.PI * c) / sr)
+      const k = 1 / (0.5 + res * 9.5)
+      a1 = 1 / (1 + g * (g + k))
+      a2 = g * a1
+      a3 = g * (g * a1)
+      lastCut = c
+      lastRes = res
+    }
+    const v3 = x - ic2
+    const v1 = a1 * ic1 + a2 * v3
+    const v2 = ic2 + a2 * ic1 + a3 * v3
+    ic1 = 2 * v1 - ic1
+    ic2 = 2 * v2 - ic2
+    return v2
+  }
+})
+`;
 
 const renderL = (fn: () => void) => render(runProgram(fn), SECONDS).l;
 
 describe("filter cutoff in semitones", () => {
 	it("lpf({ cutoff: 69 }) matches the old Hz lpf at cutoff 440", () => {
 		const semitone = renderL(() => saw(45).lpf({ cutoff: 69, res: 0.3 }).out());
-		const old = renderL(() => {
-			defineHzLpf();
-			saw(45).hzlpf({ cutoff: 440, res: 0.3 }).out();
-		});
+		const old = render(
+			evalPatch(`${HZLPF}\nsaw(45).hzlpf({ cutoff: 440, res: 0.3 }).out()`),
+			SECONDS,
+		).l;
 		expect(semitone).toEqual(old);
 	});
 
@@ -123,22 +123,13 @@ describe("unit tags convert at the port", () => {
 	});
 
 	it("tags declare defmod ports: semis(84) is a semitone port that converts hz()", () => {
-		const program = runProgram(() => {
-			const probe = defmod({
-				name: "probe",
-				category: "utils",
-				ins: { cutoff: semis(84), other: semis(84) },
-				outs: { out: sig() },
-				defaultIn: "cutoff",
-				defaultOut: "out",
-				tick: (_s, i, o) => {
-					o.out = i.cutoff + i.other;
-				},
-			});
-			probe({ cutoff: hz(440) })
-				.gain(0)
-				.out();
-		});
+		// `semis` in a tick's param default is read as source text
+		// (module/lower/port-markers), so it must stay a free identifier here,
+		// not the real `semis` imported above for other tests' TS-level use.
+		const program = evalPatch(`const probe = defmod("probe", { args: ["other"] }, () => {
+  return ({ cutoff = semis(84), other = semis(84) }) => cutoff + other
+})
+probe({ cutoff: hz(440) }).gain(0).out()`);
 		const tap = renderTap(program, nodeIndex(program, "probe"), "out", 0, 1);
 		expect(tap[0]).toBe(69 + 84);
 	});
