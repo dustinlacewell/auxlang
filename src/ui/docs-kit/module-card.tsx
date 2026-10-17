@@ -11,6 +11,7 @@ import { getModule } from "@/core3/module/define";
 import type { PortAnn } from "@/core3/types";
 import { ModName } from "@/ui/design/mod-name";
 import { ModuleBadge } from "@/ui/design/module-badge";
+import { formatPortDefault } from "./format-port-default";
 
 function portRow(name: string, ann: PortAnn, isDefault: boolean): React.ReactNode {
 	const optional = ann.def === null && ann.opt;
@@ -33,9 +34,7 @@ function portRow(name: string, ann: PortAnn, isDefault: boolean): React.ReactNod
 				)}
 			</td>
 			<td className="py-0.5 pr-4 text-gray-400">{ann.unit}</td>
-			<td className="py-0.5 text-gray-400">
-				{required ? "required" : ann.def === null ? "—" : ann.def}
-			</td>
+			<td className="py-0.5 text-gray-400">{required ? "required" : formatPortDefault(ann)}</td>
 		</tr>
 	);
 }
