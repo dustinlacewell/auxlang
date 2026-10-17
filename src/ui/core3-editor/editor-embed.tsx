@@ -1,8 +1,9 @@
 /**
  * The live editor as a standard code embed: same EmbedFrame silhouette as the
- * docs' CodeBlock — Examples dropdown tab top-left, playback and graph toggle
- * tabs top-right, the graph expanding inside the frame. The code surface is
- * the editable CodeMirror; Ctrl+Enter re-evaluates while playing.
+ * docs' CodeBlock — a mobile-only patch-list tab top-left (the sidebar covers
+ * this on desktop), playback and graph toggle tabs top-right, the graph
+ * expanding inside the frame. The code surface is the editable CodeMirror;
+ * Ctrl+Enter re-evaluates while playing.
  */
 
 import type { SlotDecl } from "@/core3/runtime/live/live-contract";
@@ -10,10 +11,9 @@ import type { SourceMap } from "@/core3/source/source-map";
 import { TabButton } from "@/ui/design/tab-button";
 import { EmbedFrame } from "@/ui/docs-kit/embed-frame";
 import { PatchGraph } from "@/ui/docs-kit/patch-graph";
-import { Check, ChevronDown, Link, Play, Square, Waypoints } from "lucide-react";
+import { Check, Link, List, Play, Square, Waypoints } from "lucide-react";
 import { useState } from "react";
 import { CodeMirror } from "./code-mirror";
-import { EXAMPLES } from "./examples";
 import { shareUrlFor } from "./share-url";
 
 interface EditorEmbedProps {
@@ -25,44 +25,8 @@ interface EditorEmbedProps {
 	ensureSlotSite: (site: number) => Promise<void>;
 	onRun: () => void;
 	onStop: () => void;
-}
-
-function ExamplesTab({ onPick }: { onPick: (source: string) => void }) {
-	const [open, setOpen] = useState(false);
-	return (
-		<div className="relative">
-			<TabButton active={open} title="Load an example" onClick={() => setOpen((o) => !o)}>
-				<span className="flex items-center gap-1">
-					examples <ChevronDown size={10} />
-				</span>
-			</TabButton>
-			{open && (
-				<>
-					<button
-						type="button"
-						aria-label="Close examples menu"
-						className="fixed inset-0 z-10 cursor-default"
-						onClick={() => setOpen(false)}
-					/>
-					<div className="absolute left-0 top-full z-20 mt-1 min-w-44 bg-surface-800 border border-surface-700 rounded shadow-lg py-1">
-						{EXAMPLES.map((ex) => (
-							<button
-								key={ex.name}
-								type="button"
-								className="block w-full text-left px-3 py-1 text-sm text-gray-300 hover:bg-surface-700 hover:text-white"
-								onClick={() => {
-									onPick(ex.source);
-									setOpen(false);
-								}}
-							>
-								{ex.name}
-							</button>
-						))}
-					</div>
-				</>
-			)}
-		</div>
-	);
+	/** Opens the mobile patch-list drawer (the sidebar is a persistent column on desktop). */
+	onOpenPatches: () => void;
 }
 
 /** Copies a share link for the current patch and mirrors it into the address bar. */
@@ -94,19 +58,21 @@ export function EditorEmbed({
 	ensureSlotSite,
 	onRun,
 	onStop,
+	onOpenPatches,
 }: EditorEmbedProps) {
 	const [showGraph, setShowGraph] = useState(false);
 	return (
 		<EmbedFrame
 			tabsLeft={
 				<>
-					<ExamplesTab
-						onPick={(source) => {
-							if (isPlaying) onStop();
-							onChange(source);
-						}}
-					/>
-					<span className="self-center text-[10px] text-gray-500 pl-2">
+					<div className="md:hidden">
+						<TabButton active={false} title="Patches" onClick={onOpenPatches}>
+							<span className="flex items-center gap-1">
+								<List size={12} /> patches
+							</span>
+						</TabButton>
+					</div>
+					<span className="self-center text-[10px] text-gray-500 pl-2 hidden sm:inline">
 						Ctrl+Enter runs · Ctrl+. stops
 					</span>
 				</>
