@@ -61,12 +61,21 @@ export const LEVEL_PEAK = 3;
 export const LEVEL_HITS = 4;
 export const LEVEL_STRIDE = 5;
 
-/** Per onset, ONSET_STRIDE f64s: watch index of the seq, its lane, event site, sample frame. */
+/**
+ * Per event, ONSET_STRIDE f64s: watch index of the seq, its lane, an ON/OFF
+ * kind, event site, sample frame. ON is a new note (site is its token); OFF
+ * is the lane's gate falling (site is unused, 0) — the seq's own ~1 ms
+ * pre-release dip before a retrigger makes an OFF immediately followed by an
+ * ON, both real.
+ */
 export const ONSET_WATCH = 0;
 export const ONSET_LANE = 1;
-export const ONSET_SITE = 2;
-export const ONSET_FRAME = 3;
-export const ONSET_STRIDE = 4;
+export const ONSET_KIND = 2;
+export const ONSET_SITE = 3;
+export const ONSET_FRAME = 4;
+export const ONSET_STRIDE = 5;
+export const ONSET_KIND_ON = 1;
+export const ONSET_KIND_OFF = 0;
 /** Onsets past this many in one frame are dropped (the count says how many were kept). */
 export const ONSET_CAPACITY = 256;
 

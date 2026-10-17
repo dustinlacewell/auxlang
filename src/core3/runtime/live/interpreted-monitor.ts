@@ -25,13 +25,23 @@ import {
 	LEVEL_STRIDE,
 	ONSET_CAPACITY,
 	ONSET_FRAME,
+	ONSET_KIND,
+	ONSET_KIND_OFF,
+	ONSET_KIND_ON,
 	ONSET_LANE,
 	ONSET_SITE,
 	ONSET_STRIDE,
 	ONSET_WATCH,
 	type Watch,
 } from "./live-contract";
-import { type MonitorPlan, type MonitorTarget, READER_NOTE, READER_ROW, monitorPlan } from "./monitor-plan";
+import {
+	type MonitorPlan,
+	type MonitorTarget,
+	READER_GATE,
+	READER_NOTE,
+	READER_ROW,
+	monitorPlan,
+} from "./monitor-plan";
 import {
 	type MonitorRegion,
 	REGION_FRAME,
@@ -51,6 +61,8 @@ export class InterpretedMonitor {
 	private readonly plan: MonitorPlan;
 	/** Each target's reader's held note id before the sample, one per (watch, lane). */
 	private readonly held: Float64Array[];
+	/** Each target's reader's held gate before the sample, one per (watch, lane). */
+	private readonly heldGate: Float64Array[];
 
 	/** `registry`: the base registry with the program's specs. */
 	constructor(program: Program, sampleRate: number, registry: Registry) {
@@ -62,6 +74,7 @@ export class InterpretedMonitor {
 		this.watches = watchList(prepared.program, registry);
 		this.plan = monitorPlan(this.watches, this.parts.runs, this.parts.layout);
 		this.held = this.plan.targets.map((t) => new Float64Array(t.laneCount));
+		this.heldGate = this.plan.targets.map((t) => new Float64Array(t.laneCount));
 		this.region = { f64: new Float64Array(regionWords(this.watches.length)), at: 0, watches: this.watches.length };
 		initRegion(this.region);
 	}
@@ -79,7 +92,9 @@ export class InterpretedMonitor {
 		this.plan.targets.forEach((t, w) => {
 			if (t.reader < 0) return;
 			for (let l = 0; l < t.laneCount; l++) {
-				(this.held[w] as Float64Array)[l] = this.readerState(t, l)[READER_NOTE] as number;
+				const state = this.readerState(t, l);
+				(this.held[w] as Float64Array)[l] = state[READER_NOTE] as number;
+				(this.heldGate[w] as Float64Array)[l] = state[READER_GATE] as number;
 			}
 		});
 	}
@@ -89,19 +104,29 @@ export class InterpretedMonitor {
 		this.plan.targets.forEach((t, w) => levelStep(this.region, w, cur[t.slot] as number));
 		this.plan.targets.forEach((t, w) => {
 			if (t.reader < 0) return;
-			for (let l = 0; l < t.laneCount; l++) this.onsetStep(t, w, l);
+			for (let l = 0; l < t.laneCount; l++) {
+				this.onStep(t, w, l);
+				this.offStep(t, w, l);
+			}
 		});
 		const { f64, at } = this.region;
 		f64[at + REGION_FRAME] = (f64[at + REGION_FRAME] as number) + 1;
 	}
 
-	private onsetStep(t: MonitorTarget, w: number, l: number): void {
+	private onStep(t: MonitorTarget, w: number, l: number): void {
 		const state = this.readerState(t, l);
 		const note = state[READER_NOTE] as number;
 		if (note === (this.held[w] as Float64Array)[l] || note === NO_NOTE) return;
 		const column = laneTable(state).fields[t.siteColumn] as Float64Array;
 		const site = column[state[READER_ROW] as number] as number;
-		if (site >= 0) recordOnset(this.region, w, l, site);
+		if (site >= 0) recordEvent(this.region, w, l, ONSET_KIND_ON, site);
+	}
+
+	private offStep(t: MonitorTarget, w: number, l: number): void {
+		const state = this.readerState(t, l);
+		const gate = state[READER_GATE] as number;
+		if (gate === 1 || (this.heldGate[w] as Float64Array)[l] !== 1) return;
+		recordEvent(this.region, w, l, ONSET_KIND_OFF, 0);
 	}
 
 	private readerState(t: MonitorTarget, l: number): Record<string, unknown> {
@@ -121,14 +146,15 @@ function levelStep(region: MonitorRegion, w: number, x: number): void {
 	f64[at + LEVEL_PEAK] = Math.max(f64[at + LEVEL_PEAK] as number, Math.abs(x));
 }
 
-/** An onset of watch `w` lane `l` at the current frame, kept while the frame has room. */
-function recordOnset(region: MonitorRegion, w: number, l: number, site: number): void {
+/** An ON or OFF event of watch `w` lane `l` at the current frame, kept while the frame has room. */
+function recordEvent(region: MonitorRegion, w: number, l: number, kind: number, site: number): void {
 	const f64 = region.f64;
 	const count = f64[region.at + REGION_ONSETS] as number;
 	if (count >= ONSET_CAPACITY) return;
 	const at = region.at + onsetsStart(region.watches) + count * ONSET_STRIDE;
 	f64[at + ONSET_WATCH] = w;
 	f64[at + ONSET_LANE] = l;
+	f64[at + ONSET_KIND] = kind;
 	f64[at + ONSET_SITE] = site;
 	f64[at + ONSET_FRAME] = f64[region.at + REGION_FRAME] as number;
 	f64[region.at + REGION_ONSETS] = count + 1;

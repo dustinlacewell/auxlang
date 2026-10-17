@@ -7,6 +7,9 @@ import {
 	LEVEL_STRIDE,
 	type MonitorFrame,
 	ONSET_FRAME,
+	ONSET_KIND,
+	ONSET_KIND_OFF,
+	ONSET_KIND_ON,
 	ONSET_LANE,
 	ONSET_SITE,
 	ONSET_STRIDE,
@@ -15,7 +18,7 @@ import {
 import { createFrameStore } from "@/ui/core3-editor/live-display/frame-store";
 import { describe, expect, it } from "vitest";
 
-function buildFrame(site = 7, at = 48000): MonitorFrame {
+function buildFrame(site = 7, at = 48000, kind = ONSET_KIND_ON): MonitorFrame {
 	const levelCount = 2;
 	const onsetCount = 1;
 	const buffer = new ArrayBuffer((levelCount * LEVEL_STRIDE + onsetCount * ONSET_STRIDE) * 8);
@@ -36,6 +39,7 @@ function buildFrame(site = 7, at = 48000): MonitorFrame {
 	const onsetBase = levelCount * LEVEL_STRIDE;
 	floats[onsetBase + ONSET_WATCH] = 1;
 	floats[onsetBase + ONSET_LANE] = 0;
+	floats[onsetBase + ONSET_KIND] = kind;
 	floats[onsetBase + ONSET_SITE] = site;
 	floats[onsetBase + ONSET_FRAME] = at;
 
@@ -48,7 +52,7 @@ describe("frame store", () => {
 		store.append(buildFrame());
 		const snapshot = store.take();
 
-		expect(snapshot.onsets).toEqual([{ watch: 1, lane: 0, site: 7, frame: 48000 }]);
+		expect(snapshot.onsets).toEqual([{ watch: 1, lane: 0, kind: "on", site: 7, frame: 48000 }]);
 		expect(snapshot.engineFrame).toBe(48000);
 	});
 
@@ -73,5 +77,11 @@ describe("frame store", () => {
 		expect(snapshot.onsets.map((o) => o.site)).toEqual([7, 9]);
 		expect(snapshot.engineFrame).toBe(48800);
 		expect(store.take().onsets).toEqual([]);
+	});
+
+	it("reads an OFF event's kind", () => {
+		const store = createFrameStore();
+		store.append(buildFrame(0, 48000, ONSET_KIND_OFF));
+		expect(store.take().onsets).toEqual([{ watch: 1, lane: 0, kind: "off", site: 0, frame: 48000 }]);
 	});
 });

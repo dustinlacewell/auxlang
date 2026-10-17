@@ -1,11 +1,12 @@
 /**
- * The onsets the pattern highlight still needs, carried from one monitor
- * frame to the next. A frame carries only the onsets the engine rendered
- * since the last one (frame-store.ts); the sound reaches the speakers an
- * output latency later, so an onset must wait across frames until
- * `audibleFrame` reaches it. Kept: every onset still in the future, and per
- * (watch, lane) the latest one already audible (the note lit now, one per
- * stacked chord note). Older onsets are dropped, so the list stays a few
+ * The ON/OFF events the pattern highlight still needs, carried from one
+ * monitor frame to the next. A frame carries only the events the engine
+ * rendered since the last one (frame-store.ts); the sound reaches the
+ * speakers an output latency later, so an event must wait across frames
+ * until `audibleFrame` reaches it. Kept: every event still in the future,
+ * and per (watch, lane) the latest one already audible — whichever kind, ON
+ * or OFF, since that is what decides whether the lane is lit right now
+ * (onsets-to-lights.ts). Older events are dropped, so the list stays a few
  * entries long.
  */
 

@@ -6,12 +6,13 @@
  * and level words are render locals like the state (render-locals.ts), so
  * a sample's level summary is a few f64 ops per watch:
  *
- *   before the walk   each reader lane's held note id into a local
+ *   before the walk   each reader lane's held note id and gate into a local
  *   after the walk    each watch: hits += (last < 0.5 & x >= 0.5); last = x;
- *                     min, max, peak; each reader lane: an onset when its
- *                     held note id changed to a note and the row under it
- *                     has a site (a load from its table's site column),
- *                     stored while the frame has room; then frame += 1
+ *                     min, max, peak; each reader lane: an ON when its held
+ *                     note id changed to a note and the row under it has a
+ *                     site (a load from its table's site column); an OFF
+ *                     when its gate fell from 1 to 0; either stored while
+ *                     the frame has room; then frame += 1
  */
 
 import { NO_NOTE } from "../../pattern/table/event-table";
@@ -24,6 +25,9 @@ import {
 	LEVEL_STRIDE,
 	ONSET_CAPACITY,
 	ONSET_FRAME,
+	ONSET_KIND,
+	ONSET_KIND_OFF,
+	ONSET_KIND_ON,
 	ONSET_LANE,
 	ONSET_SITE,
 	ONSET_STRIDE,
@@ -32,6 +36,7 @@ import {
 import {
 	type MonitorPlan,
 	type MonitorTarget,
+	READER_GATE,
 	READER_NOTE,
 	READER_ROW,
 } from "../../runtime/live/monitor-plan";
@@ -56,6 +61,8 @@ interface Reader {
 	readonly memory: LaneMemory;
 	/** The held note id before the walk. */
 	readonly held: number;
+	/** The held gate before the walk. */
+	readonly heldGate: number;
 }
 
 export class MonitorEmitter {
@@ -82,21 +89,28 @@ export class MonitorEmitter {
 						lane,
 						memory: readerLane(layout, target.reader, lane),
 						held: e.local("f64"),
+						heldGate: e.local("f64"),
 					})),
 		);
 		this.site = e.local("f64");
 		this.entry = e.local("int");
 	}
 
-	/** Before the walk: each reader's held note id. */
+	/** Before the walk: each reader's held note id and gate. */
 	before(): void {
-		for (const r of this.readers) this.e.code.get(this.state(r, READER_NOTE)).set(r.held);
+		for (const r of this.readers) {
+			this.e.code.get(this.state(r, READER_NOTE)).set(r.held);
+			this.e.code.get(this.state(r, READER_GATE)).set(r.heldGate);
+		}
 	}
 
-	/** After the walk: the level summaries, the onsets, the next frame. */
+	/** After the walk: the level summaries, the ON/OFF events, the next frame. */
 	after(): void {
 		this.plan.targets.forEach((t, w) => this.level(w, this.slots.current(t.slot)));
-		for (const r of this.readers) this.onset(r);
+		for (const r of this.readers) {
+			this.onEvent(r);
+			this.offEvent(r);
+		}
 		const frame = this.word(REGION_FRAME);
 		this.e.code.get(frame).f64Const(1).op(OP.f64Add).set(frame);
 	}
@@ -119,7 +133,7 @@ export class MonitorEmitter {
 		c.get(peak).get(x).op(OP.f64Abs, OP.f64Max).set(peak);
 	}
 
-	private onset(r: Reader): void {
+	private onEvent(r: Reader): void {
 		const { e } = this;
 		const c = e.code;
 		const note = this.state(r, READER_NOTE);
@@ -132,8 +146,22 @@ export class MonitorEmitter {
 		c.get(this.site).f64Const(0).op(OP.f64Ge);
 		c.get(count).f64Const(ONSET_CAPACITY).op(OP.f64Lt, OP.i32And);
 		e.enter(OP.if);
-		this.storeOnset(r.watch, r.lane, count);
+		this.storeEvent(r.watch, r.lane, ONSET_KIND_ON, this.site, count);
 		e.exit();
+		e.exit();
+	}
+
+	/** An OFF when the reader lane's gate fell from 1 to 0 since before the walk. */
+	private offEvent(r: Reader): void {
+		const { e } = this;
+		const c = e.code;
+		const gate = this.state(r, READER_GATE);
+		const count = this.word(REGION_ONSETS);
+		c.get(gate).f64Const(1).op(OP.f64Ne);
+		c.get(r.heldGate).f64Const(1).op(OP.f64Eq, OP.i32And);
+		c.get(count).f64Const(ONSET_CAPACITY).op(OP.f64Lt, OP.i32And);
+		e.enter(OP.if);
+		this.storeEvent(r.watch, r.lane, ONSET_KIND_OFF, null, count);
 		e.exit();
 	}
 
@@ -148,13 +176,16 @@ export class MonitorEmitter {
 		c.loadF64(TABLE_HEADER + recordFieldOffset(r.target.siteColumn));
 	}
 
-	private storeOnset(watch: number, lane: number, count: number): void {
+	/** `site`: the local holding the event's site, or `null` for an OFF (stored as 0). */
+	private storeEvent(watch: number, lane: number, kind: number, site: number | null, count: number): void {
 		const c = this.e.code;
 		const base = this.region.at + 8 * onsetsStart(this.region.watches);
 		c.get(count).truncSatF64S().i32Const(8 * ONSET_STRIDE).op(OP.i32Mul).set(this.entry);
 		c.get(this.entry).f64Const(watch).storeF64(base + 8 * ONSET_WATCH);
 		c.get(this.entry).f64Const(lane).storeF64(base + 8 * ONSET_LANE);
-		c.get(this.entry).get(this.site).storeF64(base + 8 * ONSET_SITE);
+		c.get(this.entry).f64Const(kind).storeF64(base + 8 * ONSET_KIND);
+		if (site === null) c.get(this.entry).f64Const(0).storeF64(base + 8 * ONSET_SITE);
+		else c.get(this.entry).get(site).storeF64(base + 8 * ONSET_SITE);
 		c.get(this.entry).get(this.word(REGION_FRAME)).storeF64(base + 8 * ONSET_FRAME);
 		c.get(count).f64Const(1).op(OP.f64Add).set(count);
 	}

@@ -1,16 +1,19 @@
 /**
- * Collects MonitorFrames' onsets between two renders. `append` copies a
- * frame's onsets out synchronously (live-contract.ts: `onMonitor`'s listener
- * must read before it returns, because the buffer goes back to the worklet
- * right after) and holds no reference to `frame.buffer` afterwards. Several
- * frames can arrive before one animation frame renders them; `take` hands
- * over every onset since the last take, so none is lost to a later frame.
+ * Collects MonitorFrames' ON/OFF events between two renders. `append` copies
+ * a frame's events out synchronously (live-contract.ts: `onMonitor`'s
+ * listener must read before it returns, because the buffer goes back to the
+ * worklet right after) and holds no reference to `frame.buffer` afterwards.
+ * Several frames can arrive before one animation frame renders them; `take`
+ * hands over every event since the last take, so none is lost to a later
+ * frame.
  */
 
 import {
 	LEVEL_STRIDE,
 	type MonitorFrame,
 	ONSET_FRAME,
+	ONSET_KIND,
+	ONSET_KIND_ON,
 	ONSET_LANE,
 	ONSET_SITE,
 	ONSET_STRIDE,
@@ -53,6 +56,7 @@ function appendOnsets(floats: Float64Array, levelCount: number, onsetCount: numb
 		into.push({
 			watch: floats[base + ONSET_WATCH] as number,
 			lane: floats[base + ONSET_LANE] as number,
+			kind: floats[base + ONSET_KIND] === ONSET_KIND_ON ? "on" : "off",
 			site: floats[base + ONSET_SITE] as number,
 			frame: floats[base + ONSET_FRAME] as number,
 		});

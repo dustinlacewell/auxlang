@@ -2,20 +2,23 @@
  * What each engine's monitor reads per sample, one target per watch
  * (watch-list.ts), from the built engine: the watched output's value slot
  * (lane 0), and for a seq whose tables carry sites (monitored-program.ts)
- * the node it reads onsets from, its lane count and its tables' site
- * column. A chord seq has one lane per stacked note; the onset step walks
- * every lane so each note of a chord gets its own onset. Both engines run
- * the same per-sample steps over it:
+ * the node it reads ON/OFF events from, its lane count and its tables' site
+ * column. A chord seq has one lane per stacked note; the event step walks
+ * every lane so each note of a chord gets its own ON and OFF. Both engines
+ * run the same per-sample steps over it:
  *
- *   before the walk   each reader lane's held note id (seq state `heldId`)
+ *   before the walk   each reader lane's held note id and gate (seq state
+ *                     `heldId`, `gateWas`)
  *   after the walk    each target's level summary from its slot (lane 0),
- *                     then each reader lane's onset: its held note id
- *                     changed to a note (not a rest; a tie keeps its
- *                     note's id), and the row under it (state `lastRow`)
- *                     has a site
+ *                     then each reader lane: an ON when its held note id
+ *                     changed to a note (not a rest; a tie keeps its note's
+ *                     id) and the row under it (state `lastRow`) has a
+ *                     site; an OFF when its gate fell from 1 to 0 (the
+ *                     seq's own pre-release dip, so a real retrigger's OFF
+ *                     and ON land a sample or two apart, both true)
  *
- * The seq's own state is what says a new note began, so a note that plays
- * on across a re-eval swap makes no onset. Pure.
+ * The seq's own state is what says a new note began or a gate fell, so a
+ * note that plays on across a re-eval swap makes no event. Pure.
  */
 
 import { hasSites, siteColumn } from "../../bridge/lane-table";
@@ -38,9 +41,10 @@ export interface MonitorPlan {
 	readonly targets: readonly MonitorTarget[];
 }
 
-/** The seq state fields the onset step reads. */
+/** The seq state fields the event step reads. */
 export const READER_ROW = "lastRow";
 export const READER_NOTE = "heldId";
+export const READER_GATE = "gateWas";
 
 export function monitorPlan(
 	watches: readonly Watch[],

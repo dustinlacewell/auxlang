@@ -18,6 +18,9 @@ import {
 	LEVEL_STRIDE,
 	type MonitorFrame,
 	ONSET_FRAME,
+	ONSET_KIND,
+	ONSET_KIND_OFF,
+	ONSET_KIND_ON,
 	ONSET_LANE,
 	ONSET_SITE,
 	ONSET_STRIDE,
@@ -187,7 +190,8 @@ describe("onsets", () => {
 		const samples = 2 * 2 * SR; // two cycles of 2 s
 		const trig = renderTap(program, node, "trig", 0, samples);
 		const trigFrames = Array.from(trig).flatMap((x, k) => (x === 1 ? [k] : []));
-		const onsets = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		const events = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		const onsets = events.filter((o) => o[ONSET_KIND] === ONSET_KIND_ON);
 		expect(onsets.map((o) => o[ONSET_WATCH])).toEqual([w, w, w, w]);
 		expect(onsets.map((o) => o[ONSET_FRAME])).toEqual(trigFrames);
 		// The notes' nominal frames, to the sample the clock's float position crosses them.
@@ -198,6 +202,21 @@ describe("onsets", () => {
 		expect(texts).toEqual(["c3", "e3", "c3", "e3"]);
 	});
 
+	it("c3 goes dark during the rest; e3 stays lit through the tie (gate-driven OFF)", () => {
+		const src = 'tempo(120)\nseq("c3 ~ e3 _").tri().out()';
+		const { program } = evaluatePatch(src);
+		const node = watchList(program)[watchOf(program, "seq")]?.node as number;
+		const samples = 2 * SR; // one cycle of 2 s
+		const gate = renderTap(program, node, "gate", 0, samples);
+		const gateOffFrames = Array.from(gate).flatMap((x, k) => (k > 0 && gate[k - 1] === 1 && x === 0 ? [k] : []));
+		const events = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		const offs = events.filter((o) => o[ONSET_KIND] === ONSET_KIND_OFF);
+		expect(offs.map((o) => o[ONSET_FRAME])).toEqual(gateOffFrames);
+		// c3's own step ends in a rest (gate falls, no immediate retrigger): exactly
+		// one OFF with no ON following inside this one-cycle window.
+		expect(offs.length).toBeGreaterThan(0);
+	});
+
 	it("a pattern plugged straight into an input lifts to a watched seq, same as an explicit one", () => {
 		const src = 'tempo(120)\nslew({ in: p`<0 1>`, rise: 0.02, fall: 0.02 }).out()';
 		const { program, sourceMap } = evaluatePatch(src);
@@ -206,7 +225,8 @@ describe("onsets", () => {
 		const samples = 2 * 2 * SR; // two cycles of 2 s
 		const trig = renderTap(program, node, "trig", 0, samples);
 		const trigFrames = Array.from(trig).flatMap((x, k) => (x === 1 ? [k] : []));
-		const onsets = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		const events = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		const onsets = events.filter((o) => o[ONSET_KIND] === ONSET_KIND_ON);
 		expect(onsets.map((o) => o[ONSET_WATCH])).toEqual(trigFrames.map(() => w));
 		expect(onsets.map((o) => o[ONSET_FRAME])).toEqual(trigFrames);
 		const texts = onsets.map((o) => siteText(src, sourceMap, o[ONSET_SITE] as number));
@@ -221,7 +241,8 @@ describe("onsets", () => {
 		const samples = 2 * SR - BLOCK; // just under one cycle of 2 s
 		const trig = renderTap(program, node, "trig", 0, samples);
 		const trigFrames = Array.from(trig).flatMap((x, k) => (x === 1 ? [k] : []));
-		const onsets = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		const events = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		const onsets = events.filter((o) => o[ONSET_KIND] === ONSET_KIND_ON);
 		expect(onsets.map((o) => o[ONSET_FRAME])).toEqual(trigFrames);
 		const texts = onsets.map((o) => siteText(src, sourceMap, o[ONSET_SITE] as number));
 		expect(texts).toEqual(["60", "72"]);
@@ -239,13 +260,31 @@ describe("onsets", () => {
 		const { program, sourceMap } = evaluatePatch(src);
 		const w = watchOf(program, "seq");
 		const samples = SR; // one cycle of 2 s is plenty for the chord's one onset per lane
-		const onsets = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		const events = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		const onsets = events.filter((o) => o[ONSET_KIND] === ONSET_KIND_ON);
 		expect(onsets).toHaveLength(3);
 		expect(onsets.map((o) => o[ONSET_WATCH])).toEqual([w, w, w]);
 		expect(onsets.map((o) => o[ONSET_LANE]).sort()).toEqual([0, 1, 2]);
 		const byLane = new Map(onsets.map((o) => [o[ONSET_LANE], o]));
 		const texts = [0, 1, 2].map((l) => siteText(src, sourceMap, byLane.get(l)?.[ONSET_SITE] as number));
 		expect(texts).toEqual(["c3", "e3", "g3"]);
+	});
+
+	it("a chord followed by a single note: the dropped lanes go dark with no retrigger", () => {
+		// Packed voicing reuses lane 0 for c4 (a real retrigger: OFF then ON);
+		// lanes 1 and 2 have no next note until the pattern repeats a cycle later.
+		const src = 'tempo(120)\nseq("[c3,e3,g3] c4").tri().out()';
+		const { program } = evaluatePatch(src);
+		const w = watchOf(program, "seq");
+		const samples = SR; // the chord, then c4: half the 2 s cycle, no repeat
+		const events = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		const mine = events.filter((o) => o[ONSET_WATCH] === w);
+		const offs = mine.filter((o) => o[ONSET_KIND] === ONSET_KIND_OFF);
+		const ons = mine.filter((o) => o[ONSET_KIND] === ONSET_KIND_ON);
+		expect(new Set(offs.map((o) => o[ONSET_LANE]))).toEqual(new Set([0, 1, 2]));
+		// Lanes 1 and 2 never retrigger in this half-cycle: only lane 0 (c4) does.
+		const onLanesAfterChord = ons.filter((o) => (o[ONSET_FRAME] as number) > 0).map((o) => o[ONSET_LANE]);
+		expect(onLanesAfterChord).toEqual([0]);
 	});
 });
 

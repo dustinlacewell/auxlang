@@ -12,6 +12,9 @@ import {
 	LEVEL_STRIDE,
 	type MonitorFrame,
 	ONSET_FRAME,
+	ONSET_KIND,
+	ONSET_KIND_OFF,
+	ONSET_KIND_ON,
 	ONSET_SITE,
 	ONSET_STRIDE,
 } from "@/core3/runtime/live/live-contract";
@@ -61,14 +64,17 @@ describe("monitor through the worklet host", () => {
 		}
 		expect(swapped).toBeGreaterThan(START);
 		expect(posted.every((f) => f.generation === prepared.wasm.serial)).toBe(true);
-		const onsets = posted.flatMap((f) => {
+		const events = posted.flatMap((f) => {
 			const words = new Float64Array(f.buffer);
 			const base = f.levelCount * LEVEL_STRIDE;
 			return Array.from({ length: f.onsetCount }, (_, k) => [
 				words[base + k * ONSET_STRIDE + ONSET_FRAME] as number,
 				words[base + k * ONSET_STRIDE + ONSET_SITE] as number,
+				words[base + k * ONSET_STRIDE + ONSET_KIND] as number,
 			]);
 		});
+		const onsets = events.filter(([, , kind]) => kind === ONSET_KIND_ON);
+		const offs = events.filter(([, , kind]) => kind === ONSET_KIND_OFF);
 		const site = (id: number) => {
 			const at = sourceMap.sites[id]?.range;
 			return at === undefined ? undefined : src.slice(at.start, at.end);
@@ -79,5 +85,8 @@ describe("monitor through the worklet host", () => {
 		onsets.forEach(([f], k) =>
 			expect(Math.abs((f as number) - (swapped + k * SR))).toBeLessThanOrEqual(1),
 		);
+		// c3 at 0 s goes dark before the rest; e3 at 1 s stays lit through its tie
+		// (one OFF, not two) until it in turn goes dark before the next c3.
+		expect(offs.length).toBeGreaterThanOrEqual(2);
 	}, 20_000);
 });
