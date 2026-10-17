@@ -11,17 +11,17 @@ import { SitePage } from "@/ui/site/site-page";
 
 const HELLO_PATCH = `tempo(126)
 
-// kick (switch it off for a breakdown), and a sidechain pump the chords and bass duck under
+// kick
 const beat = seq("60*4").trig.mul(toggle(1))
 beat.kick({ pitch: 41, sweep: 4, decay: 0.4, click: 0.1 }).gain(0.9).out()
 const pump = beat.ad(0.002, 0.3).sub(1)
 
-// clap in a room, open hat on the offbeat, hold the button for a snare roll
+// clap
 seq(p\`~ 60\`.fast(2)).trig.clap({ decay: 0.25 }).reverb({ room: 0.7, mix: 0.25 }).gain(0.6).out()
 seq(p\`60*4\`.late(1 / 8)).trig.hihat({ decay: 0.08, metal: 0.3 }).gain(0.6).pan(0.25).out()
 seq("60*16").trig.mul(button()).snare({ decay: 0.08 }).gain(0.4).out()
 
-// ticks: swung 16ths, the offbeat loudest and a little open
+// ticks
 const hat = seq(p\`60*16\`
   .with({ vel: p\`0.3 0.5 1 0.5\`.fast(4) })
   .swing(8))
@@ -32,7 +32,7 @@ hat.trig
   .pan(-0.25)
   .out()
 
-// chords: Fm Db Ab Eb, two detuned saws a note; the pad sweeps the filter
+// chords
 const filter = xy(0.6, 0.2)
 const chords = seq("<[f3,ab3,c4,eb4] [db3,f3,ab3,c4] [ab2,c3,eb3,g3] [eb3,g3,bb3,db4]>")
 const stack = chords.add(p\`[-0.1, 0.1]\`)
@@ -43,7 +43,7 @@ const stack = chords.add(p\`[-0.1, 0.1]\`)
   .gain(0.05)
 stack.spread().out()
 
-// lead: a syncopated hook on the chord tones, plucked, echoing a dotted eighth
+// lead
 const hook = seq(p\`<[c5 ~ ab4 c5 ~ f5 ~ eb5] [c5 ~ ab4 c5 ~ f5 ~ db5]
   [c5 ~ ab4 c5 ~ eb5 ~ c5] [bb4 ~ g4 bb4 ~ eb5 ~ db5]>\`)
 const lead = hook.sqr()
@@ -53,10 +53,10 @@ const lead = hook.sqr()
   .gain(0.08)
 lead.out()
 
-// one shared reverb for the chords and the lead
+// reverb
 stack.mix().add(lead).reverb({ room: 0.85, damp: 0.5, mix: 1 }).gain(0.4).out()
 
-// bass: the root on the offbeats, the filter opening on each note as far as the slider says
+// bass
 const root = seq("<f1 db1 ab0 eb1>")
 const pluck = seq(p\`60*4\`.late(1 / 8)).gate
 root.saw()
