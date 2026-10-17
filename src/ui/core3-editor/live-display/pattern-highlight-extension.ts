@@ -8,7 +8,7 @@
 
 import { audibleFrame } from "@/core3/runtime/audio";
 import type { SourceMap } from "@/core3/source/source-map";
-import type { Extension } from "@codemirror/state";
+import { type Extension, StateEffect } from "@codemirror/state";
 import {
 	Decoration,
 	type DecorationSet,
@@ -21,6 +21,9 @@ import { onsetsToLights } from "./onsets-to-lights";
 import { buildSiteRanges } from "./site-ranges";
 
 const litMark = Decoration.mark({ class: "aux-pattern-lit" });
+
+/** An empty transaction's tag: the lit set changed, so the view redraws the plugin's decorations. */
+const lightsChanged = StateEffect.define<null>();
 
 /** `sourceMapOf()` reads the mounted editor's latest sourceMap (rebuilt on every `run()`). */
 export function patternHighlightExtension(sourceMapOf: () => SourceMap): Extension {
@@ -48,6 +51,9 @@ export function patternHighlightExtension(sourceMapOf: () => SourceMap): Extensi
 							.sort((a, b) => a.start - b.start)
 							.map((range) => litMark.range(range.start, range.end)),
 					);
+					// CodeMirror reads a plugin's decorations only during a view
+					// update: this tick runs outside one, so ask for one.
+					this.view.dispatch({ effects: lightsChanged.of(null) });
 				});
 			}
 
