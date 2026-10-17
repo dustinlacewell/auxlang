@@ -18,6 +18,7 @@ export default defineConfig(({ command }) => ({
 		rollupOptions: {
 			input: {
 				main: resolve(__dirname, "index.html"),
+				about: resolve(__dirname, "about.html"),
 				editor: resolve(__dirname, "editor.html"),
 				guide: resolve(__dirname, "guide.html"),
 				patterns: resolve(__dirname, "patterns.html"),
