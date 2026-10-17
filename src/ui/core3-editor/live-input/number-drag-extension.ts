@@ -1,6 +1,7 @@
 /**
  * Drag any number (MANIFESTO §5.3, `drag-any-number`): pointer-down on a
- * numeric literal, then a vertical drag steps its value. The grabbed digit
+ * numeric literal, then a vertical drag steps its value. A press that moves
+ * less than DRAG_THRESHOLD is a plain click: it places the caret. The grabbed digit
  * sets the step size (step-from-digit.ts); Shift is finer. The first drag of
  * a literal turns it into a live slot (`ensureSlotSite`, a re-eval with that
  * site added) — later drags just `writeSlot` (already coalesced to one
@@ -29,6 +30,8 @@ import { shapeByUnit } from "./shape-by-unit";
 import { stepFromDigit } from "./step-from-digit";
 
 const PIXELS_PER_STEP = 6;
+/** Vertical pixels a press must move before it becomes a drag; less is a plain click. */
+const DRAG_THRESHOLD = 3;
 
 /** Marks a transaction as a drag's own doc edit, so the host's change listener can ignore it. */
 export const dragEditAnnotation = Annotation.define<boolean>();
@@ -56,6 +59,16 @@ export function numberDragExtension(host: NumberDragHost): Extension {
 			} | null = null;
 			/** The selection/caret when the current drag began; restored if CodeMirror moves it mid-drag. */
 			private selectionAtDragStart: EditorState["selection"] | null = null;
+			/** A press on a number that has not yet moved far enough to be a drag. */
+			private armed: {
+				number: NonNullable<ReturnType<typeof numberSiteAt>>;
+				digitStep: number;
+				startY: number;
+				pointerId: number;
+				selectionBefore: EditorState["selection"];
+			} | null = null;
+			/** Counts presses and releases, so a drag whose slot arrives after pointerup never begins. */
+			private press = 0;
 
 			constructor(private view: EditorView) {
 				view.dom.addEventListener("pointerdown", this.onPointerDown);
@@ -66,41 +79,62 @@ export function numberDragExtension(host: NumberDragHost): Extension {
 				this.endDrag();
 			}
 
+			/**
+			 * A press on a number only arms a drag: the click still reaches
+			 * CodeMirror and places the caret. The drag starts once the pointer
+			 * moves DRAG_THRESHOLD pixels vertically (startDrag).
+			 */
 			private onPointerDown = (event: PointerEvent) => {
 				if (event.button !== 0) return;
 				const pos = this.view.posAtCoords({ x: event.clientX, y: event.clientY });
 				if (pos === null) return;
 				const docText = this.view.state.doc.toString();
 				const numbers = draggableNumbersOf(docText, host.sourceMapOf(), currentSlots());
-				const caretInLiteral = pos;
-				const number = numberSiteAt(numbers, caretInLiteral);
+				const number = numberSiteAt(numbers, pos);
 				if (number === null) return;
 
+				this.press++;
+				this.armed = {
+					number,
+					digitStep: stepFromDigit(number.text, pos - number.range.start, event.shiftKey),
+					startY: event.clientY,
+					pointerId: event.pointerId,
+					selectionBefore: this.view.state.selection,
+				};
+				this.view.dom.addEventListener("pointermove", this.onPointerMove);
+				this.view.dom.addEventListener("pointerup", this.onPointerUp);
+			};
+
+			/**
+			 * Promotes an armed press to a drag. CodeMirror has already moved the
+			 * caret for the press (and may extend a selection as the pointer
+			 * moves): the drag restores the selection from before the press,
+			 * every time it changes, until pointerup.
+			 */
+			private startDrag(event: PointerEvent) {
+				const armed = this.armed;
+				if (armed === null) return;
+				this.armed = null;
 				event.preventDefault();
-				// CodeMirror's own mousedown handler can still move the selection/caret
-				// (preventDefault on pointerdown doesn't always suppress it) — restore
-				// the selection the drag started from, every time it changes.
-				const selectionBefore = this.view.state.selection;
-				const digitIndex = caretInLiteral - number.range.start;
-				const digitStep = stepFromDigit(number.text, digitIndex, event.shiftKey);
+				const { number } = armed;
+				const press = this.press;
 
 				const begin = (slotIndex: number) => {
+					if (this.press !== press) return;
 					this.dragging = {
 						site: number.site,
 						slotIndex,
 						range: number.range,
-						digitStep,
-						startY: event.clientY,
+						digitStep: armed.digitStep,
+						startY: armed.startY,
 						startValue: Number.parseFloat(number.text),
 					};
-					this.selectionAtDragStart = selectionBefore;
-					this.view.dom.setPointerCapture(event.pointerId);
+					this.selectionAtDragStart = armed.selectionBefore;
+					this.view.dom.setPointerCapture(armed.pointerId);
 					this.view.dom.classList.add(DRAGGING_CLASS);
-					this.view.dom.addEventListener("pointermove", this.onPointerMove);
-					this.view.dom.addEventListener("pointerup", this.onPointerUp);
 					this.view.dom.addEventListener("keydown", this.onKeyDown);
-					if (!this.view.state.selection.eq(selectionBefore)) {
-						this.view.dispatch({ selection: selectionBefore });
+					if (!this.view.state.selection.eq(armed.selectionBefore)) {
+						this.view.dispatch({ selection: armed.selectionBefore });
 					}
 				};
 
@@ -113,9 +147,13 @@ export function numberDragExtension(host: NumberDragHost): Extension {
 					if (slot === -1) return;
 					begin(slot);
 				});
-			};
+			}
 
 			private onPointerMove = (event: PointerEvent) => {
+				if (this.armed !== null) {
+					if (Math.abs(this.armed.startY - event.clientY) >= DRAG_THRESHOLD) this.startDrag(event);
+					return;
+				}
 				const drag = this.dragging;
 				if (drag === null) return;
 				const pixels = drag.startY - event.clientY;
@@ -131,6 +169,8 @@ export function numberDragExtension(host: NumberDragHost): Extension {
 			};
 
 			private onPointerUp = () => {
+				this.press++;
+				this.armed = null;
 				this.endDrag();
 			};
 
@@ -165,10 +205,12 @@ export function numberDragExtension(host: NumberDragHost): Extension {
 			}
 
 			private endDrag() {
+				if (this.armed === null) {
+					this.view.dom.removeEventListener("pointermove", this.onPointerMove);
+					this.view.dom.removeEventListener("pointerup", this.onPointerUp);
+				}
 				if (this.dragging === null) return;
 				this.view.dom.classList.remove(DRAGGING_CLASS);
-				this.view.dom.removeEventListener("pointermove", this.onPointerMove);
-				this.view.dom.removeEventListener("pointerup", this.onPointerUp);
 				this.view.dom.removeEventListener("keydown", this.onKeyDown);
 				this.dragging = null;
 				this.selectionAtDragStart = null;
