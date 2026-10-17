@@ -36,6 +36,8 @@ export interface LowerModuleMeta {
 	readonly reads?: "pattern";
 	readonly outs?: Readonly<Record<string, PortAnn>>;
 	readonly config?: Readonly<Record<string, unknown>>;
+	/** The state fields a live monitor watches for note events (ModuleSpec.monitor). */
+	readonly monitor?: Readonly<{ row: string; held: string; gate: string }>;
 }
 
 export interface LowerModuleFile {
@@ -63,6 +65,7 @@ export interface LoweredModule {
 	readonly config?: Readonly<Record<string, unknown>>;
 	readonly policy?: "map" | "reduce";
 	readonly reads?: "pattern";
+	readonly monitor?: Readonly<{ row: string; held: string; gate: string }>;
 	readonly stateText: string;
 	readonly source: ModuleSource;
 	readonly writes: readonly string[];
@@ -179,6 +182,7 @@ export function lowerModule(input: LowerModuleInput): LoweredModule {
 		...(Object.keys(config).length > 0 ? { config } : {}),
 		...(input.meta.reduce === true ? { policy: "reduce" as const } : {}),
 		...(input.meta.reads !== undefined ? { reads: input.meta.reads } : {}),
+		...(input.meta.monitor !== undefined ? { monitor: input.meta.monitor } : {}),
 	};
 }
 

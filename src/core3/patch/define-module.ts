@@ -62,6 +62,7 @@ export function defineModule(
 		...(lowered.config !== undefined ? { config: lowered.config } : {}),
 		...(lowered.policy !== undefined ? { policy: lowered.policy } : {}),
 		...(lowered.reads !== undefined ? { reads: lowered.reads } : {}),
+		...(lowered.monitor !== undefined ? { monitor: lowered.monitor } : {}),
 		...(lowered.doc !== undefined ? { doc: lowered.doc } : {}),
 		writes,
 		state,

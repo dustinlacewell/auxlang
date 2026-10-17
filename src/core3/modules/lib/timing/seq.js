@@ -72,6 +72,7 @@ defmod(
 		doc: "Reads a pattern at a position (default: the clock); outputs value, gate, trig, and slide.",
 		args: ["pattern", "position"],
 		reads: "pattern",
+		monitor: { row: "lastRow", held: "heldId", gate: "gateWas" },
 		outs: {
 			out: semis(0),
 			gate: gatePort(),

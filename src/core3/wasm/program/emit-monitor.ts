@@ -33,13 +33,7 @@ import {
 	ONSET_STRIDE,
 	ONSET_WATCH,
 } from "../../runtime/live/live-contract";
-import {
-	type MonitorPlan,
-	type MonitorTarget,
-	READER_GATE,
-	READER_NOTE,
-	READER_ROW,
-} from "../../runtime/live/monitor-plan";
+import type { MonitorPlan, MonitorTarget } from "../../runtime/live/monitor-plan";
 import {
 	REGION_FRAME,
 	REGION_LEVELS,
@@ -81,7 +75,7 @@ export class MonitorEmitter {
 		if (layout.monitor === null) throw new Error("wasm: a monitor plan with no monitor region");
 		this.region = layout.monitor;
 		this.readers = plan.targets.flatMap((target, watch) =>
-			target.reader < 0
+			target.reader < 0 || target.fields === null
 				? []
 				: Array.from({ length: target.laneCount }, (_, lane) => ({
 						watch,
@@ -99,8 +93,9 @@ export class MonitorEmitter {
 	/** Before the walk: each reader's held note id and gate. */
 	before(): void {
 		for (const r of this.readers) {
-			this.e.code.get(this.state(r, READER_NOTE)).set(r.held);
-			this.e.code.get(this.state(r, READER_GATE)).set(r.heldGate);
+			const fields = fieldsOf(r);
+			this.e.code.get(this.state(r, fields.held)).set(r.held);
+			this.e.code.get(this.state(r, fields.gate)).set(r.heldGate);
 		}
 	}
 
@@ -136,7 +131,7 @@ export class MonitorEmitter {
 	private onEvent(r: Reader): void {
 		const { e } = this;
 		const c = e.code;
-		const note = this.state(r, READER_NOTE);
+		const note = this.state(r, fieldsOf(r).held);
 		const count = this.word(REGION_ONSETS);
 		c.get(note).get(r.held).op(OP.f64Ne);
 		c.get(note).f64Const(NO_NOTE).op(OP.f64Ne, OP.i32And);
@@ -155,7 +150,7 @@ export class MonitorEmitter {
 	private offEvent(r: Reader): void {
 		const { e } = this;
 		const c = e.code;
-		const gate = this.state(r, READER_GATE);
+		const gate = this.state(r, fieldsOf(r).gate);
 		const count = this.word(REGION_ONSETS);
 		c.get(gate).f64Const(1).op(OP.f64Ne);
 		c.get(r.heldGate).f64Const(1).op(OP.f64Eq, OP.i32And);
@@ -171,7 +166,7 @@ export class MonitorEmitter {
 		if (tables === null) throw new Error(`wasm: monitor reader node ${r.target.reader} has no tables`);
 		const c = this.e.code;
 		c.i32Const(0).memory(OP.i32Load, 2, tables + SLOT_CUR);
-		c.get(this.state(r, READER_ROW)).truncSatF64S();
+		c.get(this.state(r, fieldsOf(r).row)).truncSatF64S();
 		c.i32Const(r.memory.rowBytes).op(OP.i32Mul, OP.i32Add);
 		c.loadF64(TABLE_HEADER + recordFieldOffset(r.target.siteColumn));
 	}
@@ -201,6 +196,13 @@ export class MonitorEmitter {
 		if (addr === undefined) throw new Error(`wasm: monitor reader has no state field '${field}'`);
 		return this.locals.at(addr);
 	}
+}
+
+/** A reader's monitor contract; readers are only ever built from targets whose `fields` is non-null. */
+function fieldsOf(r: Reader): Readonly<{ row: string; held: string; gate: string }> {
+	const fields = r.target.fields;
+	if (fields === null) throw new Error("wasm: monitor reader has no monitor field contract");
+	return fields;
 }
 
 function readerLane(layout: WasmLayout, node: number, lane: number): LaneMemory {

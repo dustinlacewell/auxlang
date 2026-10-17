@@ -34,14 +34,7 @@ import {
 	ONSET_WATCH,
 	type Watch,
 } from "./live-contract";
-import {
-	type MonitorPlan,
-	type MonitorTarget,
-	READER_GATE,
-	READER_NOTE,
-	READER_ROW,
-	monitorPlan,
-} from "./monitor-plan";
+import { type MonitorPlan, type MonitorTarget, monitorPlan } from "./monitor-plan";
 import {
 	type MonitorRegion,
 	REGION_FRAME,
@@ -90,11 +83,11 @@ export class InterpretedMonitor {
 
 	private before(): void {
 		this.plan.targets.forEach((t, w) => {
-			if (t.reader < 0) return;
+			if (t.reader < 0 || t.fields === null) return;
 			for (let l = 0; l < t.laneCount; l++) {
 				const state = this.readerState(t, l);
-				(this.held[w] as Float64Array)[l] = state[READER_NOTE] as number;
-				(this.heldGate[w] as Float64Array)[l] = state[READER_GATE] as number;
+				(this.held[w] as Float64Array)[l] = state[t.fields.held] as number;
+				(this.heldGate[w] as Float64Array)[l] = state[t.fields.gate] as number;
 			}
 		});
 	}
@@ -114,17 +107,19 @@ export class InterpretedMonitor {
 	}
 
 	private onStep(t: MonitorTarget, w: number, l: number): void {
+		if (t.fields === null) return;
 		const state = this.readerState(t, l);
-		const note = state[READER_NOTE] as number;
+		const note = state[t.fields.held] as number;
 		if (note === (this.held[w] as Float64Array)[l] || note === NO_NOTE) return;
 		const column = laneTable(state).fields[t.siteColumn] as Float64Array;
-		const site = column[state[READER_ROW] as number] as number;
+		const site = column[state[t.fields.row] as number] as number;
 		if (site >= 0) recordEvent(this.region, w, l, ONSET_KIND_ON, site);
 	}
 
 	private offStep(t: MonitorTarget, w: number, l: number): void {
+		if (t.fields === null) return;
 		const state = this.readerState(t, l);
-		const gate = state[READER_GATE] as number;
+		const gate = state[t.fields.gate] as number;
 		if (gate === 1 || (this.heldGate[w] as Float64Array)[l] !== 1) return;
 		recordEvent(this.region, w, l, ONSET_KIND_OFF, 0);
 	}

@@ -14,6 +14,8 @@ import type { NodeGroupViews } from "./group-view";
 export interface NodeRun {
 	readonly tick: TickFn | ReduceTickFn;
 	readonly config: Record<string, unknown>;
+	/** The module's monitor contract (ModuleSpec.monitor), for a live monitor's event reads; absent on most modules. */
+	readonly monitor?: Readonly<{ row: string; held: string; gate: string }>;
 	readonly laneCount: number;
 	readonly states: Record<string, unknown>[];
 	/** Reused across lanes and samples. */

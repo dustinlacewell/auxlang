@@ -56,6 +56,8 @@ interface DefmodBase<I extends Record<string, PortAnn>, O extends Record<string,
 	readonly reads?: "pattern";
 	/** Named functions the tick may call, under the same rules as the tick. */
 	readonly helpers?: Readonly<Record<string, (...args: never[]) => unknown>>;
+	/** The state fields a live monitor watches for note events (ModuleSpec.monitor); present only on a module a monitor reads notes from. */
+	readonly monitor?: Readonly<{ row: string; held: string; gate: string }>;
 }
 
 export interface DefmodMapSpec<I extends Record<string, PortAnn>, O extends Record<string, PortAnn>>

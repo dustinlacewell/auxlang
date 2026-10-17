@@ -30,6 +30,7 @@ export function buildRun(
 	return {
 		tick: spec.tick,
 		config: { ...spec.config, ...node.config },
+		...(spec.monitor !== undefined ? { monitor: spec.monitor } : {}),
 		laneCount: node.lanes.length,
 		states,
 		ins: zeroRecord(Object.keys(ports.ins)) as NodeRun["ins"],

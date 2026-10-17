@@ -182,6 +182,15 @@ export interface ModuleSpec extends ModulePorts {
 	 * carry rule keeps today's whole-shape-fits behavior.
 	 */
 	readonly writes?: readonly string[];
+	/**
+	 * The state fields a live monitor watches for onset/release events
+	 * (runtime/live/monitor-plan.ts): `row` the table row under the reader
+	 * (its site column feeds an ON event), `held` the held note id (a change
+	 * to a note fires ON), `gate` the gate the sample before (a fall to 0
+	 * fires OFF). Present only on a module a monitor can read notes from
+	 * (seq); absent elsewhere.
+	 */
+	readonly monitor?: Readonly<{ row: string; held: string; gate: string }>;
 }
 
 /** A module's tick and named helpers as source text (MANIFESTO §5.1). */
