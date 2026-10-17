@@ -3,6 +3,11 @@ import { oneDarkTheme } from "@codemirror/theme-one-dark";
 import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
 
+const backgroundStyles = EditorView.theme({
+	"&": { backgroundColor: "#17181a !important" },
+	".cm-gutters": { backgroundColor: "#17181a !important" },
+}, { dark: true });
+
 const visualizationStyles = EditorView.theme({
 	".device-active": {
 		backgroundColor: "rgba(100, 200, 255, calc(var(--intensity, 0) * 0.3))",
@@ -83,4 +88,4 @@ const auxSyntax = HighlightStyle.define([
 	{ tag: t.invalid, color: white },
 ]);
 
-export const auxlangTheme = [oneDarkTheme, syntaxHighlighting(auxSyntax), visualizationStyles];
+export const auxlangTheme = [oneDarkTheme, syntaxHighlighting(auxSyntax), backgroundStyles, visualizationStyles];
