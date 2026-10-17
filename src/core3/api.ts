@@ -101,7 +101,7 @@ const MODULE_OVERRIDES = new Set(["out"]);
  * Resolution is eager here (the registry is required to be populated), but each
  * factory closes over `getModule(name)` lazily, matching the rest of the layer.
  */
-export function buildUserScope(): Record<string, unknown> {
+export function buildUserScope(extraScope: Record<string, unknown> = {}): Record<string, unknown> {
 	assertScopeNamesInSync();
 	const scope: Record<string, unknown> = {};
 	for (const name of getRegistry().keys()) {
@@ -117,6 +117,12 @@ export function buildUserScope(): Record<string, unknown> {
 			);
 		}
 		scope[name] = value;
+	}
+	for (const name of Object.keys(extraScope)) {
+		if (RESERVED_SCOPE_NAMES.has(name)) {
+			throw new Error(`user scope: extraScope '${name}' collides with a reserved patch-scope name`);
+		}
+		scope[name] = extraScope[name];
 	}
 	return scope;
 }

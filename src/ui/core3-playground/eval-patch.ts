@@ -45,31 +45,57 @@ export interface EvaluatedPatch {
 	readonly sourceMap: SourceMap;
 }
 
+export interface EvalPatchOptions extends EvalOptions {
+	/**
+	 * Extra bindings layered into the patch scope, on top of the production
+	 * user scope (buildUserScope throws if a name collides with a reserved
+	 * one). Production callers pass nothing; test fixtures use this to reach
+	 * backend-only entry points (module/define-internal-module) from patch text.
+	 */
+	readonly extraScope?: Record<string, unknown>;
+}
+
 /**
  * `seed` is the host's seed (the play session's); a patch's own seed(n) wins.
  * `slotSites`: number-literal sites (from `sourceMap`) whose bindings become
  * live slots (Program.liveSlots).
  */
-export function evaluatePatch(source: string, opts: EvalOptions = {}): EvaluatedPatch {
-	const { code, sourceMap } = rewrite(source, SCOPE_SET);
-	const patch = patchFunction(code, sourceMap);
+export function evaluatePatch(source: string, opts: EvalPatchOptions = {}): EvaluatedPatch {
+	const { extraScope, ...evalOpts } = opts;
+	const [scopeNames, scopeValues, scopeSet] =
+		extraScope === undefined ? [SCOPE_NAMES, SCOPE_VALUES, SCOPE_SET] : extendedScope(extraScope);
+	const { code, sourceMap } = rewrite(source, scopeSet);
+	const patch = patchFunction(code, scopeNames, sourceMap);
 	return withSourceText({ file: "patch", text: source }, () =>
 		withActiveSource(sourceMap, () => {
-			const evaluated = runEval(() => patch(...SCOPE_VALUES, TRACE), opts);
+			const evaluated = runEval(() => patch(...scopeValues, TRACE), evalOpts);
 			return { program: compile(evaluated), seedPinned: evaluated.seedPinned, sourceMap };
 		}),
 	);
 }
 
-export function evalPatch(source: string, opts: EvalOptions = {}): Program {
+export function evalPatch(source: string, opts: EvalPatchOptions = {}): Program {
 	return evaluatePatch(source, opts).program;
 }
 
+/** The extended scope for one call: never mutates the shared production SCOPE. */
+function extendedScope(
+	extraScope: Record<string, unknown>,
+): [readonly string[], readonly unknown[], ReadonlySet<string>] {
+	const scope = buildUserScope(extraScope);
+	const names = Object.keys(scope);
+	return [names, names.map((name) => scope[name]), new Set(names)];
+}
+
 /** The rewritten code as a function of the scope and the trace; a syntax error points where parsing failed. */
-function patchFunction(code: string, sourceMap: SourceMap): (...args: unknown[]) => void {
+function patchFunction(
+	code: string,
+	scopeNames: readonly string[],
+	sourceMap: SourceMap,
+): (...args: unknown[]) => void {
 	const body = `${code}\n//# sourceURL=auxlang://core3-playground`;
 	try {
-		return new Function(...SCOPE_NAMES, TRACE_NAME, body) as (...args: unknown[]) => void;
+		return new Function(...scopeNames, TRACE_NAME, body) as (...args: unknown[]) => void;
 	} catch (err) {
 		throw locateError(err, sourceMap.syntaxError);
 	}

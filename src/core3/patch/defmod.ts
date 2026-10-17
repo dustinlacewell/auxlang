@@ -22,9 +22,10 @@
  * expands each instance into plain nodes.
  */
 
-import { type WrittenSpec, bindModule } from "../module/bind-module";
+import { type WrittenSpec } from "../module/bind-module";
 import { type ReadTime } from "../module/front/module/check-module";
 import { registerSpec, validateSpec } from "../module/define";
+import { defineInternalModule } from "../module/define-internal-module";
 import type { Category, ModuleSpec, PortAnn } from "../types";
 import { currentSpecs, evalCtx } from "./context";
 import { defineModule } from "./define-module";
@@ -121,7 +122,7 @@ export function defmod(spec: object | string, ...rest: unknown[]): (...args: unk
 	}
 	const written = spec as unknown as WrittenSpec;
 	assertWellFormed(written);
-	const bound = currentSpecs() === null ? registerRootSpec(written) : registerEvalSpec(written);
+	const bound = defineInternalModule(written);
 	return moduleFactory(bound);
 }
 
@@ -134,20 +135,6 @@ function register(
 	return currentSpecs() === null
 		? registerRoot(name, (read) => defineModule(name, meta, setup, read))
 		: registerEval(name, (read) => defineModule(name, meta, setup, read));
-}
-
-/** Root-scope write (the library, at import): contract checks, the tick build, the realm registry; the tick is read on first use. */
-function registerRootSpec(written: WrittenSpec): ModuleSpec {
-	validateSpec(written);
-	return registerRoot(written.name, (read) => bindModule(written, read));
-}
-
-/** Eval-scope write: full collision surface (registry, scope helpers, handle names, this eval), then the eval's table. */
-function registerEvalSpec(written: WrittenSpec): ModuleSpec {
-	validateSpec(written);
-	assertNoReservedPorts(written);
-	assertJsonConfig(written.name, written.config);
-	return registerEval(written.name, (read) => bindModule(written, read));
 }
 
 /** Root-scope write, shared by both `defmod` forms: contract checks on the name, bind, the realm registry. */
