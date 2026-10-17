@@ -102,4 +102,40 @@ describe("markerAnn", () => {
 	it("an unrecognized default throws, naming the port", () => {
 		expect(() => markerAnn(defaultNode("someCall()"), "input 'x'")).toThrow(/input 'x'/);
 	});
+
+	it("range(def, min, max) -> sig with a range", () => {
+		expect(markerAnn(defaultNode("range(0.5, 0, 1)"), "t")).toEqual({
+			unit: "sig",
+			def: 0.5,
+			range: { min: 0, max: 1 },
+		});
+	});
+
+	it("a unit tag with min/max -> that unit with a range", () => {
+		expect(markerAnn(defaultNode("secs(0.25, 0.01, 1)"), "t")).toEqual({
+			unit: "secs",
+			def: 0.25,
+			range: { min: 0.01, max: 1 },
+		});
+	});
+
+	it("semis(def, min, max) -> semis tag with a range", () => {
+		expect(markerAnn(defaultNode("semis(84, 36, 120)"), "t")).toEqual({
+			unit: "semis",
+			def: 84,
+			range: { min: 36, max: 120 },
+		});
+	});
+
+	it("a range with 2 args throws, naming the port", () => {
+		expect(() => markerAnn(defaultNode("range(0.5, 0)"), "input 'fb'")).toThrow(/input 'fb'/);
+	});
+
+	it("a range with min >= max throws", () => {
+		expect(() => markerAnn(defaultNode("range(0.5, 1, 0)"), "input 'fb'")).toThrow(/input 'fb'/);
+	});
+
+	it("a range with a non-literal bound throws", () => {
+		expect(() => markerAnn(defaultNode("range(0.5, 0, someCall())"), "input 'fb'")).toThrow(/input 'fb'/);
+	});
 });

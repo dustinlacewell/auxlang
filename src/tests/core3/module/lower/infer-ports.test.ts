@@ -39,4 +39,10 @@ describe("inferPorts", () => {
 		const tick = tickArrow("({ in: x = 0, ...rest }) => { return x }");
 		expect(() => inferPorts(tick, "bad")).toThrow();
 	});
+
+	it("a range default carries range into the port", () => {
+		const tick = tickArrow("({ fb = range(0.5, 0, 1) }) => { return fb }");
+		const result = inferPorts(tick, "echo");
+		expect(result.ins.fb).toEqual({ unit: "sig", def: 0.5, range: { min: 0, max: 1 } });
+	});
 });

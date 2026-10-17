@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import "@/core3/modules/all";
 import { factory, runProgram } from "@/core3/api";
 import { defpatch } from "@/core3/patch/defpatch";
+import { rootSubpatches } from "@/core3/patch/subpatch/registry";
 import type { Handle } from "@/core3/patch/handle-data";
 import { rewrite } from "@/core3/source/rewrite/rewrite";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
@@ -189,6 +190,19 @@ describe("defpatch: number drag protection", () => {
 		const source = `const filt = defpatch("filt", (${paramList}) => x.lpf(cutoff))`;
 		const { code } = rewrite(source, new Set(["defpatch"]));
 		expect(code).toContain(paramList);
+	});
+});
+
+/** A marker, never called: its default-expression TEXT is what `markerAnn` reads (port-markers.ts). */
+function range(def: number, _min: number, _max: number): number {
+	return def;
+}
+
+describe("defpatch: a port's range", () => {
+	it("a range default on a param carries its range onto the inferred input port (defpatch shares markerAnn with shape-C ticks)", () => {
+		defpatch("rangedPatch", ({ in: x = 0, fb = range(0.5, 0, 1) }) => (x as Handle).add(fb));
+		const spec = rootSubpatches().get("rangedPatch");
+		expect(spec?.ins.fb).toEqual({ unit: "sig", def: 0.5, range: { min: 0, max: 1 } });
 	});
 });
 

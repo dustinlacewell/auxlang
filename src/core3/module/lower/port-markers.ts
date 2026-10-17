@@ -32,13 +32,14 @@ export function markerAnn(node: AnyNode | null, what: string): PortAnn {
 		const name = (call.callee as { name: string }).name;
 		const arg0 = call.arguments[0] ?? null;
 
-		if (UNIT_TAGS.has(name)) return { unit: name as PortAnn["unit"], ...tagged(arg0) };
-		if (name === "unit") return { unit: "unit", ...tagged(arg0) };
+		if (UNIT_TAGS.has(name)) return withRange({ unit: name as PortAnn["unit"], ...tagged(arg0) }, call.arguments, what);
+		if (name === "unit") return withRange({ unit: "unit", ...tagged(arg0) }, call.arguments, what);
 		if (name === "gatePort") return merge(gatePort(numberOrNull(arg0)), arg0);
 		if (name === "trigPort") return merge(trigPort(numberOrNull(arg0)), arg0);
 		if (name === "phasePort") return merge(phasePort(numberOrNull(arg0)), arg0);
 		if (name === "sigs") return sigs(call.arguments.length === 0 ? 0 : numberOrNull(arg0));
 		if (name === "slot") return slot(call.arguments, what);
+		if (name === "range") return withRange({ unit: "sig", ...tagged(arg0) }, call.arguments, what);
 	}
 
 	return fail(what, node);
@@ -52,6 +53,25 @@ function tagged(arg0: AnyNode | null): { def: number | null; opt?: true } {
 function merge(ann: PortAnn, arg0: AnyNode | null): PortAnn {
 	if (arg0 !== null && isNaNLiteral(arg0)) return optional({ ...ann, def: null });
 	return ann;
+}
+
+/** A unit tag or `range(...)` with a 2nd/3rd arg sets the port's range: `def, min, max`. */
+function withRange(ann: PortAnn, args: AnyNode[], what: string): PortAnn {
+	if (args.length === 1) return ann;
+	if (args.length !== 3) {
+		throw new Error(`${what}: a range needs a default and min/max, e.g. '${ann.unit}(0.5, 0, 1)'`);
+	}
+	const [, minNode, maxNode] = args;
+	const min = rangeBound(minNode, what);
+	const max = rangeBound(maxNode, what);
+	if (min >= max) throw new Error(`${what}: range min (${min}) must be less than max (${max})`);
+	return { ...ann, range: { min, max } };
+}
+
+function rangeBound(node: AnyNode | undefined, what: string): number {
+	const value = node === undefined ? null : numberOrNull(node);
+	if (value === null) throw new Error(`${what}: range bounds must be number literals`);
+	return value;
 }
 
 function slot(args: AnyNode[], what: string): PortAnn {

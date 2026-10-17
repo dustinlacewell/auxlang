@@ -318,7 +318,11 @@ registers into the library; inside a patch it registers for that patch.
   key with its default: `({ sr, shape = "sin" })`.
 - **The tick** runs every sample. Its parameter names the inputs.
   A default is the value when nothing is plugged in; a unit tag sets the
-  port's unit (§2): `time = secs(0.25)`. `ch = sigs()` is an open group of
+  port's unit (§2): `time = secs(0.25)`. A range gives the knob its travel:
+  `fb = range(0.5, 0, 1)`, or with a unit `time = secs(0.25, 0.01, 1)`. A
+  dragged number stops at the ends and the module page shows them; a signal
+  plugged in passes through whole, so a module guards what must stay in
+  bounds (`Math.min(fb, 0.99)`). `ch = sigs()` is an open group of
   inputs; `value = slot(0.5, "min", "max")` is a live control port (§5.3).
 - **Outputs** are what it returns: a value is `out`; `{ l, r }` names several.
 - **Helpers** are functions written alongside the module. Number constants

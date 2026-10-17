@@ -53,6 +53,13 @@ export interface PortAnn {
 	 * becomes a live slot the editor writes while the patch plays.
 	 */
 	readonly slot?: SlotRange;
+	/**
+	 * The knob's travel: metadata only, never a clamp on the signal (MANIFESTO
+	 * §5, "A range gives the knob its travel"). A dragged patch number stops at
+	 * these ends; the module docs page shows them. A module that must keep a
+	 * value in bounds guards itself (`Math.min`).
+	 */
+	readonly range?: { readonly min: number; readonly max: number };
 }
 
 /** A control port's clamp range: each bound is a port whose constant gives it, or a fixed number. */
