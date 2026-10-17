@@ -35,7 +35,7 @@ const FORBIDDEN: readonly [string, string, RegExp][] = [
 	["object literal", "const v = { x: 1 };", /object literals allocate/],
 	["array literal", "const v = [1, 2];", /array literals allocate/],
 	["new", "const v = new Float32Array(2);", /`new` allocates/],
-	["nested function", "const f = (x) => x;", /nested functions are closures/],
+	["nested function bound by let, not const", "let f = (x) => x; o.out = f(1);", /nested functions are closures/],
 	["template string", "const v = `a${i.in}`;", /template strings/],
 	["runtime string", 'const v = "a" + i.in;', /string values may appear only in comparisons/],
 	[
@@ -70,6 +70,12 @@ describe("tick subset: each forbidden form throws with its patch line", () => {
 
 	it("a destructuring declaration runs, lifted to a plain field read (lift-destructuring)", () => {
 		expect(() => evalPatch(patch("const { gain } = s.voice; o.out = gain;"))).not.toThrow();
+	});
+
+	it("a nested arrow with no captured writes runs, lifted to a helper (lift-nested-arrows)", () => {
+		expect(() =>
+			evalPatch(patch("const lerp = (a, b, t) => a + (b - a) * t; o.out = lerp(0, i.in, 0.5);")),
+		).not.toThrow();
 	});
 
 	it("a name of auxlang's library, beside a call the binding gives that name", () => {

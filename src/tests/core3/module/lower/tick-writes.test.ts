@@ -340,6 +340,43 @@ describe("tickWrites", () => {
 		expect(writes.has("buf")).toBe(true);
 	});
 
+	it("a setup local passed as a call argument counts even when the callee is a nested arrow, read on the original (pre-lift) AST: lift-nested-arrows.ts hoists the arrow later, but the argument site is already a write by the plain call-argument rule", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const buf = new Float64Array(sr)",
+				"  return ({ in: x = 0 }) => {",
+				"    const fill = (b) => b",
+				"    fill(buf)",
+				"    return buf[0]",
+				"  }",
+				"}",
+			].join("\n"),
+			["buf"],
+		);
+		expect(writes.has("buf")).toBe(true);
+	});
+
+	it("a setup local reached through an arrow's own param counts: const bump = (v) => { v.x += 1 }; bump(voices[0]) writes through the element back into voices", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const voices = [{ x: 0 }, { x: 0 }]",
+				"  return ({ in: i = 0 }) => {",
+				"    const bump = (v) => { v.x += 1 }",
+				"    bump(voices[0])",
+				"    return voices[0].x",
+				"  }",
+				"}",
+			].join("\n"),
+			["voices"],
+			new Map<string, StateShape>([
+				["voices", { k: "records", length: 2, element: { k: "record", fields: { x: { k: "number" } } } }],
+			]),
+		);
+		expect(writes.has("voices")).toBe(true);
+	});
+
 	it("buf.set(src) counts the receiver buf (the existing call-argument rule also counts src, conservatively, the same as any call passing a local)", () => {
 		const writes = lowerTick(
 			[

@@ -9,19 +9,31 @@
  * name. `infer-outs.ts`'s return-rewriting edits are folded into the same
  * body `applyEdits` pass, since both touch disjoint spans.
  *
+ * `resolveBindings` is OPAQUE on a nested function (a nested arrow lifts
+ * later, in bind-sugar — lift-nested-arrows.ts — so its body still needs
+ * this same rewrite before that lift ever sees it): a name read inside one
+ * is invisible to the tick's own `resolveBindings` call, so it is
+ * re-resolved with its OWN call, one per nested function found, recursively.
+ * Only identifiers directly in a region (not inside a further-nested
+ * function, which gets its own call) are rewritten against that region's
+ * own scope.
+ *
  * Edits never add or remove a newline: the param list — however many lines
  * its destructured pattern spans — is replaced by the internal param list,
  * padded with that many newlines, so every later line keeps its number.
  */
 
-import type { ArrowFunctionExpression, Identifier } from "acorn";
-import { walk } from "../front/parse/walk";
+import type { AnyNode, ArrowFunctionExpression, Identifier } from "acorn";
+import { eachChild } from "../front/parse/walk";
 import { isReference } from "../front/scope/is-reference";
 import { resolveBindings } from "../front/scope/resolve-bindings";
+import type { Scopes } from "../front/scope/binding";
 import { applyEdits, type TextEdit } from "../tick-build/text-edits";
 import type { FileScope } from "./file-scope";
 import type { InferredOuts } from "./infer-outs";
 import type { InferredPorts } from "./infer-ports";
+
+const NESTED_FUNCTION = new Set(["ArrowFunctionExpression", "FunctionExpression", "FunctionDeclaration"]);
 
 export function tickText(
 	tick: ArrowFunctionExpression,
@@ -36,50 +48,93 @@ export function tickText(
 ): string {
 	const what = `module '${moduleName}'`;
 	const portLocals = new Set(ports.bindings.values());
-	const scopes = resolveBindings(tick as never, helperNames);
 
 	const bodyEdits: TextEdit[] = [...outs.edits];
 
-	walk(tick.body as never, (node, parent, key) => {
-		if (node.type !== "Identifier" || !isReference(parent, key)) return;
-		const id = node as Identifier;
-		const resolution = scopes.references.get(id);
-		if (resolution === undefined) return;
-
-		if (resolution.k === "binding") {
-			if (isOutParamUse(id, tick, outs.outParam)) {
-				bodyEdits.push({ start: id.start, end: id.end, text: "__dsp_o" });
-			}
-			return; // any other tick-local binding (param or declared) is left as written
-		}
-		if (resolution.k !== "free") return; // helper/math/intrinsic/global: untouched
-
-		const name = resolution.name;
-		if (portLocals.has(name)) {
-			assertNotWritten(id, parent, key, name, moduleName);
-			bodyEdits.push({ start: id.start, end: id.end, text: `__dsp_i.${portNameFor(name, ports)}` });
+	/** `region`'s own children, recursively: an identifier is rewritten against `scopes` (the scope built for `region`'s own enclosing function); a nested function starts its own region, with its own `resolveBindings` call, so a name read inside it is resolved there instead (resolveBindings is OPAQUE on a nested function, so `scopes` has no entry for a reference strictly inside one). */
+	const rewriteRegion = (node: AnyNode, parent: AnyNode | null, key: string | null, scopes: Scopes): void => {
+		if (node.type === "Identifier" && isReference(parent, key)) {
+			rewriteIdentifier(node as Identifier, parent, key, scopes, bodyEdits, {
+				tick,
+				outs,
+				ports,
+				portLocals,
+				setupLocals,
+				configKeys,
+				scope,
+				what,
+				moduleName,
+			});
 			return;
 		}
-		if (setupLocals.has(name)) {
-			bodyEdits.push({ start: id.start, end: id.end, text: `__dsp_s.${name}` });
+		if (NESTED_FUNCTION.has(node.type)) {
+			const innerScopes = resolveBindings(node as never, helperNames);
+			eachChild(node, (child, childKey) => rewriteRegion(child, node, childKey, innerScopes));
 			return;
 		}
-		if (configKeys.has(name)) {
-			bodyEdits.push({ start: id.start, end: id.end, text: `__dsp_cfg.${name}` });
-			return;
-		}
-		if (name === "sr" || name === "width") return; // the setup's own params, closed over
-		const fileConst = scope.consts.get(name);
-		if (fileConst !== undefined) {
-			bodyEdits.push({ start: id.start, end: id.end, text: `(${fileConst.value})` });
-			return;
-		}
-		throw new Error(`${what}: '${name}' is not a port, state, config, sr/width, a file const, or a known helper`);
-	});
+		eachChild(node, (child, childKey) => rewriteRegion(child, node, childKey, scopes));
+	};
+	eachChild(tick.body as never, (child, childKey) =>
+		rewriteRegion(child, tick.body as never, childKey, resolveBindings(tick as never, helperNames)),
+	);
 
 	const params = newParamListText(tick, fileText);
 	const body = applyEdits(fileText.slice(tick.body.start, tick.body.end), shiftBy(bodyEdits, -tick.body.start));
 	return `(${params}) => ${body}`;
+}
+
+interface RewriteCtx {
+	readonly tick: ArrowFunctionExpression;
+	readonly outs: InferredOuts;
+	readonly ports: InferredPorts;
+	readonly portLocals: ReadonlySet<string>;
+	readonly setupLocals: ReadonlySet<string>;
+	readonly configKeys: ReadonlySet<string>;
+	readonly scope: FileScope;
+	readonly what: string;
+	readonly moduleName: string;
+}
+
+function rewriteIdentifier(
+	id: Identifier,
+	parent: AnyNode | null,
+	key: string | null,
+	scopes: Scopes,
+	bodyEdits: TextEdit[],
+	ctx: RewriteCtx,
+): void {
+	const resolution = scopes.references.get(id);
+	if (resolution === undefined) return;
+
+	if (resolution.k === "binding") {
+		if (isOutParamUse(id, ctx.tick, ctx.outs.outParam)) {
+			bodyEdits.push({ start: id.start, end: id.end, text: "__dsp_o" });
+		}
+		return; // any other tick-local binding (param or declared) is left as written
+	}
+	if (resolution.k !== "free") return; // helper/math/intrinsic/global: untouched
+
+	const name = resolution.name;
+	if (ctx.portLocals.has(name)) {
+		assertNotWritten(id, parent, key, name, ctx.moduleName);
+		bodyEdits.push({ start: id.start, end: id.end, text: `__dsp_i.${portNameFor(name, ctx.ports)}` });
+		return;
+	}
+	if (ctx.setupLocals.has(name)) {
+		bodyEdits.push({ start: id.start, end: id.end, text: `__dsp_s.${name}` });
+		return;
+	}
+	if (ctx.configKeys.has(name)) {
+		bodyEdits.push({ start: id.start, end: id.end, text: `__dsp_cfg.${name}` });
+		return;
+	}
+	if (name === "sr" || name === "width") return; // the setup's own params, closed over
+	const fileConst = ctx.scope.consts.get(name);
+	if (fileConst !== undefined) {
+		bodyEdits.push({ start: id.start, end: id.end, text: `(${fileConst.value})` });
+		return;
+	}
+	throw new Error(`${ctx.what}: '${name}' is not a port, state, config, sr/width, a file const, or a known helper`);
 }
 
 /** Whether `id` is a reference to the tick's own second param (the output-group object). */

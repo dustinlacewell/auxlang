@@ -321,6 +321,18 @@ const AGREED_ACCEPT: readonly Row[] = [
 		"an array-of-records forEach writes through the element parameter",
 		"s.voices.forEach((v) => { v.x += 1 }); o.out = s.voices[0].x + s.voices[1].x",
 	),
+	accept(
+		"a nested arrow with no captured writes lifts to a helper",
+		"const lerp = (a, b, t) => a + (b - a) * t; o.out = lerp(1, 2, 0.5)",
+	),
+	accept(
+		"a nested arrow's captured read becomes a trailing param, filled in at the call",
+		"const addN = (a) => a + s.n; o.out = addN(1); s.n++",
+	),
+	accept(
+		"a nested arrow inside another nested arrow lifts first, its own call already widened",
+		"const outer = (a) => { const inner = (b) => b + s.n; return inner(a) }; o.out = outer(1); s.n++",
+	),
 ];
 
 /** Forms the checker refuses, so neither backend runs them. */
@@ -332,7 +344,12 @@ const AGREED_REJECT: readonly Row[] = [
 	),
 	reject("a recursive helper", "o.out = f(i.in)", /helpers may not recurse \(f → f\)/, "f: (x) => x > 0 ? f(x - 1) : 0"),
 	reject("Math.random in a helper", "o.out = f(1)", /Math\.random\(\) is available only in tick/, "f: (x) => Math.random() * x"),
-	reject("a closure", "const f = (x) => x; o.out = f(1)", /nested functions are closures/),
+	reject(
+		"a nested arrow writing a captured local",
+		"const bad = (a) => { s.n = a; return a }; o.out = bad(1)",
+		/a lifted helper has no closure, so it cannot write through a captured name/,
+	),
+	reject("a closure bound by let, not const, is not lifted", "let f = (x) => x; o.out = f(1)", /nested functions are closures/),
 	reject("an array literal", "const v = [1, 2]; o.out = v[0]", /array literals allocate/),
 	reject("new", "const v = new Float32Array(2); o.out = v[0]", /`new` allocates/),
 	reject("delete", "delete s.n; o.out = 1", /`delete` removes fields/),

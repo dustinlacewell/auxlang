@@ -14,6 +14,7 @@ import { assertAuthorNames } from "./assert-author-names";
 import { bindModuleMath } from "./bind-math/bind-module-math";
 import { bindModuleRandom } from "./bind-random/bind-module-random";
 import { bindSugar } from "./bind-sugar/bind-sugar";
+import { liftNestedArrows } from "./bind-sugar/lift-nested-arrows";
 import { libraryPrefixOf } from "./library-names";
 import { locateInSource } from "./source-text";
 import { buildTick } from "./tick-build/build-tick";
@@ -48,12 +49,30 @@ export function bindSource(spec: ModuleSpec, written: ModuleSource, read: ReadTi
 	return result;
 }
 
-/** Lifts the tick's and each helper's compiler shortcuts (bind-sugar/) into forms the tick subset already accepts. */
+/**
+ * Lifts the tick's and each helper's compiler shortcuts (bind-sugar/) into
+ * forms the tick subset already accepts. A nested arrow that writes no
+ * captured local lifts last, once the other sugar has already settled the
+ * part's own text: it hoists to a new top-level helper (lift-nested-arrows.ts),
+ * so it needs a slot in `helpers` no other lift has — a name already used by
+ * an author's own helper, or by another part's own lifted arrow, is a loud
+ * error naming the clash.
+ */
 function sugarSource(written: ModuleSource, owner: string): ModuleSource {
-	const tick = bindSugar(written.tick, `${owner} tick`);
 	const helpers: Record<string, string> = {};
+	const lift = (src: string, part: string): string => {
+		const sugared = bindSugar(src, part);
+		const lifted = liftNestedArrows(sugared, part);
+		for (const [name, text] of lifted.helpers) {
+			if (name in written.helpers || name in helpers)
+				throw new Error(`${part}: '${name}' is lifted from a nested arrow, but a helper of that name already exists`);
+			helpers[name] = text;
+		}
+		return lifted.text;
+	};
+	const tick = lift(written.tick, `${owner} tick`);
 	for (const [name, src] of Object.entries(written.helpers)) {
-		helpers[name] = bindSugar(src, `${owner} helper '${name}'`);
+		helpers[name] = lift(src, `${owner} helper '${name}'`);
 	}
 	return { ...written, tick, helpers };
 }

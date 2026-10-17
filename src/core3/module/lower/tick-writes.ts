@@ -90,6 +90,7 @@ export function tickWrites(
 		aliasDeclarator(node, scopes, fieldReadAt, aliasOf);
 		aliasForOfHead(node, scopes, fieldReadAtElement, aliasOf);
 		arrayMethodWrites(node, nameOf, fieldReadAtElement, setupLocals, written);
+		namedArrowCallWrites(node, scopes, fieldReadBy, setupLocals, written);
 	});
 
 	return written;
@@ -276,22 +277,56 @@ function arrayMethodWrites(
 	const param = callback.params[0];
 	if (param === undefined || param.type !== "Identifier") return;
 	const field = fieldReadAtElement(callee.object as unknown as AnyNode);
-	forEachCallbackWrites(callback, param.name, field, setupLocals, written);
+	arrowBodyWrites(callback, [[param.name, field]], setupLocals, written);
 }
 
-/** Every setup local `callback`'s body writes directly, plus `field` (through `elementParam`, when `field` is not null) when the body writes through the alias — same rule as `aliasForOfHead`, resolved by name alone: `resolveBindings` does not enter a nested function, so this is its own small walk, scoped to the callback alone. */
-function forEachCallbackWrites(
-	callback: ArrowFunctionExpression,
-	elementParam: string,
-	field: string | null,
+/**
+ * `const bump = (v) => { v.x += 1 }; bump(voices[0])`: a call to a tick-local
+ * `const name = (params) => body` arrow, with an argument that reads a setup
+ * field through an element or member access — same alias rule as a
+ * `forEach` callback (arrowBodyWrites), one param at a time, by position.
+ * `scopes` resolves the callee, since `resolveBindings` does not enter a
+ * nested function, so this reads the declarator's own `init` directly,
+ * rather than relying on the tick's own walk to have seen inside the arrow.
+ */
+function namedArrowCallWrites(
+	node: AnyNode,
+	scopes: Scopes,
+	fieldReadBy: (expr: AnyNode) => string | null,
 	setupLocals: ReadonlySet<string>,
 	written: Set<string>,
 ): void {
+	if (node.type !== "CallExpression") return;
+	const call = node as CallExpression;
+	if (call.callee.type !== "Identifier") return;
+	const resolution = scopes.references.get(call.callee);
+	if (resolution === undefined || resolution.k !== "binding") return;
+	const declarator = resolution.binding.declarator;
+	const arrow = declarator?.init;
+	if (arrow === null || arrow === undefined || arrow.type !== "ArrowFunctionExpression") return;
+	const params: Array<[string, string | null]> = [];
+	arrow.params.forEach((param, k) => {
+		if (param.type !== "Identifier") return;
+		const arg = call.arguments[k];
+		const field = arg === undefined ? null : fieldReadBy(arg as unknown as AnyNode);
+		params.push([param.name, field]);
+	});
+	arrowBodyWrites(arrow, params, setupLocals, written);
+}
+
+/** Every setup local an arrow's body writes directly, plus each `field` a param in `paramFields` aliases (when not null) — the same rule as `aliasForOfHead`, resolved by name alone: `resolveBindings` does not enter a nested function, so this is its own small walk, scoped to the arrow alone. */
+function arrowBodyWrites(
+	arrow: ArrowFunctionExpression,
+	paramFields: ReadonlyArray<readonly [string, string | null]>,
+	setupLocals: ReadonlySet<string>,
+	written: Set<string>,
+): void {
+	const fields = new Map(paramFields);
 	const nameOf = (id: Identifier): string | null => {
-		if (id.name === elementParam) return field;
+		if (fields.has(id.name)) return fields.get(id.name) ?? null;
 		return setupLocals.has(id.name) ? id.name : null;
 	};
-	walk(callback.body as AnyNode, (node) => {
+	walk(arrow.body as AnyNode, (node) => {
 		assignmentTarget(node, nameOf, written);
 		updateTarget(node, nameOf, written);
 		callArguments(node, nameOf, written);

@@ -13,7 +13,7 @@ import { defmod } from "@/core3/patch/defmod";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
-import { SR, firstBitDiff, interpreterRun } from "../wasm/differential-harness";
+import { SR, expectIdentical, firstBitDiff, interpreterRun } from "../wasm/differential-harness";
 
 function helper(x: number): number {
 	return x;
@@ -112,6 +112,62 @@ x(10).out()`;
 		const engine = new Core3Engine(program, SR, registry);
 		engine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
 		expect(engine.peek(0, "out", 0)).toBeCloseTo(10 * 2 ** 1.5 + 3, 10);
+	});
+
+	it("a shape-C tick's nested arrow reading a setup local (a typed array) lifts to a helper, WASM bit-identical to the interpreter", () => {
+		const PATCH = `const x = defmod("x", {}, ({ sr }) => {
+  const buf = new Float64Array(4)
+  let n = 0
+  return ({ in: v = 0 }) => {
+    const peek = (k) => buf[k % 4]
+    buf[n % 4] = v
+    n++
+    return peek(0)
+  }
+})
+tempo(120)
+seq("[c3,e3] <g3 a3>").x().mul(0.1).out()`;
+		expectIdentical(evalPatch(PATCH), 2000);
+	});
+
+	it("a shape-C tick's nested arrow reading a setup local (a let number) lifts to a helper, WASM bit-identical to the interpreter", () => {
+		const PATCH = `const x = defmod("x", {}, ({ sr }) => {
+  let n = 0
+  return ({ in: v = 0 }) => {
+    const addN = (a) => a + n
+    n++
+    return addN(v) * 0.001
+  }
+})
+tempo(120)
+seq("[c3,e3] <g3 a3>").x().mul(0.1).out()`;
+		expectIdentical(evalPatch(PATCH), 2000);
+	});
+
+	it("a shape-C tick's nested arrow reading only its own params lifts to a helper, WASM bit-identical to the interpreter", () => {
+		const PATCH = `const x = defmod("x", {}, ({ sr }) => {
+  return ({ in: v = 0 }) => {
+    const lerp = (a, b, t) => a + (b - a) * t
+    return lerp(0, v, 0.5)
+  }
+})
+tempo(120)
+seq("[c3,e3] <g3 a3>").x().mul(0.1).out()`;
+		expectIdentical(evalPatch(PATCH), 2000);
+	});
+
+	it("a shape-C tick's nested arrow writing a setup local is a loud error, same as the old (object) form", () => {
+		const PATCH = `const x = defmod("x", {}, ({ sr }) => {
+  let n = 0
+  return ({ in: v = 0 }) => {
+    const bad = (a) => { n = a; return a }
+    return bad(v)
+  }
+})
+x(1).out()`;
+		expect(() => evalPatch(PATCH)).toThrow(
+			/a lifted helper has no closure, so it cannot write through a captured name/,
+		);
 	});
 
 	it("meta.args naming a setup config param: a positional call (config before the default input, seq-style) sets both", () => {
