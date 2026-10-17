@@ -23,7 +23,7 @@ import { EXAMPLES as SITE } from "@/ui/core3-editor/examples";
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
 import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples";
 import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples";
-import { MODULE_DSP_EXAMPLES } from "@/ui/site/module-dsp/examples";
+import { CHAPTERS as MODULE_DSP_CHAPTERS } from "@/ui/site/module-dsp/bricks";
 import { describe, expect, it } from "vitest";
 import { defineInternalModule } from "../fixtures/internal-module";
 import { SNIPPETS } from "../snippets";
@@ -77,10 +77,12 @@ const EXAMPLES: readonly { readonly label: string; readonly code: string }[] = [
 	...PATTERN_DOCS.map((e) => ({ label: `pattern-docs [${e.section}] ${e.title}`, code: e.code })),
 ];
 
-const MODULE_DSP_CASES = Object.entries(MODULE_DSP_EXAMPLES).map(([id, code]) => ({
-	label: `module-dsp: ${id}`,
-	code,
-}));
+const MODULE_DSP_CASES = MODULE_DSP_CHAPTERS.flatMap((chapter) =>
+	chapter.bricks.map((brick, i) => ({
+		label: `module-dsp [${chapter.title}] brick ${i + 1}`,
+		code: brick.code,
+	})),
+);
 
 const CASES = [
 	...EXAMPLES,
