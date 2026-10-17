@@ -17,7 +17,8 @@ import {
 	type ViewUpdate,
 } from "@codemirror/view";
 import { watchMonitor } from "./live-monitor-loop";
-import { onsetsToLights } from "./onsets-to-lights";
+import { heldOnsets } from "./held-onsets";
+import { type Onset, onsetsToLights } from "./onsets-to-lights";
 import { buildSiteRanges } from "./site-ranges";
 
 const litMark = Decoration.mark({ class: "aux-pattern-lit" });
@@ -31,17 +32,22 @@ export function patternHighlightExtension(sourceMapOf: () => SourceMap): Extensi
 		class {
 			decorations: DecorationSet = Decoration.none;
 			private lastLit: ReadonlySet<number> = new Set();
+			/** Onsets carried across frames until audible (held-onsets.ts); site ids belong to `heldFor`. */
+			private held: Onset[] = [];
+			private heldFor: SourceMap | null = null;
 			private unsubscribe: () => void;
 
 			constructor(private view: EditorView) {
 				this.unsubscribe = watchMonitor((snapshot) => {
-					const siteRanges = buildSiteRanges(sourceMapOf());
-					const lit = onsetsToLights(
-						snapshot.onsets,
-						siteRanges,
-						audibleFrame(),
-						performance.now(),
-					);
+					const sourceMap = sourceMapOf();
+					if (sourceMap !== this.heldFor) {
+						this.held = [];
+						this.heldFor = sourceMap;
+					}
+					const now = audibleFrame();
+					this.held = heldOnsets(this.held, snapshot.onsets, now);
+					const siteRanges = buildSiteRanges(sourceMap);
+					const lit = onsetsToLights(this.held, siteRanges, now, performance.now());
 					if (setsEqual(lit, this.lastLit)) return;
 					this.lastLit = lit;
 					this.decorations = Decoration.set(
