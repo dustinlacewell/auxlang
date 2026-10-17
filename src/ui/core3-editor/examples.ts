@@ -107,9 +107,9 @@ s.tri()
 `;
 
 /** defmod: a module written in the DSP language; edit it while it plays. */
-const liveModule = `// defmod: write your own module — edit it while it plays
-// try: fb = 0.8 (tail keeps going), add "let spare = 0" (no click),
-// Float64Array(sr / 2) (a resized buffer starts fresh)
+const liveModule = `// defmod: write your own module — its inputs are its knobs
+// drag time or fb below while it plays; edit the module and re-run:
+// "let spare = 0" keeps the echo going, Float64Array(sr / 2) starts fresh
 tempo(110)
 
 function wrapIndex(k, n) { return ((Math.floor(k) % n) + n) % n }
@@ -117,8 +117,7 @@ function wrapIndex(k, n) { return ((Math.floor(k) % n) + n) % n }
 defmod("echo", ({ sr }) => {
   const buf = new Float64Array(sr)
   let w = 0
-  const fb = 0.5
-  return ({ in: x = 0, time = secs(0.3) }) => {
+  return ({ in: x = 0, time = secs(0.3), fb = 0.5 }) => {
     const y = x + buf[wrapIndex(w - time * sr, buf.length)] * fb
     buf[w] = y
     w = (w + 1) % buf.length
@@ -129,7 +128,7 @@ defmod("echo", ({ sr }) => {
 const s = seq("c4 e4 g4 ~")
 s.tri()
   .mul(s.gate.ad(0.005, 0.15))
-  .echo()
+  .echo({ time: 0.3, fb: 0.5 })
   .gain(0.3)
   .out()
 `;
