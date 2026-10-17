@@ -23,7 +23,6 @@ import { EMPTY_SOURCE_MAP, type SourceMap } from "@/core3/source/source-map";
 import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorText } from "./error-text";
-import { DEFAULT_EXAMPLE } from "./examples";
 import type { ShownSeed } from "./seed-bar";
 import { codeFromUrl } from "./share-url";
 
@@ -47,8 +46,8 @@ interface Core3EditorState {
 	ensureSlotSite: (site: number) => Promise<void>;
 }
 
-export function useCore3Editor(): Core3EditorState {
-	const [code, setCode] = useState(() => codeFromUrl() ?? DEFAULT_EXAMPLE);
+export function useCore3Editor(initialCode: string): Core3EditorState {
+	const [code, setCode] = useState(() => codeFromUrl() ?? initialCode);
 	const [error, setError] = useState<string | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [seed, setSeed] = useState<ShownSeed | null>(null);
@@ -62,7 +61,11 @@ export function useCore3Editor(): Core3EditorState {
 	isPlayingRef.current = isPlaying;
 
 	const evalAndPlay = useCallback(async (slotSites: ReadonlySet<number>) => {
-		const { program, seedPinned, sourceMap: evaluated } = evaluatePatch(codeRef.current, {
+		const {
+			program,
+			seedPinned,
+			sourceMap: evaluated,
+		} = evaluatePatch(codeRef.current, {
 			seed: playSeed.current(),
 			slotSites,
 		});

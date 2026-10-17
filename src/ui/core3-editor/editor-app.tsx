@@ -11,12 +11,37 @@ import { ErrorStrip } from "./error-strip";
 import { DEFAULT_EXAMPLE, EXAMPLES } from "./examples";
 import { type OpenPatch, PatchSidebar } from "./patch-sidebar";
 import { SeedBar } from "./seed-bar";
+import { readLastOpenPatch, writeLastOpenPatch } from "./storage/last-open-patch";
 import type { SavedPatch } from "./storage/saved-patches";
 import { useDebouncedAutosave } from "./storage/use-debounced-autosave";
 import { useSavedPatches } from "./storage/use-saved-patches";
 import { useCore3Editor } from "./use-core3-editor";
 
+/** The remembered patch and its source, or the default example when there's nothing to remember. */
+function resolveInitialPatch(savedPatches: readonly SavedPatch[]): {
+	current: OpenPatch | null;
+	source: string;
+} {
+	const last = readLastOpenPatch();
+	if (last?.kind === "example") {
+		const example = EXAMPLES.find((ex) => ex.name === last.name);
+		if (example) return { current: last, source: example.source };
+	}
+	if (last?.kind === "saved") {
+		const patch = savedPatches.find((p) => p.id === last.id);
+		if (patch) return { current: last, source: patch.source };
+	}
+	const example = EXAMPLES.find((ex) => ex.source === DEFAULT_EXAMPLE);
+	return {
+		current: example ? { kind: "example", name: example.name } : null,
+		source: DEFAULT_EXAMPLE,
+	};
+}
+
 export function EditorApp() {
+	const { patches, createUntitled, updateSource, rename, remove } = useSavedPatches();
+	const [initial] = useState(() => resolveInitialPatch(patches));
+
 	const {
 		code,
 		setCode,
@@ -29,13 +54,9 @@ export function EditorApp() {
 		reroll,
 		halt,
 		ensureSlotSite,
-	} = useCore3Editor();
+	} = useCore3Editor(initial.source);
 
-	const { patches, createUntitled, updateSource, rename, remove } = useSavedPatches();
-	const [current, setCurrent] = useState<OpenPatch | null>(() => {
-		const example = EXAMPLES.find((ex) => ex.source === DEFAULT_EXAMPLE);
-		return example ? { kind: "example", name: example.name } : null;
-	});
+	const [current, setCurrent] = useState<OpenPatch | null>(initial.current);
 	const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
 	const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -43,6 +64,7 @@ export function EditorApp() {
 		if (isPlaying) halt();
 		setCode(source);
 		setCurrent(opened);
+		writeLastOpenPatch(opened);
 		setDrawerOpen(false);
 	};
 
@@ -57,13 +79,18 @@ export function EditorApp() {
 
 	const handleSaveAsNew = () => {
 		const patch = createUntitled(code);
-		setCurrent({ kind: "saved", id: patch.id });
+		const opened: OpenPatch = { kind: "saved", id: patch.id };
+		setCurrent(opened);
+		writeLastOpenPatch(opened);
 		setJustCreatedId(patch.id);
 	};
 
 	const handleRemove = (id: string) => {
 		remove(id);
-		if (current?.kind === "saved" && current.id === id) setCurrent(null);
+		if (current?.kind === "saved" && current.id === id) {
+			setCurrent(null);
+			writeLastOpenPatch(null);
+		}
 	};
 
 	useDebouncedAutosave(current?.kind === "saved" ? current.id : null, code, updateSource);
