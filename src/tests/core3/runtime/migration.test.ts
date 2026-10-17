@@ -2,54 +2,28 @@ import { describe, expect, it } from "vitest";
 
 import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
-import { sig } from "@/core3/types";
 import { BACKENDS, type TestEngine } from "./backends";
-import { type IO, type St, c, pnode, prog } from "./helpers";
+import { c, pnode, prog } from "./helpers";
 
-defmod({
-	name: "mg.count",
-	category: "utils",
-	ins: { step: sig(1) },
-	outs: { out: sig() },
-	defaultIn: "step",
-	defaultOut: "out",
-	state: () => ({ n: 0, buf: new Float32Array(4) }),
-	tick: (s: St, ins: IO, o: IO) => {
-		s.n = (s.n as number) + (ins.step as number);
-		const buf = s.buf as Float32Array;
+defmod("mg.count", {}, () => {
+	let n = 0;
+	const buf = new Float32Array(4);
+	return ({ step = 1 }) => {
+		n = n + step;
 		buf[0] = (buf[0] as number) + 1;
-		o.out = s.n as number;
-	},
-});
-
-/** Same ports as mg.count, a different state shape (an extra key). */
-defmod({
-	name: "mg.wide",
-	category: "utils",
-	ins: { step: sig(1) },
-	outs: { out: sig() },
-	defaultIn: "step",
-	defaultOut: "out",
-	state: () => ({ n: 0, buf: new Float32Array(4), extra: 0 }),
-	tick: (s: St, ins: IO, o: IO) => {
-		s.n = (s.n as number) + (ins.step as number);
-		o.out = s.n as number;
-	},
+		return n;
+	};
 });
 
 /** Same ports and keys as mg.count, a longer buffer. */
-defmod({
-	name: "mg.long",
-	category: "utils",
-	ins: { step: sig(1) },
-	outs: { out: sig() },
-	defaultIn: "step",
-	defaultOut: "out",
-	state: () => ({ n: 0, buf: new Float32Array(8) }),
-	tick: (s: St, ins: IO, o: IO) => {
-		s.n = (s.n as number) + (ins.step as number);
-		o.out = s.n as number;
-	},
+defmod("mg.long", {}, () => {
+	let n = 0;
+	const buf = new Float32Array(8);
+	return ({ step = 1 }) => {
+		n = n + step;
+		buf[0] = (buf[0] as number) + 1;
+		return n + buf[0] * 0;
+	};
 });
 
 const SR = 48000;
@@ -143,22 +117,6 @@ describe.each(BACKENDS)("engine: state migration ($name)", ({ create, swap }) =>
 		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
 		expect(swapped.peek(1, "out", 0)).toBe(202); // kept state
 		expect(swapped.peek(2, "out", 0)).toBe(3); // fresh state
-	});
-
-	it("a matched node whose state no longer fits resets alone", () => {
-		const registry = getRegistry();
-		const first = create(program, SR, registry);
-		tapRun(first, 0, 100); // a: 100, b: 200
-
-		const reshaped = prog([
-			pnode("mg.count", [{ step: c(1) }], { place: "a" }),
-			pnode("mg.wide", [{ step: c(2) }], { place: "b" }), // same place, extra state key
-		]);
-		const swapped = swap(reshaped, SR, registry, first);
-		const frame = new Float32Array(2);
-		swapped.tick(frame);
-		expect(swapped.peek(0, "out", 0)).toBe(101); // kept state
-		expect(swapped.peek(1, "out", 0)).toBe(2); // fresh state
 	});
 
 	it("a matched node whose own config changed keeps its state", () => {

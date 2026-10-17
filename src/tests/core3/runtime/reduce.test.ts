@@ -6,59 +6,36 @@ import { defmod } from "@/core3/patch/defmod";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { renderTap } from "@/core3/runtime/render";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
-import { sig } from "@/core3/types";
-import { type IO, type St, c, n, pnode, prog } from "./helpers";
+import { c, n, pnode, prog } from "./helpers";
 
-defmod({
-	name: "rd.const",
-	category: "utils",
-	ins: { v: sig(0) },
-	outs: { out: sig() },
-	defaultIn: "v",
-	defaultOut: "out",
-	tick: (_s: St, ins: IO, o: IO) => {
-		o.out = ins.v as number;
-	},
+defmod("rd.const", {}, () => {
+	return ({ v = 0 }) => v;
 });
 
-defmod({
-	name: "rd.sum",
-	category: "utils",
-	ins: { in: sig(0), gain: sig(1) },
-	outs: { out: sig(), isArr: sig(), w: sig() },
-	defaultIn: "in",
-	defaultOut: "out",
-	policy: "reduce",
-	tick: (_s, ins, o, _cfg, _sr, width) => {
-		const lanes = ins.in as Float32Array | number;
-		o.isArr = typeof lanes === "number" ? 0 : 1;
-		o.w = width as number;
+defmod("rd.sum", { reduce: true }, ({ width }) => {
+	return ({ in: lanes = 0, gain = 1 }) => {
+		const isArr = typeof lanes === "number" ? 0 : 1;
+		const w = width;
 		let sum = 0;
-		for (let l = 0; l < (width as number); l++) {
-			sum += typeof lanes === "number" ? lanes : (lanes[l] as number);
+		for (let l = 0; l < width; l++) {
+			sum += typeof lanes === "number" ? lanes : (lanes[l] ?? 0);
 		}
-		o.out = sum * (ins.gain as number);
-	},
+		return { out: sum * gain, isArr, w };
+	};
 });
 
-defmod({
-	name: "rd.jacks",
-	category: "utils",
-	ins: { a: sig(0), b: sig(0) },
-	outs: { out: sig(), w: sig(), aLen: sig(), bLen: sig(), bSum: sig() },
-	defaultIn: "a",
-	defaultOut: "out",
-	policy: "reduce",
-	tick: (_s, ins, o, _cfg, _sr, width) => {
-		const a = ins.a as Float64Array;
-		const b = ins.b as Float64Array;
-		o.w = width as number;
-		o.aLen = a.length;
-		o.bLen = b.length;
-		let sum = 0;
-		for (let l = 0; l < b.length; l++) sum += b[l] as number;
-		o.bSum = sum;
-	},
+defmod("rd.jacks", { reduce: true }, () => {
+	return ({ a = 0, b = 0 }) => {
+		const aArr = a as unknown as Float64Array;
+		const bArr = b as unknown as Float64Array;
+		const w = typeof aArr === "number" ? 1 : aArr.length;
+		const aLen = typeof aArr === "number" ? 1 : aArr.length;
+		const bLen = typeof bArr === "number" ? 1 : bArr.length;
+		let bSum = 0;
+		if (typeof bArr === "number") bSum = bArr;
+		else for (let l = 0; l < bArr.length; l++) bSum += bArr[l] ?? 0;
+		return { out: 0, w, aLen, bLen, bSum };
+	};
 });
 
 describe("engine: reduce policy", () => {

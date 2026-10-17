@@ -11,50 +11,46 @@ import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
 import { renderTap } from "@/core3/runtime/render";
 import { group, sig, unit } from "@/core3/types";
-import { type IO, type St, c, n, pnode, prog } from "./helpers";
+import { c, n, pnode, prog } from "./helpers";
+
+// A setup function built from raw text (not a TS closure vitest's own
+// transform would rewrite): a group default (`group(sig(0), { open: true })`)
+// is text the lowering parses itself, and vitest's SSR transform rewrites a
+// bare `group(...)` call into an import-wrapped expression the marker parser
+// can't read as a plain name. `Function(...)` keeps the text untouched.
+const setup = (setupText: string): (() => unknown) => new Function(`return ${setupText}`)() as () => unknown;
 
 // gmix: out = sum ch[k] * level[k]. `ch` open in-group, `level` a `like: ch` in-group.
-defmod({
-	name: "pgi.mix",
-	category: "utils",
-	ins: { ch: group(sig(0), { open: true }), level: group(unit(1), { like: "ch" }) },
-	outs: { out: sig() },
-	defaultIn: "ch",
-	defaultOut: "out",
-	tick: (_s: St, i: IO, o: IO) => {
-		const ch = i.ch as unknown as Float64Array;
-		const level = i.level as unknown as Float64Array;
-		let sum = 0;
-		for (let k = 0; k < ch.length; k++) sum += (ch[k] as number) * (level[k] as number);
-		o.out = sum;
-	},
-});
+defmod(
+	"pgi.mix",
+	{},
+	setup(`() => {
+		return ({ ch = group(sig(0), { open: true }), level = group(unit(1), { like: "ch" }) }) => {
+			let sum = 0;
+			for (let k = 0; k < ch.length; k++) sum += ch[k] * level[k];
+			return sum;
+		};
+	}`),
+);
 
 // pgi.fan: an out group, one member per in-group member, doubled.
-defmod({
-	name: "pgi.fan",
-	category: "utils",
-	ins: { ch: group(sig(0), { open: true }) },
-	outs: { g: group(sig(), { open: true }) },
-	defaultIn: "ch",
-	tick: (_s: St, i: IO, o: IO) => {
-		const ch = i.ch as unknown as Float64Array;
-		const g = o.g as unknown as Float64Array;
-		for (let k = 0; k < ch.length; k++) g[k] = (ch[k] as number) * 2;
-	},
-});
+defmod(
+	"pgi.fan",
+	{ outs: { g: group(sig(), { open: true }) } },
+	setup(`() => {
+		return ({ ch = group(sig(0), { open: true }) }, o) => {
+			for (let k = 0; k < ch.length; k++) o.g[k] = ch[k] * 2;
+		};
+	}`),
+);
 
-defmod({
-	name: "pgi.tap",
-	category: "utils",
-	ins: { in: sig(0) },
-	outs: { out: sig() },
-	defaultIn: "in",
-	defaultOut: "out",
-	tick: (_s: St, i: IO, o: IO) => {
-		o.out = i.in as number;
-	},
-});
+defmod(
+	"pgi.tap",
+	{},
+	setup(`() => {
+		return ({ in: x = 0 }) => x;
+	}`),
+);
 
 describe("port groups on the interpreter", () => {
 	it("sums ch[k]*level[k]: level.b = 2 renders the constant mix", () => {
