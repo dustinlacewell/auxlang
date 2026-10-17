@@ -14,7 +14,7 @@ import {
 import { createFrameStore } from "@/ui/core3-editor/live-display/frame-store";
 import { describe, expect, it } from "vitest";
 
-function buildFrame(): MonitorFrame {
+function buildFrame(site = 7, at = 48000): MonitorFrame {
 	const levelCount = 2;
 	const onsetCount = 1;
 	const buffer = new ArrayBuffer((levelCount * LEVEL_STRIDE + onsetCount * ONSET_STRIDE) * 8);
@@ -34,16 +34,17 @@ function buildFrame(): MonitorFrame {
 
 	const onsetBase = levelCount * LEVEL_STRIDE;
 	floats[onsetBase + ONSET_WATCH] = 1;
-	floats[onsetBase + ONSET_SITE] = 7;
-	floats[onsetBase + ONSET_FRAME] = 48000;
+	floats[onsetBase + ONSET_SITE] = site;
+	floats[onsetBase + ONSET_FRAME] = at;
 
-	return { type: "monitor", generation: 1, frame: 48000, levelCount, onsetCount, buffer };
+	return { type: "monitor", generation: 1, frame: at, levelCount, onsetCount, buffer };
 }
 
 describe("frame store", () => {
 	it("copies onsets out synchronously", () => {
 		const store = createFrameStore();
-		const snapshot = store.copyFrom(buildFrame());
+		store.append(buildFrame());
+		const snapshot = store.take();
 
 		expect(snapshot.onsets).toEqual([{ watch: 1, site: 7, frame: 48000 }]);
 		expect(snapshot.engineFrame).toBe(48000);
@@ -52,12 +53,23 @@ describe("frame store", () => {
 	it("keeps no reference to the frame's buffer", () => {
 		const store = createFrameStore();
 		const frame = buildFrame();
-		const snapshot = store.copyFrom(frame);
+		store.append(frame);
 
-		// Mutate the source buffer after copying; the snapshot's onsets must not change.
+		// Mutate the source buffer after copying; the taken onsets must not change.
 		const onsetBase = frame.levelCount * LEVEL_STRIDE;
 		new Float64Array(frame.buffer)[onsetBase + ONSET_SITE] = 999;
 
-		expect(snapshot.onsets[0]?.site).toBe(7);
+		expect(store.take().onsets[0]?.site).toBe(7);
+	});
+
+	it("keeps every frame's onsets when several arrive before one take", () => {
+		const store = createFrameStore();
+		store.append(buildFrame(7, 48000));
+		store.append(buildFrame(9, 48800));
+		const snapshot = store.take();
+
+		expect(snapshot.onsets.map((o) => o.site)).toEqual([7, 9]);
+		expect(snapshot.engineFrame).toBe(48800);
+		expect(store.take().onsets).toEqual([]);
 	});
 });

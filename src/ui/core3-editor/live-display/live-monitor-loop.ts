@@ -4,9 +4,9 @@
  * while a listener is attached" (live-contract.ts), so the last unsubscribe
  * really does turn it off.
  *
- * Each subscriber's callback runs on the next requestAnimationFrame with the
- * latest snapshot (frame-store.ts: copied synchronously inside the engine's
- * listener, per live-contract.ts). Rendering itself — CodeMirror decoration
+ * Each subscriber's callback runs on the next requestAnimationFrame with every
+ * onset since the last one (frame-store.ts: copied synchronously inside the
+ * engine's listener, per live-contract.ts). Rendering itself — CodeMirror decoration
  * rebuilds — happens there, off the monitor's own synchronous callback.
  */
 
@@ -18,15 +18,12 @@ type FrameListener = (snapshot: FrameSnapshot) => void;
 
 const store = createFrameStore();
 const subscribers = new Set<FrameListener>();
-let pending: FrameSnapshot | null = null;
 let rafId: number | null = null;
 let unsubscribeMonitor: (() => void) | null = null;
 
 function flush(): void {
 	rafId = null;
-	if (pending === null) return;
-	const snapshot = pending;
-	pending = null;
+	const snapshot = store.take();
 	for (const listener of subscribers) listener(snapshot);
 }
 
@@ -34,7 +31,7 @@ function flush(): void {
 export function watchMonitor(onTick: FrameListener): () => void {
 	subscribers.add(onTick);
 	unsubscribeMonitor ??= onMonitor((frame: MonitorFrame) => {
-		pending = store.copyFrom(frame);
+		store.append(frame);
 		rafId ??= requestAnimationFrame(flush);
 	});
 
@@ -45,6 +42,6 @@ export function watchMonitor(onTick: FrameListener): () => void {
 		unsubscribeMonitor = null;
 		if (rafId !== null) cancelAnimationFrame(rafId);
 		rafId = null;
-		pending = null;
+		store.take();
 	};
 }

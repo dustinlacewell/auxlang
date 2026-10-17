@@ -1,9 +1,10 @@
 /**
- * Copies one MonitorFrame's onsets out synchronously (live-contract.ts:
- * `onMonitor`'s listener must read before it returns, because the buffer goes
- * back to the worklet right after). Holds no reference to `frame.buffer`
- * afterwards — the onsets live in a plain array the store owns and reuses
- * frame to frame, so reading the monitor allocates nothing per frame.
+ * Collects MonitorFrames' onsets between two renders. `append` copies a
+ * frame's onsets out synchronously (live-contract.ts: `onMonitor`'s listener
+ * must read before it returns, because the buffer goes back to the worklet
+ * right after) and holds no reference to `frame.buffer` afterwards. Several
+ * frames can arrive before one animation frame renders them; `take` hands
+ * over every onset since the last take, so none is lost to a later frame.
  */
 
 import {
@@ -22,36 +23,36 @@ export interface FrameSnapshot {
 }
 
 export interface FrameStore {
-	copyFrom(frame: MonitorFrame): FrameSnapshot;
+	append(frame: MonitorFrame): void;
+	/** The onsets appended since the last take, and the latest frame's engine frame. */
+	take(): FrameSnapshot;
 }
 
 export function createFrameStore(): FrameStore {
-	let onsets: Onset[] = [];
+	const onsets: Onset[] = [];
+	let engineFrame = 0;
 
 	return {
-		copyFrom(frame) {
-			const floats = new Float64Array(frame.buffer);
-			onsets = copyOnsets(floats, frame.levelCount, frame.onsetCount, onsets);
-			return { onsets, engineFrame: frame.frame };
+		append(frame) {
+			appendOnsets(new Float64Array(frame.buffer), frame.levelCount, frame.onsetCount, onsets);
+			engineFrame = frame.frame;
+		},
+		take() {
+			const snapshot = { onsets: onsets.slice(), engineFrame };
+			onsets.length = 0;
+			return snapshot;
 		},
 	};
 }
 
-function copyOnsets(
-	floats: Float64Array,
-	levelCount: number,
-	onsetCount: number,
-	reuse: Onset[],
-): Onset[] {
+function appendOnsets(floats: Float64Array, levelCount: number, onsetCount: number, into: Onset[]): void {
 	const base0 = levelCount * LEVEL_STRIDE;
-	const out = reuse.length === onsetCount ? reuse : new Array<Onset>(onsetCount);
 	for (let i = 0; i < onsetCount; i++) {
 		const base = base0 + i * ONSET_STRIDE;
-		out[i] = {
+		into.push({
 			watch: floats[base + ONSET_WATCH] as number,
 			site: floats[base + ONSET_SITE] as number,
 			frame: floats[base + ONSET_FRAME] as number,
-		};
+		});
 	}
-	return out;
 }
