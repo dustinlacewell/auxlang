@@ -507,6 +507,68 @@ describe("tickWrites", () => {
 		expect(writes.has("bufB")).toBe(true);
 	});
 
+	it("an address select read on through a further alias and a nested select counts every root", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const va = [{ env: { x: 0 } }]",
+				"  const vb = [{ env: { x: 0 } }]",
+				"  const vc = [{ env: { x: 0 } }]",
+				"  return ({ in: i = 0 }) => {",
+				"    const v = i > 50 ? va[0] : i > 10 ? vb[0] : vc[0]",
+				"    const e = v.env",
+				"    e.x += 1",
+				"    return 0",
+				"  }",
+				"}",
+			].join("\n"),
+			["va", "vb", "vc"],
+		);
+		expect([...writes].sort()).toEqual(["va", "vb", "vc"]);
+	});
+
+	it("an address select passed on through an element read to a writing arrow counts both roots", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const va = [{ x: 0 }]",
+				"  const vb = [{ x: 0 }]",
+				"  return ({ in: i = 0 }) => {",
+				"    const bump = (r) => { r.x += 1 }",
+				"    const arr = i > 50 ? va : vb",
+				"    bump(arr[0])",
+				"    return 0",
+				"  }",
+				"}",
+			].join("\n"),
+			["va", "vb"],
+		);
+		expect([...writes].sort()).toEqual(["va", "vb"]);
+	});
+
+	it("an address select written through `.fill` (`v.fill(0)`) counts BOTH roots, same as a plain element write", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const bufA = new Float64Array(4)",
+				"  const bufB = new Float64Array(4)",
+				"  return ({ in: i = 0 }) => {",
+				"    const v = i > 50 ? bufA : bufB",
+				"    v.fill(0)",
+				"    return bufA[0] + bufB[0]",
+				"  }",
+				"}",
+			].join("\n"),
+			["bufA", "bufB"],
+			new Map<string, StateShape>([
+				["bufA", { k: "array", type: "f64", length: 4 }],
+				["bufB", { k: "array", type: "f64", length: 4 }],
+			]),
+		);
+		expect(writes.has("bufA")).toBe(true);
+		expect(writes.has("bufB")).toBe(true);
+	});
+
 	it("an address select that is only read does not count: reading through either candidate is not a write", () => {
 		const writes = lowerTick(
 			[

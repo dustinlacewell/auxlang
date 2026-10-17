@@ -339,6 +339,57 @@ picker({ hz: 110 }).out()`);
 		expect((voicesAfterSwap[0] as Record<string, unknown>).x).toBe(xBefore); // carried, not reset to 0
 	});
 
+	it("an address select written through `.fill` (`const v = cond ? bufA : bufB; v.fill(...)`) carries BOTH roots", () => {
+		const laneOf = (state: ReturnType<Core3Engine["collectState"]>) =>
+			(Object.values(state.nodes)[0] as Record<string, unknown>[])[0] as Record<string, unknown>;
+
+		const picker = (gain: number) => `const picker = defmod("picker", {}, ({ sr, gain = ${gain} }) => {
+  const bufA = new Float64Array(2)
+  const bufB = new Float64Array(2)
+  let n = 0
+  return ({ hz = 110 }) => {
+    n++
+    const v = n % 2 === 0 ? bufA : bufB
+    v.fill(n)
+    return (bufA[0] + bufB[0]) * gain
+  }
+})
+picker({ hz: 110 }).out()`;
+
+		const before = () => evalPatch(picker(0.5));
+		// an unrelated setup constant changes: a new unused local, same shape, same kind
+		const after = () =>
+			evalPatch(`const picker = defmod("picker", {}, ({ sr, gain = 0.5 }) => {
+  const bufA = new Float64Array(2)
+  const bufB = new Float64Array(2)
+  let n = 0
+  const unused = 42
+  return ({ hz = 110 }) => {
+    n++
+    const v = n % 2 === 0 ? bufA : bufB
+    v.fill(n)
+    return (bufA[0] + bufB[0]) * gain + unused * 0
+  }
+})
+picker({ hz: 110 }).out()`);
+
+		const a = before();
+		const js = new Core3Engine(a, SR, registry(a));
+		const l = new Float32Array(BLOCK);
+		const r = new Float32Array(BLOCK);
+		js.renderBlock(l, r, 0, BLOCK);
+		const bufABefore = laneOf(js.collectState()).bufA as Float64Array;
+		const bufBBefore = laneOf(js.collectState()).bufB as Float64Array;
+		expect(bufABefore[0]).toBeGreaterThan(0); // the address-select fill moved bufA off its initial 0
+		expect(bufBBefore[0]).toBeGreaterThan(0); // and bufB too: both candidates are carried, neither rebuilt
+
+		const b = after();
+		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const laneAfterSwap = laneOf(swapped.collectState());
+		expect((laneAfterSwap.bufA as Float64Array)[0]).toBe(bufABefore[0]); // carried, not reset to 0
+		expect((laneAfterSwap.bufB as Float64Array)[0]).toBe(bufBBefore[0]); // carried, not reset to 0
+	});
+
 	it("two different shape-C modules with different names keep separate compiled code", () => {
 		const PATCH = `const a = defmod("modA", {}, ({ sr }) => {
   let n = 0

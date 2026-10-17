@@ -73,23 +73,21 @@ export function tickWrites(
 		return [];
 	};
 
-	/** The setup field `expr[…]` reads from: `expr`'s own chain, one more computed hop into an element.
-	 * An alias root that itself picks between several fields (an address select) is conservative here:
-	 * nested narrowing by shape only applies to one known field, so this returns null (treat as unknown
-	 * -> can alias) rather than risk checking the wrong candidate's shape and under-marking the other. */
-	const fieldReadAtElement = (expr: AnyNode): string | null => fieldReadAt(expr, [{ computed: true }]);
+	/** The setup fields `expr` reads through (`fieldReadBy`), or `expr[…]` one more computed hop into
+	 * an element (`fieldReadAtElement`). An alias root that picks between several fields (an address
+	 * select) yields every candidate, unnarrowed by shape: over-marking is the safe side. */
+	const fieldReadBy = (expr: AnyNode): readonly string[] => fieldReadAt(expr, []);
+	const fieldReadAtElement = (expr: AnyNode): readonly string[] => fieldReadAt(expr, [{ computed: true }]);
 
-	function fieldReadAt(expr: AnyNode, extra: readonly AccessStep[]): string | null {
+	function fieldReadAt(expr: AnyNode, extra: readonly AccessStep[]): readonly string[] {
 		const { root, path: own } = chainOf(expr);
 		const path = extra.length === 0 ? own : [...own, ...extra];
 		const fields = root.type === "Identifier" ? namesOf(root as Identifier) : [];
-		if (fields.length === 0) return null;
-		if (path.length === 0) return fields[0] as string; // a bare alias local or setup field, not narrowed by access
-		if (fields.length > 1) return fields[0] as string; // ambiguous root: skip shape narrowing, stay conservative
+		if (fields.length !== 1 || path.length === 0) return fields;
 		const field = fields[0] as string;
 		const fieldShape = shapes.get(field);
 		const shape = fieldShape === undefined ? null : shapeAtPath(fieldShape, path);
-		return shapeCanAlias(shape) ? field : null;
+		return shapeCanAlias(shape) ? fields : [];
 	}
 
 	walk(tick.body as AnyNode, (node) => {
@@ -98,8 +96,8 @@ export function tickWrites(
 		callArguments(node, namesOf, written);
 		aliasDeclarator(node, scopes, fieldReadAt, aliasOf);
 		aliasForOfHead(node, scopes, fieldReadAtElement, aliasOf);
-		aliasSelect(node, scopes, setupLocals, aliasOf);
-		arrayMethodWrites(node, nameOf, fieldReadAtElement, setupLocals, written);
+		aliasSelect(node, scopes, fieldReadBy, aliasOf);
+		arrayMethodWrites(node, namesOf, fieldReadAtElement, setupLocals, written);
 		namedArrowCallWrites(node, scopes, fieldReadBy, setupLocals, written);
 	});
 
@@ -167,7 +165,7 @@ function callArguments(node: AnyNode, namesOf: (id: Identifier) => readonly stri
 function aliasDeclarator(
 	node: AnyNode,
 	scopes: Scopes,
-	fieldReadAt: (expr: AnyNode, extra: readonly AccessStep[]) => string | null,
+	fieldReadAt: (expr: AnyNode, extra: readonly AccessStep[]) => readonly string[],
 	aliasOf: Map<Binding, readonly string[]>,
 ): void {
 	if (node.type !== "VariableDeclarator") return;
@@ -196,14 +194,14 @@ function bindPatternAliases(
 	source: AnyNode,
 	extra: readonly AccessStep[],
 	scopes: Scopes,
-	fieldReadAt: (expr: AnyNode, extra: readonly AccessStep[]) => string | null,
+	fieldReadAt: (expr: AnyNode, extra: readonly AccessStep[]) => readonly string[],
 	aliasOf: Map<Binding, readonly string[]>,
 ): void {
 	if (pattern.type === "Identifier") {
-		const field = fieldReadAt(source, extra);
-		if (field === null) return;
+		const fields = fieldReadAt(source, extra);
+		if (fields.length === 0) return;
 		const binding = bindingDeclaredBy(scopes, pattern as Identifier);
-		if (binding !== undefined) aliasOf.set(binding, [field]);
+		if (binding !== undefined) aliasOf.set(binding, fields);
 		return;
 	}
 	if (pattern.type === "AssignmentPattern") {
@@ -243,7 +241,7 @@ function bindPatternAliases(
 function aliasForOfHead(
 	node: AnyNode,
 	scopes: Scopes,
-	fieldReadAtElement: (expr: AnyNode) => string | null,
+	fieldReadAtElement: (expr: AnyNode) => readonly string[],
 	aliasOf: Map<Binding, readonly string[]>,
 ): void {
 	if (node.type !== "ForOfStatement") return;
@@ -251,10 +249,10 @@ function aliasForOfHead(
 	if (left.type !== "VariableDeclaration" || left.declarations.length !== 1) return;
 	const id = left.declarations[0]?.id;
 	if (id === undefined || id.type !== "Identifier") return;
-	const field = fieldReadAtElement((node as ForOfStatement).right as unknown as AnyNode);
-	if (field === null) return;
+	const fields = fieldReadAtElement((node as ForOfStatement).right as unknown as AnyNode);
+	if (fields.length === 0) return;
 	const binding = bindingDeclaredBy(scopes, id as Identifier);
-	if (binding !== undefined) aliasOf.set(binding, [field]);
+	if (binding !== undefined) aliasOf.set(binding, fields);
 }
 
 /**
@@ -265,12 +263,13 @@ function aliasForOfHead(
  * away. A write through `v` then marks every candidate written: which one
  * the running tick actually picked depends on `cond`'s run-time value,
  * which this static analysis does not evaluate, so both count — the safe
- * (over-, never under-marking) side.
+ * (over-, never under-marking) side. A branch is itself read like any
+ * aliasing expression, so a nested select or an alias local counts too.
  */
 function aliasSelect(
 	node: AnyNode,
 	scopes: Scopes,
-	setupLocals: ReadonlySet<string>,
+	fieldReadBy: (expr: AnyNode) => readonly string[],
 	aliasOf: Map<Binding, readonly string[]>,
 ): void {
 	if (node.type !== "VariableDeclarator") return;
@@ -279,17 +278,20 @@ function aliasSelect(
 	if (id.type !== "Identifier" || decl.init === null || decl.init === undefined) return;
 	const init = decl.init as AnyNode;
 	if (!isSelect(init)) return;
-	const branches = [(init as ConditionalExpression).consequent, (init as ConditionalExpression).alternate];
-	const fields = new Set<string>();
-	for (const branch of branches) {
-		const root = rootIdentifier(branch as unknown as AnyNode);
-		if (root === null) continue;
-		const resolution = scopes.references.get(root);
-		if (resolution?.k === "free" && setupLocals.has(resolution.name)) fields.add(resolution.name);
-	}
+	const fields = new Set<string>(selectFields(init, fieldReadBy));
 	if (fields.size === 0) return;
 	const binding = bindingDeclaredBy(scopes, id as Identifier);
 	if (binding !== undefined) aliasOf.set(binding, [...fields]);
+}
+
+/** Every field either branch of a select reads through, nested selects included. */
+function selectFields(node: AnyNode, fieldReadBy: (expr: AnyNode) => readonly string[]): readonly string[] {
+	if (!isSelect(node)) return fieldReadBy(node);
+	const select = node as ConditionalExpression;
+	return [
+		...selectFields(select.consequent as AnyNode, fieldReadBy),
+		...selectFields(select.alternate as AnyNode, fieldReadBy),
+	];
 }
 
 /**
@@ -302,8 +304,8 @@ function aliasSelect(
  */
 function arrayMethodWrites(
 	node: AnyNode,
-	nameOf: (id: Identifier) => string | null,
-	fieldReadAtElement: (expr: AnyNode) => string | null,
+	namesOf: (id: Identifier) => readonly string[],
+	fieldReadAtElement: (expr: AnyNode) => readonly string[],
 	setupLocals: ReadonlySet<string>,
 	written: Set<string>,
 ): void {
@@ -315,8 +317,7 @@ function arrayMethodWrites(
 	const root = rootIdentifier(callee.object as unknown as AnyNode);
 	if (root === null) return;
 	if (method === "fill" || method === "set" || method === "copyWithin") {
-		const name = nameOf(root);
-		if (name !== null) written.add(name);
+		for (const name of namesOf(root)) written.add(name);
 		return;
 	}
 	if (method !== "forEach") return;
@@ -324,8 +325,8 @@ function arrayMethodWrites(
 	if (callback === undefined || callback.type !== "ArrowFunctionExpression") return;
 	const param = callback.params[0];
 	if (param === undefined || param.type !== "Identifier") return;
-	const field = fieldReadAtElement(callee.object as unknown as AnyNode);
-	arrowBodyWrites(callback, [[param.name, field]], setupLocals, written);
+	const fields = fieldReadAtElement(callee.object as unknown as AnyNode);
+	arrowBodyWrites(callback, [[param.name, fields]], setupLocals, written);
 }
 
 /**
@@ -340,7 +341,7 @@ function arrayMethodWrites(
 function namedArrowCallWrites(
 	node: AnyNode,
 	scopes: Scopes,
-	fieldReadBy: (expr: AnyNode) => string | null,
+	fieldReadBy: (expr: AnyNode) => readonly string[],
 	setupLocals: ReadonlySet<string>,
 	written: Set<string>,
 ): void {
@@ -352,31 +353,28 @@ function namedArrowCallWrites(
 	const declarator = resolution.binding.declarator;
 	const arrow = declarator?.init;
 	if (arrow === null || arrow === undefined || arrow.type !== "ArrowFunctionExpression") return;
-	const params: Array<[string, string | null]> = [];
+	const params: Array<[string, readonly string[]]> = [];
 	arrow.params.forEach((param, k) => {
 		if (param.type !== "Identifier") return;
 		const arg = call.arguments[k];
-		const field = arg === undefined ? null : fieldReadBy(arg as unknown as AnyNode);
-		params.push([param.name, field]);
+		params.push([param.name, arg === undefined ? [] : fieldReadBy(arg as unknown as AnyNode)]);
 	});
 	arrowBodyWrites(arrow, params, setupLocals, written);
 }
 
-/** Every setup local an arrow's body writes directly, plus each `field` a param in `paramFields` aliases (when not null) — the same rule as `aliasForOfHead`, resolved by name alone: `resolveBindings` does not enter a nested function, so this is its own small walk, scoped to the arrow alone. */
+/** Every setup local an arrow's body writes directly, plus the fields each param in `paramFields` aliases — the same rule as `aliasForOfHead`, resolved by name alone: `resolveBindings` does not enter a nested function, so this is its own small walk, scoped to the arrow alone. */
 function arrowBodyWrites(
 	arrow: ArrowFunctionExpression,
-	paramFields: ReadonlyArray<readonly [string, string | null]>,
+	paramFields: ReadonlyArray<readonly [string, readonly string[]]>,
 	setupLocals: ReadonlySet<string>,
 	written: Set<string>,
 ): void {
 	const fields = new Map(paramFields);
-	const nameOf = (id: Identifier): string | null => {
-		if (fields.has(id.name)) return fields.get(id.name) ?? null;
-		return setupLocals.has(id.name) ? id.name : null;
-	};
+	const namesOf = (id: Identifier): readonly string[] =>
+		fields.get(id.name) ?? (setupLocals.has(id.name) ? [id.name] : []);
 	walk(arrow.body as AnyNode, (node) => {
-		assignmentTarget(node, nameOf, written);
-		updateTarget(node, nameOf, written);
-		callArguments(node, nameOf, written);
+		assignmentTarget(node, namesOf, written);
+		updateTarget(node, namesOf, written);
+		callArguments(node, namesOf, written);
 	});
 }
