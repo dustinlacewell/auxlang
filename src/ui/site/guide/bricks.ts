@@ -1,7 +1,7 @@
 /**
  * The brick guide's content: chapters of bricks, one idea and one runnable
  * patch each. Each patch changes one thing from the brick before it. In
- * `text`, `backticks` mark inline code. Plan: docs/future-work/guide-bricks.md.
+ * `text`, `backticks` mark inline code.
  */
 
 export interface Brick {
@@ -21,20 +21,12 @@ export const CHAPTERS: readonly Chapter[] = [
 		title: "A sound",
 		bricks: [
 			{
-				text: "A module is a function. `sin` makes a tone, `gain` sets the volume, and `out` sends it to the speakers.",
+				text: "Call modules to start a chain. `sin` makes a tone, `gain` sets the volume, and `out` sends it to the speakers.",
 				code: "sin().gain(0.3).out()",
 			},
 			{
-				text: "An argument sets an input. Here it sets the pitch. 60 is middle C.",
+				text: "An argument sets an input. Here it sets the pitch.",
 				code: "sin(60).gain(0.3).out()",
-			},
-			{
-				text: "Pitch counts in semitones. Add 12 to go up one octave.",
-				code: "sin(72).gain(0.3).out()",
-			},
-			{
-				text: 'A note name works too. `"c5"` is 72.',
-				code: 'sin("c5").gain(0.3).out()',
 			},
 			{
 				text: "You can set an input by name.",
@@ -44,22 +36,30 @@ export const CHAPTERS: readonly Chapter[] = [
 				text: "Or with a setter.",
 				code: "sin().pitch(60).gain(0.3).out()",
 			},
+			{
+				text: "`a().b()` is the same as `b(a())`.",
+				code: "out(sin(60).gain(0.3))",
+				graph: true,
+			},
 		],
 	},
 	{
-		title: "Chains and signals",
+		title: "Values",
 		bricks: [
 			{
-				text: "This is the same as `sin(60).gain(0.3).out()`. A chain `a.b()` feeds `a` into the main input of `b`.",
-				code: "out(sin(60).gain(0.3))",
-				graph: true,
+				text: "A number at a pitch input counts semitones. 60 is middle C. Add 12 to go up one octave.",
+				code: "sin(72).gain(0.3).out()",
+			},
+			{
+				text: 'A note name works too. `"c5"` is 72.',
+				code: 'sin("c5").gain(0.3).out()',
 			},
 			{
 				text: "`hz()` gives a value in Hz.",
 				code: "sin(hz(440)).gain(0.3).out()",
 			},
 			{
-				text: "An output can feed any input. Here a slow `sin`, from 48 to 72, sets the pitch.",
+				text: "An input can also take a signal. Here a slow `sin`, from 48 to 72, sets the pitch.",
 				code: "sin(sin(hz(0.2), 48, 72)).gain(0.3).out()",
 			},
 		],
@@ -128,6 +128,10 @@ a.gain(0.3).out()`,
 			{
 				text: "A scope draws even with no `out`. `2` shows two seconds at once.",
 				code: "sin(hz(0.5)).scope(2)",
+			},
+			{
+				text: "`add` on a sound lifts the wave. The note stays the same. To change the note, add to the pitch.",
+				code: "sin(60).scope({ lifted: sin(60).add(0.5) })",
 			},
 			{
 				text: "A knob appears in the editor. Turn it while the sound plays.",

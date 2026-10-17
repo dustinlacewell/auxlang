@@ -3,9 +3,9 @@ import "@/core3/modules/all";
 import { describe, expect, it } from "vitest";
 
 import { evalPatch } from "@/ui/core3-playground/eval-patch";
-import { CHAPTERS } from "@/ui/site/guide2/bricks";
+import { CHAPTERS } from "@/ui/site/guide/bricks";
 
-describe("guide2 bricks", () => {
+describe("guide bricks", () => {
 	for (const chapter of CHAPTERS) {
 		describe(chapter.title, () => {
 			chapter.bricks.forEach((brick, i) => {

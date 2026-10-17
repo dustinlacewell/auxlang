@@ -20,7 +20,6 @@ export default defineConfig(({ command }) => ({
 				main: resolve(__dirname, "index.html"),
 				editor: resolve(__dirname, "editor.html"),
 				guide: resolve(__dirname, "guide.html"),
-				guide2: resolve(__dirname, "guide2.html"),
 				patterns: resolve(__dirname, "patterns.html"),
 				modules: resolve(__dirname, "modules.html"),
 				moduleDsp: resolve(__dirname, "module-dsp.html"),
