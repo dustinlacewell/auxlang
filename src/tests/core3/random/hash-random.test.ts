@@ -9,27 +9,24 @@ import { describe, expect, it } from "vitest";
 import { defmod } from "@/core3/patch/defmod";
 import { hashRandom as hashRandomSeeded } from "@/core3/random/hash-random";
 import { renderTap } from "@/core3/runtime/render";
-import { sig } from "@/core3/types";
 import { c, pnode } from "../runtime/helpers";
 
 /** The tick's own binding (module/bind-random): one argument, the patch seed implied. */
 declare const hashRandom: (key: number | string) => number;
 
 /** Steps through keys 0, 1, 2, … every `hold` samples; outputs each key's value. */
-defmod({
-	name: "hr.steps",
-	category: "utils",
-	ins: { hold: sig(100) },
-	outs: { out: sig() },
-	defaultIn: "hold",
-	defaultOut: "out",
-	state: () => ({ n: 0 }),
-	tick: (s, i, o) => {
-		const n = s.n as number;
-		s.n = n + 1;
-		o.out = hashRandom(Math.floor(n / i.hold));
-	},
-});
+defmod(
+	"hr.steps",
+	{},
+	(() => {
+		let n = 0;
+		return ({ hold = 100 }: { hold: number }) => {
+			const at = n;
+			n = n + 1;
+			return hashRandom(Math.floor(at / hold));
+		};
+	}) as never,
+);
 
 const steps = (seed: number) => ({
 	nodes: [pnode("hr.steps", [{ hold: c(100) }])],

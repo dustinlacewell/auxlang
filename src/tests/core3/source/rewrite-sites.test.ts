@@ -129,22 +129,25 @@ describe("the rewritten code", () => {
 		expect(code).toContain("__aux.enter(");
 	});
 
-	it("leaves a lambda, a defmod spec, Math calls and optional chains byte-identical", () => {
+	it("leaves a lambda, a shape-C defmod's name/meta/setup, Math calls and optional chains byte-identical", () => {
 		const lambda = "(s, sr, t) => Math.sin(t * 3)";
-		const spec =
-			"{ name: 't', tick: (s, i, o) => { o.out = clip(i.in) }, helpers: { clip: (x) => x } }";
+		const name = "'t'";
+		const meta = "{}";
+		const setup = "() => { return ({ in: x = 0 }) => clip(x) }";
 		const chain = "a?.b().c(3)";
-		const src = `sin(${lambda}).out()\ndefmod(${spec})\n${chain}`;
+		const src = `sin(${lambda}).out()\ndefmod(${name}, ${meta}, ${setup})\n${chain}`;
 		const { code } = rewrite(src, SCOPE);
 		expect(code).toContain(lambda);
-		expect(code).toContain(spec);
+		expect(code).toContain(name);
+		expect(code).toContain(meta);
+		expect(code).toContain(setup);
 		expect(code).toContain(chain);
 	});
 
-	it("leaves an out-of-line defmod tick byte-identical", () => {
-		const tick = "(s, i, o) => { o.out = clip(i.in) }";
-		const { code } = rewrite(`const tick = ${tick}\ndefmod({ name: 't', tick })`, SCOPE);
-		expect(code).toContain(tick);
+	it("leaves an out-of-line shape-C defmod setup byte-identical", () => {
+		const setup = "() => { return ({ in: x = 0 }) => clip(x) }";
+		const { code } = rewrite(`const setup = ${setup}\ndefmod('t', {}, setup)`, SCOPE);
+		expect(code).toContain(setup);
 	});
 
 	it("code that does not parse is returned unchanged, with where it failed", () => {

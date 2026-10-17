@@ -27,7 +27,7 @@ export function registerToyModules(): void {
 
 	// A gain-like map module with a required input, to exercise def:null errors.
 	defmod("treq", { args: ["amt"] }, () => {
-		return ({ in: x, amt = 1 }) => 0;
+		return ({ in: x, amt = 1 }: { in: number; amt: number }) => x * 0 + amt * 0;
 	});
 
 	// A multi-output tap source: pitch/gate outputs, like a sequencer.
