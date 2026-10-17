@@ -79,10 +79,23 @@ function slot(args: AnyNode[], what: string): PortAnn {
 	if (defNode === undefined || minNode === undefined || maxNode === undefined) {
 		throw new Error(`${what}: 'slot' needs a default and min/max, e.g. slot(0, "min", "max")`);
 	}
-	const def = numberOrNull(defNode);
 	const min = slotBound(minNode, what);
 	const max = slotBound(maxNode, what);
-	return slotted(sig(def), { min, max });
+	return slotted(slotBase(defNode, what), { min, max });
+}
+
+/** `slot`'s own default, or a nested `gatePort(n)`/`trigPort(n)` picking the base port's unit. */
+function slotBase(defNode: AnyNode, what: string): PortAnn {
+	if (defNode.type === "CallExpression") {
+		const call = defNode as unknown as { callee: AnyNode; arguments: AnyNode[] };
+		if (call.callee.type === "Identifier") {
+			const name = (call.callee as { name: string }).name;
+			const arg0 = call.arguments[0] ?? null;
+			if (name === "gatePort") return gatePort(numberOrNull(arg0));
+			if (name === "trigPort") return trigPort(numberOrNull(arg0));
+		}
+	}
+	return sig(numberOrNull(defNode));
 }
 
 function slotBound(node: AnyNode, what: string): string | number {

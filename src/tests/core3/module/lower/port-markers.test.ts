@@ -99,6 +99,12 @@ describe("markerAnn", () => {
 		expect(markerAnn(defaultNode("slot(0, 0, 1)"), "t")).toEqual(slotted(sig(0), { min: 0, max: 1 }));
 	});
 
+	it("slot(gatePort(n), min, max) -> slotted control port with a gate base", () => {
+		expect(markerAnn(defaultNode("slot(gatePort(0), 0, 1)"), "t")).toEqual(
+			slotted(gatePort(0), { min: 0, max: 1 }),
+		);
+	});
+
 	it("an unrecognized default throws, naming the port", () => {
 		expect(() => markerAnn(defaultNode("someCall()"), "input 'x'")).toThrow(/input 'x'/);
 	});
