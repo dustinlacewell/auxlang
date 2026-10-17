@@ -1,7 +1,9 @@
 /**
  * `??` only on a direct array element read (front/rules/check-nullish.ts):
- * `a[j] ?? d` and chains of such reads pass; anything else is a loud error
- * at eval naming the module and the patch line.
+ * `a[j] ?? d` and chains of such reads pass; a local fed from one direct
+ * read also passes, lifted to a validity flag and a ternary
+ * (bind-sugar/lift-nullish-element.ts); anything else is a loud error at
+ * eval naming the module and the patch line.
  */
 
 import { describe, expect, it } from "vitest";
@@ -32,15 +34,16 @@ const ALLOWED: readonly [string, string][] = [
 	["a direct element", "o.out = s.a[s.n] ?? 0;"],
 	["a chain of direct elements", "o.out = s.a[s.n] ?? s.b[s.n] ?? 1;"],
 	["a direct element through a local array", "const a = s.a; o.out = a[i.in] ?? 2;"],
+	["an element kept in a local", "const x = s.a[s.n]; o.out = x ?? 0;"],
 ];
 
 const REJECTED: readonly [string, string][] = [
-	["an element kept in a local", "const x = s.a[s.n]; o.out = x ?? 0;"],
 	["a state field", "o.out = s.n ?? 0;"],
 	["an input", "o.out = i.in ?? 0;"],
 	["a config field", "o.out = c.k ?? 3;"],
 	["a chain through a local", "const x = s.a[1]; o.out = (s.a[0] ?? x) ?? 0;"],
 	["`??=` on a local", "let x = 0; x ??= 2; o.out = x;"],
+	["a local fed from a direct element, reassigned before the `??`", "let x = s.a[s.n]; x = 0; o.out = x ?? 0;"],
 ];
 
 describe("tick subset: `??`", () => {

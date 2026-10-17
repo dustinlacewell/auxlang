@@ -78,6 +78,22 @@ const AGREED_ACCEPT: readonly Row[] = [
 	accept("typeof of an in-range element", 'o.out = typeof s.buf[0] === "number" ? 1 : 0'),
 	accept("?? after an out-of-range read", "o.out = s.buf[s.n + 7] ?? 0.5; s.n = (s.n + 1) % 3"),
 	accept("?? after a negative index", "o.out = s.buf[-1] ?? 2"),
+	accept(
+		"?? after a local fed from an in-range element, lifted to a validity flag",
+		"const v = s.buf[s.n % 4]; o.out = v ?? 5; s.n++",
+	),
+	accept(
+		"?? after a local fed from a past-end element, lifted to a validity flag",
+		"const v = s.buf[s.n + 7]; o.out = v ?? 0.5; s.n = (s.n + 1) % 3",
+	),
+	accept(
+		"?? after a local fed from a negative-index element, lifted to a validity flag",
+		"const v = s.buf[-1]; o.out = v ?? 2",
+	),
+	accept(
+		"?? after a local fed from a fractional-index element, lifted to a validity flag",
+		"const v = s.buf[s.n + 0.5]; o.out = v ?? 3; s.n++",
+	),
 	accept("an out-of-range read without ??", "o.out = s.buf[9]; s.n++"),
 	accept("an out-of-range write", "s.buf[9] = 1; o.out = s.buf[0]"),
 	// Found by generated-ticks: an out-of-range read is undefined in JS and NaN on WASM.
@@ -341,6 +357,11 @@ const AGREED_REJECT: readonly Row[] = [
 	reject("a let rebound to a typed array of another type", "let a = s.a; a = s.buf; o.out = a[0]", /takes only an array or record of the same type and length/),
 	reject("arithmetic on a typed-array let", "let a = s.a; a = s.b; a += 1; o.out = 1", /takes only an array or record of the same type/),
 	reject("??= on a local", "let x = 0; x ??= i.in; o.out = x", /`\?\?` is allowed only on a direct array element/),
+	reject(
+		"?? on a local fed from a direct element, reassigned before the ??",
+		"let x = s.buf[s.n]; x = 0; o.out = x ?? 0",
+		/`\?\?` is allowed only on a direct array element/,
+	),
 	reject("a typed array stored in a number let", "let x = 0; x = s.buf; o.out = 1", /an array or record stored where a number is kept/),
 	reject("a written let holding a string", 'let m = cfg.mode; if (i.in > 50) m = cfg.mode; o.out = 1', /strings exist only while compiling/),
 	reject("a state alias adding a field", "const t = s; t.zz = 1; o.out = 1", /adds field 't\.zz'/),
