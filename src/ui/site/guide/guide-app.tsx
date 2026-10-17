@@ -46,18 +46,28 @@ export function GuideApp() {
 
 			<Section title="Modules">
 				<P>
-					Auxlang is modular synthesis, kin to Eurorack: there are modules, modules have ports, and
-					you patch them together — in JavaScript. <C>sin</C> is a module, an oscillator. <C>out</C>{" "}
-					is a module, the speakers.
+					Auxlang is modular synthesis: there are modules, modules have ports, and
+					you connect them together. 
+				</P>
+				<P>
+					For example, here are two modules: <C>sin</C> and <C>out</C>
 				</P>
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 items-start">
 					<ModuleCard name="sin" />
 					<ModuleCard name="out" />
 				</div>
-				<P>
-					A module's input ports are set positionally — <C>sin(69)</C> is pitch 69, A440 — by name
-					— <C>{"sin({ pitch: 69 })"}</C> — or with a setter — <C>.pitch(69)</C>.
-				</P>
+				<P>There are three ways to set a module's inputs:</P>
+				<ul className="text-gray-400 leading-relaxed mb-3 ml-5 list-disc space-y-1">
+					<li>
+						Positionally — <C>sin(69)</C> is pitch 69, A440.
+					</li>
+					<li>
+						By name — <C>{"sin({ pitch: 69 })"}</C>.
+					</li>
+					<li>
+						With a setter — <C>.pitch(69)</C>.
+					</li>
+				</ul>
 				<P>
 					Chaining is the patch cable: each link routes the previous module's output into the next
 					module's default input. Only what reaches <C>out()</C> plays.

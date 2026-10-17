@@ -8,10 +8,12 @@
  * control widgets.
  *
  * Tab buttons sit attached outside the top-right edge: a playback toggle
- * (shown when `onRun` is provided) and a graph toggle revealing the patch's
- * compiled signal graph (PatchGraph). `graphOpen` starts the graph expanded
- * for examples where the graph is the point. Ctrl+Enter runs the edited text
- * (re-evaluating while playing); Ctrl+. stops.
+ * (shown when `onRun` is provided), a reset toggle (shown once the text
+ * diverges from the starting `code`, restoring it), and a graph toggle
+ * revealing the patch's compiled signal graph (PatchGraph). `graphOpen`
+ * starts the graph expanded for examples where the graph is the point.
+ * Ctrl+Enter runs the edited text (re-evaluating while playing); Ctrl+.
+ * stops.
  */
 
 import type { SlotDecl } from "@/core3/runtime/live/live-contract";
@@ -29,7 +31,7 @@ import { attachModuleHover } from "@/ui/code-editor/module-highlight";
 import { TabButton } from "@/ui/design/tab-button";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { Play, Square, Waypoints } from "lucide-react";
+import { Play, RotateCcw, Square, Waypoints } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { EmbedFrame } from "./embed-frame";
@@ -136,6 +138,8 @@ export function CodeBlock({
 		viewRef.current?.dispatch({ effects: setLiveProgram.of(undefined) });
 	}, [sourceMap, liveSlots]);
 
+	const dirty = text !== code;
+
 	return (
 		<EmbedFrame
 			tabsRight={
@@ -147,6 +151,21 @@ export function CodeBlock({
 							onClick={() => (playing ? onStop?.() : onRun(text))}
 						>
 							{playing ? <Square size={12} className="text-white" /> : <Play size={12} />}
+						</TabButton>
+					)}
+					{dirty && (
+						<TabButton
+							title="Reset to original"
+							onClick={() => {
+								const view = viewRef.current;
+								if (!view) return;
+								view.dispatch({
+									changes: { from: 0, to: view.state.doc.length, insert: code },
+								});
+								setText(code);
+							}}
+						>
+							<RotateCcw size={12} />
 						</TabButton>
 					)}
 					<TabButton

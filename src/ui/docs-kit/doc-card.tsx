@@ -14,11 +14,10 @@ import type { SlotDecl } from "@/core3/runtime/live/live-contract";
 import { hasModule } from "@/core3/module/define";
 import type { SourceMap } from "@/core3/source/source-map";
 import { Card } from "@/ui/design/card";
-import { ErrorDisplay } from "@/ui/design/error-display";
 import { StatusIndicator } from "@/ui/design/status-indicator";
-import { CodeBlock } from "./code-block";
 import type { DocExample } from "./doc-example";
 import { ModuleName } from "./module-name";
+import { RunnableCode } from "./runnable-code";
 
 interface DocCardProps {
 	example: DocExample;
@@ -67,7 +66,7 @@ export function DocCard({
 				<span className="flex-1">{renderTitle(example.title)}</span>
 			</div>
 			<p className="text-sm text-gray-400 mb-2">{example.description}</p>
-			<CodeBlock
+			<RunnableCode
 				code={example.code}
 				playing={playing}
 				onRun={onRun}
@@ -75,8 +74,8 @@ export function DocCard({
 				sourceMap={playing ? sourceMap : undefined}
 				liveSlots={playing ? liveSlots : undefined}
 				onEnsureSlotSite={playing ? onEnsureSlotSite : undefined}
+				{...(error ? { error } : {})}
 			/>
-			{error && <ErrorDisplay message={error} />}
 		</Card>
 	);
 }

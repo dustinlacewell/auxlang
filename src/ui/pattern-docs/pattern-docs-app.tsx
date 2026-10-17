@@ -30,7 +30,7 @@ export function PatternDocsApp() {
 			<div className="mb-4">
 				<h1 className="text-xl font-bold mb-1">Patterns</h1>
 				<p className="text-sm text-gray-400">
-					The pattern is the star; the voice is a plain gated synth.
+					Text based sequencing.
 				</p>
 			</div>
 

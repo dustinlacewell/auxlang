@@ -5,8 +5,7 @@
  * SharedAudio host.
  */
 
-import { ErrorDisplay } from "@/ui/design/error-display";
-import { CodeBlock } from "@/ui/docs-kit/code-block";
+import { RunnableCode } from "@/ui/docs-kit/runnable-code";
 import type { SharedAudio } from "@/ui/docs-kit/use-shared-audio";
 
 interface RunBlockProps {
@@ -19,10 +18,9 @@ interface RunBlockProps {
 
 export function RunBlock({ id, code, audio, graphOpen = false }: RunBlockProps) {
 	const playing = audio.playingId === id;
-	const error = audio.errors[id];
 	return (
 		<div className="mb-4">
-			<CodeBlock
+			<RunnableCode
 				code={code}
 				graphOpen={graphOpen}
 				playing={playing}
@@ -31,8 +29,8 @@ export function RunBlock({ id, code, audio, graphOpen = false }: RunBlockProps) 
 				sourceMap={playing ? audio.sourceMap : undefined}
 				liveSlots={playing ? audio.liveSlots : undefined}
 				onEnsureSlotSite={playing ? audio.ensureSlotSite : undefined}
+				{...(audio.errors[id] ? { error: audio.errors[id] } : {})}
 			/>
-			{error && <ErrorDisplay message={error} />}
 		</div>
 	);
 }
