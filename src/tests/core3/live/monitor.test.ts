@@ -196,6 +196,42 @@ describe("onsets", () => {
 		const texts = onsets.map((o) => siteText(src, sourceMap, o[ONSET_SITE] as number));
 		expect(texts).toEqual(["c3", "e3", "c3", "e3"]);
 	});
+
+	it("a pattern plugged straight into an input lifts to a watched seq, same as an explicit one", () => {
+		const src = 'tempo(120)\nslew({ in: p`<0 1>`, rise: 0.02, fall: 0.02 }).out()';
+		const { program, sourceMap } = evaluatePatch(src);
+		const w = watchOf(program, "seq");
+		const node = watchList(program)[w]?.node as number;
+		const samples = 2 * 2 * SR; // two cycles of 2 s
+		const trig = renderTap(program, node, "trig", 0, samples);
+		const trigFrames = Array.from(trig).flatMap((x, k) => (x === 1 ? [k] : []));
+		const onsets = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		expect(onsets.map((o) => o[ONSET_WATCH])).toEqual(trigFrames.map(() => w));
+		expect(onsets.map((o) => o[ONSET_FRAME])).toEqual(trigFrames);
+		const texts = onsets.map((o) => siteText(src, sourceMap, o[ONSET_SITE] as number));
+		expect(texts).toEqual(["0", "1"]);
+	});
+
+	it("a pattern plugged into a module input by config key lifts to a watched seq", () => {
+		const src = 'tempo(120)\nsin().lpf({ cutoff: p`60 72` }).out()';
+		const { program, sourceMap } = evaluatePatch(src);
+		const w = watchOf(program, "seq");
+		const node = watchList(program)[w]?.node as number;
+		const samples = 2 * SR - BLOCK; // just under one cycle of 2 s
+		const trig = renderTap(program, node, "trig", 0, samples);
+		const trigFrames = Array.from(trig).flatMap((x, k) => (x === 1 ? [k] : []));
+		const onsets = frames(interpreted(program), samples, samples)[0]?.onsets as number[][];
+		expect(onsets.map((o) => o[ONSET_FRAME])).toEqual(trigFrames);
+		const texts = onsets.map((o) => siteText(src, sourceMap, o[ONSET_SITE] as number));
+		expect(texts).toEqual(["60", "72"]);
+	});
+
+	// A pattern spliced with signals (`p`${lfo(1)} 80`` — MANIFESTO §4.4) desugars
+	// to mux(seq(indexPattern), palette): its index seq already gets a real call
+	// site today (patch/build-palette-mux.ts builds it through the normal seq()
+	// factory). Whether a palette slot's own token should light like a note is
+	// a separate highlight-mechanism question (switching a live cable, not a
+	// note onset) — left out of scope for this bug.
 });
 
 describe("both engines", () => {

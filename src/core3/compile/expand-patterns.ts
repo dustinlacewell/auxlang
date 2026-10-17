@@ -22,7 +22,13 @@ export function expandPatterns(nodes: readonly GNode[], clockNode: GNode | null)
 	return expanded;
 }
 
-/** The knob's seq lives in its consumer's sub-patch scope, if any. */
+/**
+ * The knob's seq lives in its consumer's sub-patch scope, if any, and takes
+ * the consumer's own site, so it is watched and glows like any other node
+ * (the palette-mux path, patch/build-palette-mux.ts, gets this for free by
+ * building its seq through the real factory while the consumer's call is
+ * still the active trace frame).
+ */
 function knobSeq(
 	pattern: unknown,
 	clockNode: GNode | null,
@@ -34,6 +40,12 @@ function knobSeq(
 			`pattern input at ${consumer.module}.${port} needs an ambient clock — set one with tempo(bpm)`,
 		);
 	}
-	const seq: GNode = { module: "seq", inputs: {}, config: { pattern }, ...inScope(consumer.scope) };
+	const seq: GNode = {
+		module: "seq",
+		inputs: {},
+		config: { pattern },
+		...inScope(consumer.scope),
+		...(consumer.site !== undefined ? { site: consumer.site } : {}),
+	};
 	return { node: seq, port: "out" };
 }
