@@ -122,6 +122,21 @@ describe("tickText", () => {
 		expect(newNewlines).toBe(originalNewlines);
 	});
 
+	it("a bare port-local expression body (the whole tick is `=> x`) is rewritten too", () => {
+		const fileText = [
+			'defmod("z1", {}, () => {',
+			"  return ({ in: x = 0 }) => x",
+			"})",
+		].join("\n");
+		const setupText = ["() => {", "  return ({ in: x = 0 }) => x", "}"].join("\n");
+		const { parts, ports, outs, setupLocals, configKeys, scope, fileText: file } = lowerTick(fileText, setupText);
+
+		const text = tickText(parts.tick, file, ports, outs, setupLocals, configKeys, scope, new Set(), "z1");
+
+		expect(text).toContain("__dsp_o.out = (__dsp_i.in); return;");
+		expect(text).not.toContain("(x)");
+	});
+
 	it("writing to a port local throws", () => {
 		const fileText = [
 			'defmod("bad", {}, ({ sr }) => {',

@@ -74,9 +74,7 @@ export function tickText(
 		}
 		eachChild(node, (child, childKey) => rewriteRegion(child, node, childKey, scopes));
 	};
-	eachChild(tick.body as never, (child, childKey) =>
-		rewriteRegion(child, tick.body as never, childKey, resolveBindings(tick as never, helperNames)),
-	);
+	rewriteRegion(tick.body as never, tick, "body", resolveBindings(tick as never, helperNames));
 
 	const params = newParamListText(tick, fileText);
 	const body = applyEdits(fileText.slice(tick.body.start, tick.body.end), shiftBy(bodyEdits, -tick.body.start));
