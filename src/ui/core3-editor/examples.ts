@@ -106,6 +106,34 @@ s.tri()
   .out()
 `;
 
+/** defmod: a module written in the DSP language; edit it while it plays. */
+const liveModule = `// defmod: write your own module — edit it while it plays
+// try: fb = 0.8 (tail keeps going), add "let spare = 0" (no click),
+// Float64Array(sr / 2) (a resized buffer starts fresh)
+tempo(110)
+
+function wrapIndex(k, n) { return ((Math.floor(k) % n) + n) % n }
+
+defmod("echo", ({ sr }) => {
+  const buf = new Float64Array(sr)
+  let w = 0
+  const fb = 0.5
+  return ({ in: x = 0, time = secs(0.3) }) => {
+    const y = x + buf[wrapIndex(w - time * sr, buf.length)] * fb
+    buf[w] = y
+    w = (w + 1) % buf.length
+    return y
+  }
+})
+
+const s = seq("c4 e4 g4 ~")
+s.tri()
+  .mul(s.gate.ad(0.005, 0.15))
+  .echo()
+  .gain(0.3)
+  .out()
+`;
+
 /** defmod with patch: a sub-patch saved as a module, used twice. */
 const subpatch = `// defmod with patch: save a sub-patch as a module, use it like any module
 tempo(110)
@@ -746,6 +774,7 @@ export const EXAMPLES: readonly Example[] = [
 	{ name: "karplus pluck (loop)", source: karplus },
 	{ name: "cross FM (loop record)", source: crossFm },
 	{ name: "synced echo (beats)", source: syncedEcho },
+	{ name: "write a module (defmod)", source: liveModule },
 	{ name: "sub-patch module (defmod patch)", source: subpatch },
 	{ name: "poly chords", source: polyChords },
 	{ name: "wide saws (detune + spread)", source: wideSaws },
