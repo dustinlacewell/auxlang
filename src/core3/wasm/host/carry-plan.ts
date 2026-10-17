@@ -8,9 +8,8 @@
  * - each live slot whose site the old program has, always
  *   (runtime/live/slot-carry.ts);
  * - at an unchanged sample rate, each paired node's lanes the fields
- *   `carryFields` picks (module/front/state/carry-fields.ts: the module's
- *   `writes`, or the whole state when it fits, for an old-form module),
- *   `__rng` unless the seed changed;
+ *   `carryFields` picks (module/front/state/carry-fields.ts, by the
+ *   module's `writes`), `__rng` unless the seed changed;
  * - at an unchanged sample rate, the feedback slots of paired sources.
  *
  * The result is a flat Int32Array of runs (carry/carry-run.ts) that the
@@ -49,7 +48,7 @@ export function planCarry(old: CarrySide, fresh: CarrySide): Int32Array {
 function nodeRuns(runs: RunList, old: CarrySide, fresh: CarrySide, from: number, to: number): void {
 	const oldLanes = old.layout.nodes[from]?.lanes ?? [];
 	const keepStream = old.facts.seeds[from] === fresh.facts.seeds[to];
-	const writes = fresh.facts.writes[to] ?? undefined;
+	const writes = fresh.facts.writes[to] ?? [];
 	fresh.layout.nodes[to]?.lanes.forEach((lane, l) => {
 		const source = oldLanes[l];
 		if (source === undefined) return;

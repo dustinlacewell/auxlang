@@ -2,9 +2,8 @@
  * State migration (MANIFESTO §6.2) as a hand-over into a built engine: each
  * new node paired with an old key (reeval-identities.ts) takes the old
  * node's lane values into its fresh lane states. A lane carries the fields
- * `carryFields` (module/front/state/carry-fields.ts) picks — by the module's
- * `writes` (shape C) or, for an old-form module, the whole shape when it
- * fits, else nothing. A carried lane keeps its `__rng`, so its random stream
+ * `carryFields` (module/front/state/carry-fields.ts) picks, by the module's
+ * `writes`. A carried lane keeps its `__rng`, so its random stream
  * continues — unless its seed changed (a reroll, an edited `.seed(n)`): then
  * it keeps the fresh stream. The engine-injected fields stay the new
  * engine's own.
@@ -34,7 +33,7 @@ const STREAM = "__rng";
 export function planCarry(
 	fresh: readonly LaneState[],
 	old: readonly LaneState[] | undefined,
-	writes?: readonly string[],
+	writes: readonly string[],
 ): CarryPair[] {
 	if (old === undefined) return [];
 	return fresh.flatMap((to, lane) => {

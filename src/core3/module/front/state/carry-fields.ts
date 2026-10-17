@@ -6,9 +6,6 @@
  * rebuilt fresh every time, so an edited setup constant takes effect at
  * once. `__rng` (the random stream) is always treated as written: it must
  * fit (it always does, as a plain value) and so always carries.
- *
- * An old-form module (`writes` undefined) keeps today's behaviour: the whole
- * lane carries when its whole shape fits, else nothing does.
  */
 
 import { shapeKeys } from "./engine-fields";
@@ -25,9 +22,8 @@ const STREAM = "__rng";
 export function carryFields(
 	old: RecordState,
 	fresh: RecordState,
-	writes?: ReadonlySet<string> | readonly string[],
+	writes: ReadonlySet<string> | readonly string[],
 ): readonly string[] | null {
-	if (writes === undefined) return shapeFits(old, fresh) ? shapeKeys(fresh.fields) : null;
 	const written = new Set(writes);
 	written.add(STREAM);
 	const names = shapeKeys(fresh.fields);

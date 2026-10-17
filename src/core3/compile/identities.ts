@@ -27,7 +27,7 @@ export function identities(
 ): Map<GNode, Placement> {
 	const hopOf = portHops(specs);
 	const paths = firstPaths(roots, hopOf);
-	const kinds = new Map(order.map((node) => [node, kindOf(node, specs)]));
+	const kinds = new Map(order.map((node) => [node, kindOf(node)]));
 	const upstream = upstreamSignatures(order, kinds, hopOf);
 	const constants = constantEvidence(order);
 	const result = new Map<GNode, Placement>();

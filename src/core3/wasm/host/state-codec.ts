@@ -72,7 +72,7 @@ export function writeEngineState(
 				(fresh[node] as NodeRun).states,
 				state.nodes[key],
 				node,
-				facts.writes[node] ?? undefined,
+				facts.writes[node] ?? [],
 			);
 	const paired = new Map(facts.paired);
 	restoreFeedback(
@@ -93,7 +93,7 @@ function carryNode(
 	fresh: readonly Record<string, unknown>[],
 	old: readonly Record<string, unknown>[] | undefined,
 	node: number,
-	writes: readonly string[] | undefined,
+	writes: readonly string[],
 ): void {
 	if (old === undefined) return;
 	fresh.forEach((to, l) => {

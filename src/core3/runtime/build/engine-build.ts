@@ -131,7 +131,7 @@ export class EngineBuild {
 		const { source } = this;
 		if (source === undefined || source.sampleRate !== this.prepared.sampleRate) return;
 		const old = source.nodes[this.paired.get(i) as string];
-		const pairs = planCarry((this.runs[i] as NodeRun).states, old, this.specs[i]?.writes);
+		const pairs = planCarry((this.runs[i] as NodeRun).states, old, (this.specs[i] as ModuleSpec).writes ?? []);
 		applyCarry(pairs);
 		this.carry.push(...pairs);
 	}

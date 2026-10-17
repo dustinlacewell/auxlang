@@ -27,7 +27,7 @@ export interface EngineFacts {
 	readonly sampleRate: number;
 	/** Each live slot's site (Program.liveSlots order): a swap carries a slot by site. */
 	readonly slotSites: readonly number[];
-	/** Each node's `ModuleSpec.writes`, or null for an old-form module (carry-fields.ts). */
+	/** Each node's `ModuleSpec.writes` (carry-fields.ts); null only for a hand-built spec with none. */
 	readonly writes: readonly (readonly string[] | null)[];
 }
 
