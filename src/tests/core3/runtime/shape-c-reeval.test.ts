@@ -292,6 +292,53 @@ bumper({ hz: 110 }).out()`);
 		expect(tAfterSwap).toBe((tBefore as Record<string, unknown>).t); // carried, not reset to 0
 	});
 
+	it("an address select write (`const v = cond ? voices[0] : voices[1]`) carries `voices` (write analysis reaches through the ORIGINAL ConditionalExpression, not the lowered plain rebind)", () => {
+		const laneOf = (state: ReturnType<Core3Engine["collectState"]>) =>
+			(Object.values(state.nodes)[0] as Record<string, unknown>[])[0] as Record<string, unknown>;
+
+		const picker = (gain: number) => `const picker = defmod("picker", {}, ({ sr, gain = ${gain} }) => {
+  const voices = [{ x: 0 }, { x: 0 }]
+  let n = 0
+  return ({ hz = 110 }) => {
+    n++
+    const v = n % 2 === 0 ? voices[0] : voices[1]
+    v.x += 1
+    return (voices[0].x + voices[1].x) * gain
+  }
+})
+picker({ hz: 110 }).out()`;
+
+		const before = () => evalPatch(picker(0.5));
+		// an unrelated setup constant changes: a new unused local, same shape, same kind
+		const after = () =>
+			evalPatch(`const picker = defmod("picker", {}, ({ sr, gain = 0.5 }) => {
+  const voices = [{ x: 0 }, { x: 0 }]
+  let n = 0
+  const unused = 42
+  return ({ hz = 110 }) => {
+    n++
+    const v = n % 2 === 0 ? voices[0] : voices[1]
+    v.x += 1
+    return (voices[0].x + voices[1].x) * gain + unused * 0
+  }
+})
+picker({ hz: 110 }).out()`);
+
+		const a = before();
+		const js = new Core3Engine(a, SR, registry(a));
+		const l = new Float32Array(BLOCK);
+		const r = new Float32Array(BLOCK);
+		js.renderBlock(l, r, 0, BLOCK);
+		const voicesBefore = laneOf(js.collectState()).voices as Record<string, unknown>[];
+		const xBefore = (voicesBefore[0] as Record<string, unknown>).x as number;
+		expect(xBefore).toBeGreaterThan(0); // the address-select write moved it off its initial 0
+
+		const b = after();
+		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const voicesAfterSwap = laneOf(swapped.collectState()).voices as Record<string, unknown>[];
+		expect((voicesAfterSwap[0] as Record<string, unknown>).x).toBe(xBefore); // carried, not reset to 0
+	});
+
 	it("two different shape-C modules with different names keep separate compiled code", () => {
 		const PATCH = `const a = defmod("modA", {}, ({ sr }) => {
   let n = 0

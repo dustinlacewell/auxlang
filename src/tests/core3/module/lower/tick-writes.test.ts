@@ -446,6 +446,26 @@ describe("tickWrites", () => {
 		expect(writes.has("voices")).toBe(true);
 	});
 
+	it("an address select `const v = cond ? voices[0] : voices[1]; v.x += 1` counts the root `voices` (both elements share one field, read on the ORIGINAL ConditionalExpression)", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const voices = [{ x: 0 }, { x: 0 }]",
+				"  return ({ in: i = 0 }) => {",
+				"    const v = i > 50 ? voices[0] : voices[1]",
+				"    v.x += 1",
+				"    return voices[0].x + voices[1].x",
+				"  }",
+				"}",
+			].join("\n"),
+			["voices"],
+			new Map<string, StateShape>([
+				["voices", { k: "records", length: 2, element: { k: "record", fields: { x: { k: "number" } } } }],
+			]),
+		);
+		expect(writes.has("voices")).toBe(true);
+	});
+
 	it("buf.forEach((v) => { acc += v }) over a typed array does not count buf: a number element is never an alias", () => {
 		const writes = lowerTick(
 			[
@@ -462,6 +482,109 @@ describe("tickWrites", () => {
 			new Map<string, StateShape>([["buf", { k: "array", type: "f64", length: 4 }]]),
 		);
 		expect(writes.has("buf")).toBe(false);
+	});
+
+	it("an address select between two DIFFERENT fields `const v = cond ? bufA : bufB; v[0] += 1` counts BOTH roots: the static analysis cannot know which one `cond` picked", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const bufA = new Float64Array(4)",
+				"  const bufB = new Float64Array(4)",
+				"  return ({ in: i = 0 }) => {",
+				"    const v = i > 50 ? bufA : bufB",
+				"    v[0] += 1",
+				"    return bufA[0] + bufB[0]",
+				"  }",
+				"}",
+			].join("\n"),
+			["bufA", "bufB"],
+			new Map<string, StateShape>([
+				["bufA", { k: "array", type: "f64", length: 4 }],
+				["bufB", { k: "array", type: "f64", length: 4 }],
+			]),
+		);
+		expect(writes.has("bufA")).toBe(true);
+		expect(writes.has("bufB")).toBe(true);
+	});
+
+	it("an address select that is only read does not count: reading through either candidate is not a write", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const voices = [{ x: 0 }, { x: 0 }]",
+				"  return ({ in: i = 0 }) => {",
+				"    const v = i > 50 ? voices[0] : voices[1]",
+				"    return v.x",
+				"  }",
+				"}",
+			].join("\n"),
+			["voices"],
+			new Map<string, StateShape>([
+				["voices", { k: "records", length: 2, element: { k: "record", fields: { x: { k: "number" } } } }],
+			]),
+		);
+		expect(writes.has("voices")).toBe(false);
+	});
+
+	it("a nested address select `cond1 ? (cond2 ? voices[0] : voices[1]) : voices[0]` counts the root `voices`", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const voices = [{ x: 0 }, { x: 0 }]",
+				"  return ({ in: i = 0 }) => {",
+				"    const v = i > 50 ? (i > 25 ? voices[0] : voices[1]) : voices[0]",
+				"    v.x += 1",
+				"    return voices[0].x + voices[1].x",
+				"  }",
+				"}",
+			].join("\n"),
+			["voices"],
+			new Map<string, StateShape>([
+				["voices", { k: "records", length: 2, element: { k: "record", fields: { x: { k: "number" } } } }],
+			]),
+		);
+		expect(writes.has("voices")).toBe(true);
+	});
+
+	it("an address select re-aliased through a second local (`const w = v`, `w.x += 1`) still counts the root", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const voices = [{ x: 0 }, { x: 0 }]",
+				"  return ({ in: i = 0 }) => {",
+				"    const v = i > 50 ? voices[0] : voices[1]",
+				"    const w = v",
+				"    w.x += 1",
+				"    return voices[0].x + voices[1].x",
+				"  }",
+				"}",
+			].join("\n"),
+			["voices"],
+			new Map<string, StateShape>([
+				["voices", { k: "records", length: 2, element: { k: "record", fields: { x: { k: "number" } } } }],
+			]),
+		);
+		expect(writes.has("voices")).toBe(true);
+	});
+
+	it("an address select written through a call argument (`fill(v)`) counts the root, same as any alias", () => {
+		const writes = lowerTick(
+			[
+				"({ sr }) => {",
+				"  const voices = [{ x: 0 }, { x: 0 }]",
+				"  return ({ in: i = 0 }) => {",
+				"    const v = i > 50 ? voices[0] : voices[1]",
+				"    bump(v)",
+				"    return voices[0].x + voices[1].x",
+				"  }",
+				"}",
+			].join("\n"),
+			["voices"],
+			new Map<string, StateShape>([
+				["voices", { k: "records", length: 2, element: { k: "record", fields: { x: { k: "number" } } } }],
+			]),
+		);
+		expect(writes.has("voices")).toBe(true);
 	});
 
 	it("a shadowed tick local of the same name does not count", () => {

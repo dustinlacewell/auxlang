@@ -24,7 +24,12 @@
  * with no shapes and the conservative fallback (unknown -> can alias) holds;
  * `defineModule` re-resolves with the real shapes once setup has run. A tick
  * local that shadows a setup local of the same name is not that local, so
- * does not count.
+ * does not count. `const v = cond ? voices[0] : voices[1]` (an address
+ * select, lift-record-select.ts's own kind of declaration, read on the
+ * ORIGINAL `ConditionalExpression` before bind-sugar lowers it to a plain
+ * rebind) aliases BOTH candidate fields: a write through `v` reaches back
+ * into whichever field the running tick actually picked, which this static
+ * analysis cannot know, so both count (aliasSelect).
  */
 
 import type {
@@ -34,6 +39,7 @@ import type {
 	AssignmentExpression,
 	AssignmentProperty,
 	CallExpression,
+	ConditionalExpression,
 	ForOfStatement,
 	Identifier,
 	MemberExpression,
@@ -55,40 +61,44 @@ export function tickWrites(
 ): ReadonlySet<string> {
 	const scopes = resolveBindings(tick as unknown as FunctionNode, new Set());
 	const written = new Set<string>();
-	/** Tick-local bindings known to alias a setup field, built forward over the walk. */
-	const aliasOf = new Map<Binding, string>();
+	/** Tick-local bindings known to alias a setup field, built forward over the walk: usually one
+	 * field, or both candidates of an address select (`const v = cond ? a : b`, aliasSelect). */
+	const aliasOf = new Map<Binding, readonly string[]>();
 
-	const nameOf = (id: Identifier): string | null => {
+	const namesOf = (id: Identifier): readonly string[] => {
 		const resolution = scopes.references.get(id);
-		if (resolution === undefined) return null;
-		if (resolution.k === "free") return setupLocals.has(resolution.name) ? resolution.name : null;
-		if (resolution.k === "binding") return aliasOf.get(resolution.binding) ?? null;
-		return null;
+		if (resolution === undefined) return [];
+		if (resolution.k === "free") return setupLocals.has(resolution.name) ? [resolution.name] : [];
+		if (resolution.k === "binding") return aliasOf.get(resolution.binding) ?? [];
+		return [];
 	};
 
-	/** The setup field `expr` reads from, through a chain of member accesses off an aliasing root. */
-	const fieldReadBy = (expr: AnyNode): string | null => fieldReadAt(expr, []);
-
-	/** The setup field `expr[…]` reads from: `expr`'s own chain, one more computed hop into an element. */
+	/** The setup field `expr[…]` reads from: `expr`'s own chain, one more computed hop into an element.
+	 * An alias root that itself picks between several fields (an address select) is conservative here:
+	 * nested narrowing by shape only applies to one known field, so this returns null (treat as unknown
+	 * -> can alias) rather than risk checking the wrong candidate's shape and under-marking the other. */
 	const fieldReadAtElement = (expr: AnyNode): string | null => fieldReadAt(expr, [{ computed: true }]);
 
 	function fieldReadAt(expr: AnyNode, extra: readonly AccessStep[]): string | null {
 		const { root, path: own } = chainOf(expr);
 		const path = extra.length === 0 ? own : [...own, ...extra];
-		const field = root.type === "Identifier" ? nameOf(root as Identifier) : null;
-		if (field === null) return null;
-		if (path.length === 0) return field; // a bare alias local or setup field, not narrowed by access
+		const fields = root.type === "Identifier" ? namesOf(root as Identifier) : [];
+		if (fields.length === 0) return null;
+		if (path.length === 0) return fields[0] as string; // a bare alias local or setup field, not narrowed by access
+		if (fields.length > 1) return fields[0] as string; // ambiguous root: skip shape narrowing, stay conservative
+		const field = fields[0] as string;
 		const fieldShape = shapes.get(field);
 		const shape = fieldShape === undefined ? null : shapeAtPath(fieldShape, path);
 		return shapeCanAlias(shape) ? field : null;
 	}
 
 	walk(tick.body as AnyNode, (node) => {
-		assignmentTarget(node, nameOf, written);
-		updateTarget(node, nameOf, written);
-		callArguments(node, nameOf, written);
+		assignmentTarget(node, namesOf, written);
+		updateTarget(node, namesOf, written);
+		callArguments(node, namesOf, written);
 		aliasDeclarator(node, scopes, fieldReadAt, aliasOf);
 		aliasForOfHead(node, scopes, fieldReadAtElement, aliasOf);
+		aliasSelect(node, scopes, setupLocals, aliasOf);
 		arrayMethodWrites(node, nameOf, fieldReadAtElement, setupLocals, written);
 		namedArrowCallWrites(node, scopes, fieldReadBy, setupLocals, written);
 	});
@@ -118,31 +128,28 @@ function chainOf(expr: AnyNode): { readonly root: AnyNode; readonly path: readon
 
 function assignmentTarget(
 	node: AnyNode,
-	nameOf: (id: Identifier) => string | null,
+	namesOf: (id: Identifier) => readonly string[],
 	written: Set<string>,
 ): void {
 	if (node.type !== "AssignmentExpression") return;
 	const target = (node as AssignmentExpression).left;
 	const root = rootIdentifier(target as unknown as AnyNode);
 	if (root === null) return;
-	const name = nameOf(root);
-	if (name !== null) written.add(name);
+	for (const name of namesOf(root)) written.add(name);
 }
 
-function updateTarget(node: AnyNode, nameOf: (id: Identifier) => string | null, written: Set<string>): void {
+function updateTarget(node: AnyNode, namesOf: (id: Identifier) => readonly string[], written: Set<string>): void {
 	if (node.type !== "UpdateExpression") return;
 	const root = rootIdentifier((node as UpdateExpression).argument as unknown as AnyNode);
 	if (root === null) return;
-	const name = nameOf(root);
-	if (name !== null) written.add(name);
+	for (const name of namesOf(root)) written.add(name);
 }
 
-function callArguments(node: AnyNode, nameOf: (id: Identifier) => string | null, written: Set<string>): void {
+function callArguments(node: AnyNode, namesOf: (id: Identifier) => readonly string[], written: Set<string>): void {
 	if (node.type !== "CallExpression") return;
 	for (const arg of (node as CallExpression).arguments) {
 		if (arg.type !== "Identifier") continue;
-		const name = nameOf(arg as Identifier);
-		if (name !== null) written.add(name);
+		for (const name of namesOf(arg as Identifier)) written.add(name);
 	}
 }
 
@@ -161,12 +168,18 @@ function aliasDeclarator(
 	node: AnyNode,
 	scopes: Scopes,
 	fieldReadAt: (expr: AnyNode, extra: readonly AccessStep[]) => string | null,
-	aliasOf: Map<Binding, string>,
+	aliasOf: Map<Binding, readonly string[]>,
 ): void {
 	if (node.type !== "VariableDeclarator") return;
 	const decl = node as VariableDeclarator;
 	if (decl.init === null || decl.init === undefined) return;
+	if (isSelect(decl.init as AnyNode)) return; // aliasSelect handles an address select on its own
 	bindPatternAliases(decl.id as Pattern, decl.init as AnyNode, [], scopes, fieldReadAt, aliasOf);
+}
+
+/** `cond ? a : b`: the form lift-record-select.ts reads an address select from. */
+function isSelect(node: AnyNode): boolean {
+	return node.type === "ConditionalExpression";
 }
 
 /**
@@ -184,13 +197,13 @@ function bindPatternAliases(
 	extra: readonly AccessStep[],
 	scopes: Scopes,
 	fieldReadAt: (expr: AnyNode, extra: readonly AccessStep[]) => string | null,
-	aliasOf: Map<Binding, string>,
+	aliasOf: Map<Binding, readonly string[]>,
 ): void {
 	if (pattern.type === "Identifier") {
 		const field = fieldReadAt(source, extra);
 		if (field === null) return;
 		const binding = bindingDeclaredBy(scopes, pattern as Identifier);
-		if (binding !== undefined) aliasOf.set(binding, field);
+		if (binding !== undefined) aliasOf.set(binding, [field]);
 		return;
 	}
 	if (pattern.type === "AssignmentPattern") {
@@ -231,7 +244,7 @@ function aliasForOfHead(
 	node: AnyNode,
 	scopes: Scopes,
 	fieldReadAtElement: (expr: AnyNode) => string | null,
-	aliasOf: Map<Binding, string>,
+	aliasOf: Map<Binding, readonly string[]>,
 ): void {
 	if (node.type !== "ForOfStatement") return;
 	const left = (node as ForOfStatement).left;
@@ -241,7 +254,42 @@ function aliasForOfHead(
 	const field = fieldReadAtElement((node as ForOfStatement).right as unknown as AnyNode);
 	if (field === null) return;
 	const binding = bindingDeclaredBy(scopes, id as Identifier);
-	if (binding !== undefined) aliasOf.set(binding, field);
+	if (binding !== undefined) aliasOf.set(binding, [field]);
+}
+
+/**
+ * `const v = cond ? a : b`: `v` aliases EVERY field either candidate reads
+ * through (chainOf + the declarator's own root check, same reach as a
+ * plain `const v = <expr>` alias, applied to both branches), read on the
+ * ORIGINAL `ConditionalExpression` before bind-sugar lowers the select
+ * away. A write through `v` then marks every candidate written: which one
+ * the running tick actually picked depends on `cond`'s run-time value,
+ * which this static analysis does not evaluate, so both count — the safe
+ * (over-, never under-marking) side.
+ */
+function aliasSelect(
+	node: AnyNode,
+	scopes: Scopes,
+	setupLocals: ReadonlySet<string>,
+	aliasOf: Map<Binding, readonly string[]>,
+): void {
+	if (node.type !== "VariableDeclarator") return;
+	const decl = node as VariableDeclarator;
+	const id = decl.id;
+	if (id.type !== "Identifier" || decl.init === null || decl.init === undefined) return;
+	const init = decl.init as AnyNode;
+	if (!isSelect(init)) return;
+	const branches = [(init as ConditionalExpression).consequent, (init as ConditionalExpression).alternate];
+	const fields = new Set<string>();
+	for (const branch of branches) {
+		const root = rootIdentifier(branch as unknown as AnyNode);
+		if (root === null) continue;
+		const resolution = scopes.references.get(root);
+		if (resolution?.k === "free" && setupLocals.has(resolution.name)) fields.add(resolution.name);
+	}
+	if (fields.size === 0) return;
+	const binding = bindingDeclaredBy(scopes, id as Identifier);
+	if (binding !== undefined) aliasOf.set(binding, [...fields]);
 }
 
 /**

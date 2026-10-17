@@ -333,6 +333,10 @@ const AGREED_ACCEPT: readonly Row[] = [
 		"a nested arrow inside another nested arrow lifts first, its own call already widened",
 		"const outer = (a) => { const inner = (b) => b + s.n; return inner(a) }; o.out = outer(1); s.n++",
 	),
+	accept(
+		"a record chosen through a ternary (address select) lifts to a let rebound on the test",
+		"const v = s.n % 2 === 0 ? s.voices[0] : s.voices[1]; v.x += i.in; s.n++; o.out = v.x",
+	),
 ];
 
 /** Forms the checker refuses, so neither backend runs them. */
@@ -394,7 +398,6 @@ const AGREED_REJECT: readonly Row[] = [
 	reject("a typed array in arithmetic", "o.out = s.buf + 1", /an array or record used as a number/),
 	reject("the state record negated", "o.out = -s", /an array or record used as a number/),
 	reject("a logical assignment of an array used as a number", "o.out = (s.a ||= s.b)", /an array or record used as a number/),
-	reject("a kept pick between arrays", "const t = i.in > 50 ? s.a : s.b; o.out = t[0]", /an array or record used as a number/),
 	reject("a known pick of an array", "o.out = (1 && s.a)[0]", /an array or record used as a number/),
 	reject("an array tested", "if (s.a) o.out = 1", /an array or record used as a number/),
 	reject("an array as an index", "o.out = s.buf[s.a]", /an array or record used as a number/),

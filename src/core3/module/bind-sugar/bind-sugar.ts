@@ -12,6 +12,7 @@ import { liftForOf } from "./lift-for-of";
 import { liftLetNoValue } from "./lift-let-no-value";
 import { liftNullishElement } from "./lift-nullish-element";
 import { liftOptionalChaining } from "./lift-optional-chaining";
+import { liftRecordSelect } from "./lift-record-select";
 import { liftStringMember } from "./lift-string-member";
 
 export function bindSugar(src: string, what: string): string {
@@ -23,6 +24,7 @@ export function bindSugar(src: string, what: string): string {
 	text = liftDestructuring(text, what);
 	text = liftArrayMethods(text, what);
 	text = liftForOf(text, what);
+	text = liftRecordSelect(text, what);
 	text = liftNullishElement(text, what);
 	return text;
 }
