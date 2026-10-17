@@ -3,31 +3,14 @@ import { describe, expect, it } from "vitest";
 import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
 import { renderTap } from "@/core3/runtime/render";
-import { sig } from "@/core3/types";
-import { type IO, type St, c, n, pnode, prog } from "./helpers";
+import { c, n, pnode, prog } from "./helpers";
 
-defmod({
-	name: "ch.add1",
-	category: "utils",
-	ins: { in: sig(0) },
-	outs: { out: sig() },
-	defaultIn: "in",
-	defaultOut: "out",
-	tick: (_s: St, ins: IO, o: IO) => {
-		o.out = (ins.in as number) + 1;
-	},
+defmod("ch.add1", {}, () => {
+	return ({ in: x = 0 }) => x + 1;
 });
 
-defmod({
-	name: "ch.mul2",
-	category: "utils",
-	ins: { in: sig(0) },
-	outs: { out: sig() },
-	defaultIn: "in",
-	defaultOut: "out",
-	tick: (_s: St, ins: IO, o: IO) => {
-		o.out = (ins.in as number) * 2;
-	},
+defmod("ch.mul2", {}, () => {
+	return ({ in: x = 0 }) => x * 2;
 });
 
 describe("engine: 3-node chain", () => {

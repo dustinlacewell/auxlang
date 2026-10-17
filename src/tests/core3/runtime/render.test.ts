@@ -4,48 +4,22 @@ import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
 import { createEngine } from "@/core3/runtime/engine";
 import { render } from "@/core3/runtime/render";
-import { sig } from "@/core3/types";
-import { type IO, type St, c, n, pnode, prog } from "./helpers";
+import { c, n, pnode, prog } from "./helpers";
 
-defmod({
-	name: "rn.osc",
-	category: "utils",
-	ins: { freq: sig(440) },
-	outs: { out: sig() },
-	defaultIn: "freq",
-	defaultOut: "out",
-	state: () => ({ ph: 0 }),
-	tick: (s: St, ins: IO, o: IO, _cfg: St, sr: number) => {
-		s.ph = ((s.ph as number) + (ins.freq as number) / sr) % 1;
-		o.out = Math.sin(2 * Math.PI * (s.ph as number));
-	},
+defmod("rn.osc", {}, ({ sr }) => {
+	let ph = 0;
+	return ({ freq = 440 }) => {
+		ph = (ph + freq / sr) % 1;
+		return Math.sin(2 * Math.PI * ph);
+	};
 });
 
-defmod({
-	name: "rn.split",
-	category: "utils",
-	ins: { in: sig(0) },
-	outs: { l: sig(), r: sig() },
-	defaultIn: "in",
-	defaultOut: "l",
-	tick: (_s: St, ins: IO, o: IO) => {
-		o.l = ins.in as number;
-		o.r = (ins.in as number) * 0.5;
-	},
+defmod("rn.split", {}, () => {
+	return ({ in: x = 0 }) => ({ l: x, r: x * 0.5 });
 });
 
-defmod({
-	name: "rn.pair",
-	category: "utils",
-	ins: { in: sig(0) },
-	outs: { l: sig(), r: sig() },
-	defaultIn: "in",
-	defaultOut: "l",
-	config: { lv: 0, rv: 0 },
-	tick: (_s: St, _ins: IO, o: IO, cfg: St) => {
-		o.l = cfg.lv as number;
-		o.r = cfg.rv as number;
-	},
+defmod("rn.pair", {}, ({ lv = 0, rv = 0 }) => {
+	return ({ in: _x = 0 }) => ({ l: lv, r: rv });
 });
 
 describe("render", () => {

@@ -12,7 +12,6 @@ import { getRegistry } from "@/core3/module/define";
 import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import type { Program } from "@/core3/types";
-import { sig } from "@/core3/types";
 import { BACKENDS, type TestEngine } from "./backends";
 
 const SAMPLES = 1000;
@@ -21,16 +20,8 @@ const SAMPLES = 1000;
 function patch(seed: number): Program {
 	return runProgram(
 		() => {
-			const jitter = defmod({
-				name: "jitter",
-				category: "sources",
-				ins: { in: sig(0) },
-				outs: { out: sig() },
-				defaultIn: "in",
-				defaultOut: "out",
-				tick: (s, i, o) => {
-					o.out = i.in * 0 + Math.random();
-				},
+			const jitter = defmod("jitter", { cat: "sources" }, () => {
+				return ({ in: x = 0 }) => x * 0 + Math.random();
 			});
 			tempo(120);
 			out(jitter({ in: seq("[c3,e3]") }));

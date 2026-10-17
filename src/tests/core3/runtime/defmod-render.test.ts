@@ -13,7 +13,6 @@ import { getRegistry } from "@/core3/module/define";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { render } from "@/core3/runtime/render";
 import type { Program } from "@/core3/types";
-import { sig, unit } from "@/core3/types";
 import { describe, expect, it } from "vitest";
 
 function maxAbs(buf: Float32Array): number {
@@ -24,18 +23,8 @@ function maxAbs(buf: Float32Array): number {
 
 /** A stateless wavefolder chained mid-signal — the guide's shape. */
 const wavefoldPatch = () => {
-	defmod({
-		name: "wavefold",
-		category: "effects",
-		doc: "sine-shaper wavefolder",
-		ins: { in: sig(0), amount: unit(0.5) },
-		outs: { out: sig() },
-		defaultIn: "in",
-		defaultOut: "out",
-		positional: ["amount"],
-		tick: (_s, i, o) => {
-			o.out = Math.sin(i.in * (1 + i.amount * 6));
-		},
+	defmod("wavefold", { cat: "effects", doc: "sine-shaper wavefolder" }, () => {
+		return ({ in: x = 0, amount = 0.5 }) => Math.sin(x * (1 + amount * 6));
 	});
 	const saw = factory("saw");
 	out(saw(110).wavefold(0.7).mul(0.2));
@@ -43,19 +32,12 @@ const wavefoldPatch = () => {
 
 /** A stateFUL ramp — proves the state constructor crosses as a string too. */
 const rampPatch = () => {
-	const ramp = defmod({
-		name: "ramp",
-		category: "sources",
-		ins: { rate: unit(0.001) },
-		outs: { out: sig() },
-		defaultIn: "rate",
-		defaultOut: "out",
-		positional: ["rate"],
-		state: () => ({ v: 0 }),
-		tick: (s, i, o) => {
-			s.v = (s.v as number) + i.rate;
-			o.out = s.v as number;
-		},
+	const ramp = defmod("ramp", { cat: "sources" }, () => {
+		let v = 0;
+		return ({ rate = 0.001 }) => {
+			v = v + rate;
+			return v;
+		};
 	});
 	out(ramp(0.001));
 };

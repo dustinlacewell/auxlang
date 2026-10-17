@@ -3,19 +3,10 @@ import { describe, expect, it } from "vitest";
 import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
 import { renderTap } from "@/core3/runtime/render";
-import { sig } from "@/core3/types";
-import { type IO, type St, pnode, prog, z } from "./helpers";
+import { pnode, prog, z } from "./helpers";
 
-defmod({
-	name: "zt.inc",
-	category: "utils",
-	ins: { in: sig(0) },
-	outs: { out: sig() },
-	defaultIn: "in",
-	defaultOut: "out",
-	tick: (_s: St, ins: IO, o: IO) => {
-		o.out = (ins.in as number) + 1;
-	},
+defmod("zt.inc", {}, () => {
+	return ({ in: x = 0 }) => x + 1;
 });
 
 describe("engine: z-source", () => {

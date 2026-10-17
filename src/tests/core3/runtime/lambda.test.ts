@@ -3,21 +3,11 @@ import { describe, expect, it } from "vitest";
 import { getRegistry } from "@/core3/module/define";
 import { defmod } from "@/core3/patch/defmod";
 import { createEngine } from "@/core3/runtime/engine";
-import { sig } from "@/core3/types";
 import { BACKENDS } from "./backends";
-import { type IO, type St, lam, pnode, prog } from "./helpers";
+import { lam, pnode, prog } from "./helpers";
 
-defmod({
-	name: "lt.pass",
-	category: "utils",
-	ins: { v: sig(0) },
-	outs: { l: sig(), r: sig() },
-	defaultIn: "v",
-	defaultOut: "l",
-	tick: (_s: St, ins: IO, o: IO) => {
-		o.l = ins.v as number;
-		o.r = ins.v as number;
-	},
+defmod("lt.pass", {}, () => {
+	return ({ v = 0 }) => ({ l: v, r: v });
 });
 
 const SR = 1000;
