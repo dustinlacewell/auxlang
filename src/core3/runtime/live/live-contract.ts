@@ -15,6 +15,8 @@
  * Nothing is allocated on the audio thread per frame.
  */
 
+import type { Unit } from "../../types";
+
 /** One slot the program reads: index = position in `Program.slots`. */
 export interface SlotDecl {
 	/** The source site the editor edits for this slot (a control call or a number literal). */
@@ -24,6 +26,8 @@ export interface SlotDecl {
 	/** Clamp range in the port's unit; absent for a dragged literal with no range. */
 	readonly min?: number;
 	readonly max?: number;
+	/** The port's unit; absent for a dragged literal that feeds no known port (or a control, whose unit never varies). */
+	readonly unit?: Unit;
 }
 
 /**

@@ -133,11 +133,21 @@ sin(67).gain(pad.y).out()`);
 		const code = "sin(60).gain(0.3).out()";
 		const site = numberSite(code, 0.3);
 		const p = program(code, new Set([site]));
-		expect(p.liveSlots).toEqual([{ site, init: 0.3 }]);
+		expect(p.liveSlots).toEqual([{ site, init: 0.3, unit: "sig" }]);
 		const run = renderWithWrites(make(p), 2000, [{ at: 0, slot: 0, value: 0.1 }]);
 		const ref = renderWithWrites(make(program("sin(60).gain(0.1).out()")), 2000, []);
 		expect(firstBitDiff(run.l, ref.l)).toBe(-1);
 		expect(firstBitDiff(run.r, ref.r)).toBe(-1);
+	});
+
+	it("a literal feeding a ranged input carries that port's unit and range", () => {
+		const code = `const echoish = defmod("echoish", { cat: "effects" }, () => {
+  return ({ in: x = 0, fb = range(0.5, 0, 1) }) => x * fb
+})
+sin(60).echoish(0.7).out()`;
+		const site = numberSite(code, 0.7);
+		const p = program(code, new Set([site]));
+		expect(p.liveSlots).toEqual([{ site, init: 0.7, unit: "sig", min: 0, max: 1 }]);
 	});
 });
 

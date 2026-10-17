@@ -9,7 +9,9 @@
  *   and `Math.floor` of any of them gives the call back (xy: x at the call,
  *   y at call + 0.5). Stable while the module keeps its control ports.
  * - With `slotSites`, a number bound from a literal whose site is in the set
- *   reads a slot at that site, with no range.
+ *   reads a slot at that site, with the unit and range of the port it feeds
+ *   (its node's own `ins`, the same table `bindControls` reads) — or neither,
+ *   when it feeds no known port (an open-group member, a config value).
  *
  * A control built with no location tables gets site NaN: it plays, but no
  * swap carries it. A slot is a constant to identity (constant-evidence.ts).
@@ -27,8 +29,9 @@ export function bindSlots(
 	slotSites: ReadonlySet<number> | undefined,
 ): void {
 	for (const node of nodes) {
-		bindControls(node, nodePorts(resolveSpec(node.module, specs), node.groups).ins);
-		if (slotSites !== undefined) bindLiterals(node, slotSites);
+		const ins = nodePorts(resolveSpec(node.module, specs), node.groups).ins;
+		bindControls(node, ins);
+		if (slotSites !== undefined) bindLiterals(node, ins, slotSites);
 	}
 }
 
@@ -56,9 +59,19 @@ function bound(node: GNode, ins: Record<string, PortAnn>, by: string | number): 
 	return typeof value === "number" ? value : undefined;
 }
 
-function bindLiterals(node: GNode, slotSites: ReadonlySet<number>): void {
+function bindLiterals(node: GNode, ins: Record<string, PortAnn>, slotSites: ReadonlySet<number>): void {
 	for (const [port, site] of Object.entries(node.bindingSites ?? {})) {
 		const init = node.inputs[port];
-		if (typeof init === "number" && slotSites.has(site)) node.inputs[port] = { slot: { site, init } };
+		if (typeof init !== "number" || !slotSites.has(site)) continue;
+		const ann = ins[port];
+		const range = ann?.range;
+		node.inputs[port] = {
+			slot: {
+				site,
+				init,
+				...(ann !== undefined ? { unit: ann.unit } : {}),
+				...(range !== undefined ? { min: range.min, max: range.max } : {}),
+			},
+		};
 	}
 }

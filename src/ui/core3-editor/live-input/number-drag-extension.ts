@@ -22,9 +22,10 @@
  *
  * PIXELS_PER_STEP: vertical pixels of drag per one unscaled step; the
  * grabbed digit's place value (step-from-digit.ts) then scales that step
- * into the literal's own magnitude. A plain literal carries no port unit
- * (bind-slots.ts: a dragged number's slot has no range), so it shapes
- * through `shapeByUnit`'s plain-additive case.
+ * into the literal's own magnitude. A literal feeding a known port carries
+ * that port's unit and range (bind-slots.ts); `draggedSlotValue` shapes by
+ * the unit and clamps to the range, falling back to the plain additive "sig"
+ * case for a literal with no known port.
  */
 
 import { currentSlots, writeSlot } from "@/core3/runtime/audio";
@@ -32,10 +33,10 @@ import type { SourceMap } from "@/core3/source/source-map";
 import { Annotation, type Extension } from "@codemirror/state";
 import { EditorView, ViewPlugin } from "@codemirror/view";
 import { numberDragTheme } from "./number-drag-theme";
+import { draggedSlotValue } from "./dragged-slot-value";
 import { FrameCoalescer } from "./frame-coalescer";
 import { literalRewrite } from "./literal-rewrite";
 import { draggableNumbersOf, numberSiteAt } from "./number-drag-sites";
-import { shapeByUnit } from "./shape-by-unit";
 import { stepFromDigit } from "./step-from-digit";
 
 const PIXELS_PER_STEP = 6;
@@ -163,7 +164,8 @@ export function numberDragExtension(host: NumberDragHost): Extension {
 				if (drag === null) return;
 				const pixels = drag.startY - event.clientY;
 				const steps = pixels / PIXELS_PER_STEP;
-				const value = shapeByUnit(drag.startValue, steps * drag.digitStep, "sig");
+				const decl = currentSlots()[drag.slotIndex];
+				const value = draggedSlotValue(drag.startValue, steps * drag.digitStep, decl);
 				this.coalescer.push(drag.slotIndex, value);
 			};
 
