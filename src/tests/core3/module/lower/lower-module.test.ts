@@ -218,6 +218,7 @@ describe("lowerModule", () => {
 			...(lowered.defaultOut !== undefined ? { defaultOut: lowered.defaultOut } : {}),
 			positional: lowered.positional ?? [],
 			config: lowered.config ?? {},
+			writes: lowered.writes,
 			tick: (() => {}) as never,
 		};
 
@@ -286,6 +287,7 @@ describe("lowerModule", () => {
 			...(lowered.defaultOut !== undefined ? { defaultOut: lowered.defaultOut } : {}),
 			positional: lowered.positional ?? [],
 			config: lowered.config ?? {},
+			writes: lowered.writes,
 			tick: (() => {}) as never,
 		};
 		const bound = bindSource(spec, lowered.source, "first use");

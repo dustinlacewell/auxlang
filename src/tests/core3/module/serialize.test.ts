@@ -20,6 +20,7 @@ describe("serializeSpec/hydrateSpec: a port's range", () => {
 			defaultIn: "in",
 			ins: { in: { unit: "sig", def: 0.5, range: { min: 0, max: 1 } } },
 			outs: { out: { unit: "sig", def: 0 } },
+			writes: [],
 			tick,
 			source: { tick: "(s, ins, outs) => { outs.out = ins.in }", helpers: {} },
 		};

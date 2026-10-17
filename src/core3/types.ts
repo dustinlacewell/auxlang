@@ -178,11 +178,10 @@ export interface ModuleSpec extends ModulePorts {
 	readonly source?: ModuleSource;
 	/**
 	 * Setup-local fields the tick writes (shape-C lowering, lower/tick-writes.ts):
-	 * the re-eval carry rule reads this list. Every module built through
-	 * `defmod`/`defineInternalModule` sets it; absent only on a spec built by
-	 * hand (a test's own spec) that skips the carry rule entirely.
+	 * the re-eval carry rule reads this list. `defmod` sets it from the tick;
+	 * `defineInternalModule` defaults it to every state field.
 	 */
-	readonly writes?: readonly string[];
+	readonly writes: readonly string[];
 	/**
 	 * The state fields a live monitor watches for onset/release events
 	 * (runtime/live/monitor-plan.ts): `row` the table row under the reader
@@ -238,7 +237,7 @@ export interface SerializedModuleSpec {
 	/** ModuleSource `origins`. Present only when a part was found in its file. */
 	readonly origins?: Readonly<Record<string, SourceOrigin>>;
 	/** `ModuleSpec.writes`, carried across the crossing. */
-	readonly writes?: readonly string[];
+	readonly writes: readonly string[];
 }
 
 // ---------------------------------------------------------------------------

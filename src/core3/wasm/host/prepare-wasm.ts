@@ -114,7 +114,7 @@ function wasmInputOf(prepared: PreparedProgram, layered: Registry): WasmBuilt {
 	const facts = engineFacts(
 		parts,
 		input.readsPattern,
-		build.nodeSpecs.map((spec) => spec.writes ?? null),
+		build.nodeSpecs.map((spec) => spec.writes),
 	);
 	return {
 		input,

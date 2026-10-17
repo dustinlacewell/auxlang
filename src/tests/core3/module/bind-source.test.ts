@@ -17,6 +17,7 @@ const spec = {
 	outs: { out: sig() },
 	defaultIn: "in",
 	defaultOut: "out",
+	writes: [],
 	tick: (_s: Record<string, unknown>, i: Record<string, number>, o: Record<string, number>) => {
 		o.out = i.in ?? 0;
 	},
