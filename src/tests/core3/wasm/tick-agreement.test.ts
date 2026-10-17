@@ -261,11 +261,23 @@ const AGREED_ACCEPT: readonly Row[] = [
 		"the two-element swap idiom lifts to a temp exchange, no array literal",
 		"let a = s.n, b = s.acc; [a, b] = [b, a]; o.out = a - b; s.n++",
 	),
+	accept(
+		"an uninitialised let assigned before its only read lifts to = 0",
+		"let x; x = i.in; o.out = x",
+	),
+	accept(
+		"an uninitialised let assigned on every branch of an if lifts",
+		"let x; if (i.in > 0) { x = 1 } else { x = 2 } o.out = x",
+	),
 ];
 
 /** Forms the checker refuses, so neither backend runs them. */
 const AGREED_REJECT: readonly Row[] = [
-	reject("an uninitialised let", "let x; x = 1; o.out = x", /every variable needs an initial value/),
+	reject(
+		"an uninitialised let that may be read before assignment",
+		"let x; if (i.in > 0) { x = 1 } o.out = x",
+		/'x' may be read before it has a value/,
+	),
 	reject("a recursive helper", "o.out = f(i.in)", /helpers may not recurse \(f → f\)/, "f: (x) => x > 0 ? f(x - 1) : 0"),
 	reject("Math.random in a helper", "o.out = f(1)", /Math\.random\(\) is available only in tick/, "f: (x) => Math.random() * x"),
 	reject("a closure", "const f = (x) => x; o.out = f(1)", /nested functions are closures/),

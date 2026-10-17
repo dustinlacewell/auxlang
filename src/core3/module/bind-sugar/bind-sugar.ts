@@ -8,6 +8,7 @@
 import { liftDestructuring } from "./lift-destructuring";
 import { liftExponentAssign } from "./lift-exponent-assign";
 import { liftForOf } from "./lift-for-of";
+import { liftLetNoValue } from "./lift-let-no-value";
 import { liftOptionalChaining } from "./lift-optional-chaining";
 import { liftStringMember } from "./lift-string-member";
 
@@ -16,6 +17,7 @@ export function bindSugar(src: string, what: string): string {
 	text = liftExponentAssign(text, what);
 	text = liftStringMember(text, what);
 	text = liftOptionalChaining(text, what);
+	text = liftLetNoValue(text, what);
 	text = liftDestructuring(text, what);
 	text = liftForOf(text, what);
 	return text;

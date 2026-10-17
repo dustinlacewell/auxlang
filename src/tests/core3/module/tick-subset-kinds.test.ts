@@ -152,9 +152,9 @@ describe("tick subset: booleans and initial values", () => {
 		);
 	});
 
-	it("rejects a let with no initial value at eval", () => {
-		expect(() => evalPatch(patch("let x; x = 1; o.out = x;", HELPERS))).toThrow(
-			/defmod\('t'\): tick at patch line 12: every variable needs an initial value/,
+	it("rejects a let that may be read before it is assigned", () => {
+		expect(() => evalPatch(patch("let x; if (i.in > 0) { x = 1; } o.out = x;", HELPERS))).toThrow(
+			/defmod\('t'\) tick: 'x' may be read before it has a value/,
 		);
 	});
 
