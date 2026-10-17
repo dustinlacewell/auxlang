@@ -7,41 +7,45 @@
 
 import { beforeAll, describe, expect, it } from "vitest";
 
-import { defmod, factory, runEval, runProgram } from "@/core3/api";
+import { defmod, defpatch, factory, runEval, runProgram } from "@/core3/api";
 import type { GNode } from "@/core3/graph/node";
 import type { Handle } from "@/core3/patch/handle-data";
-import { group, type PNode, type Program, sig, sigs, unit } from "@/core3/types";
+import { group as groupAnn, sig as sigAnn } from "@/core3/types";
+import type { PNode, Program } from "@/core3/types";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);
 
-const pass = (_s: Record<string, unknown>, i: { in: number }, o: { out: number }) => {
-	o.out = i.in;
-};
+/** `group`/`sig`/`sigs`/`unit` in a tick's param defaults are read as TEXT
+ * (module/lower/port-markers), never evaluated — so they must stay free
+ * identifiers here, not the real (aliased above) imports: Vitest's SSR
+ * transform rewrites an imported call to `__vite_ssr_import_N__.group(...)`,
+ * which the text parser doesn't recognize. These type-only declarations
+ * satisfy `tsc` without adding a runtime binding a setup's source text
+ * could pick up. `meta.outs`, by contrast, is a real value, built with the
+ * aliased imports above. */
+declare function group(ann: unknown, opts?: { open?: true; like?: string }): unknown;
+declare function sig(def: number | null): unknown;
+declare function sigs(def?: number | null): unknown;
+declare function unit(def: number | null): unknown;
 
 const defMix = () =>
-	defmod({
-		name: "gmix",
-		category: "utils",
-		ins: { in: sig(0), ch: group(sig(0), { open: true }), level: group(unit(1), { like: "ch" }) },
-		outs: { out: sig(), fields: group(sig(0), { open: true }) },
-		defaultIn: "in",
-		defaultOut: "out",
-		positional: ["in"],
-		tick: pass,
-	});
+	defmod(
+		"gmix",
+		{ args: ["in"], outs: { fields: groupAnn(sigAnn(0), { open: true }) } },
+		(() => {
+			return ({
+				in: x = 0,
+				ch = group(sig(0), { open: true }),
+				level = group(unit(1), { like: "ch" }),
+			}) => x;
+		}) as never,
+	);
 
 const defMux = () =>
-	defmod({
-		name: "gmux",
-		category: "utils",
-		ins: { in: sig(0), palette: sigs(0) },
-		outs: { out: sig() },
-		defaultIn: "in",
-		defaultOut: "out",
-		positional: ["in", "palette"],
-		tick: pass,
-	});
+	defmod("gmux", { args: ["in", "palette"] }, (() => {
+		return ({ in: x = 0, palette = sigs(0) }) => x;
+	}) as never);
 
 const osc = (f: number): Handle => factory("tosc")(f);
 const nodeOf = (program: Program, module: string): PNode =>
@@ -188,17 +192,9 @@ describe("loud errors", () => {
 	it("chaining into a group default input", () => {
 		expect(
 			run(() => {
-				defmod({
-					name: "gsum",
-					category: "utils",
-					ins: { ch: group(sig(0), { open: true }) },
-					outs: { out: sig() },
-					defaultIn: "ch",
-					defaultOut: "out",
-					tick: (_s: Record<string, unknown>, _i: Record<string, number>, o: { out: number }) => {
-						o.out = 0;
-					},
-				});
+				defmod("gsum", {}, (() => {
+					return ({ ch = group(sig(0), { open: true }) }) => 0;
+				}) as never);
 				osc(1).gsum().out();
 			}),
 		).toThrow(/default input 'ch' is a port group/);
@@ -206,50 +202,54 @@ describe("loud errors", () => {
 });
 
 describe("loud errors at definition", () => {
-	const define = (ins: Record<string, unknown>, outs: Record<string, unknown> = { out: sig() }, extra = {}) =>
-		() =>
-			runProgram(() => {
-				defmod({
-					name: "gbad",
-					category: "utils",
-					ins,
-					outs,
-					defaultIn: "in",
-					defaultOut: "out",
-					tick: pass,
-					...extra,
-				} as never);
-			});
-
 	it("two open groups on one side", () => {
-		expect(define({ in: sig(0), a: group(sig(0), { open: true }), b: group(sig(0), { open: true }) })).toThrow(
-			/more than one open port group in ins: \[a, b\]/,
-		);
+		expect(() =>
+			runProgram(() => {
+				defmod("gbad", {}, (() => {
+					return ({
+						in: x = 0,
+						a = group(sig(0), { open: true }),
+						b = group(sig(0), { open: true }),
+					}) => x;
+				}) as never);
+			}),
+		).toThrow(/more than one open port group in ins: \[a, b\]/);
 	});
 
 	it("a group name on both sides", () => {
-		expect(define({ in: sig(0), g: sigs(0) }, { out: sig(), g: sigs(0) })).toThrow(/'g' is both an input and an output/);
+		expect(() =>
+			runProgram(() => {
+				defmod("gbad", { outs: { g: groupAnn(sigAnn(0)) } }, (() => {
+					return ({ in: x = 0, g = sigs(0) }) => x;
+				}) as never);
+			}),
+		).toThrow(/'g' is both an input and an output/);
 	});
 
 	it("a like naming no plain group of its side", () => {
-		expect(define({ in: sig(0), level: group(unit(1), { like: "ch" }) })).toThrow(/is like 'ch'/);
+		expect(() =>
+			runProgram(() => {
+				defmod("gbad", {}, (() => {
+					return ({ in: x = 0, level = group(unit(1), { like: "ch" }) }) => x;
+				}) as never);
+			}),
+		).toThrow(/is like 'ch'/);
 	});
 
 	it("a group on a reduce module", () => {
-		expect(define({ in: sig(0), g: sigs(0) }, { out: sig() }, { policy: "reduce" })).toThrow(
-			/reduce module takes no port groups/,
-		);
+		expect(() =>
+			runProgram(() => {
+				defmod("gbad", { reduce: true }, (({ width }: { width: number }) => {
+					return ({ in: x = 0, g = sigs(0) }) => x;
+				}) as never);
+			}),
+		).toThrow(/reduce module takes no port groups/);
 	});
 
 	it("a group on a sub-patch module", () => {
 		expect(() =>
 			runProgram(() => {
-				defmod({
-					name: "gsub",
-					ins: { in: sig(0), g: sigs(0) },
-					outs: { out: sig() },
-					patch: (i: Record<string, Handle>) => ({ out: i.in }),
-				} as never);
+				defpatch("gsub", (({ in: x, g = sigs(0) }: { in: Handle; g: unknown }) => x) as never);
 			}),
 		).toThrow(/A sub-patch takes no port groups/);
 	});

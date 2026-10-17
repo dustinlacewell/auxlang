@@ -9,23 +9,24 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { defmod, factory, runProgram } from "@/core3/api";
 import type { Handle } from "@/core3/patch/handle-data";
-import { group, type Program, sig, unit } from "@/core3/types";
+import type { Program } from "@/core3/types";
 import { registerToyModules } from "./toy-modules";
 
 beforeAll(registerToyModules);
 
+/** `group`/`sig`/`unit` in a tick's param defaults are read as TEXT
+ * (module/lower/port-markers), never evaluated — so they must stay free
+ * identifiers here, not imports a bundler could rename under `.toString()`.
+ * These type-only declarations satisfy `tsc` without adding a runtime
+ * binding (erased, so the setup's source text is untouched). */
+declare function group(ann: unknown, opts?: { open?: true; like?: string }): unknown;
+declare function sig(def: number | null): unknown;
+declare function unit(def: number | null): unknown;
+
 const defMix = () =>
-	defmod({
-		name: "gmix",
-		category: "utils",
-		ins: { in: sig(0), ch: group(sig(0), { open: true }), level: group(unit(1), { like: "ch" }) },
-		outs: { out: sig() },
-		defaultIn: "in",
-		defaultOut: "out",
-		tick: (_s: Record<string, unknown>, i: { in: number }, o: { out: number }) => {
-			o.out = i.in;
-		},
-	});
+	defmod("gmix", {}, (() => {
+		return ({ in: x = 0, ch = group(sig(0), { open: true }), level = group(unit(1), { like: "ch" }) }) => x;
+	}) as never);
 
 /** A mixer over `channels(sources)`: each source is a toy chain. */
 const mixed = (channels: (a: Handle, b: Handle) => Record<string, Handle>): Program =>
