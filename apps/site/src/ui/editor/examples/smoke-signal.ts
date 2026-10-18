@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (g) A whole track: dub techno with a 16-bar form, mixed and tuned. */
+/** A dub techno track with a 16-bar form. */
 const smokeSignal = `tempo(122)
 
 // kick
@@ -78,4 +78,4 @@ lead.tri()
   .out()
 `;
 
-export const smokeSignalExample: Example = { name: "smoke signal (a track)", source: smokeSignal };
+export const smokeSignalExample: Example = { name: "smoke signal", source: smokeSignal };

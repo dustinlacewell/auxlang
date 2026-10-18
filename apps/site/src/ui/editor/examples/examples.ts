@@ -1,11 +1,7 @@
 /**
- * The vision showcase. Each patch teaches one platonic feature (llm/platonic.md).
- * These strings are the single source of truth: the site loads them into the
- * editor's Examples menu, and src/tests/engine/bridge/site-examples.test.ts
- * compiles+renders every one so the demos can never silently rot.
- *
- * Each is the BODY of a patch function (api names are in scope) — the same
- * mechanism eval-patch.ts uses, so what the test proves is what the site runs.
+ * The editor's example patches, in menu order. Each source is the body of a
+ * patch function. apps/site/src/tests/examples/site-examples.test.ts
+ * compiles and renders every one.
  */
 
 import { chaconneExample } from "@/ui/editor/examples/chaconne";

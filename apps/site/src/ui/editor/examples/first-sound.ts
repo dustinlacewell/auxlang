@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (a) First sound: tempo + seq + saw → filter → envelope. */
+/** A sequence through a filter and an envelope. */
 const firstSound = `tempo(120)
 
 const s = seq("c3 e3 g3 <b2 a2>")

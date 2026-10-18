@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (e2) Detune and spread: a pattern stack makes lanes, spread places them. */
+/** Detuned saws spread across the stereo field. */
 const wideSaws = `tempo(90)
 
 const s = seq("c3 <g2 a2> f2 <g2 e2>")
@@ -13,4 +13,4 @@ s.add(p\`[-0.12, 0, 0.12]\`)
   .out()
 `;
 
-export const wideSawsExample: Example = { name: "wide saws (detune + spread)", source: wideSaws };
+export const wideSawsExample: Example = { name: "detuned saws", source: wideSaws };

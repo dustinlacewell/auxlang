@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (b) Patterns are values: build a hook, transform it before sequencing. */
+/** A hook transformed as a value before it plays. */
 const patternsAsValues = `tempo(120)
 
 const hook = p\`c3 [e3 g3] a3 ~\`

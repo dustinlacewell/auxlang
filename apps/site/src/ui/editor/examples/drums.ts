@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (f) Drums + counter: euclidean gates, a hat velocity stepped per trigger. */
+/** Euclidean drums, with hat velocity stepped by `counter`. */
 const drums = `tempo(120)
 
 seq(p\`60(4,4)\`).trig.kick().mul(0.9).out()
@@ -10,4 +10,4 @@ seq("60*8").trig.apply((t) =>
 )
 `;
 
-export const drumsExample: Example = { name: "drums + counter", source: drums };
+export const drumsExample: Example = { name: "drums", source: drums };

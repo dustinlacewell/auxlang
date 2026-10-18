@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** Live controls: widgets that play the patch with no re-eval; any number drags. */
+/** Widgets that change the patch while it plays. */
 const liveControls = `tempo(118)
 
 const s = seq("c3 e3 g3 <b2 a2> c4 g3 e3 <d3 f3>")

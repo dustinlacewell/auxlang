@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** defpatch: a sub-patch saved as a module, used twice. */
+/** A sub-patch saved as a module and used twice. */
 const subpatch = `tempo(110)
 
 defpatch("pluck", ({ pitch = 48, bright = 91 }) => pitch.saw().lpf({ cutoff: bright, res: 0.4 }))
@@ -12,6 +12,6 @@ bass.pluck(79).mul(bass.gate.ad(0.005, 0.3)).gain(0.3).out()
 `;
 
 export const subpatchExample: Example = {
-	name: "sub-patch module (defmod patch)",
+	name: "patch as a module",
 	source: subpatch,
 };

@@ -1,7 +1,7 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (j) Grieg's "Hall of the Mountain King": a fugue that speeds itself into a club drop, then winds down. */
-const mountainKingFugue = `// clock: its tempo is patched from its own position
+/** Grieg's "Hall of the Mountain King" as a fugue that speeds up into a club drop. */
+const mountainKingFugue = `// clock: tempo follows position
 const span = (s, lo, hi) => s.lt(hi).add(s.lt(lo).mul(-1))
 const clk = loop((pos) => {
   const x = pos.div(24).clip(0, 1)
@@ -38,7 +38,7 @@ const part = (...blocks) => {
 }
 const drum = (...blocks) => part(...blocks).trig
 
-// drop material: the theme in 16ths, its harmony, and the drums
+// drop material
 const dropTheme = up([p\`\${theme[0]} \${theme[1]}\`, p\`\${theme[2]} \${theme[3]}\`], 12)
 const roots = [p\`~ b1 ~ b1 ~ c#2 ~ c2\`, p\`~ b1 ~ b1 ~ d2 ~ d2\`]
 const chords = [
@@ -60,7 +60,7 @@ const offbeat = p\`~ 60 ~ 60 ~ 60 ~ 60\`
 const fill = p\`~ ~ 60 ~ [60 60] [60 60] [60*4] [60*4]\`
 const landing = p\`~ ~ 60 ~ ~ ~ ~ ~\`
 
-// fugue voices: exposition, stretto, tutti; alto and cello return in the last drop
+// fugue voices
 const alto = part(
   theme, up(countersubject, 7), rest(4), theme, theme, theme.slice(0, 3), rest(1),
   rest(28), theme, theme,
@@ -73,7 +73,7 @@ const cello = part(
   rest(29), countersubject, countersubject, rest(5))
 const tenor = part(rest(16), up(countersubject, 12), up(countersubject, 12).slice(0, 3), rest(42))
 
-// drop voices: drop 1, drop 2, breakdown, drop 3 in F#, drop 4, unison, wind-down, landing
+// drop voices
 const lead = part(
   rest(24), times(8, dropTheme), rest(4), times(4, up(dropTheme, 7)), times(4, dropTheme),
   dropTheme, dropTheme[0], p\`~ ~ b4 _ _ _ _ ~\`, rest(1))
@@ -143,7 +143,7 @@ sin(boom.mul(30).add(26))
   .gain(0.35)
   .out()
 
-// effects: risers into the drop and the breakdown's drop, a downlifter into the breakdown
+// risers and downlifter
 const hiss = noise()
 const rise = ramp(20, 24).add(ramp(42, 44))
 hiss.hpf(rise.mul(48).add(72), 0.3)
@@ -157,7 +157,7 @@ hiss.lpf(fall.mul(60).add(50), 0.2)
   .gain(0.25)
   .out()
 
-// sound: each voice goes out dry and into one shared hall reverb
+// reverb
 const voice = (s, wave, cutoff, level) => s.add(dive)[wave]()
   .lpf(cutoff, 0.2)
   .mod("cutoff", swell, 18)
@@ -232,6 +232,6 @@ mixer({
 `;
 
 export const mountainKingFugueExample: Example = {
-	name: "mountain king (fugue into a drop)",
+	name: "hall of the mountain king",
 	source: mountainKingFugue,
 };

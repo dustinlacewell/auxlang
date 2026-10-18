@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (e) Poly: a stacked chord pattern sequences all lanes at once. */
+/** A chord pattern that plays every voice at once. */
 const polyChords = `tempo(90)
 
 const pad = seq("[c3,e3,g3] <[a2,c3,e3] [f2,a2,c3]>")
@@ -13,4 +13,4 @@ pad.tri()
   .out()
 `;
 
-export const polyChordsExample: Example = { name: "poly chords", source: polyChords };
+export const polyChordsExample: Example = { name: "chords", source: polyChords };

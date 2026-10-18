@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** beats(x): a delay time in beats, so the echo stays synced to tempo. */
+/** A delay time in beats, so the echo stays in tempo. */
 const syncedEcho = `tempo(100)
 
 const s = seq("c3 ~ g3 ~")
@@ -11,4 +11,4 @@ s.tri()
   .out()
 `;
 
-export const syncedEchoExample: Example = { name: "synced echo (beats)", source: syncedEcho };
+export const syncedEchoExample: Example = { name: "synced echo", source: syncedEcho };

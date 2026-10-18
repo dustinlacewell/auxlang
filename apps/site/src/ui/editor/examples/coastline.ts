@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (h) A port: eddyflux's strudel piece "coastline", now with the real vocabulary. */
+/** A port of eddyflux's Strudel piece "coastline". */
 const coastline = `tempo(180)
 
 // chords
@@ -83,4 +83,4 @@ mel.fm({ index: lfo(0.06, 0.4, 1.6), ratio: 1 })
   .out()
 `;
 
-export const coastlineExample: Example = { name: "coastline (after eddyflux)", source: coastline };
+export const coastlineExample: Example = { name: "coastline", source: coastline };

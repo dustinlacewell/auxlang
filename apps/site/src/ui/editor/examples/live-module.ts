@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** defmod: a module written in the DSP language; edit it while it plays. */
+/** A module written with `defmod`; edit it while it plays. */
 const liveModule = `tempo(110)
 
 function readAt(buf, pos) {
@@ -32,4 +32,4 @@ s.tri()
   .out()
 `;
 
-export const liveModuleExample: Example = { name: "write a module (defmod)", source: liveModule };
+export const liveModuleExample: Example = { name: "write a module", source: liveModule };

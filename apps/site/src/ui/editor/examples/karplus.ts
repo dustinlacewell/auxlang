@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (d) loop() feedback: a Karplus-Strong pluck from a noise burst. */
+/** A plucked string: a noise burst fed back through `loop`. */
 const karplus = `tempo(96)
 
 const s = seq("c3 g3 <c4 e4> g3")
@@ -13,4 +13,4 @@ loop((fb) =>
 ).mul(0.8).out()
 `;
 
-export const karplusExample: Example = { name: "karplus pluck (loop)", source: karplus };
+export const karplusExample: Example = { name: "plucked string", source: karplus };

@@ -1,11 +1,10 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** Irving Berlin's 1929 tune as 90s eurodance: verse, AABA chorus, a swing break, a key change, a major ending. */
-const puttinOnTheRitz = `// Irving Berlin, "Puttin' on the Ritz" (1929): the verse and AABA chorus as 90s eurodance.
-// A 1929 swing break in the middle, a key change into the last chorus, a major-key ending.
+/** Irving Berlin's "Puttin' on the Ritz" as 90s eurodance. */
+const puttinOnTheRitz = `// Irving Berlin's "Puttin' on the Ritz" as 90s eurodance
 tempo(128)
 
-// ── the tune: one string per bar, eighths unless weighted ──
+// tune
 const VERSE = [
   "g4 a4 c5 a4", "c5 b4@2 d5@5", "g4 a4 c5 a4", "c5 b4@2 d5@5",
   "bb4 c5 eb5 c5", "eb5 d5@2 f5@5", "bb4 c5 eb5 c5", "eb5 d5@2 f5@5",
@@ -20,20 +19,20 @@ const B = [
   "f5@2 g5@2 ab5@2 bb5@2", "c6@2 bb5@2 ab5@2 g5@2", "f5@2 ~ f5@5", "g5 f#5@2 f5@2 bb5@3",
   "eb5@2 f5@2 g5@2 ab5@2", "bb5@2 ab5@2 g5@2 f5@2", "eb5@2 ~ eb5@5", "eb5 eb5@2 eb5@2 d5@3",
 ]
-// the bridge again, on a swung triplet grid (12 slots a bar)
+// swung bridge
 const B_SWUNG = [
   "f5 g5 ab5 bb5", "c6 bb5 ab5 g5", "f5@3 ~@2 f5@7", "g5@2 f#5@3 f5@3 bb5@4",
   "eb5 f5 g5 ab5", "bb5 ab5 g5 f5", "eb5@3 ~@2 eb5@7", "eb5@2 eb5@3 eb5@3 d5@4",
 ]
 const TAG = "~@4 g5 f5 eb5 d5"
-// a slow line from the turnaround's falling bass (C Bb Ab G), set high over the last chorus
+// descant
 const COUNTER = ["c6", "bb5", "g5", "g5@2 f5@2", "a5", "b5@4 ~@4", "c6@2 bb5@2", "ab5@2 g5@2"]
 const WALK = [
   "f2 g2 ab2 b2", "c3 g2 c#3 c3", "f2 ab2 c3 a2", "g2 f#2 f2 bb2",
   "eb2 g2 bb2 a2", "bb2 ab2 f2 d2", "eb2 f2 g2 a2", "ab2 c3 g2 b2",
 ]
 
-// ── the changes: chords per bar, @ weights in beats ──
+// chords
 const VERSE_H = [
   ["C", "Ebo7"], ["Dm7", "G7"], ["C", "Ebo7"], ["Dm7", "G7"],
   ["Eb", "F#o7"], ["Fm7", "Bb7"], ["Eb", "F#o7"], ["Fm7", "Bb7"],
@@ -56,7 +55,7 @@ const V = {
   Bb7: ["d3", "f3", "ab3", "bb3"],
 }
 
-// ── the form: every layer is written per section, bar by bar ──
+// form
 const SONG = [
   ["intro", INTRO_H], ["verse", VERSE_H],
   ["a1", A_H], ["a2", A_H], ["b", B_H], ["a3", A_H],
@@ -64,7 +63,7 @@ const SONG = [
   ["a1x", A_H], ["a2x", A_H], ["bx", B_H], ["a3x", A_H],
   ["outro", OUTRO_H],
 ]
-// a part is a bar string, or a function of (chords, barIndex) returning one
+// a part is a bar string, or a function of the chords and bar that returns one
 const track = (parts, idle = "~") => {
   const write = (part, chords, i) => (typeof part === "function" ? part(chords, i) : part ?? idle)
   const bars = SONG.flatMap(([name, harmony]) => harmony.map((chords, i) => write(parts[name], chords, i)))
@@ -72,7 +71,7 @@ const track = (parts, idle = "~") => {
 }
 const chorus = (fn) => ({ a1: fn, a2: fn, a3: fn, a1x: fn, a2x: fn, a3x: fn })
 
-// chord-aware bar writers
+// bar writers
 const chordAt = (chords, t) => {
   const parts = chords.map((c) => c.split("@")).map(([name, w]) => [name, Number(w ?? 1)])
   let x = t * parts.reduce((sum, [, w]) => sum + w, 0)
@@ -104,10 +103,10 @@ const FOUR = "60 60 60 60"
 const BACK = "~ 60 ~ 60"
 const OPEN = "[~ 60]*4"
 
-// ── one key: everything lifts a half step for the last chorus ──
+// key change
 const key = seq(p\`<0!71 1!41>\`)
 
-// ── drums ──
+// drums
 const kicks = track({
   intro: (c, i) => (i < 4 ? "~" : i === 7 ? "60 60 60 [60 60]" : FOUR),
   verse: (c, i) => (i === 15 ? "60 60 ~ ~" : FOUR),
@@ -156,7 +155,7 @@ const ticks = track({
 })
 ticks.trig.hihat({ decay: 0.02, tone: 0.9, metal: 0.4 }).gain(0.8).pan(-0.25).out()
 
-// ── the 1929 break: brushes, walking bass, a swung clarinet ──
+// swing break
 const brush = track({ swing: () => "60 [60@2 60] 60 [60@2 60]" })
 brush.trig.hihat({ decay: 0.14, tone: 0.35, metal: 0.8 }).gain(0.9).pan(0.15).out()
 
@@ -182,7 +181,7 @@ clarinet.add(key).sqr()
   .gain(0.2)
   .out()
 
-// ── bass ──
+// bass
 const bass = track({
   intro: (c, i) => (i >= 4 ? OFF(c) : "~"),
   verse: (c, i) => (i < 8 ? OFF(c) : OCT(c)),
@@ -200,7 +199,7 @@ bass.add(key).saw()
   .gain(0.26)
   .out()
 
-// ── harmony: pad, supersaw stabs, the off-balance arp ──
+// harmony
 const supersaw = (pitch) => saw(pitch).add(saw(pitch.add(0.12))).add(saw(pitch.add(-0.12)))
 
 const pad = track({
@@ -256,7 +255,7 @@ arps.add(key).sqr()
   .pan(lfo(0.1, -0.5, 0.5))
   .out()
 
-// ── melody voices ──
+// melody
 const leadVoice = (notes) => {
   const pitch = notes.add(key)
   return sqr(pitch.add(0.07)).add(sqr(pitch.add(-0.07)))
@@ -288,7 +287,7 @@ const tag = track({
   intro: (c, i) => (i % 2 === 0 ? TAG : "c5"),
   a1: (c, i) => (i === 7 ? down(TAG) : "~"),
   a1x: (c, i) => (i === 7 ? down(TAG) : "~"),
-  // the last tag turns major: E natural, landing on the 1929 ending's C major chord
+  // the last tag ends in C major
   outro: (c, i) => [TAG, "c5", TAG, "c5", TAG, "~", "~@4 g5 f5 e5 d5", "c5"][i],
 })
 tag.add(key).tri()
@@ -304,7 +303,7 @@ descant.add(key).tri()
   .gain(0.16)
   .out()
 
-// ── one shared room ──
+// reverb
 mixer({ stab: stab.mix(), lead: leadOut.mix(), ep, clap: clapOut })
   .level({ stab: 0.6, clap: 0.5 })
   .reverb({ room: 0.75, damp: 0.5, mix: 1 })
@@ -313,6 +312,6 @@ mixer({ stab: stab.mix(), lead: leadOut.mix(), ep, clap: clapOut })
 `;
 
 export const puttinOnTheRitzExample: Example = {
-	name: "puttin' on the ritz (Berlin, 1929)",
+	name: "puttin' on the ritz",
 	source: puttinOnTheRitz,
 };

@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (k) A dance track: an arrangement of section patterns, glided into effects. */
+/** A dance track arranged from section patterns. */
 const pocketRocket = `tempo(128)
 
 const sections = (a, b, d1, d2) => p\`<\${a} \${b} \${d1} \${d2}>\`.slow(8)
@@ -143,4 +143,4 @@ pew.mul(36).add(60)
   .out()
 `;
 
-export const pocketRocketExample: Example = { name: "pocket rocket (dance)", source: pocketRocket };
+export const pocketRocketExample: Example = { name: "pocket rocket", source: pocketRocket };

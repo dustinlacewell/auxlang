@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (i) A mirror canon: one theme, flipped and reversed by pattern arithmetic. */
+/** A canon whose answer is the theme flipped and reversed. */
 const mirrorCanon = `tempo(100)
 
 const D2 = 38, D4 = 62, D5 = 74
@@ -76,4 +76,4 @@ hat.trig
   .out()
 `;
 
-export const mirrorCanonExample: Example = { name: "mirror canon (D dorian)", source: mirrorCanon };
+export const mirrorCanonExample: Example = { name: "mirror canon", source: mirrorCanon };

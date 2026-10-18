@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (j) A chaconne: a composed form, grown by one glided energy curve. */
+/** A chaconne that grows along one energy curve. */
 const chaconne = `tempo(80)
 
 const energy = slew({ in: p\`<0.1 0.25 0.5 1 0.35>\`.slow(8), rise: 30, fall: 30 })
@@ -74,4 +74,4 @@ seq("[~ 60]*4").trig
   .out()
 `;
 
-export const chaconneExample: Example = { name: "chaconne (evolving form)", source: chaconne };
+export const chaconneExample: Example = { name: "chaconne", source: chaconne };

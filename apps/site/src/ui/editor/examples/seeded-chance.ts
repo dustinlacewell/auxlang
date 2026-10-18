@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (f2) Seeds: pin the patch seed; hold one part with a local seed. */
+/** Random choices pinned by seeds. */
 const seededChance = `tempo(120)
 seed(7)
 
@@ -17,4 +17,4 @@ ghost.sin()
   .out()
 `;
 
-export const seededChanceExample: Example = { name: "seeded chance", source: seededChance };
+export const seededChanceExample: Example = { name: "seeded randomness", source: seededChance };

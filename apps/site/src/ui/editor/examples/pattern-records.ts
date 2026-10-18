@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** Pattern records: a field pattern rides alongside the note pattern. */
+/** A velocity pattern that rides alongside the notes. */
 const patternRecords = `tempo(120)
 
 const s = seq(p\`c3 e3 g3 b3\`.with({ vel: p\`1 0.4 0.7 0.5\` }))

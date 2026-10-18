@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** Signal splicing: a pattern switches a filter cutoff between live cables. */
+/** A pattern that switches a filter cutoff between live signals. */
 const signalSplice = `tempo(110)
 
 const s = seq("c2 c2 c2 c2")
@@ -12,4 +12,4 @@ s.saw()
   .out()
 `;
 
-export const signalSpliceExample: Example = { name: "signal splicing", source: signalSplice };
+export const signalSpliceExample: Example = { name: "signal switching", source: signalSplice };

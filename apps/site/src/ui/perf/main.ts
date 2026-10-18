@@ -41,7 +41,7 @@ for (const ex of EXAMPLES) {
 	opt.textContent = ex.name;
 	patchSel.append(opt);
 }
-patchSel.value = "coastline (after eddyflux)";
+patchSel.value = "coastline";
 
 function showError(message: string): void {
 	errEl.textContent = message;

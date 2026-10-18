@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** (c) Pattern-as-signal: a pattern patched straight into a filter cutoff. */
+/** A pattern patched straight into a filter cutoff. */
 const patternAsSignal = `tempo(120)
 
 const s = seq("c2 c2 c2 c2")

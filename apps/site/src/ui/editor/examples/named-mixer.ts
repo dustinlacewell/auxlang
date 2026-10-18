@@ -1,6 +1,6 @@
 import type { Example } from "@/ui/editor/examples/example";
 
-/** Mixer: named channels summed with per-channel levels. */
+/** Named channels mixed at their own levels. */
 const namedMixer = `tempo(110)
 
 const lead = seq("c4 e4 g4 b4")
