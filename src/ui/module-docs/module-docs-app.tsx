@@ -21,7 +21,7 @@ import { ModuleName } from "@/ui/docs-kit/module-name";
 import { useSharedAudio } from "@/ui/docs-kit/use-shared-audio";
 import { SitePage } from "@/ui/site/site-page";
 import { useMemo } from "react";
-import { EXAMPLES } from "./examples";
+import { EXAMPLES } from "./examples/examples";
 
 const registry = getRegistry();
 
