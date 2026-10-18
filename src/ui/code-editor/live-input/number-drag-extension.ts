@@ -28,8 +28,8 @@
  * case for a literal with no known port.
  */
 
-import { currentSlots, writeSlot } from "@/core3/runtime/audio";
-import type { SourceMap } from "@/core3/source/source-map";
+import { currentSlots, writeSlot } from "@/engine/runtime/audio";
+import type { SourceMap } from "@/engine/source/source-map";
 import { Annotation, type Extension } from "@codemirror/state";
 import { EditorView, ViewPlugin } from "@codemirror/view";
 import { numberDragTheme } from "./number-drag-theme";

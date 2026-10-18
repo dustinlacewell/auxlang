@@ -8,11 +8,11 @@
  * stays plain).
  */
 
-import "@/core3/modules/all";
+import "@/engine/modules/all";
 
-import type { SlotDecl } from "@/core3/runtime/live/live-contract";
-import { hasModule } from "@/core3/module/define";
-import type { SourceMap } from "@/core3/source/source-map";
+import type { SlotDecl } from "@/engine/runtime/live/live-contract";
+import { hasModule } from "@/engine/module/define";
+import type { SourceMap } from "@/engine/source/source-map";
 import { Card } from "@/ui/design/card";
 import { StatusIndicator } from "@/ui/design/status-indicator";
 import type { DocExample } from "./doc-example";

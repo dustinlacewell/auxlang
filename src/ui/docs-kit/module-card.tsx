@@ -5,10 +5,10 @@
  * module reference. ◂ marks the default input/output.
  */
 
-import "@/core3/modules/all";
+import "@/engine/modules/all";
 
-import { getModule } from "@/core3/module/define";
-import type { PortAnn } from "@/core3/types";
+import { getModule } from "@/engine/module/define";
+import type { PortAnn } from "@/engine/types";
 import { ModName } from "@/ui/design/mod-name";
 import { ModuleBadge } from "@/ui/design/module-badge";
 import { formatPortDefault } from "./format-port-default";

@@ -7,10 +7,10 @@
  * the live registry. The grouped nav jumps per module.
  */
 
-import "@/core3/modules/all";
+import "@/engine/modules/all";
 
-import { getRegistry, hasModule } from "@/core3/module/define";
-import type { Category, ModuleSpec } from "@/core3/types";
+import { getRegistry, hasModule } from "@/engine/module/define";
+import type { Category, ModuleSpec } from "@/engine/types";
 import { ModuleBadge } from "@/ui/design/module-badge";
 import { CATEGORY_ORDER } from "@/ui/docs-kit/category-order";
 import { DocCard } from "@/ui/docs-kit/doc-card";

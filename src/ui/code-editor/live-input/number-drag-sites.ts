@@ -6,8 +6,8 @@
  * own site, unlike a control's `call + k/n`).
  */
 
-import type { SourceMap } from "@/core3/source/source-map";
-import type { SlotDecl } from "@/core3/runtime/live/live-contract";
+import type { SourceMap } from "@/engine/source/source-map";
+import type { SlotDecl } from "@/engine/runtime/live/live-contract";
 
 export interface DraggableNumber {
 	readonly site: number;

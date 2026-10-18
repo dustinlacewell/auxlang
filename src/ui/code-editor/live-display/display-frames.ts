@@ -5,8 +5,8 @@
  * when its length still matches, so a steady display allocates nothing.
  */
 
-import type { DisplayWatch } from "@/core3/runtime/live/live-contract";
-import { frameWords } from "@/core3/runtime/live/monitor-region";
+import type { DisplayWatch } from "@/engine/runtime/live/live-contract";
+import { frameWords } from "@/engine/runtime/live/monitor-region";
 
 export function readDisplays(
 	words: Float64Array,

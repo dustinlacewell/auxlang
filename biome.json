@@ -13,11 +13,11 @@
     }
   },
   "files": {
-    "ignore": ["src/tests/core3/math/refs/*.json"]
+    "ignore": ["src/tests/engine/math/refs/*.json"]
   },
   "overrides": [
     {
-      "include": ["src/core3/math/lib/**"],
+      "include": ["src/engine/math/lib/**"],
       "linter": {
         "rules": {
           "correctness": { "noPrecisionLoss": "off" },

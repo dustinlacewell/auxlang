@@ -5,7 +5,7 @@
  * construction.
  */
 
-import type { Unit } from "@/core3/types";
+import type { Unit } from "@/engine/types";
 import { unitColors } from "@/theme/colors";
 
 interface PortSwatchProps {

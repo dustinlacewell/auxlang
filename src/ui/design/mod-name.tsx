@@ -4,7 +4,7 @@
  * category and the palette in src/theme/colors.ts does the rest.
  */
 
-import type { Category } from "@/core3/types";
+import type { Category } from "@/engine/types";
 import { categoryColors } from "@/theme/colors";
 
 interface ModNameProps {

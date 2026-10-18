@@ -20,7 +20,7 @@ pnpm dev
 The dev server serves the site:
 
 - `/` (`index.html`) — landing: what auxlang is, the hello patch, runnable.
-- `/editor.html` — the live editor (core3-editor). Edit a patch, hear it,
+- `/editor.html` — the live editor (editor). Edit a patch, hear it,
   re-evaluate live.
 - `/guide.html` — how to write patches, with runnable examples.
 - `/patterns.html` — pattern and mini-notation documentation, with runnable
@@ -58,4 +58,4 @@ registry. `.gain` and `.vca` are aliases of `.mul`.
 
 - `MANIFESTO.md` — the design vision and the five concepts.
 - `docs/user-guide.md` — the systematic core3 guide.
-- `docs/core3-internals.md` — the compilation pipeline and runtime.
+- `docs/engine-internals.md` — the compilation pipeline and runtime.

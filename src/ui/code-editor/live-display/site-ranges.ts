@@ -6,8 +6,8 @@
  * SourceMap (source/source-map.ts); nothing here reads a live frame.
  */
 
-import type { SourceRange } from "@/core3/source/range";
-import type { SourceMap } from "@/core3/source/source-map";
+import type { SourceRange } from "@/engine/source/range";
+import type { SourceMap } from "@/engine/source/source-map";
 
 export interface SiteRanges {
 	rangeOf(site: number): SourceRange | undefined;

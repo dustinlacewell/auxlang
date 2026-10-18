@@ -5,7 +5,7 @@ import {
 	removeSavedPatch,
 	renameSavedPatch,
 	updateSavedPatchSource,
-} from "@/ui/core3-editor/storage/saved-patches";
+} from "@/ui/editor/storage/saved-patches";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 function fakeLocalStorage() {

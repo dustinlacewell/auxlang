@@ -11,10 +11,10 @@
  * `style` attribute here silently loses to oneDark.
  */
 
-import "@/core3/modules/all";
+import "@/engine/modules/all";
 
-import { getRegistry } from "@/core3/module/define";
-import type { Category } from "@/core3/types";
+import { getRegistry } from "@/engine/module/define";
+import type { Category } from "@/engine/types";
 import { categoryColors } from "@/theme/colors";
 import type { Extension } from "@codemirror/state";
 import {

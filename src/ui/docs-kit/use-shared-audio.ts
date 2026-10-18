@@ -6,14 +6,14 @@
  *
  * The playing card's `sourceMap`/`liveSlots` are exposed so its CodeBlock can
  * drive the same live-feedback extensions (pattern highlight, number drag,
- * control widgets) as the main editor (use-core3-editor.ts) — `ensureSlotSite`
+ * control widgets) as the main editor (use-editor.ts) — `ensureSlotSite`
  * mirrors that hook's, minus seed-session/reroll, which docs examples don't need.
  */
 
-import type { SlotDecl } from "@/core3/runtime/live/live-contract";
-import { play, stop } from "@/core3/runtime/audio";
-import { EMPTY_SOURCE_MAP, type SourceMap } from "@/core3/source/source-map";
-import { evaluatePatch } from "@/core3/eval-patch";
+import type { SlotDecl } from "@/engine/runtime/live/live-contract";
+import { play, stop } from "@/engine/runtime/audio";
+import { EMPTY_SOURCE_MAP, type SourceMap } from "@/engine/source/source-map";
+import { evaluatePatch } from "@/engine/eval-patch";
 import { useCallback, useRef, useState } from "react";
 
 export interface SharedAudio {

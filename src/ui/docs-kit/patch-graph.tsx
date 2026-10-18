@@ -11,10 +11,10 @@
  * through a portal to document.body so nothing clips them.
  */
 
-import type { Program } from "@/core3/api";
-import { hasModule } from "@/core3/module/define";
-import { programToDot } from "@/core3/viz/program-to-dot";
-import { evalPatch } from "@/core3/eval-patch";
+import type { Program } from "@/engine/api";
+import { hasModule } from "@/engine/module/define";
+import { programToDot } from "@/engine/viz/program-to-dot";
+import { evalPatch } from "@/engine/eval-patch";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { EdgeTooltip } from "./edge-tooltip";

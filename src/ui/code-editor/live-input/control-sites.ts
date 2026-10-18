@@ -7,8 +7,8 @@
  * range, for the control-widget decorations to draw and write.
  */
 
-import type { ArgSite, CallSite, SourceMap } from "@/core3/source/source-map";
-import type { SlotDecl } from "@/core3/runtime/live/live-contract";
+import type { ArgSite, CallSite, SourceMap } from "@/engine/source/source-map";
+import type { SlotDecl } from "@/engine/runtime/live/live-contract";
 import { CONTROL_VALUE_ARG, type ControlKind, controlKindOf } from "./control-names";
 
 export interface ControlSlot {

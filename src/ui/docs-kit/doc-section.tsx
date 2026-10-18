@@ -6,7 +6,7 @@
  * category's color so the page follows the site-wide convention.
  */
 
-import type { Category } from "@/core3/types";
+import type { Category } from "@/engine/types";
 import { categoryColors } from "@/theme/colors";
 
 interface DocSectionProps {

@@ -4,7 +4,7 @@
  * editor. `code` is the starting text; the reader's edits are what Run plays.
  * While a `sourceMap` is supplied (the example is the one playing) it carries
  * the same live-feedback extensions as the main editor
- * (core3-editor/code-mirror.tsx): pattern highlight, draggable numbers, and
+ * (editor/code-mirror.tsx): pattern highlight, draggable numbers, and
  * control widgets.
  *
  * Tab buttons sit attached outside the top-right edge: a playback toggle
@@ -16,8 +16,8 @@
  * stops.
  */
 
-import type { SlotDecl } from "@/core3/runtime/live/live-contract";
-import { EMPTY_SOURCE_MAP, type SourceMap } from "@/core3/source/source-map";
+import type { SlotDecl } from "@/engine/runtime/live/live-contract";
+import { EMPTY_SOURCE_MAP, type SourceMap } from "@/engine/source/source-map";
 import { auxlangTheme } from "@/ui/code-editor/auxlang-theme";
 import { createExtensions } from "@/ui/code-editor/extensions";
 import { patternHighlightExtension } from "@/ui/code-editor/live-display/pattern-highlight-extension";

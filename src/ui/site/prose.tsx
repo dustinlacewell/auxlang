@@ -4,7 +4,7 @@
  * ModuleName.
  */
 
-import { hasModule } from "@/core3/module/define";
+import { hasModule } from "@/engine/module/define";
 import { ModuleName } from "@/ui/docs-kit/module-name";
 
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
