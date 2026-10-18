@@ -6,8 +6,9 @@
 import type { SharedAudio } from "@/ui/docs-kit/use-shared-audio";
 import { P, Section } from "@/ui/site/prose";
 import { RunBlock } from "@/ui/site/run-block";
-import type { Chapter } from "./types";
+import { chapterSectionId } from "./chapter-section-id";
 import { inlineCode } from "./inline-code";
+import type { Chapter } from "./types";
 
 export function BrickChapters({
 	chapters,
@@ -23,7 +24,11 @@ export function BrickChapters({
 	return (
 		<>
 			{chapters.map((chapter, chapterIndex) => (
-				<Section key={chapter.title} title={chapter.title}>
+				<Section
+					key={chapter.title}
+					id={chapterSectionId(idPrefix, chapter.title)}
+					title={chapter.title}
+				>
 					{chapter.bricks.map((brick, brickIndex) => {
 						brickNumber += 1;
 						return (

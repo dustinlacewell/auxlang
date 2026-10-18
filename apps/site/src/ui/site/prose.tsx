@@ -4,12 +4,20 @@
  * ModuleName.
  */
 
-import { hasModule } from "auxlang/dsp/define";
 import { ModuleName } from "@/ui/docs-kit/module-name";
+import { hasModule } from "auxlang/dsp/define";
 
-export function Section({ title, children }: { title: string; children: React.ReactNode }) {
+export function Section({
+	id,
+	title,
+	children,
+}: {
+	id?: string;
+	title: string;
+	children: React.ReactNode;
+}) {
 	return (
-		<section className="mb-10">
+		<section id={id} className="mb-10 scroll-mt-16">
 			<h2 className="text-lg font-medium border-b border-surface-700 pb-1 mb-3 text-gray-100">
 				{title}
 			</h2>
