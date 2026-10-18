@@ -4,9 +4,9 @@
  * The incoming `pitch` is snapped to the nearest degree of `scaleName` taken
  * relative to `root` (a semitone pitch class). The snapped pitch is then folded
  * into the window [octave*12 + root, (octave+range)*12 + root) so `octave`/`range`
- * (in octaves) place and size the playable band. Scale tables are the same set
- * as core2's quantize, written as 12-bit masks: bit k set = degree k is in the
- * scale. An unknown scale name falls back to major.
+ * (in octaves) place and size the playable band. Scale tables are written as
+ * 12-bit masks: bit k set = degree k is in the scale. An unknown scale name
+ * falls back to major.
  */
 
 /** The degree mask of a named scale. */

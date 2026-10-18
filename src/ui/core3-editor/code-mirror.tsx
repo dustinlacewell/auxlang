@@ -1,8 +1,7 @@
 /**
  * A plain CodeMirror surface for core3: the shared aux theme + extensions,
- * a Mod-Enter run keymap, and controlled value sync. No core2 visualization
- * coupling (that lives in code-editor/visualization-state.ts, which is
- * core2-only) — this editor drives audio through the core3 eval path.
+ * a Mod-Enter run keymap, and controlled value sync. This editor drives
+ * audio through the core3 eval path.
  */
 
 import type { SlotDecl } from "@/core3/runtime/live/live-contract";

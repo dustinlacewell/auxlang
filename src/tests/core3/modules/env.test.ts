@@ -72,7 +72,7 @@ describe("adsr", () => {
 		expect(rel[rel.length - 1]!).toBeCloseTo(0, 3);
 	});
 
-	it("sustain=0 reaches 0 and never hangs (the core2 bug)", () => {
+	it("sustain=0 reaches 0 and never hangs", () => {
 		const d = driver(adsr);
 		const p = { gate: 1, attack: 0.005, decay: 0.02, sustain: 0, release: 0.05 };
 		// hold gate high for a long time; with sustain 0 the level must settle to 0
