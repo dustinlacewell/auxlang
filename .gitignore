@@ -1,4 +1,8 @@
 node_modules
 dist/
-.claude/worktrees/
 apps/site/src/tests/scratch/
+
+# Local development notes and tool settings
+.claude/
+.devtool/
+llm/
