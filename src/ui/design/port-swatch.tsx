@@ -1,12 +1,12 @@
 /**
  * The one way to render a signal unit's color in the UI: a small pastel chip
  * keyed by `Unit`. No color prop exists on purpose — consumers can only name
- * the unit, so every swatch follows the palette in src/theme/colors.ts by
+ * the unit, so every swatch follows the palette in src/ui/design/colors.ts by
  * construction.
  */
 
 import type { Unit } from "@/engine/types";
-import { unitColors } from "@/theme/colors";
+import { unitColors } from "@/ui/design/colors";
 
 interface PortSwatchProps {
 	unit: Unit;

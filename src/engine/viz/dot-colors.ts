@@ -7,7 +7,7 @@
  */
 
 import type { Category, Unit } from "@/engine/types";
-import { categoryColors, graphNodeFill, outNodeInk, unitColors } from "@/theme/colors";
+import { categoryColors, graphNodeFill, outNodeInk, unitColors } from "@/ui/design/colors";
 
 /** Wires whose source port carries no unit annotation fall back to neutral gray. */
 const UNKNOWN_UNIT_COLOR = "#9ca3af";

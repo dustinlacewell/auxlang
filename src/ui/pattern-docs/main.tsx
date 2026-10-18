@@ -2,7 +2,7 @@
  * Entry point for the pattern-docs page, mounted from patterns.html.
  */
 
-import "@/ui/styles/globals.css";
+import "@/ui/design/globals.css";
 import { createRoot } from "react-dom/client";
 import { PatternDocsApp } from "./pattern-docs-app";
 

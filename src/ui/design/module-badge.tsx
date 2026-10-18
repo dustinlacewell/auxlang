@@ -2,12 +2,12 @@
  * The one way to render a module category in the UI: a saturated chip showing
  * the category's name on its palette fill. No color prop exists on purpose —
  * consumers can only name the category, so every badge follows the palette in
- * src/theme/colors.ts by construction. `size` picks card-badge vs heading
+ * src/ui/design/colors.ts by construction. `size` picks card-badge vs heading
  * scale; layout (margins, alignment) belongs to the call site.
  */
 
 import type { Category } from "@/engine/types";
-import { categoryColors, onCategoryText } from "@/theme/colors";
+import { categoryColors, onCategoryText } from "@/ui/design/colors";
 
 interface ModuleBadgeProps {
 	category: Category;

@@ -20,7 +20,7 @@ export type Unit =
 	| "trig" // single-sample 1
 	| "phase"; // a position: unbounded, in cycles (a clock's bars, a counter's steps)
 
-/** Module family — drives docs grouping and node coloring (see src/theme/colors.ts). */
+/** Module family — drives docs grouping and node coloring (see src/ui/design/colors.ts). */
 export type Category =
 	| "timing"
 	| "sources"

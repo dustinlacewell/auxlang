@@ -9,7 +9,7 @@
  */
 
 import type { Category } from "@/engine/types";
-import { categoryColors } from "@/theme/colors";
+import { categoryColors } from "@/ui/design/colors";
 import { sectionAnchor } from "@/ui/docs-kit/doc-section";
 import { ModuleName } from "@/ui/docs-kit/module-name";
 

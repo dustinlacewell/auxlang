@@ -3,7 +3,7 @@
  * when called (`sin(`, `.lpf(`), takes its category's saturated color — the
  * same convention as graph nodes, badges, and card titles. Built from the LIVE
  * registry so new modules highlight without touching this file; colors come
- * only from src/theme/colors.ts, keyed by Category.
+ * only from src/ui/design/colors.ts, keyed by Category.
  *
  * Styling is a theme rule targeting the mark's class AND its descendants —
  * CodeMirror nests syntax-highlight spans inside mark-decoration spans, and a
@@ -15,7 +15,7 @@ import "@/engine/library/all";
 
 import { getRegistry } from "@/engine/dsp/define";
 import type { Category } from "@/engine/types";
-import { categoryColors } from "@/theme/colors";
+import { categoryColors } from "@/ui/design/colors";
 import type { Extension } from "@codemirror/state";
 import {
 	Decoration,

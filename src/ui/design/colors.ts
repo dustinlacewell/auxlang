@@ -3,7 +3,7 @@
  * module-category colors. Units are pastel (edges/ports); categories are
  * saturated (node/module identity). `satisfies` pins each map to the real
  * core3 taxonomy, so adding a Unit or Category without a color is a type
- * error. Tailwind mirrors of these live in src/ui/styles/globals.css
+ * error. Tailwind mirrors of these live in src/ui/design/globals.css
  * (`--color-unit-*` / `--color-category-*`) — keep them in sync.
  */
 

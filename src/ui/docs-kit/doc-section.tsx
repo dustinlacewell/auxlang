@@ -7,7 +7,7 @@
  */
 
 import type { Category } from "@/engine/types";
-import { categoryColors } from "@/theme/colors";
+import { categoryColors } from "@/ui/design/colors";
 
 interface DocSectionProps {
 	name: string;

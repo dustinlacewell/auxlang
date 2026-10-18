@@ -1,11 +1,11 @@
 /**
  * The one way to render a module's name in the UI: monospace, colored by the
  * module's category. No color prop exists on purpose — consumers name the
- * category and the palette in src/theme/colors.ts does the rest.
+ * category and the palette in src/ui/design/colors.ts does the rest.
  */
 
 import type { Category } from "@/engine/types";
-import { categoryColors } from "@/theme/colors";
+import { categoryColors } from "@/ui/design/colors";
 
 interface ModNameProps {
 	name: string;

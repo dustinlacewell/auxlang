@@ -2,7 +2,7 @@
  * Entry point for the module-dsp page, mounted from module-dsp.html.
  */
 
-import "@/ui/styles/globals.css";
+import "@/ui/design/globals.css";
 import { createRoot } from "react-dom/client";
 import { ModuleDspApp } from "./module-dsp-app";
 
