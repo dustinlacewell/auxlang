@@ -25,6 +25,7 @@ import { patternRecordsExample } from "@/ui/editor/examples/pattern-records";
 import { patternsAsValuesExample } from "@/ui/editor/examples/patterns-as-values";
 import { pocketRocketExample } from "@/ui/editor/examples/pocket-rocket";
 import { polyChordsExample } from "@/ui/editor/examples/poly-chords";
+import { puttinOnTheRitzExample } from "@/ui/editor/examples/puttin-on-the-ritz";
 import { seededChanceExample } from "@/ui/editor/examples/seeded-chance";
 import { signalSpliceExample } from "@/ui/editor/examples/signal-splice";
 import { smokeSignalExample } from "@/ui/editor/examples/smoke-signal";
@@ -34,6 +35,7 @@ import { wideSawsExample } from "@/ui/editor/examples/wide-saws";
 
 export const EXAMPLES: readonly Example[] = [
 	smokeSignalExample,
+	puttinOnTheRitzExample,
 	coastlineExample,
 	mirrorCanonExample,
 	mountainKingFugueExample,

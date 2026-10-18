@@ -19,7 +19,7 @@ export default defineConfig(({ command }) => ({
 		...(command === "serve" ? [basicSsl()] : []),
 	],
 	test: {
-		exclude: [...configDefaults.exclude, "**/.claude/worktrees/**"],
+		exclude: configDefaults.exclude,
 		// Renders of heavy patches near 5 s when the full suite runs in parallel.
 		testTimeout: 20_000,
 	},

@@ -1,4 +1,4 @@
 node_modules
-dist
+apps/site/dist
 .claude/worktrees/
-src/tests/scratch/
+apps/site/src/tests/scratch/
