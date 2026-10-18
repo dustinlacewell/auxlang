@@ -14,7 +14,7 @@ import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import type { Program } from "@/core3/types";
 import { EXAMPLES as SITE } from "@/ui/core3-editor/examples";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples";
 import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples";
 import { expect, it } from "vitest";

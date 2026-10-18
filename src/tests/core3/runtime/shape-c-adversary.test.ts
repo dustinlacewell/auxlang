@@ -15,7 +15,7 @@ import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { slotOf } from "@/core3/runtime/output-slots";
 import type { Program } from "@/core3/types";
 import { createWasmEngine, swapWasmEngine } from "@/core3/wasm/host/create-wasm-engine";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 
 const SR = 48000;
 

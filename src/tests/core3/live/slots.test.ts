@@ -14,7 +14,7 @@ import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import type { Program } from "@/core3/types";
 import { createWasmEngine, swapWasmEngine } from "@/core3/wasm/host/create-wasm-engine";
-import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
+import { evaluatePatch } from "@/core3/eval-patch";
 import { firstBitDiff } from "../wasm/differential-harness";
 import { BLOCK, Session, slice } from "../runtime/live-session";
 import { ENGINES, SR, type SlotEngine, nodeOf, renderWithWrites } from "./slot-render";

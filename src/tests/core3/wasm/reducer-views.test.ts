@@ -13,7 +13,7 @@ import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { slotOf } from "@/core3/runtime/output-slots";
 import { prepareWasm } from "@/core3/wasm/host/prepare-wasm";
 import { WasmEngine } from "@/core3/wasm/host/wasm-engine";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { describe, expect, it } from "vitest";
 
 const SR = 48000;

@@ -18,7 +18,7 @@ import {
 import { moduleFactory } from "@/core3/patch/factory";
 import type { Handle } from "@/core3/patch/handle-data";
 import type { PortAnn } from "@/core3/types";
-import { evalPatch, type EvalPatchOptions } from "@/ui/core3-playground/eval-patch";
+import { evalPatch, type EvalPatchOptions } from "@/core3/eval-patch";
 
 const TRIAL_SAMPLE_RATE = 48000;
 

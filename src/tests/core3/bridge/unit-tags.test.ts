@@ -12,7 +12,7 @@ import { sig } from "@/core3/types";
 import { hzToSemis } from "@/core3/units/pitch";
 import { beats, hz, semis } from "@/core3/units/tag";
 import { describe, expect, it } from "vitest";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { nodeIndex } from "./helpers";
 
 const saw = factory("saw");

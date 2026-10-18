@@ -2,7 +2,7 @@ import "@/core3/modules/all";
 
 import { describe, expect, it } from "vitest";
 
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { CHAPTERS as GUIDE } from "@/ui/site/guide/bricks";
 import { CHAPTERS as DSP } from "@/ui/site/module-dsp/bricks";
 

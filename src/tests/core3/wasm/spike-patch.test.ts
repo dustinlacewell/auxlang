@@ -14,7 +14,7 @@ import { type OutputLayout, slotOf } from "@/core3/runtime/output-slots";
 import type { Program } from "@/core3/types";
 import { prepareWasm } from "@/core3/wasm/host/prepare-wasm";
 import { WasmEngine } from "@/core3/wasm/host/wasm-engine";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { describe, expect, it } from "vitest";
 import { WASM_SPIKE_PATCH } from "./spike-patch";
 

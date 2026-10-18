@@ -14,7 +14,7 @@ import { CycleQueries } from "@/core3/pattern/table/cycle-queries";
 import { LaneFill } from "@/core3/pattern/table/lane-fill";
 import type { Program } from "@/core3/types";
 import { TableHeap } from "@/core3/wasm/host/table-heap";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SR, firstBitDiff } from "../wasm/differential-harness";
 import { BLOCK, FADE, Session, offline, slice } from "./live-session";

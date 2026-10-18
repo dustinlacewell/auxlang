@@ -45,12 +45,6 @@ export const SITE_PAGES: readonly SitePage[] = [
 		description: "Write your own modules in JavaScript.",
 	},
 	{
-		file: "core3.html",
-		path: "/core3.html",
-		title: "auxlang · core3 playground",
-		description: "Text-based modular synthesis.",
-	},
-	{
 		file: "perf.html",
 		path: "/perf.html",
 		title: "auxlang · perf",

@@ -10,7 +10,7 @@ import { defmod, runEval } from "@/core3/api";
 import { getModule } from "@/core3/module/define";
 import { hydrateSpec, serializeSpec } from "@/core3/module/serialize";
 import { renderTap } from "@/core3/runtime/render";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { nodeIndex } from "../bridge/helpers";
 import { SR, driver } from "./helpers";
 

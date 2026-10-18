@@ -13,7 +13,7 @@ import { defpatch } from "@/core3/patch/defpatch";
 import { rootSubpatches } from "@/core3/patch/subpatch/registry";
 import type { Handle } from "@/core3/patch/handle-data";
 import { rewrite } from "@/core3/source/rewrite/rewrite";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { SR, firstBitDiff, interpreterRun } from "../wasm/differential-harness";
 
 const saw = factory("saw");

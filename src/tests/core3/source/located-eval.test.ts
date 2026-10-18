@@ -13,7 +13,7 @@ import { errorRange } from "@/core3/source/located-error";
 import type { SourceMap } from "@/core3/source/source-map";
 import type { PNode } from "@/core3/types";
 import { errorText } from "@/ui/core3-editor/error-text";
-import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
+import { evaluatePatch } from "@/core3/eval-patch";
 import { describe, expect, it } from "vitest";
 
 function siteText(source: string, map: SourceMap, id: number | undefined): string | undefined {

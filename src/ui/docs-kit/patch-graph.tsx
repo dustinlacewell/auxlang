@@ -14,7 +14,7 @@
 import type { Program } from "@/core3/api";
 import { hasModule } from "@/core3/module/define";
 import { programToDot } from "@/core3/viz/program-to-dot";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { EdgeTooltip } from "./edge-tooltip";

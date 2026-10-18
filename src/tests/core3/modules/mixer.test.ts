@@ -10,7 +10,7 @@ import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { renderTap } from "@/core3/runtime/render";
 import { getRegistry } from "@/core3/module/define";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { nodeIndex } from "../bridge/helpers";
 
 describe("mixer", () => {

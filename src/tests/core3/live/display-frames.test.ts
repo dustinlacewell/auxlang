@@ -12,7 +12,7 @@ import { displayList } from "@/core3/runtime/live/display-list";
 import { InterpretedMonitor } from "@/core3/runtime/live/interpreted-monitor";
 import { prepareWasm } from "@/core3/wasm/host/prepare-wasm";
 import { WasmEngine } from "@/core3/wasm/host/wasm-engine";
-import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
+import { evaluatePatch } from "@/core3/eval-patch";
 import { describe, expect, it } from "vitest";
 
 const SR = 48000;

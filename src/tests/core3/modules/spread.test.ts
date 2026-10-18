@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
 import { getModule } from "@/core3/module/define";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { reduceDriver } from "./helpers";
 
 const spread = getModule("spread");

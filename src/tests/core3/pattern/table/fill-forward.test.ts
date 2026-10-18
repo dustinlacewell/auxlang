@@ -19,7 +19,7 @@ import { fillTable } from "@/core3/pattern/table/fill-table";
 import { LaneFill } from "@/core3/pattern/table/lane-fill";
 import { RANDOM_LOOKBACK_CYCLES } from "@/core3/pattern/table/lookback-carry";
 import { EXAMPLES } from "@/ui/core3-editor/examples";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 
 const SEED = 7;
 const CYCLES = 40;

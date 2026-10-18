@@ -20,7 +20,7 @@ import type { EngineState, Program } from "@/core3/types";
 import { sig } from "@/core3/types";
 import { createWasmEngine, swapWasmEngine } from "@/core3/wasm/host/create-wasm-engine";
 import { EXAMPLES as SITE } from "@/ui/core3-editor/examples";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples";
 import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples";
 import { CHAPTERS as MODULE_DSP_CHAPTERS } from "@/ui/site/module-dsp/bricks";

@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import "@/core3/modules/all";
 import { render } from "@/core3/runtime/render";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { evalInternal } from "../fixtures/internal-module";
 
 /** A patch defining module `t`; the tick body starts on patch line 11. */

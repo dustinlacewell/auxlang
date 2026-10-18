@@ -7,7 +7,7 @@
 import "@/core3/modules/all";
 
 import type { Program } from "@/core3/types";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { describe, expect, it } from "vitest";
 import { evalInternal } from "../fixtures/internal-module";
 import { expectIdentical, interpreterRun, wasmRun } from "./differential-harness";

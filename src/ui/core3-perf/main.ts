@@ -11,7 +11,7 @@
 
 import { type PerfWindow, disablePerf, enablePerf, play, stop } from "@/core3/runtime/audio";
 import { EXAMPLES } from "@/ui/core3-editor/examples";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 
 declare global {
 	interface Window {

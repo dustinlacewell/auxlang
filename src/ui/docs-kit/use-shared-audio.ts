@@ -13,7 +13,7 @@
 import type { SlotDecl } from "@/core3/runtime/live/live-contract";
 import { play, stop } from "@/core3/runtime/audio";
 import { EMPTY_SOURCE_MAP, type SourceMap } from "@/core3/source/source-map";
-import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
+import { evaluatePatch } from "@/core3/eval-patch";
 import { useCallback, useRef, useState } from "react";
 
 export interface SharedAudio {

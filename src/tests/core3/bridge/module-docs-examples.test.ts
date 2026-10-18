@@ -5,7 +5,7 @@
  */
 
 import { render } from "@/core3/runtime/render";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { EXAMPLES } from "@/ui/module-docs/examples";
 import { describe, expect, it } from "vitest";
 import { allFinite, maxAbs, rms } from "./helpers";

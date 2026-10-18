@@ -18,7 +18,7 @@ import { createWasmEngine } from "@/core3/wasm/host/create-wasm-engine";
 import { prepareWasm, prepareWasmSwap } from "@/core3/wasm/host/prepare-wasm";
 import { WasmEngine } from "@/core3/wasm/host/wasm-engine";
 import { EXAMPLES } from "@/ui/core3-editor/examples";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 
 const SR = 48000;
 const BLOCK = 128;

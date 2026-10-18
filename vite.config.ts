@@ -36,7 +36,6 @@ export default defineConfig(({ command }) => ({
 				patterns: resolve(__dirname, "patterns.html"),
 				modules: resolve(__dirname, "modules.html"),
 				moduleDsp: resolve(__dirname, "module-dsp.html"),
-				core3: resolve(__dirname, "core3.html"),
 				// perf.html is a dev-only diagnostic harness — served in dev, never
 				// built into a production bundle.
 				...(command === "serve" ? { perf: resolve(__dirname, "perf.html") } : {}),

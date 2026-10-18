@@ -16,7 +16,7 @@ import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import type { Program } from "@/core3/types";
 import { prepareWasm } from "@/core3/wasm/host/prepare-wasm";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { evalInternal } from "../fixtures/internal-module";
 
 const SR = 48000;

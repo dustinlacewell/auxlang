@@ -15,7 +15,7 @@ import { Core3Engine } from "@/core3/runtime/engine";
 import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import type { Program } from "@/core3/types";
 import { SeqTables } from "@/core3/wasm/host/seq-tables";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { describe, expect, it, vi } from "vitest";
 import { SR, firstBitDiff } from "../wasm/differential-harness";
 import { BLOCK, FADE, Session, offline, slice } from "./live-session";

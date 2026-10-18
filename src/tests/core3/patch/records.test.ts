@@ -15,7 +15,7 @@ import { withProgramSpecs } from "@/core3/runtime/hydrate-specs";
 import { render, renderTap } from "@/core3/runtime/render";
 import type { Program } from "@/core3/types";
 import { createWasmEngine, swapWasmEngine } from "@/core3/wasm/host/create-wasm-engine";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { describe, expect, it } from "vitest";
 import { nodeIndex } from "../bridge/helpers";
 import { SR, expectIdentical } from "../wasm/differential-harness";

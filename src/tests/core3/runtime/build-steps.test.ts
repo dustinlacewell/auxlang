@@ -11,7 +11,7 @@ import { buildSteps } from "@/core3/runtime/build/build-steps";
 import { StepRunner } from "@/core3/runtime/build/step-runner";
 import { stepsWithin } from "@/core3/runtime/build/steps-within";
 import { prepareProgram } from "@/core3/runtime/prepare/prepare-program";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { describe, expect, it } from "vitest";
 
 const PROGRAM = evalPatch(`tempo(120)

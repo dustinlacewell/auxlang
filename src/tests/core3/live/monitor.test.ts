@@ -43,7 +43,7 @@ import type { SourceMap } from "@/core3/source/source-map";
 import type { Program } from "@/core3/types";
 import { prepareWasm } from "@/core3/wasm/host/prepare-wasm";
 import { WasmEngine } from "@/core3/wasm/host/wasm-engine";
-import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
+import { evaluatePatch } from "@/core3/eval-patch";
 import { describe, expect, it } from "vitest";
 
 const SR = 48000;

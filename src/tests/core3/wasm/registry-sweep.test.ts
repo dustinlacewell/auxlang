@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest";
 
 import { getRegistry } from "@/core3/module/define";
-import { evalPatch } from "@/ui/core3-playground/eval-patch";
+import { evalPatch } from "@/core3/eval-patch";
 import { compareBlocks } from "./block-differential";
 
 const SECONDS = 1;

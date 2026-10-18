@@ -21,7 +21,7 @@ import { LiveHost } from "@/core3/runtime/worklet/live-host";
 import type { WorkletReply } from "@/core3/runtime/worklet/messages";
 import { MonitorWriter } from "@/core3/runtime/worklet/monitor-writer";
 import { displayWords } from "@/core3/wasm/program/memory-layout";
-import { evaluatePatch } from "@/ui/core3-playground/eval-patch";
+import { evaluatePatch } from "@/core3/eval-patch";
 import { describe, expect, it } from "vitest";
 
 const SR = 48000;
