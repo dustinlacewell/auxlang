@@ -9,7 +9,9 @@ import { coastlineExample } from "@/ui/editor/examples/coastline";
 import { crossFmExample } from "@/ui/editor/examples/cross-fm";
 import { drumsExample } from "@/ui/editor/examples/drums";
 import type { Example } from "@/ui/editor/examples/example";
+import { fMinorHouseExample } from "@/ui/editor/examples/f-minor-house";
 import { firstSoundExample } from "@/ui/editor/examples/first-sound";
+import { fourChordsExample } from "@/ui/editor/examples/four-chords";
 import { karplusExample } from "@/ui/editor/examples/karplus";
 import { liveControlsExample } from "@/ui/editor/examples/live-controls";
 import { liveModuleExample } from "@/ui/editor/examples/live-module";
@@ -31,6 +33,8 @@ import { wideSawsExample } from "@/ui/editor/examples/wide-saws";
 
 export const EXAMPLES: readonly Example[] = [
 	smokeSignalExample,
+	fourChordsExample,
+	fMinorHouseExample,
 	puttinOnTheRitzExample,
 	coastlineExample,
 	mirrorCanonExample,
