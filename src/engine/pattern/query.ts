@@ -9,36 +9,57 @@
  * `ctx.path` is a stable integer identity for the current AST position: it
  * mixes (op, childIndex) on every descent. `degrade` rolls hash01(seed, path,
  * whole.begin) once per event — scrub-safe, thread-identical.
+ *
+ * Per-op semantics live in sibling files by family: query-time (time
+ * warping: fast/slow/rev/iter/ply/swing/clip), query-structure (stack,
+ * polymeter, the cat family, every), query-masks (euclid, degrade, mask,
+ * struct, chunk, sometimesBy), query-signal (segment, the continuous
+ * generators), query-steps (tie, voices, with, chordidx). This file holds
+ * the dispatch (`queryCycle`) and the helpers more than one family shares.
  */
 
 import { randomFunctions } from "../dsp/bind-random/random-functions";
-import type { Layer, Pat, PatOp, RecordField, SignalKind, StepLayer, WChild } from "./ast";
-import { bjorklund } from "./bjorklund";
+import type { Pat, PatOp, StepLayer } from "./ast";
 import type { Ev, EvKind, Span } from "./event";
-import { isOnset, laneOf, startsHere } from "./event";
-import { hash01 } from "./random";
+import { laneOf, startsHere } from "./event";
+import { queryChunk, queryDegrade, queryEuclid, queryMask, querySometimes, queryStruct } from "./query-masks";
+import { querySegment, querySignal } from "./query-signal";
+import { queryChordIdx, queryPackedVoices, queryTie, queryWith } from "./query-steps";
+import {
+	queryEvery,
+	queryFastcat,
+	queryPolymeter,
+	querySlowcat,
+	queryStack,
+	queryTimecat,
+} from "./query-structure";
+import {
+	queryClip,
+	queryIter,
+	queryPly,
+	queryRev,
+	queryScaled,
+	queryShifted,
+	querySwing,
+} from "./query-time";
 import {
 	type R,
 	R0,
 	R1,
 	r,
 	radd,
-	rcmp,
 	rdiv,
 	req,
 	rfloor,
 	rlt,
-	rlte,
 	rmax,
 	rmin,
 	rmul,
 	rsub,
-	rtof,
 } from "./rational";
 import { locateStep } from "./step-locate";
 import { inLayer, stepOnsets } from "./step-onsets";
 import { type HistoryPolicy, type HistoryRead, historyVoices } from "./voices/history-voices";
-import { width } from "./widths";
 
 const { avalanche } = randomFunctions;
 
@@ -194,19 +215,20 @@ const OP_CODE: Record<PatOp, number> = {
 	with: 38, // descended into for its fields only
 };
 
-function descend(ctx: QueryCtx, op: PatOp, index: number): QueryCtx {
+export function descend(ctx: QueryCtx, op: PatOp, index: number): QueryCtx {
 	const mixed = avalanche(Math.imul(ctx.path | 0, 0x9e3779b1) ^ (OP_CODE[op] * 131 + index));
 	return { seed: ctx.seed, path: mixed | 0 };
 }
 
 // ---------------------------------------------------------------------------
-// Time warping
+// Time warping — shared by query-time, query-structure (slowcat) and the
+// weighted-slot helper below
 // ---------------------------------------------------------------------------
 
-type TimeMap = (t: R) => R;
+export type TimeMap = (t: R) => R;
 
 /** Query the child under a bijective time map; map results back. */
-function warp(child: Pat, span: Span, ctx: QueryCtx, toChild: TimeMap, toParent: TimeMap): Ev[] {
+export function warp(child: Pat, span: Span, ctx: QueryCtx, toChild: TimeMap, toParent: TimeMap): Ev[] {
 	const childSpan = { begin: toChild(span.begin), end: toChild(span.end) };
 	return query(child, childSpan, ctx).map((ev) => mapEvTime(ev, toParent));
 }
@@ -219,74 +241,62 @@ function mapEvTime(ev: Ev, f: TimeMap): Ev {
 	};
 }
 
-function queryScaled(factor: R, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	return warp(
-		child,
-		span,
-		ctx,
-		(t) => rmul(t, factor),
-		(t) => rdiv(t, factor),
-	);
-}
-
-function queryShifted(amount: R, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	return warp(
-		child,
-		span,
-		ctx,
-		(t) => radd(t, amount),
-		(t) => rsub(t, amount),
-	);
-}
-
-const HALF = r(1, 2);
-const TWO = r(2);
+// ---------------------------------------------------------------------------
+// Weighted subdivision slot — shared by query-structure (fastcat, timecat)
+// and query-masks (euclid)
+// ---------------------------------------------------------------------------
 
 /**
- * Swing: inside each of n slots per cycle, time is bent so the slot's
- * midpoint lands at `mid = (1 + amount) / 2`. The first half stretches and the
- * second squeezes, so an off-beat onset lands where Strudel's swingBy puts
- * it, while slot edges stay put: no event gains an overlap or a gap, and
- * width, ties and slides are unchanged.
+ * Weighted subdivision slot. The cycle is divided proportionally to weights;
+ * each slot squeezes its child so the child sees the slot as the full current
+ * cycle (local cycle = global cycle).
  */
-function querySwing(amount: R, n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	const mid = rdiv(radd(R1, amount), TWO);
-	return warp(
-		child,
-		span,
-		ctx,
-		(t) => inSlots(t, n, (v) => straightAt(v, mid)),
-		(t) => inSlots(t, n, (u) => swungAt(u, mid)),
-	);
+export interface Slot {
+	readonly pat: Pat;
+	readonly weight: R;
+	readonly pathIndex: number;
 }
 
-/** Apply `f` to t's position inside its 1/n slot. */
-function inSlots(t: R, n: number, f: TimeMap): R {
-	const scaled = rmul(t, r(n));
-	const slot = r(rfloor(scaled));
-	return rdiv(radd(slot, f(rsub(scaled, slot))), r(n));
-}
-
-/** A straight slot position u to its swung place: [0, ½) → [0, mid), [½, 1) → [mid, 1). */
-function swungAt(u: R, mid: R): R {
-	return rlt(u, HALF)
-		? rmul(u, rmul(TWO, mid))
-		: radd(mid, rmul(rsub(u, HALF), rmul(TWO, rsub(R1, mid))));
-}
-
-/** The inverse of swungAt. */
-function straightAt(v: R, mid: R): R {
-	return rlt(v, mid)
-		? rdiv(v, rmul(TWO, mid))
-		: radd(HALF, rdiv(rsub(v, mid), rmul(TWO, rsub(R1, mid))));
+export function querySlots(slots: readonly Slot[], span: Span, ctx: QueryCtx, op: PatOp): Ev[] {
+	const total = slots.reduce((acc, s) => radd(acc, s.weight), R0);
+	const cycleStart = r(rfloor(span.begin));
+	const out: Ev[] = [];
+	let cursor = R0;
+	for (const slot of slots) {
+		const next = radd(cursor, slot.weight);
+		const slotBegin = radd(cycleStart, rdiv(cursor, total));
+		const slotEnd = radd(cycleStart, rdiv(next, total));
+		const begin = rmax(span.begin, slotBegin);
+		const end = rmin(span.end, slotEnd);
+		if (rlt(begin, end)) {
+			const scale = rdiv(total, slot.weight);
+			const toLocal: TimeMap = (t) => radd(cycleStart, rmul(rsub(t, slotBegin), scale));
+			const toGlobal: TimeMap = (t) => radd(slotBegin, rdiv(rsub(t, cycleStart), scale));
+			out.push(
+				...warp(slot.pat, { begin, end }, descend(ctx, op, slot.pathIndex), toLocal, toGlobal),
+			);
+		}
+		cursor = next;
+	}
+	return out;
 }
 
 // ---------------------------------------------------------------------------
-// Per-op semantics
+// Lane helper — shared by query-structure (stack, polymeter) and query-masks
+// (chunk)
+// ---------------------------------------------------------------------------
+
+export function shiftLanes(evs: Ev[], offset: number): Ev[] {
+	return offset === 0 ? evs : evs.map((ev) => ({ ...ev, lane: laneOf(ev) + offset }));
+}
+
+// ---------------------------------------------------------------------------
+// Event leaves — shared by queryCycle's own pure/rest cases and query-steps
+// (tie)
 // ---------------------------------------------------------------------------
 
 /** One event whose whole is the span's cycle. */
-function cycleEvent(span: Span, value: number, kind: EvKind, lane?: number): Ev {
+export function cycleEvent(span: Span, value: number, kind: EvKind, lane?: number): Ev {
 	const cycle = rfloor(span.begin);
 	const whole = { begin: r(cycle), end: r(cycle + 1) };
 	return lane === undefined ? { whole, part: span, value, kind } : { whole, part: span, value, kind, lane };
@@ -297,12 +307,34 @@ function sited(ev: Ev, site: number | undefined): Ev {
 	return site === undefined ? ev : { ...ev, site };
 }
 
-/** A tie in each lane, so a chord ties in every lane. A tie has no value of its own. */
-function queryTie(lanes: number, span: Span): Ev[] {
-	return Array.from({ length: lanes }, (_, lane) =>
-		cycleEvent(span, 0, "tie", lane === 0 ? undefined : lane),
-	);
+/** The same event as a rest: its slot stays, its gate is off. */
+export const asRest = (ev: Ev): Ev => (ev.kind === "rest" ? ev : { ...ev, kind: "rest" });
+
+// ---------------------------------------------------------------------------
+// Sampling — shared by query-masks (struct) and query-signal (segment)
+// ---------------------------------------------------------------------------
+
+/** The sounding event of a pattern at a single instant, or null when a rest, a tie, or nothing is there. */
+export function sampleAt(pat: Pat, at: R, ctx: QueryCtx): Ev | null {
+	const evs = query(pat, { begin: at, end: radd(at, r(1, 1_000_000)) }, ctx);
+	const ev = evs[evs.length - 1];
+	return ev !== undefined && (ev.kind === "note" || ev.kind === "slide") ? ev : null;
 }
+
+/** A fresh note with a sampled event's value and record fields. */
+export function sampledNote(base: Pick<Ev, "whole" | "part" | "lane">, sampled: Ev): Ev {
+	return {
+		...base,
+		value: sampled.value,
+		kind: "note",
+		...(sampled.fields !== undefined ? { fields: sampled.fields } : {}),
+	};
+}
+
+// ---------------------------------------------------------------------------
+// queryCycle's own leaf cases (slide, steps, add/mul, voices history): each
+// is used by exactly one switch arm above, so it stays local to the dispatch.
+// ---------------------------------------------------------------------------
 
 /** The child's notes become slides; rests and ties keep their kind. */
 function querySlide(child: Pat, span: Span, ctx: QueryCtx): Ev[] {
@@ -342,40 +374,8 @@ function querySteps(layers: readonly StepLayer[], child: Pat, span: Span, ctx: Q
 	return out;
 }
 
-/** The same event as a rest: its slot stays, its gate is off. */
-const asRest = (ev: Ev): Ev => (ev.kind === "rest" ? ev : { ...ev, kind: "rest" });
-
-/** Simultaneous children; each child's lanes sit above the lanes of the children before it. */
-function queryStack(children: readonly Pat[], span: Span, ctx: QueryCtx): Ev[] {
-	const out: Ev[] = [];
-	let offset = 0;
-	children.forEach((child, i) => {
-		out.push(...shiftLanes(query(child, span, descend(ctx, "stack", i)), offset));
-		offset += width(child);
-	});
-	return out;
-}
-
-/**
- * Layers played together, lanes stacked like `stack`. Each layer runs at the
- * first layer's steps per cycle, so a layer of `k` steps is sped up by
- * `steps / k`.
- */
-function queryPolymeter(layers: readonly Layer[], span: Span, ctx: QueryCtx): Ev[] {
-	const steps = (layers[0] as Layer).steps;
-	const out: Ev[] = [];
-	let offset = 0;
-	layers.forEach((layer, i) => {
-		const factor = rdiv(steps, layer.steps);
-		const evs = queryScaled(factor, layer.pat, span, descend(ctx, "polymeter", i));
-		out.push(...shiftLanes(evs, offset));
-		offset += width(layer.pat);
-	});
-	return out;
-}
-
-function shiftLanes(evs: Ev[], offset: number): Ev[] {
-	return offset === 0 ? evs : evs.map((ev) => ({ ...ev, lane: laneOf(ev) + offset }));
+function mapValues(child: Pat, span: Span, ctx: QueryCtx, f: (v: number) => number): Ev[] {
+	return query(child, span, ctx).map((ev) => ({ ...ev, value: f(ev.value) }));
 }
 
 /**
@@ -399,368 +399,4 @@ export function historyRead(
 		path: ctx.path,
 		queryChild: (span) => query(pat.child, span, ctx),
 	};
-}
-
-function queryPackedVoices(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	const evs = query(child, span, ctx);
-	for (const ev of evs) {
-		if (laneOf(ev) >= n) {
-			throw new Error(
-				`voices: an event landed in lane ${laneOf(ev)}, but there are only ${n} lanes`,
-			);
-		}
-	}
-	return evs;
-}
-
-/**
- * Weighted subdivision slot. The cycle is divided proportionally to weights;
- * each slot squeezes its child so the child sees the slot as the full current
- * cycle (local cycle = global cycle).
- */
-interface Slot {
-	readonly pat: Pat;
-	readonly weight: R;
-	readonly pathIndex: number;
-}
-
-function querySlots(slots: readonly Slot[], span: Span, ctx: QueryCtx, op: PatOp): Ev[] {
-	const total = slots.reduce((acc, s) => radd(acc, s.weight), R0);
-	const cycleStart = r(rfloor(span.begin));
-	const out: Ev[] = [];
-	let cursor = R0;
-	for (const slot of slots) {
-		const next = radd(cursor, slot.weight);
-		const slotBegin = radd(cycleStart, rdiv(cursor, total));
-		const slotEnd = radd(cycleStart, rdiv(next, total));
-		const begin = rmax(span.begin, slotBegin);
-		const end = rmin(span.end, slotEnd);
-		if (rlt(begin, end)) {
-			const scale = rdiv(total, slot.weight);
-			const toLocal: TimeMap = (t) => radd(cycleStart, rmul(rsub(t, slotBegin), scale));
-			const toGlobal: TimeMap = (t) => radd(slotBegin, rdiv(rsub(t, cycleStart), scale));
-			out.push(
-				...warp(slot.pat, { begin, end }, descend(ctx, op, slot.pathIndex), toLocal, toGlobal),
-			);
-		}
-		cursor = next;
-	}
-	return out;
-}
-
-function queryFastcat(children: readonly Pat[], span: Span, ctx: QueryCtx): Ev[] {
-	const slots = children.map((pat, i) => ({ pat, weight: R1, pathIndex: i }));
-	return querySlots(slots, span, ctx, "fastcat");
-}
-
-function queryTimecat(children: readonly WChild[], span: Span, ctx: QueryCtx): Ev[] {
-	const slots = children.map((wc, i) => ({ pat: wc.pat, weight: wc.weight, pathIndex: i }));
-	return querySlots(slots, span, ctx, "timecat");
-}
-
-function querySlowcat(children: readonly Pat[], span: Span, ctx: QueryCtx): Ev[] {
-	const n = children.length;
-	const cycle = rfloor(span.begin);
-	const index = ((cycle % n) + n) % n;
-	const child = children[index];
-	if (!child) return [];
-	// The child sees a contiguous cycle count so inner alternations advance.
-	const innerCycle = Math.floor(cycle / n);
-	const offset = r(cycle - innerCycle);
-	return warp(
-		child,
-		span,
-		descend(ctx, "slowcat", index),
-		(t) => rsub(t, offset),
-		(t) => radd(t, offset),
-	);
-}
-
-function queryRev(child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	const cycle = rfloor(span.begin);
-	const reflect: TimeMap = (t) => rsub(r(2 * cycle + 1), t);
-	const childSpan = { begin: reflect(span.end), end: reflect(span.begin) };
-	// Reflection reverses time, so it also reverses emission order; restore
-	// part-onset order so consumers see events front-to-back.
-	return query(child, childSpan, ctx)
-		.map((ev) => ({
-			...ev,
-			whole: ev.whole ? { begin: reflect(ev.whole.end), end: reflect(ev.whole.begin) } : null,
-			part: { begin: reflect(ev.part.end), end: reflect(ev.part.begin) },
-		}))
-		.sort((a, b) => rcmp(a.part.begin, b.part.begin));
-}
-
-function queryIter(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	const cycle = rfloor(span.begin);
-	const step = ((cycle % n) + n) % n;
-	return queryShifted(r(step, n), child, span, ctx);
-}
-
-function queryPly(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	const out: Ev[] = [];
-	for (const ev of query(child, span, ctx)) {
-		if (!ev.whole) {
-			out.push(ev);
-			continue;
-		}
-		const step = rdiv(rsub(ev.whole.end, ev.whole.begin), r(n));
-		for (let i = 0; i < n; i++) {
-			const wholeBegin = radd(ev.whole.begin, rmul(step, r(i)));
-			const wholeEnd = radd(wholeBegin, step);
-			const partBegin = rmax(wholeBegin, ev.part.begin);
-			const partEnd = rmin(wholeEnd, ev.part.end);
-			if (!rlt(partBegin, partEnd)) continue;
-			out.push({
-				...ev,
-				whole: { begin: wholeBegin, end: wholeEnd },
-				part: { begin: partBegin, end: partEnd },
-				// Only the first copy slides in; the repeats retrigger.
-				kind: ev.kind === "slide" && i > 0 ? "note" : ev.kind,
-			});
-		}
-	}
-	return out;
-}
-
-function queryEuclid(
-	pat: { readonly k: number; readonly steps: number; readonly rot: number; readonly child: Pat },
-	span: Span,
-	ctx: QueryCtx,
-): Ev[] {
-	const mask = bjorklund(pat.k, pat.steps);
-	const empty: Pat = { op: "rest" };
-	const slots = mask.map((_, i) => ({
-		pat: mask[(((i + pat.rot) % pat.steps) + pat.steps) % pat.steps] ? pat.child : empty,
-		weight: R1,
-		pathIndex: 0, // one child, one identity — every active slot shares it
-	}));
-	return querySlots(slots, span, ctx, "euclid");
-}
-
-function queryDegrade(prob: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	// One roll per event, keyed by its absolute onset (whole.begin as n/d);
-	// that onset already encodes the cycle, so events within a cycle roll
-	// independently. KEEP when hash >= prob, else the slot stays as a rest.
-	// Scrub-safe, thread-identical.
-	return query(child, span, descend(ctx, "degrade", 0)).map((ev) => {
-		const at = ev.whole ? ev.whole.begin : ev.part.begin;
-		return hash01(ctx.seed, ctx.path, at.n, at.d) >= prob ? ev : asRest(ev);
-	});
-}
-
-function mapValues(child: Pat, span: Span, ctx: QueryCtx, f: (v: number) => number): Ev[] {
-	return query(child, span, ctx).map((ev) => ({ ...ev, value: f(ev.value) }));
-}
-
-/**
- * Each child event gains the value of each field's event that holds its
- * onset; a field whose pattern rests (or ties) there is left out. Field i
- * queries at path index i + 1.
- */
-function queryWith(fields: readonly RecordField[], child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	return query(child, span, ctx).map((ev) => {
-		const at = (ev.whole ?? ev.part).begin;
-		const own: Record<string, number> = {};
-		fields.forEach((field, i) => {
-			const value = fieldAt(field.pat, at, descend(ctx, "with", i + 1));
-			if (value !== null) own[field.name] = value;
-		});
-		return Object.keys(own).length === 0 ? ev : { ...ev, fields: { ...ev.fields, ...own } };
-	});
-}
-
-/** The value of `pat`'s note or slide whose whole holds `at`; null when none does. */
-function fieldAt(pat: Pat, at: R, ctx: QueryCtx): number | null {
-	const evs = query(pat, { begin: at, end: radd(at, r(1, 1_000_000)) }, ctx);
-	for (let i = evs.length - 1; i >= 0; i--) {
-		const ev = evs[i] as Ev;
-		const holds = ev.whole === null || rlte(ev.whole.begin, at);
-		if (holds && (ev.kind === "note" || ev.kind === "slide")) return ev.value;
-	}
-	return null;
-}
-
-function queryEvery(n: number, child: Pat, transformed: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	const cycle = rfloor(span.begin);
-	const active = ((cycle % n) + n) % n === 0;
-	return active
-		? query(transformed, span, descend(ctx, "every", 1))
-		: query(child, span, descend(ctx, "every", 0));
-}
-
-// ---------------------------------------------------------------------------
-// Boolean-driven ops, sampling, and continuous signals
-// ---------------------------------------------------------------------------
-
-/** The sounding event of a pattern at a single instant, or null when a rest, a tie, or nothing is there. */
-function sampleAt(pat: Pat, at: R, ctx: QueryCtx): Ev | null {
-	const evs = query(pat, { begin: at, end: radd(at, r(1, 1_000_000)) }, ctx);
-	const ev = evs[evs.length - 1];
-	return ev !== undefined && (ev.kind === "note" || ev.kind === "slide") ? ev : null;
-}
-
-/** A fresh note with a sampled event's value and record fields. */
-function sampledNote(base: Pick<Ev, "whole" | "part" | "lane">, sampled: Ev): Ev {
-	return {
-		...base,
-		value: sampled.value,
-		kind: "note",
-		...(sampled.fields !== undefined ? { fields: sampled.fields } : {}),
-	};
-}
-
-/** A bool pattern's "true" mark is any onset with a nonzero value. */
-function trueSpans(bool: Pat, span: Span, ctx: QueryCtx): Span[] {
-	return query(bool, span, ctx)
-		.filter((ev) => isOnset(ev) && ev.value !== 0 && ev.whole !== null)
-		.map((ev) => ev.whole as Span);
-}
-
-/** Child events whose onset lands outside a true region of bool become rests. */
-function queryMask(bool: Pat, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	const spans = trueSpans(bool, span, descend(ctx, "mask", 0));
-	const inside = (t: R) => spans.some((s) => rlte(s.begin, t) && rlt(t, s.end));
-	return query(child, span, descend(ctx, "mask", 1)).map((ev) =>
-		inside(ev.part.begin) ? ev : asRest(ev),
-	);
-}
-
-/** A note at each true bool step, sampling child's value there; a rest at each other bool step. */
-function queryStruct(bool: Pat, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	const out: Ev[] = [];
-	for (const ev of query(bool, span, descend(ctx, "struct", 0))) {
-		if (!startsHere(ev) || ev.whole === null) continue;
-		const sampled = isOnset(ev) && ev.value !== 0 ? sampleAt(child, ev.part.begin, descend(ctx, "struct", 1)) : null;
-		const base = { whole: ev.whole, part: ev.part, ...(ev.lane !== undefined ? { lane: ev.lane } : {}) };
-		out.push(sampled === null ? { ...base, value: 0, kind: "rest" } : sampledNote(base, sampled));
-	}
-	return out;
-}
-
-/** Sample child into n equal steps per cycle (sample-and-hold at each step); an unsounding sample is a rest. */
-function querySegment(n: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	const cycle = rfloor(span.begin);
-	const out: Ev[] = [];
-	for (let i = 0; i < n; i++) {
-		const begin = radd(r(cycle), r(i, n));
-		const end = radd(r(cycle), r(i + 1, n));
-		const b = rmax(span.begin, begin);
-		const e = rmin(span.end, end);
-		if (!rlt(b, e)) continue;
-		const sampled = sampleAt(child, begin, descend(ctx, "segment", 0));
-		const whole = { begin, end };
-		const part = { begin: b, end: e };
-		out.push(sampled === null ? { whole, part, value: 0, kind: "rest" } : sampledNote({ whole, part }, sampled));
-	}
-	return out;
-}
-
-/** Shrink each event's whole to `factor` of its length (gate/note length). */
-function queryClip(factor: number, child: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	const f = asR01(factor);
-	return query(child, span, ctx).map((ev) => {
-		if (!ev.whole) return ev;
-		const len = rsub(ev.whole.end, ev.whole.begin);
-		const end = radd(ev.whole.begin, rmul(len, f));
-		return { ...ev, whole: { begin: ev.whole.begin, end } };
-	});
-}
-
-/** every(n) with a rotating slice: cycle c transforms slice (c % n) of n. */
-function queryChunk(n: number, child: Pat, transformed: Pat, span: Span, ctx: QueryCtx): Ev[] {
-	const cycle = rfloor(span.begin);
-	const active = ((cycle % n) + n) % n;
-	const sliceBegin = radd(r(cycle), r(active, n));
-	const sliceEnd = radd(r(cycle), r(active + 1, n));
-	const inSlice = (t: R) => rlte(sliceBegin, t) && rlt(t, sliceEnd);
-	const base = query(child, span, descend(ctx, "chunk", 0)).filter((ev) => !inSlice(ev.part.begin));
-	// Transformed lanes sit above the child's: a child event can ring on into the slice.
-	const trans = shiftLanes(
-		query(transformed, span, descend(ctx, "chunk", 1)).filter((ev) => inSlice(ev.part.begin)),
-		width(child),
-	);
-	return [...base, ...trans].sort((a, b) => rcmp(a.part.begin, b.part.begin));
-}
-
-/** Per event, use transformed's value, kind and record fields with probability prob (seeded), else child. */
-function querySometimes(
-	prob: number,
-	child: Pat,
-	transformed: Pat,
-	span: Span,
-	ctx: QueryCtx,
-): Ev[] {
-	const transEvs = query(transformed, span, descend(ctx, "sometimesBy", 1));
-	return query(child, span, descend(ctx, "sometimesBy", 0)).map((ev) => {
-		const at = ev.whole ? ev.whole.begin : ev.part.begin;
-		if (hash01(ctx.seed, ctx.path, at.n, at.d) >= prob) return ev;
-		const match = transEvs.find((t) => rcmp(t.part.begin, ev.part.begin) === 0);
-		if (!match) return ev;
-		const { fields: _child, ...rest } = ev;
-		const fields = match.fields === undefined ? {} : { fields: match.fields };
-		return { ...rest, value: match.value, kind: match.kind, ...fields };
-	});
-}
-
-/** Continuous generator sampled at the queried point's onset. */
-function querySignal(kind: SignalKind, span: Span, ctx: QueryCtx): Ev[] {
-	const value = signalValue(kind, span.begin, ctx);
-	return [{ whole: null, part: span, value, kind: "note" }];
-}
-
-function signalValue(kind: SignalKind, at: R, ctx: QueryCtx): number {
-	const t = rtof(at);
-	switch (kind) {
-		case "rand":
-			// S&H per queried instant: hash the rational position so segment(n)
-			// and struct sample distinct values within a cycle (like degrade).
-			return hash01(ctx.seed, ctx.path, at.n, at.d);
-		case "perlin":
-			return perlin1(ctx.seed, ctx.path, t);
-		case "sine":
-			return 0.5 + 0.5 * Math.sin(2 * Math.PI * t);
-		case "saw":
-			return t - Math.floor(t);
-		case "isaw":
-			return 1 - (t - Math.floor(t));
-		case "tri": {
-			const p = t - Math.floor(t);
-			return p < 0.5 ? p * 2 : 2 - p * 2;
-		}
-		default:
-			return 0;
-	}
-}
-
-/** Value-noise 1D: smoothstep-interpolated hash at integer lattice points. */
-function perlin1(seed: number, path: number, t: number): number {
-	const i = Math.floor(t);
-	const f = t - i;
-	const a = hash01(seed, path, i);
-	const b = hash01(seed, path, i + 1);
-	const s = f * f * (3 - 2 * f);
-	return a + (b - a) * s;
-}
-
-const asR01 = (x: number): R => r(Math.min(Math.max(x, 0), 1) * 1_000_000, 1_000_000);
-
-/** Map integer index events onto the active slot's chord-tone table. */
-function queryChordIdx(
-	tables: readonly (readonly number[])[],
-	per: number,
-	child: Pat,
-	span: Span,
-	ctx: QueryCtx,
-): Ev[] {
-	const cycle = rfloor(span.begin);
-	const slot = Math.floor(cycle / per) % tables.length;
-	const table = tables[((slot % tables.length) + tables.length) % tables.length] as readonly number[];
-	const len = table.length;
-	return query(child, span, descend(ctx, "chordidx", 0)).map((ev) => {
-		const i = Math.round(ev.value);
-		const octave = Math.floor(i / len);
-		const tone = table[((i % len) + len) % len] as number;
-		return { ...ev, value: tone + 12 * octave };
-	});
 }
