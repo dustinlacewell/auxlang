@@ -8,7 +8,7 @@
 
 import "@/engine/library/all";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { slotOf } from "@/engine/runtime/output-slots";
 import { prepareWasm } from "@/engine/wasm/host/prepare-wasm";
@@ -22,7 +22,7 @@ const PATCH = "tempo(120)\nsin(p`[60, 64]`).out()";
 /** The first value slot that differs, rendering one sample at a time, or null. */
 function firstDifference(samples: number): string | null {
 	const program = evalPatch(PATCH);
-	const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
+	const js = new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program));
 	const prepared = prepareWasm(program, SR);
 	const wasm = new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared);
 	const l = new Float32Array(1);

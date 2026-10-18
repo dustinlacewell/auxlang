@@ -1,6 +1,6 @@
 /**
  * The doc snippets (src/tests/engine/snippets.ts) — every runnable block in README.md,
- * MANIFESTO.md, and docs/user-guide.md — must never rot: each is a real core3
+ * MANIFESTO.md, and docs/user-guide.md — must never rot: each is a real
  * patch, so it must compile through the eval path and render 2 s finite and
  * bounded. `audible` snippets must additionally clear 0.005 RMS. This is the
  * same bar and the same eval path the pattern/module-docs tests use, so

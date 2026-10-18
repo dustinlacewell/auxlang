@@ -1,7 +1,7 @@
 /**
  * Freeverb-style algorithmic reverb: 8 parallel damped comb filters summed,
  * then 4 series allpasses to diffuse the tail. Mono in, mono out — pan it (or
- * run two instances) for stereo width, same as every other core3 effect.
+ * run two instances) for stereo width, same as every other effect.
  * Comb/allpass delay lengths are the classic Freeverb tuning (in samples at
  * 44.1 kHz), rescaled to the actual sample rate in state().
  */

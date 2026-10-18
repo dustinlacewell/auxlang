@@ -1,6 +1,6 @@
 /**
  * auxlang's random library (random/lib) is one text for every backend. Its
- * host build gives the streams and hashes core3 has always given (the
+ * host build gives the streams and hashes the engine has always given (the
  * reference implementations below are the TypeScript it replaced), and its
  * WASM build gives the same bits as its host build.
  */
@@ -13,7 +13,7 @@ import { RANDOM_HELPER_PREFIX } from "@/engine/dsp/bind-random/random-helpers";
 import type { ArgShape } from "@/engine/wasm/compile/emit-context";
 import { exportFunctions } from "../wasm/function-module";
 
-/** The xorshift32 step core3 drew `Math.random()` from before random/lib. */
+/** The xorshift32 step the engine drew `Math.random()` from before random/lib. */
 function referenceNext(x0: number): number {
 	let x = x0;
 	x ^= x << 13;

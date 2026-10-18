@@ -14,7 +14,7 @@ import { factory, loop, runProgram, seq } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
 import { defpatch } from "@/engine/patch/defpatch";
 import type { Handle } from "@/engine/patch/handle-data";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { match } from "@/engine/runtime/match";
 import type { EngineState, Program } from "@/engine/types";
@@ -24,8 +24,8 @@ const SR = 48000;
 const saw = factory("saw");
 const lfo = factory("lfo");
 
-function engine(program: Program, prev?: EngineState): Core3Engine {
-	return new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program), prev);
+function engine(program: Program, prev?: EngineState): InterpreterEngine {
+	return new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program), prev);
 }
 
 function render(program: Program, samples = 2400): number[] {
@@ -39,7 +39,7 @@ function render(program: Program, samples = 2400): number[] {
 	return out;
 }
 
-function run(e: Core3Engine, samples: number): number[] {
+function run(e: InterpreterEngine, samples: number): number[] {
 	const frame = new Float32Array(2);
 	const out: number[] = [];
 	for (let k = 0; k < samples; k++) {

@@ -1,5 +1,5 @@
 /**
- * Shared contract types for core3. All tracks build against these.
+ * Shared contract types for the engine. All tracks build against these.
  * See llm/platonic.md (the spec) and llm/platonic-impl.md (track boundaries).
  */
 

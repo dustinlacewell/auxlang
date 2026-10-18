@@ -1,7 +1,7 @@
 /**
  * Every example/case .js file under src/tests/patterns/cases and
  * src/tests/interactive/cases (the raw patch sources backing the pattern- and
- * interactive-test UIs) must compile through the real core3 eval path, same as
+ * interactive-test UIs) must compile through the real eval path, same as
  * the site/module-docs examples. Nothing else runs these files today.
  */
 
@@ -19,7 +19,7 @@ const CASE_ROOTS = [
 	join(__dirname, "../../interactive/cases"),
 ];
 
-/** Known-broken case files (fail today against the current core3 API; not fixed here). */
+/** Known-broken case files (fail today against the current API; not fixed here). */
 const SKIP: Record<string, string> = {};
 
 function findJsFiles(dir: string): string[] {

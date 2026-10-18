@@ -10,7 +10,7 @@ import "@/engine/library/all";
 
 import { getRegistry } from "@/engine/dsp/define";
 import { BUILD_BUDGET } from "@/engine/runtime/build/build-budget";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { HostPrepared } from "@/engine/runtime/prepare/host-prepared";
 import { prepareWasmProgram } from "@/engine/runtime/prepare/prepare-wasm-program";
@@ -72,11 +72,11 @@ export class Session {
 
 /** The offline interpreter over the same samples: `before` for `head`, then `after` continuing it. */
 export function offline(before: Program, after: Program, head: number, tail: number) {
-	const first = new Core3Engine(before, SR, withProgramSpecs(getRegistry(), before));
+	const first = new InterpreterEngine(before, SR, withProgramSpecs(getRegistry(), before));
 	const headL = new Float32Array(head);
 	const headR = new Float32Array(head);
 	first.renderBlock(headL, headR, 0, head);
-	const second = new Core3Engine(
+	const second = new InterpreterEngine(
 		after,
 		SR,
 		withProgramSpecs(getRegistry(), after),

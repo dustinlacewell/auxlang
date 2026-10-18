@@ -1,6 +1,6 @@
-# Auxlang User Guide (core3)
+# Auxlang User Guide
 
-A systematic guide to writing patches in core3.
+A systematic guide to writing patches.
 
 ---
 

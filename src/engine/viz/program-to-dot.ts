@@ -1,5 +1,5 @@
 /**
- * Render a compiled core3 Program as Graphviz DOT. Nodes share one neutral
+ * Render a compiled Program as Graphviz DOT. Nodes share one neutral
  * chip fill; the label carries the identity — module name in its category's
  * color (`out` in white), with (×width) only when polyphony widened the node.
  * Edges take the color of the unit flowing through them (the source output

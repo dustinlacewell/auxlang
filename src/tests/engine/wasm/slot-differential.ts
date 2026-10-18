@@ -6,7 +6,7 @@
 
 import "@/engine/library/all";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { slotOf } from "@/engine/runtime/output-slots";
 import type { Program } from "@/engine/types";
@@ -16,7 +16,7 @@ import { WasmEngine } from "@/engine/wasm/host/wasm-engine";
 const SR = 48000;
 
 export function firstSlotDifference(program: Program, samples: number): string | null {
-	const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
+	const js = new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program));
 	const prepared = prepareWasm(program, SR);
 	const wasm = new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared);
 	const l = new Float32Array(1);
@@ -46,7 +46,7 @@ export function interpreterSeries(
 	port: string,
 	samples: number,
 ): number[] {
-	const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
+	const js = new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program));
 	const l = new Float32Array(1);
 	const r = new Float32Array(1);
 	const series: number[] = [];

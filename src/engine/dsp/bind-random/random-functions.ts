@@ -2,7 +2,7 @@
  * auxlang's random library as host functions, built from the same helper
  * text a tick runs, by the same `new Function` path. The pattern engine, the
  * stream seeds and the host `hashRandom` call these, so every random value
- * in core3 comes from one source.
+ * comes from one source.
  */
 
 import { RANDOM_HELPER_PREFIX, randomFunctionNames, randomHelpers } from "./random-helpers";

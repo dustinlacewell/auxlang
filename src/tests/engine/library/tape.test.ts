@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import "@/engine/library/all";
 import { getModule, getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";
 import { evalPatch } from "@/engine/eval-patch";
@@ -167,7 +167,7 @@ s.tape({ mix: 1, feedback: 0, wow: 0, flutter: 1 }).out()`,
 
 /** Each tape node's output for one second. */
 function tapeTaps(program: Program): number[][] {
-	const e = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
+	const e = new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program));
 	const sites = program.nodes.flatMap((n, i) => (n.module === "tape" ? [i] : []));
 	const series = sites.map(() => [] as number[]);
 	const frame = new Float32Array(2);

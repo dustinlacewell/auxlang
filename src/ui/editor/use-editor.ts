@@ -1,5 +1,5 @@
 /**
- * Core3 editor controller: owns the code, playing state, the seed shown, and
+ * Editor controller: owns the code, playing state, the seed shown, and
  * the verbatim eval/compile error. `run` evaluates the patch under the play
  * session's seed (a patch's own seed(n) wins) and hands the Program to the
  * audio host — re-running while playing is a crossfade swap in the worklet,
@@ -29,7 +29,7 @@ import { codeFromUrl } from "./share-url";
 /** Debounce for the silent preview eval that keeps widgets live while stopped. */
 const PREVIEW_DEBOUNCE_MS = 300;
 
-interface Core3EditorState {
+interface EditorState {
 	code: string;
 	setCode: (code: string) => void;
 	error: string | null;
@@ -46,7 +46,7 @@ interface Core3EditorState {
 	ensureSlotSite: (site: number) => Promise<void>;
 }
 
-export function useCore3Editor(initialCode: string): Core3EditorState {
+export function useEditor(initialCode: string): EditorState {
 	const [code, setCode] = useState(() => codeFromUrl() ?? initialCode);
 	const [error, setError] = useState<string | null>(null);
 	const [isPlaying, setIsPlaying] = useState(false);

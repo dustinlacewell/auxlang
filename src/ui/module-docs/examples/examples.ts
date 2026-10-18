@@ -1,6 +1,6 @@
 /**
  * The whole content of the module-docs page, as DATA. Every entry is a real
- * core3 patch string that compiles through the eval path and renders 2 s
+ * patch string that compiles through the eval path and renders 2 s
  * non-silent, bounded, finite — the scratch script and the vitest test both
  * hold this file to that bar so the docs can never rot.
  *

@@ -1,6 +1,6 @@
 /**
  * One shared audio host for the whole page. Run compiles the card's patch and
- * swaps it into the single worklet via core3's `play()` (which crossfades);
+ * swaps it into the single worklet via the engine's `play()` (which crossfades);
  * a second Run on a different card simply swaps again — no per-card contexts.
  * Compile/eval errors are the language's loud errors, surfaced per card.
  *

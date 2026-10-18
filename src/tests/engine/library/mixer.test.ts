@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import "@/engine/library/all";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { renderTap } from "@/engine/runtime/render";
 import { getRegistry } from "@/engine/dsp/define";
@@ -40,7 +40,7 @@ describe("mixer", () => {
 		const program = evalPatch(code);
 		const mixerNode = nodeIndex(program, "mixer");
 		const lfoNode = nodeIndex(program, "lfo");
-		const engine = new Core3Engine(program, 48000, withProgramSpecs(getRegistry(), program));
+		const engine = new InterpreterEngine(program, 48000, withProgramSpecs(getRegistry(), program));
 		const frame = new Float32Array(2);
 		for (let n = 0; n < 24000; n++) {
 			engine.tick(frame);
@@ -55,7 +55,7 @@ describe("mixer", () => {
 		const mixerNode = nodeIndex(program, "mixer");
 		const sinNode = nodeIndex(program, "sin");
 		const triNode = nodeIndex(program, "tri");
-		const engine = new Core3Engine(program, 48000, withProgramSpecs(getRegistry(), program));
+		const engine = new InterpreterEngine(program, 48000, withProgramSpecs(getRegistry(), program));
 		const frame = new Float32Array(2);
 		for (let n = 0; n < 4800; n++) {
 			engine.tick(frame);

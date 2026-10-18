@@ -10,7 +10,7 @@
 import "@/engine/library/all";
 
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { render, renderTap } from "@/engine/runtime/render";
 import type { Program } from "@/engine/types";
@@ -172,9 +172,9 @@ describe("a re-eval that edits only a field", () => {
 	const interpreter = () => {
 		const a = before();
 		const b = after();
-		const head = new Core3Engine(a, SR, registry(a));
+		const head = new InterpreterEngine(a, SR, registry(a));
 		for (let k = 0, frame = new Float32Array(2); k < SWAP; k++) head.tick(frame);
-		return run(new Core3Engine(b, SR, registry(b), head.collectState()), b, AFTER);
+		return run(new InterpreterEngine(b, SR, registry(b), head.collectState()), b, AFTER);
 	};
 
 	const wasm = () => {

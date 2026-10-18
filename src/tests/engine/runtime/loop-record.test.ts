@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import "@/engine/library/all";
 import { factory, loop, out, runEval, runProgram } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import type { Program } from "@/engine/types";
 import { BACKENDS, type TestEngine, WASM_BACKEND } from "./backends";
 
@@ -38,8 +38,8 @@ const crossFm = (): Program =>
 
 describe("loop(init, f): the cross-coupled pair", () => {
 	it("renders sound, and renders the same twice", () => {
-		const first = run(new Core3Engine(crossFm(), SR, getRegistry()), 4800);
-		const second = run(new Core3Engine(crossFm(), SR, getRegistry()), 4800);
+		const first = run(new InterpreterEngine(crossFm(), SR, getRegistry()), 4800);
+		const second = run(new InterpreterEngine(crossFm(), SR, getRegistry()), 4800);
 		expect(first.every(Number.isFinite)).toBe(true);
 		expect(Math.max(...first.map(Math.abs))).toBeGreaterThan(0.05);
 		expect(second).toEqual(first);
@@ -73,7 +73,7 @@ describe("loop(init, f): each wire is one sample late", () => {
 	] as const) {
 		it(`fb.${early} read through wire '${late}' is ${early}'s previous sample`, () => {
 			const program = delayedCopy(early, late);
-			const engine = new Core3Engine(program, SR, getRegistry());
+			const engine = new InterpreterEngine(program, SR, getRegistry());
 			const source = program.nodes.findIndex((n) => n.module === "sin");
 			const copy = program.nodes.findIndex((n) => n.module === "mul");
 			let previous = 0;
@@ -98,7 +98,7 @@ describe("loop(init, f): start values", () => {
 
 	it("the wire reads its start value on sample 0 (interpreter)", () => {
 		const program = decay();
-		const engine = new Core3Engine(program, SR, getRegistry());
+		const engine = new InterpreterEngine(program, SR, getRegistry());
 		const wire = program.nodes.findIndex((n) => n.module === "z1");
 		run(engine, 1);
 		expect(engine.peek(wire, "out", 0)).toBe(0.5);
@@ -108,7 +108,7 @@ describe("loop(init, f): start values", () => {
 
 	it("an unchanged re-eval is bit-exact: a matched wire carries, it does not restart (interpreter)", () => {
 		const build = (prev?: TestEngine) =>
-			new Core3Engine(decay(), SR, getRegistry(), prev?.collectState());
+			new InterpreterEngine(decay(), SR, getRegistry(), prev?.collectState());
 		const reference = build();
 		run(reference, 40);
 		const expected = run(reference, 40);

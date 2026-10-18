@@ -32,7 +32,7 @@ declare class AudioWorkletProcessor {
 
 declare function registerProcessor(name: string, processorCtor: typeof AudioWorkletProcessor): void;
 
-class Core3Processor extends AudioWorkletProcessor {
+class EngineProcessor extends AudioWorkletProcessor {
 	private readonly host = new LiveHost(
 		sampleRate,
 		getRegistry(),
@@ -109,4 +109,4 @@ class Core3Processor extends AudioWorkletProcessor {
 	}
 }
 
-registerProcessor("core3-processor", Core3Processor);
+registerProcessor("engine-processor", EngineProcessor);

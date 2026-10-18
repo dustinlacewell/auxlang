@@ -13,7 +13,7 @@ import { out, runProgram } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
 import { defmod } from "@/engine/patch/defmod";
 import { hashRandom as hostHashRandom } from "@/engine/random/hash-random";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { slotOf } from "@/engine/runtime/output-slots";
 import type { Program } from "@/engine/types";
@@ -91,7 +91,7 @@ describe("hashRandom with a config key", () => {
 			},
 			{ seed: 5 },
 		);
-		const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
+		const js = new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program));
 		const prepared = prepareWasm(program, SR);
 		const wasm = new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared);
 		const l = new Float32Array(128);

@@ -11,7 +11,7 @@
 import "@/engine/library/all";
 
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";
 import { SeqTables } from "@/engine/wasm/host/seq-tables";
@@ -107,7 +107,7 @@ describe("LiveHost", () => {
 		session.blocks(150);
 		const end = session.l.length;
 
-		const fresh = new Core3Engine(patch(1400), SR, withProgramSpecs(getRegistry(), patch(1400)));
+		const fresh = new InterpreterEngine(patch(1400), SR, withProgramSpecs(getRegistry(), patch(1400)));
 		const l = new Float32Array(end - swap);
 		const r = new Float32Array(end - swap);
 		fresh.renderBlock(l, r, 0, end - swap);

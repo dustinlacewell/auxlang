@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import "@/engine/library/all";
 import { factory, loop, p, runProgram, seq, tempo } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { slotOf } from "@/engine/runtime/output-slots";
 import type { Program } from "@/engine/types";
@@ -186,7 +186,7 @@ const EDITS: Record<string, Edit> = {
 };
 
 interface Pair {
-	readonly js: Core3Engine;
+	readonly js: InterpreterEngine;
 	readonly wasm: WasmEngine;
 }
 
@@ -196,13 +196,13 @@ const registry = (program: Program) => withProgramSpecs(getRegistry(), program);
 function swapAtK({ before, after, rate = SR }: Edit): Pair {
 	const a = before();
 	const old = {
-		js: new Core3Engine(a, SR, registry(a)),
+		js: new InterpreterEngine(a, SR, registry(a)),
 		wasm: createWasmEngine(a, SR, getRegistry()),
 	};
 	expect(render(old, BEFORE)).toBeNull();
 	const b = after();
 	return {
-		js: new Core3Engine(b, rate, registry(b), old.js.liveState()),
+		js: new InterpreterEngine(b, rate, registry(b), old.js.liveState()),
 		wasm: swapWasmEngine(b, rate, getRegistry(), old.wasm),
 	};
 }
@@ -225,7 +225,7 @@ function render({ js, wasm }: Pair, blocks: number): string | null {
 	return null;
 }
 
-function firstSlot(js: Core3Engine, wasm: WasmEngine): string | null {
+function firstSlot(js: InterpreterEngine, wasm: WasmEngine): string | null {
 	const { bases, laneCounts } = js.layout;
 	for (const [node, ports] of bases.entries())
 		for (const port of Object.keys(ports))

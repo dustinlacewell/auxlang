@@ -1,7 +1,7 @@
 /**
- * A plain CodeMirror surface for core3: the shared aux theme + extensions,
+ * A plain CodeMirror surface for the editor: the shared aux theme + extensions,
  * a Mod-Enter run keymap, and controlled value sync. This editor drives
- * audio through the core3 eval path.
+ * audio through the eval path.
  */
 
 import type { SlotDecl } from "@/engine/runtime/live/live-contract";

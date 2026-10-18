@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import "@/engine/library/all";
 import { getRegistry } from "@/engine/dsp/define";
 import { defmod } from "@/engine/patch/defmod";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { renderTap } from "@/engine/runtime/render";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { c, n, pnode, prog } from "./helpers";
@@ -87,7 +87,7 @@ describe("engine: reduce policy", () => {
 			pnode("rd.const", [{ v: c(v) }], { place: "exact" }),
 			pnode("rd.sum", [{ in: n(0), gain: c(1) }], { place: "sum64" }),
 		]);
-		const engine = new Core3Engine(p, 48000, withProgramSpecs(getRegistry(), p));
+		const engine = new InterpreterEngine(p, 48000, withProgramSpecs(getRegistry(), p));
 		engine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
 		expect(engine.peek(1, "out", 0)).toBe(v);
 	});

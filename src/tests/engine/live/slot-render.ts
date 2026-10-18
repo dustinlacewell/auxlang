@@ -8,7 +8,7 @@
 import "@/engine/library/all";
 
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";
 import { createWasmEngine } from "@/engine/wasm/host/create-wasm-engine";
@@ -45,7 +45,7 @@ export interface SlotRun {
 
 export const ENGINES: Readonly<Record<string, (program: Program) => SlotEngine>> = {
 	interpreter: (program) =>
-		new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program)),
+		new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program)),
 	wasm: (program) => createWasmEngine(program, SR, getRegistry()),
 };
 

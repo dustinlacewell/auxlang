@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import "@/engine/library/all";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";
 import { createWasmEngine, swapWasmEngine } from "@/engine/wasm/host/create-wasm-engine";
@@ -221,9 +221,9 @@ s.tri().lpf(slider(80, 50, 110), 0.3).mul(s.gate.ad(0.01, 0.2)).gain(slider(0.5,
 		const writes = [{ at: 100, slot: 0, value: 0.8 }];
 
 		// Interpreter: continue a snapshot.
-		const js = new Core3Engine(before, SR, withProgramSpecs(getRegistry(), before));
+		const js = new InterpreterEngine(before, SR, withProgramSpecs(getRegistry(), before));
 		renderWithWrites(js, head, writes);
-		const jsNext = new Core3Engine(after, SR, withProgramSpecs(getRegistry(), after), js.collectState());
+		const jsNext = new InterpreterEngine(after, SR, withProgramSpecs(getRegistry(), after), js.collectState());
 		expect(jsNext.slotValue(0)).toBe(0.8);
 		const jsCont = renderWithWrites(js, tail, []);
 		const jsSwap = renderWithWrites(jsNext, tail, []);
@@ -241,9 +241,9 @@ s.tri().lpf(slider(80, 50, 110), 0.3).mul(s.gate.ad(0.01, 0.2)).gain(slider(0.5,
 	it("a slot whose site is gone starts from its init", () => {
 		const before = program(SLIDER);
 		const after = program(`sin(60).out({ gain: 0.1 })\n${SLIDER}`);
-		const js = new Core3Engine(before, SR, withProgramSpecs(getRegistry(), before));
+		const js = new InterpreterEngine(before, SR, withProgramSpecs(getRegistry(), before));
 		renderWithWrites(js, 100, [{ at: 10, slot: 0, value: 0.8 }]);
-		const next = new Core3Engine(after, SR, withProgramSpecs(getRegistry(), after), js.collectState());
+		const next = new InterpreterEngine(after, SR, withProgramSpecs(getRegistry(), after), js.collectState());
 		expect(after.liveSlots?.[0]?.site).not.toBe(before.liveSlots?.[0]?.site);
 		expect(next.slotValue(0)).toBe(0.5);
 	});

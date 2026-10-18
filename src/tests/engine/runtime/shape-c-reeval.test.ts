@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import "@/engine/library/all";
 import { runProgram } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { slotOf } from "@/engine/runtime/output-slots";
 import type { Program } from "@/engine/types";
@@ -25,7 +25,7 @@ const BEFORE = 10;
 const AFTER = 10;
 
 interface Pair {
-	readonly js: Core3Engine;
+	readonly js: InterpreterEngine;
 	readonly wasm: WasmEngine;
 }
 
@@ -35,13 +35,13 @@ const registry = (program: Program) => withProgramSpecs(getRegistry(), program);
 function swapAtK(before: () => Program, after: () => Program): Pair {
 	const a = before();
 	const old = {
-		js: new Core3Engine(a, SR, registry(a)),
+		js: new InterpreterEngine(a, SR, registry(a)),
 		wasm: createWasmEngine(a, SR, getRegistry()),
 	};
 	runBlocks(old, BEFORE);
 	const b = after();
 	return {
-		js: new Core3Engine(b, SR, registry(b), old.js.liveState()),
+		js: new InterpreterEngine(b, SR, registry(b), old.js.liveState()),
 		wasm: swapWasmEngine(b, SR, getRegistry(), old.wasm),
 	};
 }
@@ -137,11 +137,11 @@ describe("shape-C re-eval identity: a setup/tick edit keeps the running node (ma
 })
 osc({ hz: 110 }).out()`);
 
-		const laneOf = (state: ReturnType<Core3Engine["collectState"]>) =>
+		const laneOf = (state: ReturnType<InterpreterEngine["collectState"]>) =>
 			(Object.values(state.nodes)[0] as Record<string, unknown>[])[0] as Record<string, unknown>;
 
 		const a = before();
-		const js = new Core3Engine(a, SR, registry(a));
+		const js = new InterpreterEngine(a, SR, registry(a));
 		const l = new Float32Array(BLOCK);
 		const r = new Float32Array(BLOCK);
 		js.renderBlock(l, r, 0, BLOCK);
@@ -149,13 +149,13 @@ osc({ hz: 110 }).out()`);
 		expect(phaseBefore).toBeGreaterThan(0); // the accumulator has moved off its initial 0
 
 		const b = after();
-		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const swapped = new InterpreterEngine(b, SR, registry(b), js.liveState());
 		const phaseAfterSwap = laneOf(swapped.collectState()).phase as number;
 		expect(phaseAfterSwap).toBe(phaseBefore); // carried, not reset to 0
 	});
 
 	it("editing a read-only setup constant takes effect immediately after the swap", () => {
-		const laneOf = (state: ReturnType<Core3Engine["collectState"]>) =>
+		const laneOf = (state: ReturnType<InterpreterEngine["collectState"]>) =>
 			(Object.values(state.nodes)[0] as Record<string, unknown>[])[0] as Record<string, unknown>;
 		const pair = swapAtK(
 			() => evalPatch(osc(0.5)),
@@ -167,16 +167,16 @@ osc({ hz: 110 }).out()`);
 
 	it("resizing a written buffer starts the lane fresh", () => {
 		const a = evalPatch(osc(0.5, 64));
-		const js = new Core3Engine(a, SR, registry(a));
+		const js = new InterpreterEngine(a, SR, registry(a));
 		const l = new Float32Array(BLOCK);
 		const r = new Float32Array(BLOCK);
 		js.renderBlock(l, r, 0, BLOCK);
-		const laneOf = (state: ReturnType<Core3Engine["collectState"]>) =>
+		const laneOf = (state: ReturnType<InterpreterEngine["collectState"]>) =>
 			(Object.values(state.nodes)[0] as Record<string, unknown>[])[0] as Record<string, unknown>;
 		expect(laneOf(js.collectState())?.phase).toBeGreaterThan(0);
 
 		const b = evalPatch(osc(0.5, 32));
-		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const swapped = new InterpreterEngine(b, SR, registry(b), js.liveState());
 		const lane = laneOf(swapped.collectState());
 		expect(lane?.at).toBe(0);
 		expect(lane?.phase).toBe(0);
@@ -184,13 +184,13 @@ osc({ hz: 110 }).out()`);
 	});
 
 	it("changing the tick's arithmetic carries state but runs the new code", () => {
-		const laneOf = (state: ReturnType<Core3Engine["collectState"]>) =>
+		const laneOf = (state: ReturnType<InterpreterEngine["collectState"]>) =>
 			(Object.values(state.nodes)[0] as Record<string, unknown>[])[0] as Record<string, unknown>;
 
 		// ground truth: the UNDOUBLED tick's own value (its own `out` port, not the mixed `.out()`)
 		// one block past the same swap point, no swap
 		const reference = evalPatch(osc(0.5));
-		const refEngine = new Core3Engine(reference, SR, registry(reference));
+		const refEngine = new InterpreterEngine(reference, SR, registry(reference));
 		const refBlock = new Float32Array(BLOCK);
 		for (let b = 0; b < BEFORE; b++) refEngine.renderBlock(refBlock, refBlock, 0, BLOCK);
 		const phaseBefore = laneOf(refEngine.collectState()).phase as number;
@@ -210,7 +210,7 @@ osc({ hz: 110 }).out()`);
 	});
 
 	it("a for...of write carries the array of records it mutates (write analysis runs on the original for...of, not the lowered index loop)", () => {
-		const laneOf = (state: ReturnType<Core3Engine["collectState"]>) =>
+		const laneOf = (state: ReturnType<InterpreterEngine["collectState"]>) =>
 			(Object.values(state.nodes)[0] as Record<string, unknown>[])[0] as Record<string, unknown>;
 
 		const bumper = (gain: number) => `const bumper = defmod("bumper", {}, ({ sr, gain = ${gain} }) => {
@@ -236,7 +236,7 @@ bumper({ hz: 110 }).out()`;
 bumper({ hz: 110 }).out()`);
 
 		const a = before();
-		const js = new Core3Engine(a, SR, registry(a));
+		const js = new InterpreterEngine(a, SR, registry(a));
 		const l = new Float32Array(BLOCK);
 		const r = new Float32Array(BLOCK);
 		js.renderBlock(l, r, 0, BLOCK);
@@ -244,13 +244,13 @@ bumper({ hz: 110 }).out()`);
 		expect(xBefore).toBeGreaterThan(0); // the for...of write moved it off its initial 0
 
 		const b = after();
-		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const swapped = new InterpreterEngine(b, SR, registry(b), js.liveState());
 		const xAfterSwap = (laneOf(swapped.collectState()).voices as Record<string, unknown>[])[0]?.x as number;
 		expect(xAfterSwap).toBe(xBefore); // carried, not reset to 0
 	});
 
 	it("a destructured alias write carries the field it aliases (write analysis reaches through the pattern on the original AST, not the lowered plain declaration)", () => {
-		const laneOf = (state: ReturnType<Core3Engine["collectState"]>) =>
+		const laneOf = (state: ReturnType<InterpreterEngine["collectState"]>) =>
 			(Object.values(state.nodes)[0] as Record<string, unknown>[])[0] as Record<string, unknown>;
 
 		const bumper = (gain: number) => `const bumper = defmod("bumper", {}, ({ sr, gain = ${gain} }) => {
@@ -278,7 +278,7 @@ bumper({ hz: 110 }).out()`;
 bumper({ hz: 110 }).out()`);
 
 		const a = before();
-		const js = new Core3Engine(a, SR, registry(a));
+		const js = new InterpreterEngine(a, SR, registry(a));
 		const l = new Float32Array(BLOCK);
 		const r = new Float32Array(BLOCK);
 		js.renderBlock(l, r, 0, BLOCK);
@@ -286,14 +286,14 @@ bumper({ hz: 110 }).out()`);
 		expect((tBefore as Record<string, unknown>).t).toBeGreaterThan(0); // the aliased write moved it off its initial 0
 
 		const b = after();
-		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const swapped = new InterpreterEngine(b, SR, registry(b), js.liveState());
 		const tAfterSwap = ((laneOf(swapped.collectState()).voice as Record<string, unknown>).env as Record<string, unknown>)
 			.t;
 		expect(tAfterSwap).toBe((tBefore as Record<string, unknown>).t); // carried, not reset to 0
 	});
 
 	it("an address select write (`const v = cond ? voices[0] : voices[1]`) carries `voices` (write analysis reaches through the ORIGINAL ConditionalExpression, not the lowered plain rebind)", () => {
-		const laneOf = (state: ReturnType<Core3Engine["collectState"]>) =>
+		const laneOf = (state: ReturnType<InterpreterEngine["collectState"]>) =>
 			(Object.values(state.nodes)[0] as Record<string, unknown>[])[0] as Record<string, unknown>;
 
 		const picker = (gain: number) => `const picker = defmod("picker", {}, ({ sr, gain = ${gain} }) => {
@@ -325,7 +325,7 @@ picker({ hz: 110 }).out()`;
 picker({ hz: 110 }).out()`);
 
 		const a = before();
-		const js = new Core3Engine(a, SR, registry(a));
+		const js = new InterpreterEngine(a, SR, registry(a));
 		const l = new Float32Array(BLOCK);
 		const r = new Float32Array(BLOCK);
 		js.renderBlock(l, r, 0, BLOCK);
@@ -334,13 +334,13 @@ picker({ hz: 110 }).out()`);
 		expect(xBefore).toBeGreaterThan(0); // the address-select write moved it off its initial 0
 
 		const b = after();
-		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const swapped = new InterpreterEngine(b, SR, registry(b), js.liveState());
 		const voicesAfterSwap = laneOf(swapped.collectState()).voices as Record<string, unknown>[];
 		expect((voicesAfterSwap[0] as Record<string, unknown>).x).toBe(xBefore); // carried, not reset to 0
 	});
 
 	it("an address select written through `.fill` (`const v = cond ? bufA : bufB; v.fill(...)`) carries BOTH roots", () => {
-		const laneOf = (state: ReturnType<Core3Engine["collectState"]>) =>
+		const laneOf = (state: ReturnType<InterpreterEngine["collectState"]>) =>
 			(Object.values(state.nodes)[0] as Record<string, unknown>[])[0] as Record<string, unknown>;
 
 		const picker = (gain: number) => `const picker = defmod("picker", {}, ({ sr, gain = ${gain} }) => {
@@ -374,7 +374,7 @@ picker({ hz: 110 }).out()`;
 picker({ hz: 110 }).out()`);
 
 		const a = before();
-		const js = new Core3Engine(a, SR, registry(a));
+		const js = new InterpreterEngine(a, SR, registry(a));
 		const l = new Float32Array(BLOCK);
 		const r = new Float32Array(BLOCK);
 		js.renderBlock(l, r, 0, BLOCK);
@@ -384,7 +384,7 @@ picker({ hz: 110 }).out()`);
 		expect(bufBBefore[0]).toBeGreaterThan(0); // and bufB too: both candidates are carried, neither rebuilt
 
 		const b = after();
-		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const swapped = new InterpreterEngine(b, SR, registry(b), js.liveState());
 		const laneAfterSwap = laneOf(swapped.collectState());
 		expect((laneAfterSwap.bufA as Float64Array)[0]).toBe(bufABefore[0]); // carried, not reset to 0
 		expect((laneAfterSwap.bufB as Float64Array)[0]).toBe(bufBBefore[0]); // carried, not reset to 0
@@ -402,7 +402,7 @@ const b = defmod("modB", {}, ({ sr }) => {
 a().out()
 b().out()`;
 		const program = evalPatch(PATCH);
-		const js = new Core3Engine(program, SR, registry(program));
+		const js = new InterpreterEngine(program, SR, registry(program));
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
 		for (let i = 0; i < 5; i++) js.renderBlock(l, r, 0, 1);

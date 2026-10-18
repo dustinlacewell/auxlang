@@ -1,6 +1,6 @@
 /**
  * The shared shape of one runnable documentation example: which section it lives
- * under, its title and terse description, and the real core3 patch string. Both
+ * under, its title and terse description, and the real patch string. Both
  * the pattern-docs and module-docs pages fill their `examples.ts` with these and
  * hold them to the same render-non-silent bar in tests.
  */

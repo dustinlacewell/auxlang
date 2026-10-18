@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import "@/engine/library/all";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { slotOf } from "@/engine/runtime/output-slots";
 import type { Program } from "@/engine/types";
@@ -21,21 +21,21 @@ const SR = 48000;
 
 const registry = (program: Program) => withProgramSpecs(getRegistry(), program);
 
-function laneOf(engine: Core3Engine): Record<string, unknown> {
+function laneOf(engine: InterpreterEngine): Record<string, unknown> {
 	return (Object.values(engine.collectState().nodes)[0] as Record<string, unknown>[])[0] as Record<
 		string,
 		unknown
 	>;
 }
 
-function swapJs(before: string, after: string, ticksBefore = 1): { readonly before: Core3Engine; readonly after: Core3Engine } {
+function swapJs(before: string, after: string, ticksBefore = 1): { readonly before: InterpreterEngine; readonly after: InterpreterEngine } {
 	const a = evalPatch(before);
-	const js = new Core3Engine(a, SR, registry(a));
+	const js = new InterpreterEngine(a, SR, registry(a));
 	const l = new Float32Array(1);
 	const r = new Float32Array(1);
 	for (let i = 0; i < ticksBefore; i++) js.renderBlock(l, r, 0, 1);
 	const b = evalPatch(after);
-	const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+	const swapped = new InterpreterEngine(b, SR, registry(b), js.liveState());
 	return { before: js, after: swapped };
 }
 
@@ -103,7 +103,7 @@ osc().out()`;
 })
 osc().out()`;
 		const program = evalPatch(PATCH);
-		const js = new Core3Engine(program, SR, registry(program));
+		const js = new InterpreterEngine(program, SR, registry(program));
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
 		js.renderBlock(l, r, 0, 1);
@@ -166,7 +166,7 @@ osc().out()`;
 })
 osc().out()`;
 		const program = evalPatch(PATCH);
-		const js = new Core3Engine(program, SR, registry(program));
+		const js = new InterpreterEngine(program, SR, registry(program));
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
 		js.renderBlock(l, r, 0, 1);
@@ -193,7 +193,7 @@ const b = defmod("modB", {}, ({ sr }) => {
 a().out()
 b().out()`;
 		const program = evalPatch(PATCH);
-		const js = new Core3Engine(program, SR, registry(program));
+		const js = new InterpreterEngine(program, SR, registry(program));
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
 		for (let i = 0; i < 5; i++) js.renderBlock(l, r, 0, 1);
@@ -221,13 +221,13 @@ osc().out()`;
 osc().out()
 osc().out()`;
 		const a = evalPatch(before);
-		const js = new Core3Engine(a, SR, registry(a));
+		const js = new InterpreterEngine(a, SR, registry(a));
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
 		js.renderBlock(l, r, 0, 1);
 		js.renderBlock(l, r, 0, 1); // both instances independently at n=2
 		const b = evalPatch(after);
-		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const swapped = new InterpreterEngine(b, SR, registry(b), js.liveState());
 		swapped.renderBlock(l, r, 0, 1);
 		expect(swapped.peek(0, "out", 0)).toBe(1002);
 		expect(swapped.peek(2, "out", 0)).toBe(1002);
@@ -253,7 +253,7 @@ osc().out()`;
 })
 osc().out()`;
 		const a = evalPatch(before);
-		const js = new Core3Engine(a, SR, registry(a));
+		const js = new InterpreterEngine(a, SR, registry(a));
 		const wasm = createWasmEngine(a, SR, getRegistry());
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
@@ -261,7 +261,7 @@ osc().out()`;
 		wasm.renderBlock(l, r, 0, 1);
 
 		const b = evalPatch(after);
-		const swappedJs = new Core3Engine(b, SR, registry(b), js.liveState());
+		const swappedJs = new InterpreterEngine(b, SR, registry(b), js.liveState());
 		const swappedWasm = swapWasmEngine(b, SR, getRegistry(), wasm);
 		swappedJs.renderBlock(l, r, 0, 1);
 		swappedWasm.renderBlock(l, r, 0, 1);
@@ -287,18 +287,18 @@ osc().out()`;
 })
 osc().out()`;
 		const a = evalPatch(before);
-		const js = new Core3Engine(a, SR, registry(a));
+		const js = new InterpreterEngine(a, SR, registry(a));
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
 		for (let i = 0; i < 4; i++) js.renderBlock(l, r, 0, 1);
 
 		// reference: re-eval the SAME code (no stream change) from this point, to see what the stream gives next
-		const reference = new Core3Engine(a, SR, registry(a), js.liveState());
+		const reference = new InterpreterEngine(a, SR, registry(a), js.liveState());
 		reference.renderBlock(l, r, 0, 1);
 		const refNext = reference.peek(0, "out", 0);
 
 		const b = evalPatch(after);
-		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const swapped = new InterpreterEngine(b, SR, registry(b), js.liveState());
 		swapped.renderBlock(l, r, 0, 1);
 		const afterNext = swapped.peek(0, "out", 0);
 		expect(afterNext).toBeCloseTo(refNext * 2, 9); // same draw, scaled by the new g
@@ -312,7 +312,7 @@ osc().out()`;
 })
 osc().out()`;
 		const a = evalPatch(optional);
-		const js = new Core3Engine(a, SR, registry(a));
+		const js = new InterpreterEngine(a, SR, registry(a));
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
 		js.renderBlock(l, r, 0, 1);
@@ -336,7 +336,7 @@ describe("shape-C adversary: lowering of bare expression-bodied ticks", () => {
 osc().out()`;
 		expect(() => evalPatch(PATCH)).not.toThrow();
 		const program = evalPatch(PATCH);
-		const js = new Core3Engine(program, SR, registry(program));
+		const js = new InterpreterEngine(program, SR, registry(program));
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
 		js.renderBlock(l, r, 0, 1);
@@ -363,7 +363,7 @@ out({ l: o.l, r: o.r })`;
 const o = osc()
 out({ l: o.l, r: o.r })`;
 		const a = evalPatch(before);
-		const js = new Core3Engine(a, SR, registry(a));
+		const js = new InterpreterEngine(a, SR, registry(a));
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
 		js.renderBlock(l, r, 0, 1);
@@ -371,7 +371,7 @@ out({ l: o.l, r: o.r })`;
 		expect(js.peek(0, "r", 0)).toBe(-2);
 
 		const b = evalPatch(after);
-		const swapped = new Core3Engine(b, SR, registry(b), js.liveState());
+		const swapped = new InterpreterEngine(b, SR, registry(b), js.liveState());
 		swapped.renderBlock(l, r, 0, 1);
 		expect(swapped.peek(0, "l", 0)).toBe(1002);
 		expect(swapped.peek(0, "r", 0)).toBe(-1002);
@@ -386,7 +386,7 @@ out({ l: o.l, r: o.r })`;
 const o = osc()
 out({ l: o.l, r: o.r })`;
 		const program = evalPatch(PATCH);
-		const js = new Core3Engine(program, SR, registry(program));
+		const js = new InterpreterEngine(program, SR, registry(program));
 		const wasm = createWasmEngine(program, SR, getRegistry());
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
@@ -413,7 +413,7 @@ out({ l: o.l, r: o.r })`;
 const o = osc()
 out({ l: o.l, r: o.r })`;
 		const program = evalPatch(PATCH);
-		const js = new Core3Engine(program, SR, registry(program));
+		const js = new InterpreterEngine(program, SR, registry(program));
 		const left = new Float32Array(1);
 		const right = new Float32Array(1);
 		js.renderBlock(left, right, 0, 1);
@@ -428,7 +428,7 @@ out({ l: o.l, r: o.r })`;
 const o = osc()
 out({ l: o.l, r: o.r })`;
 		const program = evalPatch(PATCH);
-		const js = new Core3Engine(program, SR, registry(program));
+		const js = new InterpreterEngine(program, SR, registry(program));
 		const l = new Float32Array(1);
 		const r = new Float32Array(1);
 		js.renderBlock(l, r, 0, 1);

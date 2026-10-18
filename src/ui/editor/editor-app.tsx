@@ -15,7 +15,7 @@ import { readLastOpenPatch, writeLastOpenPatch } from "./storage/last-open-patch
 import type { SavedPatch } from "./storage/saved-patches";
 import { useDebouncedAutosave } from "./storage/use-debounced-autosave";
 import { useSavedPatches } from "./storage/use-saved-patches";
-import { useCore3Editor } from "./use-core3-editor";
+import { useEditor } from "./use-editor";
 
 /** The remembered patch and its source, or the default example when there's nothing to remember. */
 function resolveInitialPatch(savedPatches: readonly SavedPatch[]): {
@@ -54,7 +54,7 @@ export function EditorApp() {
 		reroll,
 		halt,
 		ensureSlotSite,
-	} = useCore3Editor(initial.source);
+	} = useEditor(initial.source);
 
 	const [current, setCurrent] = useState<OpenPatch | null>(initial.current);
 	const [justCreatedId, setJustCreatedId] = useState<string | null>(null);

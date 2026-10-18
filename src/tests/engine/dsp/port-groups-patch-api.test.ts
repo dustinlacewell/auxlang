@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import "@/engine/library/all";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { renderTap } from "@/engine/runtime/render";
 import { nodeIndex } from "../bridge/helpers";
@@ -51,7 +51,7 @@ describe("port groups through the patch API", () => {
 		const program = evalInternal(code);
 		const gmixNode = nodeIndex(program, "gmix");
 		const lfoNode = nodeIndex(program, "lfo");
-		const engine = new Core3Engine(program, 48000, withProgramSpecs(getRegistry(), program));
+		const engine = new InterpreterEngine(program, 48000, withProgramSpecs(getRegistry(), program));
 		const frame = new Float32Array(2);
 		for (let n = 0; n < 24000; n++) {
 			engine.tick(frame);

@@ -1,5 +1,5 @@
 /**
- * Deterministic randomness for patterns. All chance in core3 flows through
+ * Deterministic randomness for patterns. All chance flows through
  * hash01(seed, path, ...ints) — integer avalanche hashing (random/lib's
  * murmur3 finalizer, the text a tick runs), identical across threads and
  * directions of time. Never Math.random.

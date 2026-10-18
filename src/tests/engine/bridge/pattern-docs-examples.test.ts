@@ -1,6 +1,6 @@
 /**
  * The pattern-docs page (src/ui/pattern-docs/examples.ts) must never rot: every
- * example is a real core3 patch, so it must compile through the eval path and
+ * example is a real patch, so it must compile through the eval path and
  * render 2 s non-silent, bounded, and finite. Stochastic examples (?, degrade)
  * must additionally be deterministic — two renders bit-identical.
  */

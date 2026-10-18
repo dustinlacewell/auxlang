@@ -1,5 +1,5 @@
 /**
- * The production build ships the core3 worklet as a real JavaScript module.
+ * The production build ships the engine worklet as a real JavaScript module.
  * Bundles only the audio host (audio.ts) with the project's resolve/worker
  * config, then follows the URL it hands to audioWorklet.addModule to the
  * emitted file. Guards against the worklet shipping as raw TypeScript (a bare
@@ -58,7 +58,7 @@ describe("production worklet build", () => {
 
 		const code = sourceOf(worklet as Rollup.OutputChunk | Rollup.OutputAsset);
 		expect(() => parseAst(code)).not.toThrow();
-		expect(code).toContain("core3-processor");
+		expect(code).toContain("engine-processor");
 		// The WASM backend's build step instantiates the posted Module in the worklet.
 		expect(code).toContain("new WebAssembly.Instance");
 	}, 60_000);

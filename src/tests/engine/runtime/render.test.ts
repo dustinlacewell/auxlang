@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { getRegistry } from "@/engine/dsp/define";
 import { defmod } from "@/engine/patch/defmod";
-import { createEngine } from "@/engine/runtime/engine";
+import { createEngine } from "@/engine/runtime/interpreter-engine";
 import { render } from "@/engine/runtime/render";
 import { c, n, pnode, prog } from "./helpers";
 

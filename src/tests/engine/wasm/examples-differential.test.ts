@@ -14,7 +14,7 @@ import "@/engine/library/all";
 
 import { compile, out, runEval } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { EngineState, Program } from "@/engine/types";
 import { sig } from "@/engine/types";
@@ -58,8 +58,8 @@ function joined(head: Run, tail: Run): SwapRun {
 /** The interpreter: `before` for 0.5 s, then `after` continuing its state for 0.5 s. */
 function interpreterSwap(before: Program, after: Program): SwapRun {
 	const registry = (p: Program) => withProgramSpecs(getRegistry(), p);
-	const head = renderTicks(new Core3Engine(before, SR, registry(before)), HALF);
-	const tail = renderTicks(new Core3Engine(after, SR, registry(after), head.state), HALF);
+	const head = renderTicks(new InterpreterEngine(before, SR, registry(before)), HALF);
+	const tail = renderTicks(new InterpreterEngine(after, SR, registry(after), head.state), HALF);
 	return joined(head, tail);
 }
 

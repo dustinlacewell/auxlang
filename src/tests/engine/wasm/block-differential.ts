@@ -8,7 +8,7 @@
 
 import "@/engine/library/all";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { slotOf } from "@/engine/runtime/output-slots";
 import type { Program } from "@/engine/types";
@@ -26,7 +26,7 @@ export interface BlockComparison {
 }
 
 export function compareBlocks(program: Program, seconds: number): BlockComparison {
-	const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
+	const js = new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program));
 	const prepared = prepareWasm(program, SR);
 	const wasm = new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared);
 	const jl = new Float32Array(BLOCK);
@@ -51,7 +51,7 @@ export function compareBlocks(program: Program, seconds: number): BlockCompariso
 	return { difference: null, peak };
 }
 
-function firstSlot(js: Core3Engine, wasm: WasmEngine): string | null {
+function firstSlot(js: InterpreterEngine, wasm: WasmEngine): string | null {
 	const layout = js.layout;
 	for (const [node, ports] of layout.bases.entries())
 		for (const port of Object.keys(ports))

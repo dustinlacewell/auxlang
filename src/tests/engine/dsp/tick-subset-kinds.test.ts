@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import "@/engine/library/all";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";
 import { prepareWasm } from "@/engine/wasm/host/prepare-wasm";
@@ -50,7 +50,7 @@ function patch(
 
 /** Build `program` on the interpreter and on WASM; each must throw `error`. */
 function expectBuildsToThrow(program: Program, error: RegExp): void {
-	expect(() => new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program))).toThrow(
+	expect(() => new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program))).toThrow(
 		error,
 	);
 	expect(() => prepareWasm(program, SR)).toThrow(error);
@@ -58,7 +58,7 @@ function expectBuildsToThrow(program: Program, error: RegExp): void {
 
 function expectBuilds(program: Program): void {
 	expect(
-		() => new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program)),
+		() => new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program)),
 	).not.toThrow();
 	expect(() => prepareWasm(program, SR)).not.toThrow();
 }

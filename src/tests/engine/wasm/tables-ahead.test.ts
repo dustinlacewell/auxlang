@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import "@/engine/library/all";
 import { factory, runProgram, seq, tempo } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";
 import { createWasmEngine } from "@/engine/wasm/host/create-wasm-engine";
@@ -72,12 +72,12 @@ function wasmOf(program: Program, budget?: number): WasmEngine {
 	return new WasmEngine(new WebAssembly.Module(prepared.compiled.bytes), prepared, options);
 }
 
-function jsOf(program: Program, prev?: ReturnType<Core3Engine["liveState"]>): Core3Engine {
-	return new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program), prev);
+function jsOf(program: Program, prev?: ReturnType<InterpreterEngine["liveState"]>): InterpreterEngine {
+	return new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program), prev);
 }
 
 /** The first output sample whose bits differ over `blocks`, or null. */
-function differ(js: Core3Engine, wasm: WasmEngine, blocks: number): string | null {
+function differ(js: InterpreterEngine, wasm: WasmEngine, blocks: number): string | null {
 	const jl = new Float32Array(BLOCK);
 	const jr = new Float32Array(BLOCK);
 	const wl = new Float32Array(BLOCK);

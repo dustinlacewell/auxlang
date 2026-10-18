@@ -6,7 +6,7 @@
  */
 
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { EngineState, Program } from "@/engine/types";
 import { createWasmEngine } from "@/engine/wasm/host/create-wasm-engine";
@@ -32,7 +32,7 @@ const BLOCKS = [128, 1, 77, 128, 3, 113, 64];
 /** The interpreter, ticked one sample at a time: the reference. */
 export function interpreterRun(program: Program, samples = SR): Run {
 	const registry = withProgramSpecs(getRegistry(), program);
-	return renderTicks(new Core3Engine(program, SR, registry), samples);
+	return renderTicks(new InterpreterEngine(program, SR, registry), samples);
 }
 
 /** WASM, in uneven blocks. */

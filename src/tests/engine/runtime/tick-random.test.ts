@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import "@/engine/library/all";
 import { defmod, out, runProgram, seq, tempo } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";
 import { BACKENDS, type TestEngine } from "./backends";
@@ -31,8 +31,8 @@ function patch(seed: number): Program {
 	);
 }
 
-function engine(program: Program, prev?: ReturnType<Core3Engine["collectState"]>): Core3Engine {
-	return new Core3Engine(program, 48000, withProgramSpecs(getRegistry(), program), prev);
+function engine(program: Program, prev?: ReturnType<InterpreterEngine["collectState"]>): InterpreterEngine {
+	return new InterpreterEngine(program, 48000, withProgramSpecs(getRegistry(), program), prev);
 }
 
 /** Each (node, lane) of `jitter`, sampled for `samples` ticks. */

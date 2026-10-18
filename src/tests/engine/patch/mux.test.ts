@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import "@/engine/library/all";
 import { factory, p, runProgram, seq, tempo } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { renderTap } from "@/engine/runtime/render";
 import { nodeIndex } from "../bridge/helpers";
@@ -143,16 +143,16 @@ describe("re-eval adding a step keeps the lfo's phase", () => {
 		});
 
 		const registry = getRegistry();
-		const oldEngine = new Core3Engine(before, SR, withProgramSpecs(registry, before));
+		const oldEngine = new InterpreterEngine(before, SR, withProgramSpecs(registry, before));
 		const frame = new Float32Array(2);
 		const RUN = Math.floor(HALF * 1.5);
 		for (let i = 0; i < RUN; i++) oldEngine.tick(frame);
 		const state = oldEngine.collectState();
 
-		const newEngine = new Core3Engine(after, SR, withProgramSpecs(registry, after), state);
+		const newEngine = new InterpreterEngine(after, SR, withProgramSpecs(registry, after), state);
 		for (let i = 0; i < 5; i++) newEngine.tick(frame);
 
-		const refEngine = new Core3Engine(reference, SR, withProgramSpecs(registry, reference));
+		const refEngine = new InterpreterEngine(reference, SR, withProgramSpecs(registry, reference));
 		for (let i = 0; i < RUN + 5; i++) refEngine.tick(frame);
 
 		expect(newEngine.peek(lfoOf(after), "out", 0)).toBeCloseTo(

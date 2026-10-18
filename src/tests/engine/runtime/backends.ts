@@ -6,7 +6,7 @@
  * to memory along the carry plan.
  */
 
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import type { EngineState, Program, Registry } from "@/engine/types";
 import { createWasmEngine, swapWasmEngine } from "@/engine/wasm/host/create-wasm-engine";
 import type { WasmEngine } from "@/engine/wasm/host/wasm-engine";
@@ -28,9 +28,9 @@ export interface Backend {
 export const JS_BACKEND: Backend = {
 	name: "interpreter",
 	create: (program, sampleRate, registry, prev) =>
-		new Core3Engine(program, sampleRate, registry, prev),
+		new InterpreterEngine(program, sampleRate, registry, prev),
 	swap: (program, sampleRate, registry, running) =>
-		new Core3Engine(program, sampleRate, registry, running.collectState()),
+		new InterpreterEngine(program, sampleRate, registry, running.collectState()),
 };
 
 export const WASM_BACKEND: Backend = {

@@ -1,6 +1,6 @@
 /**
  * Turn patch source text into a compiled Program. The source is the BODY of a
- * function whose parameters are the core3 user scope (module factories +
+ * function whose parameters are the user scope (module factories +
  * reserved builders), run inside `runEval` so `out()`/`tempo()` see a live
  * context; `compile` then walks the collected roots.
  *
@@ -93,7 +93,7 @@ function patchFunction(
 	scopeNames: readonly string[],
 	sourceMap: SourceMap,
 ): (...args: unknown[]) => void {
-	const body = `${code}\n//# sourceURL=auxlang://core3-playground`;
+	const body = `${code}\n//# sourceURL=auxlang://playground`;
 	try {
 		return new Function(...scopeNames, TRACE_NAME, body) as (...args: unknown[]) => void;
 	} catch (err) {

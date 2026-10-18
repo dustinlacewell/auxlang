@@ -54,7 +54,7 @@ async function ensureHost(): Promise<AudioHost> {
 	if (host) return host;
 	const context = new AudioContext();
 	await context.audioWorklet.addModule(workletUrl);
-	const node = new AudioWorkletNode(context, "core3-processor", {
+	const node = new AudioWorkletNode(context, "engine-processor", {
 		numberOfInputs: 0,
 		numberOfOutputs: 1,
 		outputChannelCount: [2],
@@ -63,7 +63,7 @@ async function ensureHost(): Promise<AudioHost> {
 		if (e.data.type === "swapped") programs.swapped(e.data.serial);
 		if (e.data.type === "error") {
 			buildFailed(e.data.serial);
-			throw new Error(`core3 worklet: ${e.data.message}`);
+			throw new Error(`engine worklet: ${e.data.message}`);
 		}
 		if (e.data.type === "perf") reportPerf(e.data, context.sampleRate);
 		if (e.data.type === "monitor") receiveFrame(e.data, node.port);
@@ -73,7 +73,7 @@ async function ensureHost(): Promise<AudioHost> {
 	// processor without a message-port reply; surface it loudly instead of
 	// letting the audio die in silence.
 	node.onprocessorerror = (e: Event) => {
-		console.error("core3 worklet: audio processor crashed — audio is dead until re-run", e);
+		console.error("engine worklet: audio processor crashed — audio is dead until re-run", e);
 	};
 	node.connect(context.destination);
 	host = { context, node };

@@ -8,7 +8,7 @@
 
 import { factory, p, runProgram, tempo } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { renderTap } from "@/engine/runtime/render";
 import { describe, expect, it } from "vitest";
 import { SR, nodeIndex } from "./helpers";
@@ -56,10 +56,10 @@ describe("pattern as a knob", () => {
 			tempo(240);
 			sin({ fm: p`300 ~ ~ ~` }).out();
 		});
-		const old = new Core3Engine(bare, SR, getRegistry());
+		const old = new InterpreterEngine(bare, SR, getRegistry());
 		const frame = new Float32Array(2);
 		for (let k = 0; k < Math.floor(CYCLE * 2.6); k++) old.tick(frame); // 2.6 bars: mid-rest
-		const swapped = new Core3Engine(knobbed, SR, getRegistry(), old.collectState());
+		const swapped = new InterpreterEngine(knobbed, SR, getRegistry(), old.collectState());
 		swapped.tick(frame);
 		expect(swapped.peek(nodeIndex(knobbed, "seq"), "out", 0)).toBe(300);
 	});

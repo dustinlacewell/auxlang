@@ -12,7 +12,7 @@ import "@/engine/library/all";
 import { out, runProgram, seq, tempo } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
 import { hashRandom as hostHashRandom } from "@/engine/random/hash-random";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { slotOf } from "@/engine/runtime/output-slots";
 import type { Program } from "@/engine/types";
@@ -68,14 +68,14 @@ function patch(seed: number): Program {
 
 interface Pair {
 	readonly program: Program;
-	readonly js: Core3Engine;
+	readonly js: InterpreterEngine;
 	readonly wasm: WasmEngine;
 }
 
 /** Both backends built for `program`, each continuing its own engine of `prev` when given. */
 function engines(program: Program, prev?: Pair): Pair {
 	const registry = withProgramSpecs(getRegistry(), program);
-	const js = new Core3Engine(program, SR, registry, prev?.js.collectState());
+	const js = new InterpreterEngine(program, SR, registry, prev?.js.collectState());
 	const wasm =
 		prev === undefined
 			? createWasmEngine(program, SR, registry)

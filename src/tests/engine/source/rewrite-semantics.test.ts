@@ -10,7 +10,7 @@ import "@/engine/library/all";
 import { buildUserScope, compile, runEval } from "@/engine/api";
 import { getRegistry } from "@/engine/dsp/define";
 import { withSourceText } from "@/engine/dsp/source-text";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";
 import { EXAMPLES as SITE } from "@/ui/editor/examples/examples";
@@ -52,7 +52,7 @@ function withoutSites(program: Program): unknown {
 }
 
 function render(program: Program): Float32Array {
-	const engine = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
+	const engine = new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program));
 	const out = new Float32Array(SAMPLES * 2);
 	const frame = new Float32Array(2);
 	for (let i = 0; i < SAMPLES; i++) {

@@ -1,4 +1,4 @@
-# Core3 Internals
+# Engine Internals
 
 An engineer's map of how a patch becomes sound. Not a tutorial.
 
@@ -12,7 +12,7 @@ Three stages, three representations:
 - **Compile** turns that graph into a serializable `Program`.
 - **An Engine** runs the `Program` one sample at a time.
 
-Two engines run a `Program`, and they agree bit for bit. The interpreter (`Core3Engine`) is the reference: the offline renderer runs it headless, and every test holds the other engine against it. The WASM engine (`src/engine/wasm/`) compiles the whole program to one WebAssembly module and is what the AudioWorklet host plays.
+Two engines run a `Program`, and they agree bit for bit. The interpreter (`InterpreterEngine`) is the reference: the offline renderer runs it headless, and every test holds the other engine against it. The WASM engine (`src/engine/wasm/`) compiles the whole program to one WebAssembly module and is what the AudioWorklet host plays.
 
 ---
 

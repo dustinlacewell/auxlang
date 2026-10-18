@@ -11,7 +11,7 @@
 import "@/engine/library/all";
 
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { MonitorFrame } from "@/engine/runtime/live/live-contract";
 import { PostedPrograms } from "@/engine/runtime/posted-programs";
@@ -205,7 +205,7 @@ describe("swap acknowledgements", () => {
 /** The settled left peak of `sin(60).gain(gain).out()` (out's own level included). */
 function peakAt(gain: number): number {
 	const { program } = evaluatePatch(`sin(60).gain(${gain}).out()`);
-	const engine = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
+	const engine = new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program));
 	const l = new Float32Array(4000);
 	const r = new Float32Array(4000);
 	engine.renderBlock(l, r, 0, 4000);

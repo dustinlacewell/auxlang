@@ -8,7 +8,7 @@
 import "@/engine/library/all";
 
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { renderTap } from "@/engine/runtime/render";
 import type { EngineState, Program } from "@/engine/types";
@@ -148,8 +148,8 @@ function registry(p: Program) {
 }
 
 function interpreterSwap(before: Program, after: Program): SwapRun {
-	const head = renderTicks(new Core3Engine(before, SR, registry(before)), SWAP_AT);
-	const tail = renderTicks(new Core3Engine(after, SR, registry(after), head.state), AFTER);
+	const head = renderTicks(new InterpreterEngine(before, SR, registry(before)), SWAP_AT);
+	const tail = renderTicks(new InterpreterEngine(after, SR, registry(after), head.state), AFTER);
 	return { tail, swapState: head.state };
 }
 

@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import { getRegistry } from "@/engine/dsp/define";
 import { defmod } from "@/engine/patch/defmod";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { evalPatch } from "@/engine/eval-patch";
 import { SR, expectIdentical, interpreterRun } from "../wasm/differential-harness";
@@ -92,7 +92,7 @@ describe("shape C", () => {
 x(10).out()`;
 		const program = evalPatch(PATCH);
 		const registry = withProgramSpecs(getRegistry(), program);
-		const engine = new Core3Engine(program, SR, registry);
+		const engine = new InterpreterEngine(program, SR, registry);
 		engine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
 		expect(engine.peek(0, "out", 0)).toBeCloseTo(10 * 2 ** 1.5 + 3, 10);
 	});
@@ -163,7 +163,7 @@ x(1).out()`;
 x(5).out()`;
 		const positive = evalPatch(PATCH);
 		const positiveRegistry = withProgramSpecs(getRegistry(), positive);
-		const positiveEngine = new Core3Engine(positive, SR, positiveRegistry);
+		const positiveEngine = new InterpreterEngine(positive, SR, positiveRegistry);
 		positiveEngine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
 		expect(positiveEngine.peek(0, "out", 0)).toBe(1);
 
@@ -175,7 +175,7 @@ x(5).out()`;
 })
 x(-5).out()`);
 		const negativeRegistry = withProgramSpecs(getRegistry(), negative);
-		const negativeEngine = new Core3Engine(negative, SR, negativeRegistry);
+		const negativeEngine = new InterpreterEngine(negative, SR, negativeRegistry);
 		negativeEngine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
 		expect(negativeEngine.peek(0, "out", 0)).toBe(2);
 	});
@@ -192,7 +192,7 @@ x(${v}).out()`;
 		for (const [v, expected] of [[3, 1], [-3, -1], [0, 0]] as const) {
 			const program = evalPatch(makePatch(v));
 			const registry = withProgramSpecs(getRegistry(), program);
-			const engine = new Core3Engine(program, SR, registry);
+			const engine = new InterpreterEngine(program, SR, registry);
 			engine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
 			expect(engine.peek(0, "out", 0)).toBe(expected);
 		}
@@ -208,7 +208,7 @@ x(${v}).out()`;
 x(7).out({ l: x.l, r: x.r })`;
 		const program = evalPatch(PATCH);
 		const registry = withProgramSpecs(getRegistry(), program);
-		const engine = new Core3Engine(program, SR, registry);
+		const engine = new InterpreterEngine(program, SR, registry);
 		engine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
 		expect(engine.peek(0, "l", 0)).toBe(7);
 		expect(engine.peek(0, "r", 0)).toBe(-7);
@@ -221,7 +221,7 @@ x(7).out({ l: x.l, r: x.r })`;
 x(10, 3).out()`;
 		const program = evalPatch(PATCH);
 		const registry = withProgramSpecs(getRegistry(), program);
-		const engine = new Core3Engine(program, SR, registry);
+		const engine = new InterpreterEngine(program, SR, registry);
 		engine.renderBlock(new Float32Array(1), new Float32Array(1), 0, 1);
 		expect(engine.peek(0, "out", 0)).toBe(30);
 	});

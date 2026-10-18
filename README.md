@@ -28,8 +28,7 @@ The dev server serves the site:
 - `/modules.html` — module demos: every module with default, all-params,
   modulated, and showcase examples.
 
-(`/core2.html` is the retired previous engine, unlisted; the current language
-is core3.)
+(`/core2.html` is the retired previous engine, unlisted.)
 
 ## Hello patch
 
@@ -57,5 +56,5 @@ registry. `.gain` and `.vca` are aliases of `.mul`.
 ## Learn more
 
 - `MANIFESTO.md` — the design vision and the five concepts.
-- `docs/user-guide.md` — the systematic core3 guide.
+- `docs/user-guide.md` — the systematic language guide.
 - `docs/engine-internals.md` — the compilation pipeline and runtime.

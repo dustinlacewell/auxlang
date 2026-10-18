@@ -8,7 +8,7 @@
 
 import "@/engine/library/all";
 import { getRegistry } from "@/engine/dsp/define";
-import { Core3Engine } from "@/engine/runtime/engine";
+import { InterpreterEngine } from "@/engine/runtime/interpreter-engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { type OutputLayout, slotOf } from "@/engine/runtime/output-slots";
 import type { Program } from "@/engine/types";
@@ -28,7 +28,7 @@ function wasmEngine(program: Program, sampleRate: number): WasmEngine {
 
 /** The first difference over `seconds`, or null. */
 function firstDifference(program: Program, wasm: WasmEngine, seconds: number): string | null {
-	const js = new Core3Engine(program, SR, withProgramSpecs(getRegistry(), program));
+	const js = new InterpreterEngine(program, SR, withProgramSpecs(getRegistry(), program));
 	const jl = new Float32Array(BLOCK);
 	const jr = new Float32Array(BLOCK);
 	const wl = new Float32Array(BLOCK);
