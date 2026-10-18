@@ -156,7 +156,7 @@ const ticks = track({
 })
 ticks.trig.hihat({ decay: 0.02, tone: 0.9, metal: 0.4 }).gain(0.8).pan(-0.25).out()
 
-// ── the 1929 break: brushes, walking bass, a swung clarinet, a worn record ──
+// ── the 1929 break: brushes, walking bass, a swung clarinet ──
 const brush = track({ swing: () => "60 [60@2 60] 60 [60@2 60]" })
 brush.trig.hihat({ decay: 0.14, tone: 0.35, metal: 0.8 }).gain(0.9).pan(0.15).out()
 
@@ -181,9 +181,6 @@ clarinet.add(key).sqr()
   .tape({ time: 0.35, feedback: 0.25, mix: 0.2, wow: 0.7, flutter: 0.5, tone: 0.4 })
   .gain(0.2)
   .out()
-
-const worn = track({ swing: () => "1" }, "0")
-noise().gt(0.997).mul(worn).hpf(96).gain(0.12).out()
 
 // ── bass ──
 const bass = track({
@@ -294,11 +291,10 @@ const tag = track({
   // the last tag turns major: E natural, landing on the 1929 ending's C major chord
   outro: (c, i) => [TAG, "c5", TAG, "c5", TAG, "~", "~@4 g5 f5 e5 d5", "c5"][i],
 })
-tag.add(key).sqr()
-  .lpf({ cutoff: 84, res: 0.2 })
-  .mul(tag.gate.adsr(0.005, 0.15, 0.5, 0.1))
+tag.add(key).tri()
+  .mul(tag.gate.adsr(0.01, 0.2, 0.5, 0.15))
   .tape({ time: beats(0.75), feedback: 0.55, mix: 0.4, wow: 0.3, flutter: 0.2, tone: 0.5 })
-  .gain(0.2)
+  .gain(0.3)
   .out()
 
 const descant = track({ a1x: (c, i) => COUNTER[i] })
