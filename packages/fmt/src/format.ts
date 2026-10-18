@@ -72,7 +72,7 @@ export function format(code: string, rules: Partial<FormatRules> = {}): string {
 		ast = acorn.parse(code, {
 			ecmaVersion: "latest",
 			sourceType: "module",
-		}) as Node;
+		}) as unknown as Node;
 	} catch {
 		return code;
 	}
@@ -487,7 +487,7 @@ function formatChain(rawChain: Chain, ctx: FormatContext, rules: FormatRules): s
 			// Property access
 			result += `\n${childIndent}.${part.method}`;
 		} else if (part.method === "apply" && part.args.length === 1 && (part.args[0] as Node).type === "ArrowFunctionExpression") {
-			result += formatApplyPart(part, ctx, rules);
+			result += formatApplyPart(part.args[0] as Node, ctx, rules);
 		} else {
 			const args = formatArgs(part.args, indent(ctx), rules);
 			result += `\n${childIndent}.${part.method}(${args})`;
@@ -497,8 +497,7 @@ function formatChain(rawChain: Chain, ctx: FormatContext, rules: FormatRules): s
 	return result;
 }
 
-function formatApplyPart(part: ChainPart, ctx: FormatContext, rules: FormatRules): string {
-	const arrow = part.args[0] as Node;
+function formatApplyPart(arrow: Node, ctx: FormatContext, rules: FormatRules): string {
 	const param = formatNode((arrow.params as Node[])[0]!, ctx, rules);
 	const bodyNode = arrow.body as Node;
 
@@ -540,7 +539,7 @@ function formatChainWithFirstMethodInline(chain: Chain, ctx: FormatContext, rule
 		if (part.args === null) {
 			result += `\n${childIndent}.${part.method}`;
 		} else if (part.method === "apply" && part.args.length === 1 && (part.args[0] as Node).type === "ArrowFunctionExpression") {
-			result += formatApplyPart(part, ctx, rules);
+			result += formatApplyPart(part.args[0] as Node, ctx, rules);
 		} else {
 			const args = formatArgs(part.args, indent(ctx), rules);
 			result += `\n${childIndent}.${part.method}(${args})`;

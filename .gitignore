@@ -1,6 +1,4 @@
 node_modules
-apps/site/dist
-packages/engine/dist
-packages/codemirror/dist
+dist/
 .claude/worktrees/
 apps/site/src/tests/scratch/
