@@ -1,4 +1,4 @@
-import { FrameCoalescer, type FrameScheduler } from "@/ui/code-editor/live-input/frame-coalescer";
+import { FrameCoalescer, type FrameScheduler } from "@/live-input/frame-coalescer";
 import { describe, expect, it } from "vitest";
 
 function fakeScheduler(): FrameScheduler & { fire: () => void } {

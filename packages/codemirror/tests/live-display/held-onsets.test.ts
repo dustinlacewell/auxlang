@@ -1,4 +1,4 @@
-import { heldOnsets } from "@/ui/code-editor/live-display/held-onsets";
+import { heldOnsets } from "@/live-display/held-onsets";
 import { describe, expect, it } from "vitest";
 
 describe("heldOnsets", () => {

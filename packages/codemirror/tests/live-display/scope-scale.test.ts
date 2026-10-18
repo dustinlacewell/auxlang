@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fixedRange, nextRange } from "@/ui/code-editor/live-display/scope-scale";
+import { fixedRange, nextRange } from "@/live-display/scope-scale";
 
 describe("nextRange", () => {
 	it("grows at once to cover a wider signal", () => {

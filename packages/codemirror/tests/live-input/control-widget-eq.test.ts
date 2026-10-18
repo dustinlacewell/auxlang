@@ -1,5 +1,5 @@
-import type { ControlWidget } from "@/ui/code-editor/live-input/control-sites";
-import { ControlWidgetType } from "@/ui/code-editor/live-input/control-widget-extension";
+import type { ControlWidget } from "@/live-input/control-sites";
+import { ControlWidgetType } from "@/live-input/control-widget-extension";
 import { describe, expect, it } from "vitest";
 
 function widgetFor(callId: number, init: number): ControlWidget {

@@ -11,10 +11,11 @@ import {
 	lineNumbers,
 	rectangularSelection,
 } from "@codemirror/view";
+import type { Category } from "auxlang/types";
 
 import { moduleHighlight } from "./module-highlight";
 
-export function createExtensions(): Extension[] {
+export function createExtensions(categoryColors: Record<Category, string>): Extension[] {
 	return [
 		lineNumbers(),
 		highlightActiveLineGutter(),
@@ -27,7 +28,7 @@ export function createExtensions(): Extension[] {
 		closeBrackets(),
 		autocompletion(),
 		javascript({ typescript: true }),
-		moduleHighlight,
+		moduleHighlight(categoryColors),
 		EditorState.tabSize.of(2),
 	];
 }

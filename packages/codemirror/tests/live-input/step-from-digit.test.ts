@@ -1,4 +1,4 @@
-import { stepFromDigit } from "@/ui/code-editor/live-input/step-from-digit";
+import { stepFromDigit } from "@/live-input/step-from-digit";
 import { describe, expect, it } from "vitest";
 
 describe("stepFromDigit", () => {

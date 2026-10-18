@@ -18,16 +18,17 @@
 
 import type { SlotDecl } from "auxlang/runtime/live/live-contract";
 import { EMPTY_SOURCE_MAP, type SourceMap } from "auxlang/source/source-map";
-import { auxlangTheme } from "@/ui/code-editor/auxlang-theme";
-import { createExtensions } from "@/ui/code-editor/extensions";
-import { patternHighlightExtension } from "@/ui/code-editor/live-display/pattern-highlight-extension";
-import { scopeWidgetExtension } from "@/ui/code-editor/live-display/scope-widget-extension";
+import { auxlangTheme } from "@auxlang/codemirror/auxlang-theme";
+import { createExtensions } from "@auxlang/codemirror/extensions";
+import { patternHighlightExtension } from "@auxlang/codemirror/live-display/pattern-highlight-extension";
+import { scopeWidgetExtension } from "@auxlang/codemirror/live-display/scope-widget-extension";
 import {
 	controlWidgetExtension,
 	setLiveProgram,
-} from "@/ui/code-editor/live-input/control-widget-extension";
-import { numberDragExtension } from "@/ui/code-editor/live-input/number-drag-extension";
-import { attachModuleHover } from "@/ui/code-editor/module-highlight";
+} from "@auxlang/codemirror/live-input/control-widget-extension";
+import { numberDragExtension } from "@auxlang/codemirror/live-input/number-drag-extension";
+import { attachModuleHover } from "@auxlang/codemirror/module-highlight";
+import { categoryColors } from "@/ui/design/colors";
 import { TabButton } from "@/ui/design/tab-button";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
@@ -89,7 +90,7 @@ export function CodeBlock({
 		const state = EditorState.create({
 			doc: code,
 			extensions: [
-				...createExtensions(),
+				...createExtensions(categoryColors),
 				auxlangTheme,
 				keymap.of([
 					{

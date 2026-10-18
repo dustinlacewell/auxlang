@@ -1,4 +1,4 @@
-import { carriesLiveProgram, setLiveProgram } from "@/ui/code-editor/live-input/control-widget-extension";
+import { carriesLiveProgram, setLiveProgram } from "@/live-input/control-widget-extension";
 import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
 

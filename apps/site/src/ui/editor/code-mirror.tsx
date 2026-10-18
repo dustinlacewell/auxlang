@@ -6,21 +6,22 @@
 
 import type { SlotDecl } from "auxlang/runtime/live/live-contract";
 import { EMPTY_SOURCE_MAP, type SourceMap } from "auxlang/source/source-map";
-import { auxlangTheme } from "@/ui/code-editor/auxlang-theme";
-import { createExtensions } from "@/ui/code-editor/extensions";
-import { attachModuleHover } from "@/ui/code-editor/module-highlight";
+import { auxlangTheme } from "@auxlang/codemirror/auxlang-theme";
+import { createExtensions } from "@auxlang/codemirror/extensions";
+import { attachModuleHover } from "@auxlang/codemirror/module-highlight";
+import { categoryColors } from "@/ui/design/colors";
 import { ModuleCard } from "@/ui/docs-kit/module-card";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { patternHighlightExtension } from "@/ui/code-editor/live-display/pattern-highlight-extension";
-import { scopeWidgetExtension } from "@/ui/code-editor/live-display/scope-widget-extension";
+import { patternHighlightExtension } from "@auxlang/codemirror/live-display/pattern-highlight-extension";
+import { scopeWidgetExtension } from "@auxlang/codemirror/live-display/scope-widget-extension";
 import {
 	controlWidgetExtension,
 	setLiveProgram,
-} from "@/ui/code-editor/live-input/control-widget-extension";
-import { numberDragExtension } from "@/ui/code-editor/live-input/number-drag-extension";
+} from "@auxlang/codemirror/live-input/control-widget-extension";
+import { numberDragExtension } from "@auxlang/codemirror/live-input/number-drag-extension";
 
 interface CodeMirrorProps {
 	value: string;
@@ -95,7 +96,7 @@ export function CodeMirror({
 			state: EditorState.create({
 				doc: value,
 				extensions: [
-					...createExtensions(),
+					...createExtensions(categoryColors),
 					auxlangTheme,
 					runKeymap,
 					updateListener,

@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { readDisplays } from "@/ui/code-editor/live-display/display-frames";
+import { readDisplays } from "@/live-display/display-frames";
 import type { DisplayWatch } from "auxlang/runtime/live/live-contract";
 import { frameWords } from "auxlang/runtime/live/monitor-region";
 

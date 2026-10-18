@@ -1,4 +1,4 @@
-import { draggableNumbersOf, numberSiteAt } from "@/ui/code-editor/live-input/number-drag-sites";
+import { draggableNumbersOf, numberSiteAt } from "@/live-input/number-drag-sites";
 import type { SourceMap } from "auxlang/source/source-map";
 import type { SlotDecl } from "auxlang/runtime/live/live-contract";
 import { describe, expect, it } from "vitest";

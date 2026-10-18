@@ -9,13 +9,14 @@
  * CodeMirror nests syntax-highlight spans inside mark-decoration spans, and a
  * nested span's own token color beats any parent inline style, so an inline
  * `style` attribute here silently loses to oneDark.
+ *
+ * `categoryColors` is injected by the caller — this module owns no palette.
  */
 
 import "auxlang/library/all";
 
 import { getRegistry } from "auxlang/dsp/define";
 import type { Category } from "auxlang/types";
-import { categoryColors } from "@/ui/design/colors";
 import type { Extension } from "@codemirror/state";
 import {
 	Decoration,
@@ -28,48 +29,51 @@ import {
 
 const registry = getRegistry();
 
-const markFor = new Map<Category, Decoration>(
-	(Object.keys(categoryColors) as Category[]).map((cat) => [
-		cat,
-		Decoration.mark({ class: `aux-mod aux-mod-${cat}` }),
-	]),
-);
-
-/** One rule per category, covering the mark span and any nested token spans. */
-const categoryTheme = EditorView.baseTheme(
-	Object.fromEntries(
-		(Object.entries(categoryColors) as [Category, string][]).flatMap(([cat, color]) => [
-			[`.aux-mod-${cat}, .aux-mod-${cat} span`, { color: `${color} !important`, fontWeight: "600" }],
-		]),
-	),
-);
-
 // Longest-first so overlapping prefixes resolve to the full name.
 const names = [...registry.keys()].sort((a, b) => b.length - a.length);
 const callPattern = new RegExp(`\\b(${names.join("|")})(?=\\s*\\()`, "g");
 
-const decorator = new MatchDecorator({
-	regexp: callPattern,
-	decoration: (match) => {
-		const spec = match[1] !== undefined ? registry.get(match[1]) : undefined;
-		return spec ? (markFor.get(spec.category) ?? null) : null;
-	},
-});
+/** Category-colored module names, keyed by the caller's palette. */
+export function moduleHighlight(categoryColors: Record<Category, string>): Extension {
+	const markFor = new Map<Category, Decoration>(
+		(Object.keys(categoryColors) as Category[]).map((cat) => [
+			cat,
+			Decoration.mark({ class: `aux-mod aux-mod-${cat}` }),
+		]),
+	);
 
-const highlightPlugin = ViewPlugin.fromClass(
-	class {
-		decorations: DecorationSet;
-		constructor(view: EditorView) {
-			this.decorations = decorator.createDeco(view);
-		}
-		update(update: ViewUpdate) {
-			this.decorations = decorator.updateDeco(update, this.decorations);
-		}
-	},
-	{ decorations: (v) => v.decorations },
-);
+	// One rule per category, covering the mark span and any nested token spans.
+	const categoryTheme = EditorView.baseTheme(
+		Object.fromEntries(
+			(Object.entries(categoryColors) as [Category, string][]).flatMap(([cat, color]) => [
+				[`.aux-mod-${cat}, .aux-mod-${cat} span`, { color: `${color} !important`, fontWeight: "600" }],
+			]),
+		),
+	);
 
-export const moduleHighlight: Extension = [highlightPlugin, categoryTheme];
+	const decorator = new MatchDecorator({
+		regexp: callPattern,
+		decoration: (match) => {
+			const spec = match[1] !== undefined ? registry.get(match[1]) : undefined;
+			return spec ? (markFor.get(spec.category) ?? null) : null;
+		},
+	});
+
+	const highlightPlugin = ViewPlugin.fromClass(
+		class {
+			decorations: DecorationSet;
+			constructor(view: EditorView) {
+				this.decorations = decorator.createDeco(view);
+			}
+			update(update: ViewUpdate) {
+				this.decorations = decorator.updateDeco(update, this.decorations);
+			}
+		},
+		{ decorations: (v) => v.decorations },
+	);
+
+	return [highlightPlugin, categoryTheme];
+}
 
 /**
  * Ctrl/Cmd + hover over a decorated module-name call surfaces that module's

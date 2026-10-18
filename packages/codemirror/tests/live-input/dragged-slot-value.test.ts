@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { draggedSlotValue } from "@/ui/code-editor/live-input/dragged-slot-value";
+import { draggedSlotValue } from "@/live-input/dragged-slot-value";
 
 describe("draggedSlotValue", () => {
 	it("no decl -> plain additive sig shaping, no clamp", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { waveColumns } from "@/ui/code-editor/live-display/wave-columns";
+import { waveColumns } from "@/live-display/wave-columns";
 
 const BUCKETS = 512;
 
