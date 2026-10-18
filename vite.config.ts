@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import tailwindcss from "@tailwindcss/vite";
+import basicSsl from "@vitejs/plugin-basic-ssl";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { configDefaults } from "vitest/config";
@@ -14,11 +15,16 @@ export default defineConfig(({ command }) => ({
 		interactiveTestsPlugin(),
 		patternTestsPlugin(),
 		siteMetaPlugin(),
+		// AudioWorklet needs a secure context; HTTPS lets a phone on the LAN play.
+		...(command === "serve" ? [basicSsl()] : []),
 	],
 	test: {
 		exclude: [...configDefaults.exclude, "**/.claude/worktrees/**"],
 		// Renders of heavy patches near 5 s when the full suite runs in parallel.
 		testTimeout: 20_000,
+	},
+	server: {
+		host: "0.0.0.0",
 	},
 	build: {
 		target: "esnext",
