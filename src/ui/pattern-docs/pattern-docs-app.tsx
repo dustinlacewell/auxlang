@@ -11,7 +11,7 @@ import { GroupedSectionNav } from "@/ui/docs-kit/grouped-section-nav";
 import { useSharedAudio } from "@/ui/docs-kit/use-shared-audio";
 import { SitePage } from "@/ui/site/site-page";
 import { useMemo } from "react";
-import { EXAMPLES, SECTIONS, SECTION_GROUPS } from "./examples";
+import { EXAMPLES, SECTIONS, SECTION_GROUPS } from "./examples/examples";
 
 const cardId = (section: string, title: string): string => `${section}::${title}`;
 

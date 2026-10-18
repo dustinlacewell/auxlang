@@ -13,7 +13,7 @@ import type { Program } from "@/engine/types";
 import { EXAMPLES as SITE } from "@/ui/editor/examples";
 import { evalPatch } from "@/engine/eval-patch";
 import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples/examples";
-import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples";
+import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples/examples";
 import { expect, it } from "vitest";
 import { SNIPPETS } from "../snippets";
 import { BACKENDS, type TestEngine } from "./backends";

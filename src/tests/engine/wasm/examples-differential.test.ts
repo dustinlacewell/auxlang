@@ -22,7 +22,7 @@ import { createWasmEngine, swapWasmEngine } from "@/engine/wasm/host/create-wasm
 import { EXAMPLES as SITE } from "@/ui/editor/examples";
 import { evalPatch } from "@/engine/eval-patch";
 import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples/examples";
-import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples";
+import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples/examples";
 import { CHAPTERS as MODULE_DSP_CHAPTERS } from "@/ui/site/module-dsp/bricks";
 import { describe, expect, it } from "vitest";
 import { defineInternalModule } from "../fixtures/internal-module";
