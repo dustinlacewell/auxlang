@@ -4,9 +4,9 @@
  * build/step-runner.ts). Pure.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { buildSteps } from "@/engine/runtime/build/build-steps";
 import { StepRunner } from "@/engine/runtime/build/step-runner";
 import { stepsWithin } from "@/engine/runtime/build/steps-within";

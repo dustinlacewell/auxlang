@@ -11,7 +11,7 @@
  * whole.begin) once per event — scrub-safe, thread-identical.
  */
 
-import { randomFunctions } from "../module/bind-random/random-functions";
+import { randomFunctions } from "../dsp/bind-random/random-functions";
 import type { Layer, Pat, PatOp, RecordField, SignalKind, StepLayer, WChild } from "./ast";
 import { bjorklund } from "./bjorklund";
 import type { Ev, EvKind, Span } from "./event";

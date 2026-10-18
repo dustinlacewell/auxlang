@@ -7,7 +7,7 @@
  */
 
 import { factory, p, runProgram, tempo } from "@/engine/api";
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { Core3Engine } from "@/engine/runtime/engine";
 import { renderTap } from "@/engine/runtime/render";
 import { describe, expect, it } from "vitest";

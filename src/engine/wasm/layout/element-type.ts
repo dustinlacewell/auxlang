@@ -3,7 +3,7 @@
  * (module/front/types/element-type.ts names the types).
  */
 
-import type { ElementType } from "../../module/front/types/element-type";
+import type { ElementType } from "../../dsp/front/types/element-type";
 
 export const ELEMENT_BYTES: Readonly<Record<ElementType, number>> = {
 	f64: 8,

@@ -12,7 +12,7 @@
  */
 
 import type { Program } from "@/engine/api";
-import { hasModule } from "@/engine/module/define";
+import { hasModule } from "@/engine/dsp/define";
 import { programToDot } from "@/engine/viz/program-to-dot";
 import { evalPatch } from "@/engine/eval-patch";
 import { useEffect, useRef, useState } from "react";

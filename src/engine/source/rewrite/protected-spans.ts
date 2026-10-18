@@ -21,7 +21,7 @@
  */
 
 import type { AnyNode, ArrowFunctionExpression, CallExpression, FunctionExpression } from "acorn";
-import { walk } from "../../module/front/parse/walk";
+import { walk } from "../../dsp/front/parse/walk";
 import type { SourceRange } from "../range";
 import { isMathMember } from "./is-math-member";
 

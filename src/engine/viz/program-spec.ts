@@ -5,7 +5,7 @@
  * touches tick/state, so serialized and live specs are interchangeable here.
  */
 
-import { getModule } from "../module/define";
+import { getModule } from "../dsp/define";
 import type { Category, PortAnn, Program } from "../types";
 
 export interface SpecInfo {

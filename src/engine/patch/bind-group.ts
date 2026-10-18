@@ -8,8 +8,8 @@
  * (`assertGroupPorts`).
  */
 
-import { type GroupDecl, groupDecl, openGroup } from "@/engine/module/group-decls";
-import { memberPort, nodePorts } from "@/engine/module/node-ports";
+import { type GroupDecl, groupDecl, openGroup } from "@/engine/dsp/group-decls";
+import { memberPort, nodePorts } from "@/engine/dsp/node-ports";
 import type { InputValue } from "../graph/node";
 import type { ModulePorts, PortAnn } from "../types";
 import { bindValue } from "./bind-input";

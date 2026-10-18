@@ -8,9 +8,9 @@
  * this: its program was compiled before it crossed.
  */
 
-import { specIR } from "@/engine/module/front/module/spec-ir";
-import type { FunctionPlan } from "@/engine/module/front/types/function-plan";
-import { specialise } from "@/engine/module/front/types/specialise";
+import { specIR } from "@/engine/dsp/front/module/spec-ir";
+import type { FunctionPlan } from "@/engine/dsp/front/types/function-plan";
+import { specialise } from "@/engine/dsp/front/types/specialise";
 import type { ModuleSpec } from "../../types";
 import type { NodeRun } from "../node-run";
 import { laneInstance } from "./lane-instance";

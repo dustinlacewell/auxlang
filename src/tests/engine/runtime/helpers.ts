@@ -3,7 +3,7 @@
  * inline (unique, file-prefixed names) and wire hand-built Programs.
  */
 
-import { bindLambdaMath } from "@/engine/module/bind-math/bind-lambda-math";
+import { bindLambdaMath } from "@/engine/dsp/bind-math/bind-lambda-math";
 import type { PNode, PortSrc, Program } from "@/engine/types";
 
 /** Tick param shorthands: inline test modules annotate explicitly because the

@@ -13,7 +13,7 @@
  */
 
 import { compile } from "./compile/compile";
-import { getModule, getRegistry } from "./module/define";
+import { getModule, getRegistry } from "./dsp/define";
 import { type EvalOptions, runEval } from "./patch/context";
 import { defmod } from "./patch/defmod";
 import { defpatch } from "./patch/defpatch";
@@ -96,7 +96,7 @@ const MODULE_OVERRIDES = new Set(["out"]);
 /**
  * The complete user scope, generated from the registry: every registered module
  * as a named factory, then the reserved bindings layered on top. Callers must
- * have populated the registry first (import `@/engine/modules/all`).
+ * have populated the registry first (import `@/engine/library/all`).
  *
  * Resolution is eager here (the registry is required to be populated), but each
  * factory closes over `getModule(name)` lazily, matching the rest of the layer.

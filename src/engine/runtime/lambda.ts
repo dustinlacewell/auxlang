@@ -8,7 +8,7 @@
  * Signature: (state, sampleRate, time) => number
  */
 
-import { lambdaWrapper } from "../module/bind-math/lambda-wrapper";
+import { lambdaWrapper } from "../dsp/bind-math/lambda-wrapper";
 import type { BoundLambda } from "../types";
 
 export type LambdaFn = (state: Record<string, unknown>, sampleRate: number, time: number) => number;

@@ -7,7 +7,7 @@
  * hidden first parameter, as a cached helper does.
  */
 
-import type { FunctionIR } from "../../module/front/module/module-ir";
+import type { FunctionIR } from "../../dsp/front/module/module-ir";
 import { compileHelper } from "../compile/compile-helper";
 import { compilerBug } from "../compile/compiler-bug";
 import type { ArgShape } from "../compile/emit-context";

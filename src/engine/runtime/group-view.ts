@@ -6,7 +6,7 @@
  */
 
 import type { ModuleSpec } from "../types";
-import type { GroupPorts } from "../module/node-ports";
+import type { GroupPorts } from "../dsp/node-ports";
 
 export interface GroupView {
 	readonly name: string;

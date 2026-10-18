@@ -7,9 +7,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import { bindLambdaMath } from "@/engine/module/bind-math/bind-lambda-math";
-import { lambdaWrapper } from "@/engine/module/bind-math/lambda-wrapper";
-import { mathFunctions } from "@/engine/module/bind-math/math-functions";
+import { bindLambdaMath } from "@/engine/dsp/bind-math/bind-lambda-math";
+import { lambdaWrapper } from "@/engine/dsp/bind-math/lambda-wrapper";
+import { mathFunctions } from "@/engine/dsp/bind-math/math-functions";
 
 type Fn = (...args: number[]) => number;
 

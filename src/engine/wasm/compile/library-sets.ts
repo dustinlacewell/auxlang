@@ -4,8 +4,8 @@
  * the runtime functions, read once per process on first use.
  */
 
-import { analyseLibrary } from "../../module/front/module/analyse-library";
-import { libraryIrs } from "../../module/front/module/library-irs";
+import { analyseLibrary } from "../../dsp/front/module/analyse-library";
+import { libraryIrs } from "../../dsp/front/module/library-irs";
 import { RUNTIME_SOURCES } from "../runtime/runtime-sources";
 import { type HelperSet, helperSet } from "./helper-set";
 

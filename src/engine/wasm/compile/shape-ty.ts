@@ -3,7 +3,7 @@
  * memory: a number field is a number, an array, record or list a ref.
  */
 
-import { NUM, type RecordRef, type RefShape, type Ty, ref } from "../../module/front/types/ty";
+import { NUM, type RecordRef, type RefShape, type Ty, ref } from "../../dsp/front/types/ty";
 import type { Aggregate, RecordShape, Shape } from "../layout/state-shape";
 
 export function shapeTy(shape: Shape): Ty {

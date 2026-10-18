@@ -9,7 +9,7 @@
 
 import type { GNode } from "../graph/node";
 import { fnv1aHex } from "../hash/fnv1a-hex";
-import type { SpecTable } from "../module/resolve";
+import type { SpecTable } from "../dsp/resolve";
 import type { Identity } from "../types";
 import { constantEvidence } from "./constant-evidence";
 import { firstPaths } from "./first-paths";

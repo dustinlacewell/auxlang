@@ -8,9 +8,9 @@
  * carries them.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { Core3Engine } from "@/engine/runtime/engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";

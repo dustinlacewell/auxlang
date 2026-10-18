@@ -5,9 +5,9 @@
  */
 
 import type { AnyNode, Expression } from "acorn";
-import type { FunctionIR } from "../../module/front/module/module-ir";
-import type { FunctionPlan } from "../../module/front/types/function-plan";
-import type { StaticValue } from "../../module/front/types/ty";
+import type { FunctionIR } from "../../dsp/front/module/module-ir";
+import type { FunctionPlan } from "../../dsp/front/types/function-plan";
+import type { StaticValue } from "../../dsp/front/types/ty";
 import type { Aggregate, RecordShape } from "../layout/state-shape";
 import type { FnEmitter } from "./fn-emitter";
 import type { Kind, Value } from "./values";

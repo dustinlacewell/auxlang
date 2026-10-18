@@ -4,7 +4,7 @@
  */
 
 import type { GNode } from "../graph/node";
-import { getModule } from "../module/define";
+import { getModule } from "../dsp/define";
 import type { HandleData } from "./handle-data";
 import { refFromHandle } from "./lift";
 import { newNode } from "./new-node";

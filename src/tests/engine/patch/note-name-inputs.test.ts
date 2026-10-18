@@ -3,7 +3,7 @@
  * same fold at a Hz port, same loud error at a port with no conversion.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import { factory, runProgram } from "@/engine/api";
 import { semis } from "@/engine/units/tag";

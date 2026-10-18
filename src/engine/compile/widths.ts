@@ -10,7 +10,7 @@
 
 import { isLambdaInput, isNodeRef, isSlotInput, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
-import { type SpecTable, resolveSpec } from "../module/resolve";
+import { type SpecTable, resolveSpec } from "../dsp/resolve";
 
 export function resolveWidths(nodes: readonly GNode[], specs?: SpecTable): Map<GNode, number> {
 	const widths = new Map<GNode, number>();

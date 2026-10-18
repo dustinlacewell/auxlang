@@ -7,7 +7,7 @@
 
 import { isNodeRef } from "../graph/input-kinds";
 import type { GNode } from "../graph/node";
-import { getModule } from "../module/define";
+import { getModule } from "../dsp/define";
 
 export function markClocked(nodes: readonly GNode[]): void {
 	for (const node of nodes) {

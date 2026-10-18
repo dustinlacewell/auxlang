@@ -6,8 +6,8 @@
  * gathers its input lanes into f64 views, then ticks once.
  */
 
-import type { ModuleIR } from "../../module/front/module/module-ir";
-import type { FunctionPlan } from "../../module/front/types/function-plan";
+import type { ModuleIR } from "../../dsp/front/module/module-ir";
+import type { FunctionPlan } from "../../dsp/front/types/function-plan";
 import { GATHER_CUR } from "../../runtime/gathers";
 import type { NodeRun } from "../../runtime/node-run";
 import { tableIntrinsics } from "../bridge/table-intrinsics";

@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { mathFunctions } from "@/engine/module/bind-math/math-functions";
+import { mathFunctions } from "@/engine/dsp/bind-math/math-functions";
 
 type Encoded = number | "NaN" | "Infinity" | "-Infinity" | "-0";
 interface RefFile {

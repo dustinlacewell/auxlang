@@ -14,7 +14,7 @@
  * `?url` would ship the raw .ts source as an unbundled asset.
  */
 
-import { getRegistry } from "../module/define";
+import { getRegistry } from "../dsp/define";
 import type { Program } from "../types";
 import { withProgramSpecs } from "./hydrate-specs";
 import { BUILD_BUDGET } from "./build/build-budget";

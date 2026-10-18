@@ -8,8 +8,8 @@
  */
 
 import type { AnyNode } from "acorn";
-import { within } from "../../module/front/types/int-range";
-import { validIndex } from "../../module/front/types/valid-index";
+import { within } from "../../dsp/front/types/int-range";
+import { validIndex } from "../../dsp/front/types/valid-index";
 import { OP } from "../encode/opcodes";
 import { emitExpr } from "./emit-expression";
 import { emitInteger, integerWidth } from "./emit-int";

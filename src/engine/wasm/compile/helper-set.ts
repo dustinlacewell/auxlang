@@ -5,7 +5,7 @@
  * call cache, so each takes the cache address as a hidden first parameter.
  */
 
-import type { FunctionIR } from "../../module/front/module/module-ir";
+import type { FunctionIR } from "../../dsp/front/module/module-ir";
 import { cacheSlotsIn } from "./cache-slots";
 
 export interface HelperSet {

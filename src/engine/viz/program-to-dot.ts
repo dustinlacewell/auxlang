@@ -14,7 +14,7 @@
  * node-output / node-device / edge-feedback classes remain for hover CSS.
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import type { PortSrc, Program, Unit } from "../types";
 import { edgeStrokeColor, nodeFill, nodeInkColor, outNodeInkColor } from "./dot-colors";
 import { programSpec } from "./program-spec";

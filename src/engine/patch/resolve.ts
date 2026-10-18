@@ -7,7 +7,7 @@
  * must not explode on bundled modules).
  */
 
-import { hasSpec, resolveSpec } from "../module/resolve";
+import { hasSpec, resolveSpec } from "../dsp/resolve";
 import type { ModulePorts } from "../types";
 import { currentSpecs, currentSubpatches } from "./context";
 import { findSubpatch } from "./subpatch/find-subpatch";

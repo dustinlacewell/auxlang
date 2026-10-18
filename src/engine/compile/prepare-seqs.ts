@@ -11,7 +11,7 @@
 
 import { seqConfig } from "../bridge/seq-config";
 import type { GNode } from "../graph/node";
-import { getModule } from "../module/define";
+import { getModule } from "../dsp/define";
 import { patternAst } from "../patch/pattern-arg";
 import { assertRecordMembers } from "../patch/record-members";
 import { activeNotationSource } from "../source/active-source";

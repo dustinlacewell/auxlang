@@ -8,9 +8,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { out, runProgram } from "@/engine/api";
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { defmod } from "@/engine/patch/defmod";
 import { hashRandom as hostHashRandom } from "@/engine/random/hash-random";
 import { Core3Engine } from "@/engine/runtime/engine";

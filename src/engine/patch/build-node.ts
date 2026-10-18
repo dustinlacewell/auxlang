@@ -13,8 +13,8 @@
  * (MANIFESTO §10.1).
  */
 
-import { groupDecl } from "@/engine/module/group-decls";
-import { nodePorts } from "@/engine/module/node-ports";
+import { groupDecl } from "@/engine/dsp/group-decls";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import { isGNode } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
 import { assertGroupPorts, type BuildGroups, bindGroup, bindOpenMember } from "./bind-group";

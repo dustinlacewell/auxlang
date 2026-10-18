@@ -5,7 +5,7 @@
  * context; `compile` then walks the collected roots.
  *
  * The scope is `buildUserScope()` — generated from the module registry (which
- * `@/engine/modules/all` populates on import), so it is the SINGLE source of the
+ * `@/engine/library/all` populates on import), so it is the SINGLE source of the
  * eval scope shared by the docs pages, the live editor, and every headless
  * verifier. Anything that renders an example must go through THIS function so
  * headless-green implies browser-green.
@@ -21,11 +21,11 @@
  * patch line.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import { buildUserScope, compile, runEval } from "@/engine/api";
 import type { Program } from "@/engine/api";
-import { withSourceText } from "@/engine/module/source-text";
+import { withSourceText } from "@/engine/dsp/source-text";
 import type { EvalOptions } from "@/engine/patch/context";
 import { TRACE, withActiveSource } from "@/engine/source/active-source";
 import { locateError } from "@/engine/source/located-error";

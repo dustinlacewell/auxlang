@@ -8,7 +8,7 @@
  */
 
 import type { AssignmentExpression } from "acorn";
-import { keepsLeft } from "../../module/front/types/keeps-left";
+import { keepsLeft } from "../../dsp/front/types/keeps-left";
 import { OP } from "../encode/opcodes";
 import { emitRebind } from "./address-variable";
 import { toBool, toF64 } from "./coerce";

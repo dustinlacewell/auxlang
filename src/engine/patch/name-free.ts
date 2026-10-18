@@ -4,7 +4,7 @@
  * or a module this patch already defined. Shared by tick and sub-patch forms.
  */
 
-import { hasModule } from "../module/define";
+import { hasModule } from "../dsp/define";
 import { evalCtx } from "./context";
 import { RESERVED_HANDLE_NAMES } from "./reserved-handle-names";
 import { RESERVED_SCOPE_NAMES } from "./scope-names";

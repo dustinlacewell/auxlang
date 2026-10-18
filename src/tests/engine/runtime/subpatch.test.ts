@@ -9,9 +9,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { factory, loop, runProgram, seq } from "@/engine/api";
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { defpatch } from "@/engine/patch/defpatch";
 import type { Handle } from "@/engine/patch/handle-data";
 import { Core3Engine } from "@/engine/runtime/engine";

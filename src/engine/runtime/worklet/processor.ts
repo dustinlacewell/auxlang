@@ -5,7 +5,7 @@
  * gets the l/r mixdown.
  */
 
-import { getRegistry } from "../../module/define";
+import { getRegistry } from "../../dsp/define";
 import { displayWords } from "../../wasm/program/memory-layout";
 import { LiveHost } from "./live-host";
 import type { HostPrepared } from "../prepare/host-prepared";

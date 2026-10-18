@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client";
 import "@/ui/styles/globals.css";
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { EditorApp } from "./editor-app";
 
 const root = document.getElementById("root");

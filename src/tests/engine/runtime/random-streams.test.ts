@@ -6,9 +6,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { factory, runProgram } from "@/engine/api";
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { renderTap } from "@/engine/runtime/render";
 import type { Program } from "@/engine/types";
 import { BACKENDS, type TestEngine } from "./backends";

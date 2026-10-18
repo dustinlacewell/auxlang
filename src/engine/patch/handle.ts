@@ -9,10 +9,10 @@
  * and promise checks never explode.
  */
 
-import { type GroupDecl, groupDecl } from "@/engine/module/group-decls";
-import { type NodePorts, nodePorts } from "@/engine/module/node-ports";
+import { type GroupDecl, groupDecl } from "@/engine/dsp/group-decls";
+import { type NodePorts, nodePorts } from "@/engine/dsp/node-ports";
 import type { GNode } from "../graph/node";
-import { getRegistry } from "../module/define";
+import { getRegistry } from "../dsp/define";
 import { checkSeed } from "../random/check-seed";
 import { currentCall } from "../source/active-source";
 import { argLiteralSite } from "../source/call-bindings";

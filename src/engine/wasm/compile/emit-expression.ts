@@ -16,7 +16,7 @@ import { emitMemberRead } from "./emit-member";
 import { emitTest } from "./emit-test";
 import type { FnEmitter } from "./fn-emitter";
 import { agreed } from "./plan-agreement";
-import type { StaticValue } from "../../module/front/types/ty";
+import type { StaticValue } from "../../dsp/front/types/ty";
 import type { Kind, Value } from "./values";
 
 /** Emits `node`'s value and returns its kind, which the plan's type must agree with. */

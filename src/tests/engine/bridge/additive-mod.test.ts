@@ -4,7 +4,7 @@
  * Modulo is `wrap`, so `mod` means modulation.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import { buildUserScope, defmod, factory, runProgram } from "@/engine/api";
 import { handleData } from "@/engine/patch/handle-data";

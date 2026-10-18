@@ -4,8 +4,8 @@
  * (`Object.is`), or null when every slot matches for `samples` samples.
  */
 
-import "@/engine/modules/all";
-import { getRegistry } from "@/engine/module/define";
+import "@/engine/library/all";
+import { getRegistry } from "@/engine/dsp/define";
 import { Core3Engine } from "@/engine/runtime/engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { slotOf } from "@/engine/runtime/output-slots";

@@ -10,7 +10,7 @@
  */
 
 import type { GNode, InputValue } from "../graph/node";
-import { getModule } from "../module/define";
+import { getModule } from "../dsp/define";
 import { connectWhole } from "./connect";
 import { evalCtx } from "./context";
 import { type HandleData, handleData, isHandle } from "./handle-data";

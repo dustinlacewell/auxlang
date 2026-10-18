@@ -73,7 +73,7 @@ A matched node keeps its state whenever the carried state fits the fresh state's
 
 ## 6. Worklet host
 
-The main thread prepares each program (`runtime/prepare/prepare-wasm-program.ts`): it matches it against the running one, compiles it to a WebAssembly module, warms a throwaway instance so the module's code is compiled before the worklet runs it, and plans the carry (which bytes of the old memory the new one takes over). It posts the compiled `Module` with plain data. The module registry ships inside the worklet bundle via a direct `import "../modules/all"`; the worklet builds the program's start values from the same registry.
+The main thread prepares each program (`runtime/prepare/prepare-wasm-program.ts`): it matches it against the running one, compiles it to a WebAssembly module, warms a throwaway instance so the module's code is compiled before the worklet runs it, and plans the carry (which bytes of the old memory the new one takes over). It posts the compiled `Module` with plain data. The module registry ships inside the worklet bundle via a direct `import "../library/all"`; the worklet builds the program's start values from the same registry.
 
 The worklet host (`runtime/worklet/live-host.ts`) builds the new program a budget at a time while the old one plays: instantiate, write the start values into memory, prefill the seq tables. At a block boundary it swaps: the carry copies along the plan, and an equal-power crossfade runs over roughly 100 ms, with both engines rendering during the fade. The offline renderer (`render`, `renderTap`) is the interpreter with no worklet attached — which is how everything integration-tests headlessly.
 

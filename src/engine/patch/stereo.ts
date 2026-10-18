@@ -5,8 +5,8 @@
  * a loud error: taking one port would silently drop the other channel.
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
-import { openGroup } from "@/engine/module/group-decls";
+import { nodePorts } from "@/engine/dsp/node-ports";
+import { openGroup } from "@/engine/dsp/group-decls";
 import type { ModulePorts } from "../types";
 
 export const STEREO_PORTS = ["l", "r"] as const;

@@ -1,5 +1,5 @@
 /**
- * The control modules (engine/modules/lib/controls.js): calls whose control
+ * The control modules (engine/library/lib/controls.js): calls whose control
  * ports always bind to a live slot, independent of `slotSites`
  * (compile/bind-slots.ts). Each entry names which positional argument index
  * holds that control's value literal, so a widget can rewrite the code when

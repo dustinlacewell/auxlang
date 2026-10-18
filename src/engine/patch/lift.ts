@@ -7,8 +7,8 @@
 
 import { isGNode } from "../graph/input-kinds";
 import type { InputValue, NodeRef } from "../graph/node";
-import { defaultOutOf } from "../module/default-out";
-import { checkLambda } from "../module/front/module/check-lambda";
+import { defaultOutOf } from "../dsp/default-out";
+import { checkLambda } from "../dsp/front/module/check-lambda";
 import { isP } from "../pattern/pat-class";
 import { isUnitTag } from "../units/tag";
 import { buildPaletteMux } from "./build-palette-mux";

@@ -4,7 +4,7 @@
  * refuses it, at eval or at build on both engines (reject).
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import type { Program } from "@/engine/types";
 import { evalPatch } from "@/engine/eval-patch";

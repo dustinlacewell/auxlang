@@ -16,7 +16,7 @@
  * worklet runs in the swap block (carry/run-carry.ts). Pure.
  */
 
-import { carryFields } from "../../module/front/state/carry-fields";
+import { carryFields } from "../../dsp/front/state/carry-fields";
 import { slotPairs } from "../../runtime/live/slot-carry";
 import type { WasmLayout } from "../program/memory-layout";
 import { CARRY_F64 } from "./carry/carry-run";

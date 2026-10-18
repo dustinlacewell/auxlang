@@ -3,7 +3,7 @@
  * in: an i32 when the range fits int32, else an i64.
  */
 
-import { type Range, fitsI32 } from "../../module/front/types/int-range";
+import { type Range, fitsI32 } from "../../dsp/front/types/int-range";
 import type { Width } from "./values";
 
 /** The integer kind that holds every value of `r`: an i32 when it fits, else an i64. */

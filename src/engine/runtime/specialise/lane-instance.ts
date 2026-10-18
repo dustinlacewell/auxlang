@@ -5,7 +5,7 @@
  * the node's config, the sample rate and the reducer width.
  */
 
-import type { LaneInput, TickInstance } from "@/engine/module/front/types/tick-instance";
+import type { LaneInput, TickInstance } from "@/engine/dsp/front/types/tick-instance";
 import { BIND_CONST, BIND_LAMBDA, type LaneBindings } from "../bindings";
 import { GATHER_CONST, GATHER_CUR, GATHER_LAMBDA, GATHER_PREV, type PortGather } from "../gathers";
 import type { GroupView } from "../group-view";

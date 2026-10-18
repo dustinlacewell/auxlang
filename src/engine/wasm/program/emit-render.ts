@@ -10,7 +10,7 @@
 
 import { BIND_CUR } from "../../runtime/bindings";
 import { GATHER_CUR } from "../../runtime/gathers";
-import type { ModuleIR } from "../../module/front/module/module-ir";
+import type { ModuleIR } from "../../dsp/front/module/module-ir";
 import type { MonitorPlan } from "../../runtime/live/monitor-plan";
 import type { NodeRun } from "../../runtime/node-run";
 import type { NodePlans } from "../../runtime/specialise/specialise-nodes";

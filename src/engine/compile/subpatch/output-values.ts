@@ -4,7 +4,7 @@
  * pattern). Anything else is a loud error naming what was expected.
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import type { InputValue } from "../../graph/node";
 import { isHandle } from "../../patch/handle-data";
 import { lift } from "../../patch/lift";

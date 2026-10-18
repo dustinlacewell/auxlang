@@ -6,7 +6,7 @@
  * plain indexed access.
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import type { PNode, Registry } from "../types";
 
 export interface OutputLayout {

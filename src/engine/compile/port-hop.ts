@@ -6,8 +6,8 @@
  */
 
 import type { GNode } from "../graph/node";
-import { nodePorts } from "../module/node-ports";
-import { resolveSpec, type SpecTable } from "../module/resolve";
+import { nodePorts } from "../dsp/node-ports";
+import { resolveSpec, type SpecTable } from "../dsp/resolve";
 
 export type PortHop = (node: GNode, port: string) => string;
 

@@ -17,9 +17,9 @@
  * swap carries it. A slot is a constant to identity (constant-evidence.ts).
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import type { GNode, InputValue } from "../graph/node";
-import { type SpecTable, resolveSpec } from "../module/resolve";
+import { type SpecTable, resolveSpec } from "../dsp/resolve";
 import type { SlotDecl } from "../runtime/live/live-contract";
 import type { PortAnn, SlotRange } from "../types";
 

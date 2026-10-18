@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { evalPatch } from "@/engine/eval-patch";
 import { compareBlocks } from "./block-differential";
 

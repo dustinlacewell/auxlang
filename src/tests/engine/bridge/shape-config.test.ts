@@ -5,7 +5,7 @@
  * was passed unmerged. Also covers lfo's shape config.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import { factory, runProgram } from "@/engine/api";
 import { render } from "@/engine/runtime/render";

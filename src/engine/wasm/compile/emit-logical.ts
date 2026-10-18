@@ -10,7 +10,7 @@
  */
 
 import type { AnyNode, ConditionalExpression, LogicalExpression } from "acorn";
-import { keepsLeft } from "../../module/front/types/keeps-left";
+import { keepsLeft } from "../../dsp/front/types/keeps-left";
 import { OP } from "../encode/opcodes";
 import { toBool, toF64 } from "./coerce";
 import type { Operand } from "./emit-binary";

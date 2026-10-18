@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { defmod } from "@/engine/patch/defmod";
 import { createEngine } from "@/engine/runtime/engine";
 import { BACKENDS } from "./backends";

@@ -13,7 +13,7 @@
  *          fit int32 (a sum of two int32s), in an i64
  */
 
-import type { StaticValue } from "../../module/front/types/ty";
+import type { StaticValue } from "../../dsp/front/types/ty";
 import type { Shape } from "../layout/state-shape";
 
 export type Kind = "f64" | "bool" | "int" | "long";

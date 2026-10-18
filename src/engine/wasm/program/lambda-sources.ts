@@ -5,8 +5,8 @@
  * text share one reading.
  */
 
-import { boundLambdaIR } from "../../module/front/module/bound-lambda-ir";
-import type { FunctionIR } from "../../module/front/module/module-ir";
+import { boundLambdaIR } from "../../dsp/front/module/bound-lambda-ir";
+import type { FunctionIR } from "../../dsp/front/module/module-ir";
 import type { BoundLambda, PNode } from "../../types";
 
 export interface LambdaSource {

@@ -6,7 +6,7 @@
  * the same Program, so a watch index means the same output on both sides.
  */
 
-import { getRegistry } from "../../module/define";
+import { getRegistry } from "../../dsp/define";
 import type { Program, Registry } from "../../types";
 import { withProgramSpecs } from "../hydrate-specs";
 import type { Watch } from "./live-contract";

@@ -17,7 +17,7 @@ import type { GroupView } from "../../runtime/group-view";
 import type { NodeRun } from "../../runtime/node-run";
 import type { TickRoles } from "../compile/emit-context";
 import type { FnEmitter } from "../compile/fn-emitter";
-import type { StaticValue } from "../../module/front/types/ty";
+import type { StaticValue } from "../../dsp/front/types/ty";
 import { type Value, fixed, inMemory, local, throughPointer } from "../compile/values";
 import type { LaneMemory, NodeMemory } from "./memory-layout";
 import { stateRecord } from "./state-record";

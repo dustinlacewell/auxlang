@@ -6,7 +6,7 @@
  * both sides.
  */
 
-import { getRegistry } from "../../module/define";
+import { getRegistry } from "../../dsp/define";
 import type { Program, Registry } from "../../types";
 import { withProgramSpecs } from "../hydrate-specs";
 import type { DisplayWatch } from "./live-contract";

@@ -13,7 +13,7 @@
 import { describe, expect, it } from "vitest";
 
 import { runProgram } from "@/engine/api";
-import { analyseLibrary } from "@/engine/module/front/module/analyse-library";
+import { analyseLibrary } from "@/engine/dsp/front/module/analyse-library";
 import type { Program } from "@/engine/types";
 import { sig } from "@/engine/types";
 import { compileHelper } from "@/engine/wasm/compile/compile-helper";

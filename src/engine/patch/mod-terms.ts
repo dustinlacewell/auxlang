@@ -6,7 +6,7 @@
  * terms into add/mul nodes (compile/expand-mods).
  */
 
-import { type NodeGroups, nodePorts } from "@/engine/module/node-ports";
+import { type NodeGroups, nodePorts } from "@/engine/dsp/node-ports";
 import type { ModTerm } from "../graph/node";
 import type { ModulePorts } from "../types";
 import { bindInput } from "./bind-input";

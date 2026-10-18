@@ -6,10 +6,10 @@
  * pins the layering contract: the bundled registry is never mutated.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import { compile, defmod, factory, out, runEval } from "@/engine/api";
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { render } from "@/engine/runtime/render";
 import type { Program } from "@/engine/types";

@@ -6,7 +6,7 @@
  * error.
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import type { ModuleSpec, PNode } from "../../types";
 import { compileLaneBindings } from "../bindings";
 import { compileReduceGathers } from "../gathers";

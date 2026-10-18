@@ -6,7 +6,7 @@
  */
 
 import type { NodeRef } from "../graph/node";
-import { getModule } from "../module/define";
+import { getModule } from "../dsp/define";
 import type { Pat } from "../pattern/ast";
 import type { PaletteSignal } from "../pattern/palette/palette-signal";
 import { P } from "../pattern/pat-class";

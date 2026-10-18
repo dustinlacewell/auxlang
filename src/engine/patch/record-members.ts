@@ -8,7 +8,7 @@
  * (bind-group.ts). A mini-notation string carries no records.
  */
 
-import { type GroupDecl, openGroup } from "@/engine/module/group-decls";
+import { type GroupDecl, openGroup } from "@/engine/dsp/group-decls";
 import type { InputValue } from "../graph/node";
 import type { Pat } from "../pattern/ast";
 import { isP } from "../pattern/pat-class";

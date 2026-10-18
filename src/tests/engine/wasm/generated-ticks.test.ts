@@ -6,7 +6,7 @@
  * in its test title, explores further on every run.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import { describe, it } from "vitest";
 import { evalInternal } from "../fixtures/internal-module";

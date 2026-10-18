@@ -14,8 +14,8 @@
  * swap. Values are copied, never shared.
  */
 
-import { carryFields } from "../../module/front/state/carry-fields";
-import { laneShapeOf } from "../../module/front/state/state-shape-of";
+import { carryFields } from "../../dsp/front/state/carry-fields";
+import { laneShapeOf } from "../../dsp/front/state/state-shape-of";
 import { copyFields } from "./copy-into";
 
 type LaneState = Record<string, unknown>;

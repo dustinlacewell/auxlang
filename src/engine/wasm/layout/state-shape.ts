@@ -8,7 +8,7 @@
  * rebound element of an array of records through its table (`RecordsShape`).
  */
 
-import type { ElementType } from "../../module/front/types/element-type";
+import type { ElementType } from "../../dsp/front/types/element-type";
 
 export type Shape = NumberShape | ArrayShape | RecordShape | RecordsShape;
 

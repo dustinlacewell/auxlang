@@ -12,7 +12,7 @@
  */
 
 import type { AnyNode, CallExpression, TaggedTemplateExpression } from "acorn";
-import { walk } from "../../module/front/parse/walk";
+import { walk } from "../../dsp/front/parse/walk";
 import type { SourceRange } from "../range";
 import type { ArgLiteral, ArgSite, CallSite, NumberSite, PatternSite } from "../source-map";
 import { calleeName, calleeStart } from "./callee-name";

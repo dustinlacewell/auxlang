@@ -4,7 +4,7 @@
  * to its JS original.
  */
 
-import { analyseLibrary } from "@/engine/module/front/module/analyse-library";
+import { analyseLibrary } from "@/engine/dsp/front/module/analyse-library";
 import type { Calls, FnRef } from "@/engine/wasm/compile/emit-context";
 import { FunctionTable } from "@/engine/wasm/compile/function-table";
 import { Functions } from "@/engine/wasm/compile/functions";

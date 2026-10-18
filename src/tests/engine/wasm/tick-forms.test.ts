@@ -9,7 +9,7 @@
  * both.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import { describe, expect, it } from "vitest";
 import { evalInternal } from "../fixtures/internal-module";

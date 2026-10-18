@@ -5,7 +5,7 @@
  * happens before the loop.
  */
 
-import { getRegistry } from "../module/define";
+import { getRegistry } from "../dsp/define";
 import type { Program, Registry } from "../types";
 import { Core3Engine } from "./engine";
 import { withProgramSpecs } from "./hydrate-specs";

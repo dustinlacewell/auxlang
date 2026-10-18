@@ -4,9 +4,9 @@
  * AudioContext frame clock and whose generation is the program's serial.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import {
 	LEVEL_STRIDE,

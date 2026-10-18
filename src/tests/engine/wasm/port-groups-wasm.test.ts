@@ -5,9 +5,9 @@
  * upstream lfo's phase on both engines while the two engines stay identical.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { Core3Engine } from "@/engine/runtime/engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { renderTap } from "@/engine/runtime/render";

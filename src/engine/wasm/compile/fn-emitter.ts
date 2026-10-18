@@ -8,10 +8,10 @@
  */
 
 import type { AnyNode, Identifier } from "acorn";
-import { type Binding, type Resolution, bindingDeclaredBy } from "../../module/front/scope/binding";
-import type { FunctionPlan } from "../../module/front/types/function-plan";
-import { type Range, rangeOf } from "../../module/front/types/int-range";
-import type { Folded, Ty } from "../../module/front/types/ty";
+import { type Binding, type Resolution, bindingDeclaredBy } from "../../dsp/front/scope/binding";
+import type { FunctionPlan } from "../../dsp/front/types/function-plan";
+import { type Range, rangeOf } from "../../dsp/front/types/int-range";
+import type { Folded, Ty } from "../../dsp/front/types/ty";
 import { CodeBuffer } from "../encode/code-buffer";
 import { F64, I32, I64, OP } from "../encode/opcodes";
 import { compilerBug } from "./compiler-bug";

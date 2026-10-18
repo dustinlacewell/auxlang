@@ -8,8 +8,8 @@
 import { describe, expect, it } from "vitest";
 
 import { fnv1a32 } from "@/engine/hash/fnv1a32";
-import { randomFunctions } from "@/engine/module/bind-random/random-functions";
-import { RANDOM_HELPER_PREFIX } from "@/engine/module/bind-random/random-helpers";
+import { randomFunctions } from "@/engine/dsp/bind-random/random-functions";
+import { RANDOM_HELPER_PREFIX } from "@/engine/dsp/bind-random/random-helpers";
 import type { ArgShape } from "@/engine/wasm/compile/emit-context";
 import { exportFunctions } from "../wasm/function-module";
 

@@ -7,9 +7,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { factory, loop, runProgram } from "@/engine/api";
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import type { Program } from "@/engine/types";
 import { type Backend, JS_BACKEND, type TestEngine, WASM_BACKEND } from "./backends";
 

@@ -29,12 +29,12 @@
  * registry, so tests register their own toy modules.
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import { isLambdaInput, isNodeRef, isSlotInput, isZRef } from "../graph/input-kinds";
 import type { GNode, InputValue } from "../graph/node";
-import { bindLambdaMath } from "../module/bind-math/bind-lambda-math";
-import { type SpecTable, resolveSpec } from "../module/resolve";
-import { assertClosureFree, serializeSpec } from "../module/serialize";
+import { bindLambdaMath } from "../dsp/bind-math/bind-lambda-math";
+import { type SpecTable, resolveSpec } from "../dsp/resolve";
+import { assertClosureFree, serializeSpec } from "../dsp/serialize";
 import type { EvalResult } from "../patch/context";
 import type { ModuleSpec, PNode, PortAnn, PortSrc, Program, SerializedModuleSpec } from "../types";
 import { resolveAmbientClocks } from "./ambient-clock";

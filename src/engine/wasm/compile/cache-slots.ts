@@ -4,7 +4,7 @@
  */
 
 import type { AnyNode } from "acorn";
-import { walk } from "../../module/front/parse/walk";
+import { walk } from "../../dsp/front/parse/walk";
 
 export function cacheSlotsIn(nodes: readonly AnyNode[]): number {
 	let slots = 0;

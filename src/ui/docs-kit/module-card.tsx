@@ -5,9 +5,9 @@
  * module reference. ◂ marks the default input/output.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
-import { getModule } from "@/engine/module/define";
+import { getModule } from "@/engine/dsp/define";
 import type { PortAnn } from "@/engine/types";
 import { ModName } from "@/ui/design/mod-name";
 import { ModuleBadge } from "@/ui/design/module-badge";

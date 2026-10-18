@@ -7,9 +7,9 @@
  * tempo(120): one cycle is 2 s, 96000 samples at 48 kHz; a quarter is 24000.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { Core3Engine } from "@/engine/runtime/engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { render, renderTap } from "@/engine/runtime/render";

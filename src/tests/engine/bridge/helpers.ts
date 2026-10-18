@@ -3,7 +3,7 @@
  * buffer assertions shared by the end-to-end tests.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import type { Program } from "@/engine/types";
 
 /** renderTap's fixed sample rate. */

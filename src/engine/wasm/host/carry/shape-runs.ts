@@ -12,7 +12,7 @@
  * points at, so each name gets its own copy, as the JS hand-over gives.
  */
 
-import { shapeKeys } from "../../../module/front/state/engine-fields";
+import { shapeKeys } from "../../../dsp/front/state/engine-fields";
 import type { Field, RecordsShape, Shape } from "../../layout/state-shape";
 import { sizeOf } from "../../program/state-layout";
 import { CARRY_F64, CARRY_REL, CARRY_WORD } from "./carry-run";

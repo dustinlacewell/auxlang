@@ -15,14 +15,14 @@
  * config: `resolveTickWrites` reruns the carry analysis against those shapes.
  */
 
-import { bindSource } from "../module/bind-module";
-import { currentSourceText } from "../module/source-text";
-import { hydrateFn } from "../module/serialize";
-import { laneShapeOf } from "../module/front/state/state-shape-of";
-import { fileProgram } from "../module/lower/file-program";
-import { lowerModule, resolveTickWrites, type LowerModuleMeta } from "../module/lower/lower-module";
-import { validateDisplay } from "../module/lower/validate-display";
-import type { ReadTime } from "../module/front/module/check-module";
+import { bindSource } from "../dsp/bind-module";
+import { currentSourceText } from "../dsp/source-text";
+import { hydrateFn } from "../dsp/serialize";
+import { laneShapeOf } from "../dsp/front/state/state-shape-of";
+import { fileProgram } from "../dsp/lower/file-program";
+import { lowerModule, resolveTickWrites, type LowerModuleMeta } from "../dsp/lower/lower-module";
+import { validateDisplay } from "../dsp/lower/validate-display";
+import type { ReadTime } from "../dsp/front/module/check-module";
 import type { ModuleSpec } from "../types";
 
 const TRIAL_SAMPLE_RATE = 48000;

@@ -8,9 +8,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { factory, runProgram, seq, tempo } from "@/engine/api";
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { Core3Engine } from "@/engine/runtime/engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";

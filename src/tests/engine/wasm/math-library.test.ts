@@ -9,7 +9,7 @@ import {
 	MATH_HELPER_PREFIX,
 	mathFunctionNames,
 	mathHelpers,
-} from "@/engine/module/bind-math/math-helpers";
+} from "@/engine/dsp/bind-math/math-helpers";
 import type { ArgShape } from "@/engine/wasm/compile/emit-context";
 import { describe, expect, it } from "vitest";
 import { exportFunctions } from "./function-module";

@@ -6,11 +6,11 @@
  */
 
 import type { Expression, ReturnStatement } from "acorn";
-import type { FunctionIR } from "../../module/front/module/module-ir";
-import { calleesOf } from "../../module/front/types/callees";
-import type { FunctionPlan } from "../../module/front/types/function-plan";
-import { helperPlan } from "../../module/front/types/helper-plans";
-import { BOOL, NUM, type Ty, known, ref } from "../../module/front/types/ty";
+import type { FunctionIR } from "../../dsp/front/module/module-ir";
+import { calleesOf } from "../../dsp/front/types/callees";
+import type { FunctionPlan } from "../../dsp/front/types/function-plan";
+import { helperPlan } from "../../dsp/front/types/helper-plans";
+import { BOOL, NUM, type Ty, known, ref } from "../../dsp/front/types/ty";
 import { I32 } from "../encode/opcodes";
 import { addressLocal } from "./address-variable";
 import { compilerBug } from "./compiler-bug";

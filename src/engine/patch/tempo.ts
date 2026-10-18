@@ -6,7 +6,7 @@
  * is a loud error.
  */
 
-import { getModule } from "../module/define";
+import { getModule } from "../dsp/define";
 import { buildNode } from "./build-node";
 import { evalCtx } from "./context";
 import { wrap } from "./handle";

@@ -8,10 +8,10 @@
  * The new nodes live in the modulated node's sub-patch scope, if any.
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import type { GNode, InputValue, ModTerm } from "../graph/node";
 import { type Scope, inScope } from "../graph/scope";
-import { type SpecTable, resolveSpec } from "../module/resolve";
+import { type SpecTable, resolveSpec } from "../dsp/resolve";
 import type { PortAnn } from "../types";
 
 /** Desugars mods in place; each node's `mods` is consumed. */

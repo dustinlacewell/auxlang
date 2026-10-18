@@ -4,9 +4,9 @@
  * nothing, and the worklet's frame transport.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { EMPTY_DISPLAY_SOURCE } from "@/engine/runtime/live/display-source";
 import { InterpretedMonitor } from "@/engine/runtime/live/interpreted-monitor";

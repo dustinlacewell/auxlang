@@ -7,10 +7,10 @@
 
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { factory, p, runEval, runProgram, seed, seq, tempo } from "@/engine/api";
 import { degrade, pure, stack, withSeed } from "@/engine/pattern/combinators";
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { render, renderTap } from "@/engine/runtime/render";
 import { createSeedSession } from "@/engine/runtime/seed-session";
 import type { Program } from "@/engine/types";

@@ -8,8 +8,8 @@
 
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
-import { getRegistry } from "@/engine/module/define";
+import "@/engine/library/all";
+import { getRegistry } from "@/engine/dsp/define";
 import { Core3Engine } from "@/engine/runtime/engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { slotOf } from "@/engine/runtime/output-slots";

@@ -10,7 +10,7 @@
  * BIND_SLOT reads a live slot ("s" source; the offset is the slot index).
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import type { ModuleSpec, PNode, PortAnn, PortSrc } from "../types";
 import { type LambdaSlot, hydrateLambda } from "./lambda";
 import { type OutputLayout, slotOf } from "./output-slots";

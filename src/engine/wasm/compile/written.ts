@@ -5,9 +5,9 @@
  */
 
 import type { Identifier } from "acorn";
-import type { FunctionIR } from "../../module/front/module/module-ir";
-import { bindingDeclaredBy, bindingOf } from "../../module/front/scope/binding";
-import { isWritten } from "../../module/front/scope/writes";
+import type { FunctionIR } from "../../dsp/front/module/module-ir";
+import { bindingDeclaredBy, bindingOf } from "../../dsp/front/scope/binding";
+import { isWritten } from "../../dsp/front/scope/writes";
 
 /** Whether `fn` writes the variable `id` declares after its declaration. */
 export function variableWritten(fn: FunctionIR, id: Identifier): boolean {

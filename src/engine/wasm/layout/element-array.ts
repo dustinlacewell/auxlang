@@ -4,7 +4,7 @@
  * when memory is decoded into a state.
  */
 
-import type { ElementType } from "../../module/front/types/element-type";
+import type { ElementType } from "../../dsp/front/types/element-type";
 
 type ArrayCtor = new (buffer: ArrayBuffer) => ArrayBufferView;
 

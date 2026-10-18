@@ -1,6 +1,6 @@
 /**
  * `defmod(name, meta?, setup)` — THE module registration function, scope-aware
- * (shape C, MANIFESTO §5.1), lowered through `src/engine/module/lower/`:
+ * (shape C, MANIFESTO §5.1), lowered through `src/engine/dsp/lower/`:
  *
  *   root scope (no eval live)  → the realm registry, the bundle's module table
  *   eval scope (inside runEval) → the current eval's table, scoped to that
@@ -18,8 +18,8 @@
  * body is a patch graph instead of a tick.
  */
 
-import { type ReadTime } from "../module/front/module/check-module";
-import { registerSpec, validateSpec } from "../module/define";
+import { type ReadTime } from "../dsp/front/module/check-module";
+import { registerSpec, validateSpec } from "../dsp/define";
 import type { ModuleSpec } from "../types";
 import { currentSpecs, evalCtx } from "./context";
 import { defineModule } from "./define-module";

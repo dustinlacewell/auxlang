@@ -4,7 +4,7 @@
  * in semitones; `period(pitch)` gives seconds per cycle.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import { defmod, factory, runProgram, tempo } from "@/engine/api";
 import { render, renderTap } from "@/engine/runtime/render";

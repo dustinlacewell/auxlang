@@ -5,11 +5,11 @@
  * error — it could never move.
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import type { GNode } from "../graph/node";
-import { defaultOutOf } from "../module/default-out";
-import { getModule } from "../module/define";
-import { type SpecTable, resolveSpec } from "../module/resolve";
+import { defaultOutOf } from "../dsp/default-out";
+import { getModule } from "../dsp/define";
+import { type SpecTable, resolveSpec } from "../dsp/resolve";
 
 export function resolveAmbientClocks(
 	nodes: readonly GNode[],

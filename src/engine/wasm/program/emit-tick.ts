@@ -4,8 +4,8 @@
  * records — (state, ins, outs, config, sampleRate[, width]).
  */
 
-import type { FunctionIR } from "../../module/front/module/module-ir";
-import type { FunctionPlan } from "../../module/front/types/function-plan";
+import type { FunctionIR } from "../../dsp/front/module/module-ir";
+import type { FunctionPlan } from "../../dsp/front/types/function-plan";
 import type { CacheAccess, Calls, Intrinsics, TickRoles } from "../compile/emit-context";
 import { emitDiscard } from "../compile/emit-expression";
 import { emitStatements } from "../compile/emit-statement";

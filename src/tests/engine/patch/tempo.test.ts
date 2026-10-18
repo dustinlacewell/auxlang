@@ -4,7 +4,7 @@
  * loud error. clock(bpm) makes an extra clock and never sets the ambient one.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { clock, runEval, runProgram, seq, tempo } from "@/engine/api";
 import { describe, expect, it } from "vitest";
 

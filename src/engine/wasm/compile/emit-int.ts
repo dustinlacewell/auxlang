@@ -6,7 +6,7 @@
  */
 
 import type { AnyNode } from "acorn";
-import { fitsI32 } from "../../module/front/types/int-range";
+import { fitsI32 } from "../../dsp/front/types/int-range";
 import { OP } from "../encode/opcodes";
 import { emitExpr } from "./emit-expression";
 import type { FnEmitter } from "./fn-emitter";

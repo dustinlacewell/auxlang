@@ -9,7 +9,7 @@
  */
 
 import type { AnyNode, MemberExpression } from "acorn";
-import { validIndex } from "../../module/front/types/valid-index";
+import { validIndex } from "../../dsp/front/types/valid-index";
 import { ELEMENT_BYTES } from "../layout/element-type";
 import type { ArrayShape } from "../layout/state-shape";
 import { toF64 } from "./coerce";

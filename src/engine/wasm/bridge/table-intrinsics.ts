@@ -9,7 +9,7 @@
  */
 
 import type { AnyNode, Expression } from "acorn";
-import { isTableRowField } from "../../module/front/intrinsics/table-intrinsics";
+import { isTableRowField } from "../../dsp/front/intrinsics/table-intrinsics";
 import { toF64 } from "../compile/coerce";
 import type { Intrinsics } from "../compile/emit-context";
 import { emitExpr } from "../compile/emit-expression";

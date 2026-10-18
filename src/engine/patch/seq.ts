@@ -7,7 +7,7 @@
  * and resolves an unconnected position to the ambient clock.
  */
 
-import { getModule } from "../module/define";
+import { getModule } from "../dsp/define";
 import { buildNode } from "./build-node";
 import { wrap } from "./handle";
 import type { Handle } from "./handle-data";

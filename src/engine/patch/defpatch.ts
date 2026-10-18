@@ -11,12 +11,12 @@
  */
 
 import type { ArrowFunctionExpression } from "acorn";
-import { parseFunction } from "../module/front/parse/parse-function";
-import { findSetup } from "../module/lower/find-setup";
-import { fileProgram } from "../module/lower/file-program";
-import { inferOuts } from "../module/lower/infer-outs";
-import { inferPorts } from "../module/lower/infer-ports";
-import { currentSourceText } from "../module/source-text";
+import { parseFunction } from "../dsp/front/parse/parse-function";
+import { findSetup } from "../dsp/lower/find-setup";
+import { fileProgram } from "../dsp/lower/file-program";
+import { inferOuts } from "../dsp/lower/infer-outs";
+import { inferPorts } from "../dsp/lower/infer-ports";
+import { currentSourceText } from "../dsp/source-text";
 import type { Category, PortAnn } from "../types";
 import { moduleFactory } from "./factory";
 import { isHandle } from "./handle-data";

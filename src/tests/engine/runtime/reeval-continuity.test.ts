@@ -8,9 +8,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { factory, p, runProgram, seq, tempo } from "@/engine/api";
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import type { EngineState, Program } from "@/engine/types";
 import { BACKENDS, type Backend, type TestEngine } from "./backends";
 

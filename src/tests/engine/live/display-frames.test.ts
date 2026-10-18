@@ -4,9 +4,9 @@
  * between the WASM engine and the reference interpreter.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import { displayList } from "@/engine/runtime/live/display-list";
 import { InterpretedMonitor } from "@/engine/runtime/live/interpreted-monitor";

@@ -9,12 +9,12 @@
  * kind.ts), same as every shape-C module.
  */
 
-import type { WrittenSpec } from "@/engine/module/bind-module";
+import type { WrittenSpec } from "@/engine/dsp/bind-module";
 import {
 	defineInternalModule as defineInternalModuleRaw,
 	type InternalModuleSpec,
 	type InternalModuleSpecWithoutWrites,
-} from "@/engine/module/define-internal-module";
+} from "@/engine/dsp/define-internal-module";
 import { moduleFactory } from "@/engine/patch/factory";
 import type { Handle } from "@/engine/patch/handle-data";
 import type { PortAnn } from "@/engine/types";

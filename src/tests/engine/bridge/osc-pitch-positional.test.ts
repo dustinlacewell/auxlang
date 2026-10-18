@@ -4,7 +4,7 @@
  * module is the frequency-first counterpart for Hz-rate modulation.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import { factory, p, runProgram, tempo } from "@/engine/api";
 import { render } from "@/engine/runtime/render";

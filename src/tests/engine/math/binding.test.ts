@@ -8,18 +8,18 @@
 import { type AnyNode, parse } from "acorn";
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { EXACT_HOST_MATH } from "@/engine/math/exact-host-math";
 import { MATH_CONSTANTS } from "@/engine/math/math-constants";
-import { bindLambdaMath } from "@/engine/module/bind-math/bind-lambda-math";
-import { lambdaWrapper } from "@/engine/module/bind-math/lambda-wrapper";
-import { mathFunctions } from "@/engine/module/bind-math/math-functions";
-import { mathFunctionNames, mathHelpers } from "@/engine/module/bind-math/math-helpers";
-import { getRegistry } from "@/engine/module/define";
-import { analyseFunction, resolvePart } from "@/engine/module/front/module/analyse-function";
-import { parsePart } from "@/engine/module/front/parse/parse-part";
-import { walk } from "@/engine/module/front/parse/walk";
-import { checkLambda } from "@/engine/module/front/module/check-lambda";
+import { bindLambdaMath } from "@/engine/dsp/bind-math/bind-lambda-math";
+import { lambdaWrapper } from "@/engine/dsp/bind-math/lambda-wrapper";
+import { mathFunctions } from "@/engine/dsp/bind-math/math-functions";
+import { mathFunctionNames, mathHelpers } from "@/engine/dsp/bind-math/math-helpers";
+import { getRegistry } from "@/engine/dsp/define";
+import { analyseFunction, resolvePart } from "@/engine/dsp/front/module/analyse-function";
+import { parsePart } from "@/engine/dsp/front/parse/parse-part";
+import { walk } from "@/engine/dsp/front/parse/walk";
+import { checkLambda } from "@/engine/dsp/front/module/check-lambda";
 
 /** Every host-math reach in `text`: a Math member that is not exact, random or a constant, or a `**`. */
 function hostMathIn(text: string): string[] {

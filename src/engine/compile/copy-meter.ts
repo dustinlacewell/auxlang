@@ -5,11 +5,11 @@
  * clock's. Static, like the meter itself. Runs after ambient-clock resolution.
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import { isNodeRef } from "../graph/input-kinds";
 import type { GNode } from "../graph/node";
-import { getModule } from "../module/define";
-import { type SpecTable, resolveSpec } from "../module/resolve";
+import { getModule } from "../dsp/define";
+import { type SpecTable, resolveSpec } from "../dsp/resolve";
 import type { PortAnn } from "../types";
 
 export function copyMeter(nodes: readonly GNode[], specs?: SpecTable): void {

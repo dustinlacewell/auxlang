@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import type { Pat } from "@/engine/pattern/ast";
 import { parse } from "@/engine/pattern/notation/parse";
 import { p } from "@/engine/pattern/notation/template";

@@ -5,7 +5,7 @@
  * input with no value is a loud error, as for any module.
  */
 
-import { nodePorts } from "@/engine/module/node-ports";
+import { nodePorts } from "@/engine/dsp/node-ports";
 import type { GNode, InputValue } from "../../graph/node";
 import type { SubpatchSpec } from "../../patch/subpatch/subpatch-spec";
 import type { PortAnn } from "../../types";

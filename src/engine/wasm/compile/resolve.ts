@@ -10,7 +10,7 @@
 import type { AnyNode, MemberExpression } from "acorn";
 import { MATH_CONSTANTS } from "../../math/math-constants";
 import type { FnEmitter } from "./fn-emitter";
-import { validIndex } from "../../module/front/types/valid-index";
+import { validIndex } from "../../dsp/front/types/valid-index";
 import type { Shape } from "../layout/state-shape";
 import { type MemoryValue, type Value, fixed, inMemory, throughPointer } from "./values";
 

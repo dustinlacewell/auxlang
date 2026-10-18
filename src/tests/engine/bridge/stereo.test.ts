@@ -8,7 +8,7 @@
  */
 
 import { defmod, factory, loop, out, runProgram, seq, tempo } from "@/engine/api";
-import { getModule } from "@/engine/module/define";
+import { getModule } from "@/engine/dsp/define";
 import { render } from "@/engine/runtime/render";
 import { describe, expect, it } from "vitest";
 import { rms } from "./helpers";

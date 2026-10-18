@@ -5,7 +5,7 @@
  * count; and the copy itself keeps every bit.
  */
 
-import type { RecordState, StateShape } from "@/engine/module/front/state/state-shape";
+import type { RecordState, StateShape } from "@/engine/dsp/front/state/state-shape";
 import type { KeyedIdentity } from "@/engine/types";
 import { type CarrySide, planCarry } from "@/engine/wasm/host/carry-plan";
 import {

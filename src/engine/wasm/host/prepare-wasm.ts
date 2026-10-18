@@ -9,8 +9,8 @@
  * engine's layout and facts (carry-plan.ts), for `WasmEngine.handOver`.
  */
 
-import { getRegistry } from "../../module/define";
-import { specIR } from "../../module/front/module/spec-ir";
+import { getRegistry } from "../../dsp/define";
+import { specIR } from "../../dsp/front/module/spec-ir";
 import { EngineBuild } from "../../runtime/build/engine-build";
 import { withProgramSpecs } from "../../runtime/hydrate-specs";
 import { monitorPlan } from "../../runtime/live/monitor-plan";

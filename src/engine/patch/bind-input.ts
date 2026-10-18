@@ -5,7 +5,7 @@
  * never rejected for it).
  */
 
-import { type NodeGroups, nodePorts } from "@/engine/module/node-ports";
+import { type NodeGroups, nodePorts } from "@/engine/dsp/node-ports";
 import type { InputValue } from "../graph/node";
 import type { ModulePorts, PortAnn } from "../types";
 import { noteNameToSemis } from "../units/note-name";

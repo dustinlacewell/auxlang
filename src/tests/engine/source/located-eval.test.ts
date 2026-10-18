@@ -4,7 +4,7 @@
  * site, and a loud failure points at the code that failed.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import type { Pat } from "@/engine/pattern/ast";
 import { query } from "@/engine/pattern/query";

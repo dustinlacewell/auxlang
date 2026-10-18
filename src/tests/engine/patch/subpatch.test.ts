@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { defpatch, factory, out, runEval, runProgram, tempo } from "@/engine/api";
 import type { Handle } from "@/engine/patch/handle-data";
 

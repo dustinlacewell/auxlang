@@ -7,9 +7,9 @@
 
 import { describe, expect, it } from "vitest";
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 import { factory, loop, out, runEval, runProgram } from "@/engine/api";
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { Core3Engine } from "@/engine/runtime/engine";
 import type { Program } from "@/engine/types";
 import { BACKENDS, type TestEngine, WASM_BACKEND } from "./backends";

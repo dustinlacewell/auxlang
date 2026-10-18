@@ -4,7 +4,7 @@
  * adsr) rather than the converter node alone.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import { factory, runProgram, tempo } from "@/engine/api";
 import { render, renderTap } from "@/engine/runtime/render";

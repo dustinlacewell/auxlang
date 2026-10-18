@@ -5,7 +5,7 @@
  * directions of time. Never Math.random.
  */
 
-import { randomFunctions } from "../module/bind-random/random-functions";
+import { randomFunctions } from "../dsp/bind-random/random-functions";
 
 const { avalanche } = randomFunctions;
 

@@ -6,8 +6,8 @@
  */
 
 import type { AnyNode } from "acorn";
-import { fitsI32 } from "../../module/front/types/int-range";
-import { emittedClass } from "../../module/front/types/ty";
+import { fitsI32 } from "../../dsp/front/types/int-range";
+import { emittedClass } from "../../dsp/front/types/ty";
 import type { FnEmitter } from "./fn-emitter";
 import type { Kind } from "./values";
 

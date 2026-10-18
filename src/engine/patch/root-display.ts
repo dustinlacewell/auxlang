@@ -7,7 +7,7 @@
  * error naming the module, the count and the limit.
  */
 
-import { openGroup } from "@/engine/module/group-decls";
+import { openGroup } from "@/engine/dsp/group-decls";
 import type { GNode } from "../graph/node";
 import type { DisplayDecl, ModulePorts } from "../types";
 import { evalCtx } from "./context";

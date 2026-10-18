@@ -11,8 +11,8 @@
  * values; at any rate, the sample count and the live slots by site.
  */
 
-import { carryFields } from "../../module/front/state/carry-fields";
-import { laneShapeOf } from "../../module/front/state/state-shape-of";
+import { carryFields } from "../../dsp/front/state/carry-fields";
+import { laneShapeOf } from "../../dsp/front/state/state-shape-of";
 import { captureFeedback, restoreFeedback } from "../../runtime/feedback";
 import { type SlotEntries, carriedSlots } from "../../runtime/live/slot-carry";
 import type { NodeRun } from "../../runtime/node-run";

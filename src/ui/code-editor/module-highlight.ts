@@ -11,9 +11,9 @@
  * `style` attribute here silently loses to oneDark.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import type { Category } from "@/engine/types";
 import { categoryColors } from "@/theme/colors";
 import type { Extension } from "@codemirror/state";

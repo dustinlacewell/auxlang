@@ -8,7 +8,7 @@
  * different same-named specs is safe.
  */
 
-import { hydrateSpec } from "../module/serialize";
+import { hydrateSpec } from "../dsp/serialize";
 import type { ModuleSpec, Program, Registry } from "../types";
 
 export function withProgramSpecs(base: Registry, program: Program): Registry {

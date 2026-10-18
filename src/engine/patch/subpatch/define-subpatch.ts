@@ -12,8 +12,8 @@
  * writes the realm's sub-patch table, an eval writes its own.
  */
 
-import { validateSpec } from "../../module/define";
-import { positionalArgs } from "../../module/positional-args";
+import { validateSpec } from "../../dsp/define";
+import { positionalArgs } from "../../dsp/positional-args";
 import type { Category, PortAnn } from "../../types";
 import { currentSubpatches, evalCtx } from "../context";
 import { assertNoReservedPorts } from "../handle";

@@ -5,5 +5,5 @@
  * by side effect, nothing crosses the boundary as strings except user lambdas.
  */
 
-import "../../modules/all";
+import "../../library/all";
 import "./processor";

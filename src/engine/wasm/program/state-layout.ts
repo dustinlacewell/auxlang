@@ -16,9 +16,9 @@ import type {
 	RecordState,
 	RecordsState,
 	StateShape,
-} from "../../module/front/state/state-shape";
-import { tyKey } from "../../module/front/types/ty";
-import { stateTy } from "../../module/front/types/value-ty";
+} from "../../dsp/front/state/state-shape";
+import { tyKey } from "../../dsp/front/types/ty";
+import { stateTy } from "../../dsp/front/types/value-ty";
 import { ELEMENT_BYTES } from "../layout/element-type";
 import type { Field, RecordShape, RecordsShape, Shape } from "../layout/state-shape";
 

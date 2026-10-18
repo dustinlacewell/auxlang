@@ -5,11 +5,11 @@
  * once the site metadata is dropped, and both render bit for bit the same.
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
 import { buildUserScope, compile, runEval } from "@/engine/api";
-import { getRegistry } from "@/engine/module/define";
-import { withSourceText } from "@/engine/module/source-text";
+import { getRegistry } from "@/engine/dsp/define";
+import { withSourceText } from "@/engine/dsp/source-text";
 import { Core3Engine } from "@/engine/runtime/engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";

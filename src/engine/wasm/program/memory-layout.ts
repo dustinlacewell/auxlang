@@ -16,12 +16,12 @@
  * holds as Float32Arrays, and typed arrays, which keep their element type.
  */
 
-import type { ModuleIR } from "../../module/front/module/module-ir";
-import { fieldRebinds } from "../../module/front/scope/field-rebinds";
-import type { RecordState } from "../../module/front/state/state-shape";
-import { laneShapeOf } from "../../module/front/state/state-shape-of";
-import { elementRebinds } from "../../module/front/types/element-rebinds";
-import type { FunctionPlan } from "../../module/front/types/function-plan";
+import type { ModuleIR } from "../../dsp/front/module/module-ir";
+import { fieldRebinds } from "../../dsp/front/scope/field-rebinds";
+import type { RecordState } from "../../dsp/front/state/state-shape";
+import { laneShapeOf } from "../../dsp/front/state/state-shape-of";
+import { elementRebinds } from "../../dsp/front/types/element-rebinds";
+import type { FunctionPlan } from "../../dsp/front/types/function-plan";
 import { regionWords } from "../../runtime/live/monitor-region";
 import type { NodeRun } from "../../runtime/node-run";
 import type { NodePlans } from "../../runtime/specialise/specialise-nodes";

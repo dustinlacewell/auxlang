@@ -5,9 +5,9 @@
  * On the interpreter and on WASM (backends.ts).
  */
 
-import "@/engine/modules/all";
+import "@/engine/library/all";
 
-import { getRegistry } from "@/engine/module/define";
+import { getRegistry } from "@/engine/dsp/define";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";
 import { EXAMPLES as SITE } from "@/ui/editor/examples";
