@@ -3,10 +3,9 @@ import type { Example } from "@/ui/editor/examples/example";
 /** A short house loop whose arpeggio changes every bar. */
 const fourChords = `tempo(120)
 
-// one chord per bar
 const chords = chord("<Am9 Fmaj9 Cmaj9 G6>")
 
-// drums: the kick drops out at the end of every 8 bars
+// drums
 seq("<60*4!7 [60 ~ ~ ~]>").trig.kick().gain(0.8).out()
 seq(p\`~ <60*4 60*8>\`.degrade(0.5)).trig.snare().gain(0.4).delay().out()
 seq("[~ 60]*4").trig.hihat({ decay: 0.05 }).gain(0.4).out()
@@ -24,7 +23,7 @@ seq(chords.voicing())
   .spread()
   .out()
 
-// arp: random gaps each bar, lifted every 4th bar
+// arp
 seq(chords.anchor("e5")
   .n(p\`0 2 4 <1 3> <5 7> 4 2 <3 6>\`.degrade(0.3).every(4, (q) => q.add(2))))
   .apply((s) => s.tri().mul(s.gate.ad(0.005, 0.2)))
