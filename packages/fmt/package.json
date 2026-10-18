@@ -1,5 +1,6 @@
 {
   "name": "auxfmt",
+  "license": "AGPL-3.0-or-later",
   "version": "1.0.0",
   "description": "Formatter for Auxlang DSL code",
   "type": "module",

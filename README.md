@@ -58,3 +58,7 @@ registry. `.gain` and `.vca` are aliases of `.mul`.
 - `MANIFESTO.md` — the design vision and the five concepts.
 - `docs/user-guide.md` — the systematic language guide.
 - `packages/engine/docs/internals.md` — the compilation pipeline and runtime.
+
+## License
+
+AGPL-3.0-or-later. See `LICENSE`.
