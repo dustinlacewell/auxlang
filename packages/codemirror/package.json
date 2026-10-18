@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "vite build -c vite.build.config.ts && tsc -p tsconfig.build.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p ."
   },
@@ -39,5 +43,37 @@
     "./live-display/scope-widget-extension": "./src/live-display/scope-widget-extension.ts",
     "./live-input/control-widget-extension": "./src/live-input/control-widget-extension.ts",
     "./live-input/number-drag-extension": "./src/live-input/number-drag-extension.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      "./auxlang-theme": {
+        "types": "./dist/auxlang-theme.d.ts",
+        "import": "./dist/auxlang-theme.js"
+      },
+      "./extensions": {
+        "types": "./dist/extensions.d.ts",
+        "import": "./dist/extensions.js"
+      },
+      "./module-highlight": {
+        "types": "./dist/module-highlight.d.ts",
+        "import": "./dist/module-highlight.js"
+      },
+      "./live-display/pattern-highlight-extension": {
+        "types": "./dist/live-display/pattern-highlight-extension.d.ts",
+        "import": "./dist/live-display/pattern-highlight-extension.js"
+      },
+      "./live-display/scope-widget-extension": {
+        "types": "./dist/live-display/scope-widget-extension.d.ts",
+        "import": "./dist/live-display/scope-widget-extension.js"
+      },
+      "./live-input/control-widget-extension": {
+        "types": "./dist/live-input/control-widget-extension.d.ts",
+        "import": "./dist/live-input/control-widget-extension.js"
+      },
+      "./live-input/number-drag-extension": {
+        "types": "./dist/live-input/number-drag-extension.d.ts",
+        "import": "./dist/live-input/number-drag-extension.js"
+      }
+    }
   }
 }

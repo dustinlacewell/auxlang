@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "vite build -c vite.build.config.ts && tsc -p tsconfig.build.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p ."
   },
@@ -52,5 +56,77 @@
     "./wasm/host/prepare-wasm": "./src/wasm/host/prepare-wasm.ts",
     "./wasm/host/wasm-engine": "./src/wasm/host/wasm-engine.ts",
     "./testing/*": "./testing/*.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      "./api": {
+        "types": "./dist/api.d.ts",
+        "import": "./dist/api.js"
+      },
+      "./dsp/define": {
+        "types": "./dist/dsp/define.d.ts",
+        "import": "./dist/dsp/define.js"
+      },
+      "./eval-patch": {
+        "types": "./dist/eval-patch.d.ts",
+        "import": "./dist/eval-patch.js"
+      },
+      "./library/all": {
+        "types": "./dist/library/all.d.ts",
+        "import": "./dist/library/all.js"
+      },
+      "./runtime/audio": {
+        "types": "./dist/runtime/audio.d.ts",
+        "import": "./dist/runtime/audio.js"
+      },
+      "./runtime/live/live-contract": {
+        "types": "./dist/runtime/live/live-contract.d.ts",
+        "import": "./dist/runtime/live/live-contract.js"
+      },
+      "./runtime/live/monitor-region": {
+        "types": "./dist/runtime/live/monitor-region.d.ts",
+        "import": "./dist/runtime/live/monitor-region.js"
+      },
+      "./runtime/render": {
+        "types": "./dist/runtime/render.d.ts",
+        "import": "./dist/runtime/render.js"
+      },
+      "./source/line-column": {
+        "types": "./dist/source/line-column.d.ts",
+        "import": "./dist/source/line-column.js"
+      },
+      "./source/located-error": {
+        "types": "./dist/source/located-error.d.ts",
+        "import": "./dist/source/located-error.js"
+      },
+      "./source/range": {
+        "types": "./dist/source/range.d.ts",
+        "import": "./dist/source/range.js"
+      },
+      "./source/source-map": {
+        "types": "./dist/source/source-map.d.ts",
+        "import": "./dist/source/source-map.js"
+      },
+      "./types": {
+        "types": "./dist/types.d.ts",
+        "import": "./dist/types.js"
+      },
+      "./viz/dot-colors": {
+        "types": "./dist/viz/dot-colors.d.ts",
+        "import": "./dist/viz/dot-colors.js"
+      },
+      "./viz/edge-connections": {
+        "types": "./dist/viz/edge-connections.d.ts",
+        "import": "./dist/viz/edge-connections.js"
+      },
+      "./viz/program-spec": {
+        "types": "./dist/viz/program-spec.d.ts",
+        "import": "./dist/viz/program-spec.js"
+      },
+      "./viz/program-to-dot": {
+        "types": "./dist/viz/program-to-dot.d.ts",
+        "import": "./dist/viz/program-to-dot.js"
+      }
+    }
   }
 }
