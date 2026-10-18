@@ -20,6 +20,7 @@ interface RunnableCodeProps {
 	liveSlots?: readonly SlotDecl[] | undefined;
 	onEnsureSlotSite?: ((site: number) => Promise<void>) | undefined;
 	error?: string;
+	playHint?: React.ReactNode;
 }
 
 export function RunnableCode({ error, ...codeBlockProps }: RunnableCodeProps) {

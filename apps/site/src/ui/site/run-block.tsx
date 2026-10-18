@@ -14,9 +14,11 @@ interface RunBlockProps {
 	audio: SharedAudio;
 	/** Start with the signal graph expanded. */
 	graphOpen?: boolean;
+	/** Drawn at the play tab. */
+	playHint?: React.ReactNode;
 }
 
-export function RunBlock({ id, code, audio, graphOpen = false }: RunBlockProps) {
+export function RunBlock({ id, code, audio, graphOpen = false, playHint }: RunBlockProps) {
 	const playing = audio.playingId === id;
 	return (
 		<div className="mb-4">
@@ -24,6 +26,7 @@ export function RunBlock({ id, code, audio, graphOpen = false }: RunBlockProps) 
 				code={code}
 				graphOpen={graphOpen}
 				playing={playing}
+				playHint={playHint}
 				onRun={(edited) => audio.run(id, edited)}
 				onStop={audio.halt}
 				sourceMap={playing ? audio.sourceMap : undefined}

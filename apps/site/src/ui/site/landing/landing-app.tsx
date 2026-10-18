@@ -6,6 +6,8 @@
 import { TextLink } from "@/ui/design/text-link";
 import { useSharedAudio } from "@/ui/docs-kit/use-shared-audio";
 import { fourChordsExample } from "@/ui/editor/examples/four-chords";
+import { PlayHint } from "@/ui/site/landing/play-hint";
+import { usePlayHintSeen } from "@/ui/site/landing/use-play-hint-seen";
 import { P } from "@/ui/site/prose";
 import { RunBlock } from "@/ui/site/run-block";
 import { SitePage } from "@/ui/site/site-page";
@@ -24,6 +26,7 @@ const NEXT_STEPS = [
 
 export function LandingApp() {
 	const audio = useSharedAudio();
+	const hintSeen = usePlayHintSeen(audio.playingId !== null);
 
 	return (
 		<SitePage current="home" narrow onStopAll={audio.halt}>
@@ -34,7 +37,14 @@ export function LandingApp() {
 					</h1>
 				<p className="text-lg text-gray-300 mb-6">Text-based modular synthesis.</p>
 
-				<RunBlock id="landing::hello" code={fourChordsExample.source} audio={audio} />
+				<div className="-mt-6">
+					<RunBlock
+						id="landing::hello"
+						code={fourChordsExample.source}
+						audio={audio}
+						playHint={<PlayHint visible={!hintSeen} />}
+					/>
+				</div>
 
 				<div style={{
 					color: "#aaa",

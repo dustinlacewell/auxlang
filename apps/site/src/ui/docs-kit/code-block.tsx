@@ -54,6 +54,8 @@ interface CodeBlockProps {
 	liveSlots?: readonly SlotDecl[] | undefined;
 	/** Turns a dragged number literal's site into a live slot. Required alongside `sourceMap` for number drag. */
 	onEnsureSlotSite?: ((site: number) => Promise<void>) | undefined;
+	/** Drawn anchored to the play tab; it positions itself against that tab and owns its visibility. */
+	playHint?: React.ReactNode;
 }
 
 export function CodeBlock({
@@ -65,6 +67,7 @@ export function CodeBlock({
 	sourceMap = EMPTY_SOURCE_MAP,
 	liveSlots = [],
 	onEnsureSlotSite,
+	playHint,
 }: CodeBlockProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const viewRef = useRef<EditorView | null>(null);
@@ -146,13 +149,16 @@ export function CodeBlock({
 			tabsRight={
 				<>
 					{onRun && (
-						<TabButton
-							active={playing}
-							title={playing ? "Stop (Ctrl+.)" : "Run (Ctrl+Enter)"}
-							onClick={() => (playing ? onStop?.() : onRun(text))}
-						>
-							{playing ? <Square size={12} className="text-white" /> : <Play size={12} />}
-						</TabButton>
+						<div className="relative flex">
+							<TabButton
+								active={playing}
+								title={playing ? "Stop (Ctrl+.)" : "Run (Ctrl+Enter)"}
+								onClick={() => (playing ? onStop?.() : onRun(text))}
+							>
+								{playing ? <Square size={12} className="text-white" /> : <Play size={12} />}
+							</TabButton>
+							{playHint}
+						</div>
 					)}
 					{dirty && (
 						<TabButton
