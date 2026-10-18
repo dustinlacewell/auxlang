@@ -10,10 +10,10 @@
  * mirrors that hook's, minus seed-session/reroll, which docs examples don't need.
  */
 
-import type { SlotDecl } from "@/engine/runtime/live/live-contract";
-import { play, stop } from "@/engine/runtime/audio";
-import { EMPTY_SOURCE_MAP, type SourceMap } from "@/engine/source/source-map";
-import { evaluatePatch } from "@/engine/eval-patch";
+import type { SlotDecl } from "auxlang/runtime/live/live-contract";
+import { play, stop } from "auxlang/runtime/audio";
+import { EMPTY_SOURCE_MAP, type SourceMap } from "auxlang/source/source-map";
+import { evaluatePatch } from "auxlang/eval-patch";
 import { useCallback, useRef, useState } from "react";
 
 export interface SharedAudio {

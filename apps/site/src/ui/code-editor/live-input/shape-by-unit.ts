@@ -7,7 +7,7 @@
  * Hz stop at 0.
  */
 
-import type { Unit } from "@/engine/types";
+import type { Unit } from "auxlang/types";
 
 export function shapeByUnit(value: number, delta: number, unit: Unit): number {
 	switch (unit) {

@@ -6,8 +6,8 @@
 import { describe, expect, it } from "vitest";
 
 import { readDisplays } from "@/ui/code-editor/live-display/display-frames";
-import type { DisplayWatch } from "@/engine/runtime/live/live-contract";
-import { frameWords } from "@/engine/runtime/live/monitor-region";
+import type { DisplayWatch } from "auxlang/runtime/live/live-contract";
+import { frameWords } from "auxlang/runtime/live/monitor-region";
 
 const LEVEL_COUNT = 1;
 

@@ -11,10 +11,10 @@
  * `style` attribute here silently loses to oneDark.
  */
 
-import "@/engine/library/all";
+import "auxlang/library/all";
 
-import { getRegistry } from "@/engine/dsp/define";
-import type { Category } from "@/engine/types";
+import { getRegistry } from "auxlang/dsp/define";
+import type { Category } from "auxlang/types";
 import { categoryColors } from "@/ui/design/colors";
 import type { Extension } from "@codemirror/state";
 import {

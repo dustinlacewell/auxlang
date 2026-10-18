@@ -6,8 +6,8 @@
  * Ctrl+Enter re-evaluates while playing.
  */
 
-import type { SlotDecl } from "@/engine/runtime/live/live-contract";
-import type { SourceMap } from "@/engine/source/source-map";
+import type { SlotDecl } from "auxlang/runtime/live/live-contract";
+import type { SourceMap } from "auxlang/source/source-map";
 import { TabButton } from "@/ui/design/tab-button";
 import { EmbedFrame } from "@/ui/docs-kit/embed-frame";
 import { PatchGraph } from "@/ui/docs-kit/patch-graph";

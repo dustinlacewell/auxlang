@@ -4,7 +4,7 @@
  * category and the palette in src/ui/design/colors.ts does the rest.
  */
 
-import type { Category } from "@/engine/types";
+import type { Category } from "auxlang/types";
 import { categoryColors } from "@/ui/design/colors";
 
 interface ModNameProps {

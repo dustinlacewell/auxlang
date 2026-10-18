@@ -6,7 +6,7 @@
  */
 
 import { formatLike } from "./format-like";
-import type { SourceRange } from "@/engine/source/range";
+import type { SourceRange } from "auxlang/source/range";
 
 export interface LiteralChange {
 	readonly from: number;

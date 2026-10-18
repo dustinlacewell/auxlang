@@ -4,8 +4,8 @@
  * audio through the eval path.
  */
 
-import type { SlotDecl } from "@/engine/runtime/live/live-contract";
-import { EMPTY_SOURCE_MAP, type SourceMap } from "@/engine/source/source-map";
+import type { SlotDecl } from "auxlang/runtime/live/live-contract";
+import { EMPTY_SOURCE_MAP, type SourceMap } from "auxlang/source/source-map";
 import { auxlangTheme } from "@/ui/code-editor/auxlang-theme";
 import { createExtensions } from "@/ui/code-editor/extensions";
 import { attachModuleHover } from "@/ui/code-editor/module-highlight";

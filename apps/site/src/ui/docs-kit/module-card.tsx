@@ -5,10 +5,10 @@
  * module reference. ◂ marks the default input/output.
  */
 
-import "@/engine/library/all";
+import "auxlang/library/all";
 
-import { getModule } from "@/engine/dsp/define";
-import type { PortAnn } from "@/engine/types";
+import { getModule } from "auxlang/dsp/define";
+import type { PortAnn } from "auxlang/types";
 import { ModName } from "@/ui/design/mod-name";
 import { ModuleBadge } from "@/ui/design/module-badge";
 import { formatPortDefault } from "./format-port-default";

@@ -6,7 +6,7 @@
  * followed by its travel compactly, e.g. "0.5 (0–1)".
  */
 
-import type { PortAnn } from "@/engine/types";
+import type { PortAnn } from "auxlang/types";
 
 export function formatPortDefault(ann: PortAnn): string {
 	if (ann.def === null) return "—"; // optional, unconnected

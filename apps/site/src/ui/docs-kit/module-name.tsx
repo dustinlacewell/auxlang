@@ -5,9 +5,9 @@
  * renders plain ModName, so there is exactly one level of popup.
  */
 
-import "@/engine/library/all";
+import "auxlang/library/all";
 
-import { getModule } from "@/engine/dsp/define";
+import { getModule } from "auxlang/dsp/define";
 import { ModName } from "@/ui/design/mod-name";
 import { useState } from "react";
 import { createPortal } from "react-dom";

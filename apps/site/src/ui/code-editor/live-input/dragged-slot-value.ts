@@ -7,7 +7,7 @@
  * render-control.ts clamps its range the same way).
  */
 
-import type { SlotDecl } from "@/engine/runtime/live/live-contract";
+import type { SlotDecl } from "auxlang/runtime/live/live-contract";
 import { shapeByUnit } from "./shape-by-unit";
 
 export function draggedSlotValue(startValue: number, delta: number, decl: SlotDecl | undefined): number {

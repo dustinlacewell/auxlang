@@ -12,9 +12,9 @@
  * same split as the control widgets' drag vs. decoration rebuild.
  */
 
-import { onMonitor } from "@/engine/runtime/audio";
-import type { DisplayWatch, MonitorFrame } from "@/engine/runtime/live/live-contract";
-import type { CallSite, SourceMap } from "@/engine/source/source-map";
+import { onMonitor } from "auxlang/runtime/audio";
+import type { DisplayWatch, MonitorFrame } from "auxlang/runtime/live/live-contract";
+import type { CallSite, SourceMap } from "auxlang/source/source-map";
 import { type Extension, StateEffect } from "@codemirror/state";
 import {
 	Decoration,

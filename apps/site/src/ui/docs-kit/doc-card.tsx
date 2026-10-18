@@ -8,11 +8,11 @@
  * stays plain).
  */
 
-import "@/engine/library/all";
+import "auxlang/library/all";
 
-import type { SlotDecl } from "@/engine/runtime/live/live-contract";
-import { hasModule } from "@/engine/dsp/define";
-import type { SourceMap } from "@/engine/source/source-map";
+import type { SlotDecl } from "auxlang/runtime/live/live-contract";
+import { hasModule } from "auxlang/dsp/define";
+import type { SourceMap } from "auxlang/source/source-map";
 import { Card } from "@/ui/design/card";
 import { StatusIndicator } from "@/ui/design/status-indicator";
 import type { DocExample } from "./doc-example";

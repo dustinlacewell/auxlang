@@ -7,7 +7,7 @@
  * (`--color-unit-*` / `--color-category-*`) — keep them in sync.
  */
 
-import type { Category, Unit } from "@/engine/types";
+import type { Category, Unit } from "auxlang/types";
 
 export const unitColors = {
 	sig: "#c4c4c0",

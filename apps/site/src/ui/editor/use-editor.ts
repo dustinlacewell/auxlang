@@ -17,10 +17,10 @@
  * just stays put until the code compiles again.
  */
 
-import { play, playSeed, stop } from "@/engine/runtime/audio";
-import type { SlotDecl } from "@/engine/runtime/live/live-contract";
-import { EMPTY_SOURCE_MAP, type SourceMap } from "@/engine/source/source-map";
-import { evaluatePatch } from "@/engine/eval-patch";
+import { play, playSeed, stop } from "auxlang/runtime/audio";
+import type { SlotDecl } from "auxlang/runtime/live/live-contract";
+import { EMPTY_SOURCE_MAP, type SourceMap } from "auxlang/source/source-map";
+import { evaluatePatch } from "auxlang/eval-patch";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorText } from "./error-text";
 import type { ShownSeed } from "./seed-bar";

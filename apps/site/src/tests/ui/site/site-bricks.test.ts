@@ -1,8 +1,8 @@
-import "@/engine/library/all";
+import "auxlang/library/all";
 
 import { describe, expect, it } from "vitest";
 
-import { evalPatch } from "@/engine/eval-patch";
+import { evalPatch } from "auxlang/eval-patch";
 import { CHAPTERS as GUIDE } from "@/ui/site/guide/bricks";
 import { CHAPTERS as DSP } from "@/ui/site/module-dsp/bricks";
 

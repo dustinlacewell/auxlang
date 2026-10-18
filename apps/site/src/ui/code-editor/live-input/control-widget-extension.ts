@@ -28,9 +28,9 @@
  * built once per control and reused across updates (`eq`).
  */
 
-import { currentSlots, writeSlot } from "@/engine/runtime/audio";
-import type { SlotDecl } from "@/engine/runtime/live/live-contract";
-import type { SourceMap } from "@/engine/source/source-map";
+import { currentSlots, writeSlot } from "auxlang/runtime/audio";
+import type { SlotDecl } from "auxlang/runtime/live/live-contract";
+import type { SourceMap } from "auxlang/source/source-map";
 import { StateEffect, type Extension } from "@codemirror/state";
 import {
 	Decoration,

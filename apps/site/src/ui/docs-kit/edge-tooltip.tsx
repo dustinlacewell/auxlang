@@ -5,10 +5,10 @@
  * connections are tagged.
  */
 
-import type { Program } from "@/engine/api";
-import type { Unit } from "@/engine/types";
-import { edgeConnections } from "@/engine/viz/edge-connections";
-import { programSpec } from "@/engine/viz/program-spec";
+import type { Program } from "auxlang/api";
+import type { Unit } from "auxlang/types";
+import { edgeConnections } from "auxlang/viz/edge-connections";
+import { programSpec } from "auxlang/viz/program-spec";
 import { PortSwatch } from "@/ui/design/port-swatch";
 
 interface EdgeTooltipProps {

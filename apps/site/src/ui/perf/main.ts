@@ -9,9 +9,9 @@
  * no engine behavior.
  */
 
-import { type PerfWindow, disablePerf, enablePerf, play, stop } from "@/engine/runtime/audio";
+import { type PerfWindow, disablePerf, enablePerf, play, stop } from "auxlang/runtime/audio";
 import { EXAMPLES } from "@/ui/editor/examples/examples";
-import { evalPatch } from "@/engine/eval-patch";
+import { evalPatch } from "auxlang/eval-patch";
 
 declare global {
 	interface Window {

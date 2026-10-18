@@ -5,8 +5,8 @@
  * ErrorDisplay once instead of at each call site.
  */
 
-import type { SlotDecl } from "@/engine/runtime/live/live-contract";
-import type { SourceMap } from "@/engine/source/source-map";
+import type { SlotDecl } from "auxlang/runtime/live/live-contract";
+import type { SourceMap } from "auxlang/source/source-map";
 import { CodeBlock } from "@/ui/docs-kit/code-block";
 import { ErrorDisplay } from "@/ui/design/error-display";
 

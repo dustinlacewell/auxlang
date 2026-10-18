@@ -6,7 +6,7 @@
  * scale; layout (margins, alignment) belongs to the call site.
  */
 
-import type { Category } from "@/engine/types";
+import type { Category } from "auxlang/types";
 import { categoryColors, onCategoryText } from "@/ui/design/colors";
 
 interface ModuleBadgeProps {

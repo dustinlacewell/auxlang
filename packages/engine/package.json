@@ -1,0 +1,56 @@
+{
+  "name": "auxlang",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "acorn": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "typescript": "^5.7.0",
+    "vite": "^7.3.1",
+    "vitest": "^3.2.7"
+  },
+  "exports": {
+    "./api": "./src/api.ts",
+    "./dsp/define": "./src/dsp/define.ts",
+    "./dsp/source-text": "./src/dsp/source-text.ts",
+    "./eval-patch": "./src/eval-patch.ts",
+    "./library/all": "./src/library/all.ts",
+    "./pattern/ast": "./src/pattern/ast.ts",
+    "./pattern/notation/parse": "./src/pattern/notation/parse.ts",
+    "./pattern/notation/template": "./src/pattern/notation/template.ts",
+    "./pattern/pat-class": "./src/pattern/pat-class.ts",
+    "./pattern/query": "./src/pattern/query.ts",
+    "./pattern/rational": "./src/pattern/rational.ts",
+    "./pattern/table/cycle-queries": "./src/pattern/table/cycle-queries.ts",
+    "./pattern/table/event-table": "./src/pattern/table/event-table.ts",
+    "./pattern/table/fill-table": "./src/pattern/table/fill-table.ts",
+    "./pattern/table/lane-fill": "./src/pattern/table/lane-fill.ts",
+    "./pattern/table/lookback-carry": "./src/pattern/table/lookback-carry.ts",
+    "./runtime/audio": "./src/runtime/audio.ts",
+    "./runtime/hydrate-specs": "./src/runtime/hydrate-specs.ts",
+    "./runtime/interpreter-engine": "./src/runtime/interpreter-engine.ts",
+    "./runtime/live/live-contract": "./src/runtime/live/live-contract.ts",
+    "./runtime/live/monitor-region": "./src/runtime/live/monitor-region.ts",
+    "./runtime/render": "./src/runtime/render.ts",
+    "./source/line-column": "./src/source/line-column.ts",
+    "./source/located-error": "./src/source/located-error.ts",
+    "./source/range": "./src/source/range.ts",
+    "./source/source-map": "./src/source/source-map.ts",
+    "./types": "./src/types.ts",
+    "./viz/dot-colors": "./src/viz/dot-colors.ts",
+    "./viz/edge-connections": "./src/viz/edge-connections.ts",
+    "./viz/program-spec": "./src/viz/program-spec.ts",
+    "./viz/program-to-dot": "./src/viz/program-to-dot.ts",
+    "./wasm/host/create-wasm-engine": "./src/wasm/host/create-wasm-engine.ts",
+    "./wasm/host/prepare-wasm": "./src/wasm/host/prepare-wasm.ts",
+    "./wasm/host/wasm-engine": "./src/wasm/host/wasm-engine.ts",
+    "./testing/*": "./testing/*.ts"
+  }
+}

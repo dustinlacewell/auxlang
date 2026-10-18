@@ -6,8 +6,8 @@
  * Decorations rebuild only when the lit set actually changes.
  */
 
-import { audibleFrame } from "@/engine/runtime/audio";
-import type { SourceMap } from "@/engine/source/source-map";
+import { audibleFrame } from "auxlang/runtime/audio";
+import type { SourceMap } from "auxlang/source/source-map";
 import { type Extension, StateEffect } from "@codemirror/state";
 import {
 	Decoration,

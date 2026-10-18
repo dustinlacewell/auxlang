@@ -5,7 +5,7 @@
  * construction.
  */
 
-import type { Unit } from "@/engine/types";
+import type { Unit } from "auxlang/types";
 import { unitColors } from "@/ui/design/colors";
 
 interface PortSwatchProps {

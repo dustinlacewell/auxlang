@@ -14,7 +14,7 @@ import {
 	ONSET_SITE,
 	ONSET_STRIDE,
 	ONSET_WATCH,
-} from "@/engine/runtime/live/live-contract";
+} from "auxlang/runtime/live/live-contract";
 import { createFrameStore } from "@/ui/code-editor/live-display/frame-store";
 import { describe, expect, it } from "vitest";
 

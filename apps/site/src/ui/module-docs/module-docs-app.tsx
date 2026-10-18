@@ -7,10 +7,10 @@
  * the live registry. The grouped nav jumps per module.
  */
 
-import "@/engine/library/all";
+import "auxlang/library/all";
 
-import { getRegistry, hasModule } from "@/engine/dsp/define";
-import type { Category, ModuleSpec } from "@/engine/types";
+import { getRegistry, hasModule } from "auxlang/dsp/define";
+import type { Category, ModuleSpec } from "auxlang/types";
 import { ModuleBadge } from "@/ui/design/module-badge";
 import { CATEGORY_ORDER } from "@/ui/docs-kit/category-order";
 import { DocCard } from "@/ui/docs-kit/doc-card";

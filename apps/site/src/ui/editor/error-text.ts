@@ -4,8 +4,8 @@
  * somewhere (MANIFESTO §10.1).
  */
 
-import { lineColumn } from "@/engine/source/line-column";
-import { errorRange } from "@/engine/source/located-error";
+import { lineColumn } from "auxlang/source/line-column";
+import { errorRange } from "auxlang/source/located-error";
 
 export function errorText(err: unknown, code: string): string {
 	const message = err instanceof Error ? err.message : String(err);

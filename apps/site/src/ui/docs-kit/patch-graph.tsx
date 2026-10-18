@@ -11,12 +11,13 @@
  * through a portal to document.body so nothing clips them.
  */
 
-import type { Program } from "@/engine/api";
-import { hasModule } from "@/engine/dsp/define";
-import { programToDot } from "@/engine/viz/program-to-dot";
-import { evalPatch } from "@/engine/eval-patch";
+import type { Program } from "auxlang/api";
+import { hasModule } from "auxlang/dsp/define";
+import { programToDot } from "auxlang/viz/program-to-dot";
+import { evalPatch } from "auxlang/eval-patch";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { DOT_PALETTE } from "./dot-palette";
 import { EdgeTooltip } from "./edge-tooltip";
 import { ModuleCard } from "./module-card";
 
@@ -84,7 +85,7 @@ export function PatchGraph({ code }: { code: string }) {
 		(async () => {
 			try {
 				const compiled = evalPatch(code);
-				const dot = programToDot(compiled);
+				const dot = programToDot(compiled, DOT_PALETTE);
 				const { instance } = await import("@viz-js/viz");
 				const viz = await instance();
 				const rendered = viz

@@ -8,7 +8,7 @@
  * on hover — like every module name on the site.
  */
 
-import type { Category } from "@/engine/types";
+import type { Category } from "auxlang/types";
 import { categoryColors } from "@/ui/design/colors";
 import { sectionAnchor } from "@/ui/docs-kit/doc-section";
 import { ModuleName } from "@/ui/docs-kit/module-name";

@@ -1,6 +1,6 @@
 import { controlWidgetsOf } from "@/ui/code-editor/live-input/control-sites";
-import type { SourceMap } from "@/engine/source/source-map";
-import type { SlotDecl } from "@/engine/runtime/live/live-contract";
+import type { SourceMap } from "auxlang/source/source-map";
+import type { SlotDecl } from "auxlang/runtime/live/live-contract";
 import { describe, expect, it } from "vitest";
 
 function sourceMapWith(calls: SourceMap["sites"]): SourceMap {

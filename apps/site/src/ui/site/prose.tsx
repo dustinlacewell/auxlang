@@ -4,7 +4,7 @@
  * ModuleName.
  */
 
-import { hasModule } from "@/engine/dsp/define";
+import { hasModule } from "auxlang/dsp/define";
 import { ModuleName } from "@/ui/docs-kit/module-name";
 
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {

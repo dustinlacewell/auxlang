@@ -10,8 +10,8 @@
  * rebuilds — happens there, off the monitor's own synchronous callback.
  */
 
-import { onMonitor } from "@/engine/runtime/audio";
-import type { MonitorFrame } from "@/engine/runtime/live/live-contract";
+import { onMonitor } from "auxlang/runtime/audio";
+import type { MonitorFrame } from "auxlang/runtime/live/live-contract";
 import { type FrameSnapshot, createFrameStore } from "./frame-store";
 
 type FrameListener = (snapshot: FrameSnapshot) => void;

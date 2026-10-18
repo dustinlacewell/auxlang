@@ -4,7 +4,7 @@
  * the single source of truth; this file only says what order to show them in.
  */
 
-import type { Category } from "@/engine/types";
+import type { Category } from "auxlang/types";
 
 export const CATEGORY_ORDER: readonly Category[] = [
 	"timing",

@@ -18,7 +18,7 @@ import {
 	ONSET_SITE,
 	ONSET_STRIDE,
 	ONSET_WATCH,
-} from "@/engine/runtime/live/live-contract";
+} from "auxlang/runtime/live/live-contract";
 import type { Onset } from "./onsets-to-lights";
 
 export interface FrameSnapshot {
