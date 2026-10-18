@@ -8,7 +8,7 @@ import type { Chapter } from "@/ui/site/bricks/types";
 
 export const CHAPTERS: readonly Chapter[] = [
 	{
-		title: "A sound",
+		title: "The basics",
 		bricks: [
 			{
 				text: "Call a module to make a sound. Use `sin` for a tone, `gain` for the volume, and `out` for the speakers.",
@@ -31,34 +31,31 @@ export const CHAPTERS: readonly Chapter[] = [
 				code: "out(sin(60).gain(0.3))",
 				graph: true,
 			},
+			{
+				text: "A chain only plays once it reaches `out`. Drop `out` and it is silent.",
+				code: "sin(60).gain(0.3)",
+			},
 		],
 	},
 	{
 		title: "Variables",
 		bricks: [
 			{
-				text: "Use `const` to name a chain.",
+				text: "Use `const` to store a chain.",
 				code: `const tone = sin(60).gain(0.3)
 tone.out()`,
 			},
 			{
-				text: "Pass a named chain to an input.",
+				text: "Pass a stored chain to an input.",
 				code: `const tone = sin(60).gain(0.3)
 out(tone)`,
 			},
 			{
-				text: "Use a setter to make a new chain. `a` still plays 60.",
+				text: "Chains are immutable - `a` still plays 60.",
 				code: `const a = sin(60)
 const b = a.pitch(67)
 a.gain(0.3).out()
 b.gain(0.3).out()`,
-				graph: true,
-			},
-			{
-				text: "Send a chain to `out` to hear it. `b` never gets there.",
-				code: `const a = sin(60)
-const b = a.pitch(67)
-a.gain(0.3).out()`,
 				graph: true,
 			},
 		],
@@ -67,12 +64,12 @@ a.gain(0.3).out()`,
 		title: "Values",
 		bricks: [
 			{
-				text: "Give pitch in semitones. 60 is middle C. Add 12 to go up one octave.",
-				code: "sin(72).gain(0.3).out()",
+				text: "Pitches are semitones. 60 is middle C.",
+				code: "sin(60).gain(0.3).out()",
 			},
 			{
-				text: 'Or use a note name. `"c5"` is 72.',
-				code: 'sin("c5").gain(0.3).out()',
+				text: 'Or use a note name.',
+				code: 'sin("c4").gain(0.3).out()',
 			},
 			{
 				text: "Use `hz()` to give a value in Hz.",
@@ -94,16 +91,19 @@ sin(wobble).gain(0.3).out()`,
 sin(wobble.add(7)).gain(0.3).out()`,
 			},
 			{
-				text: "Use one chain in two places.",
-				code: `const wobble = sin(hz(0.2), 48, 72)
-sin(wobble).gain(0.3).out()
-sin(wobble.add(7)).gain(0.3).out()`,
-				graph: true,
+				text: "Use `sub` to subtract a value from a signal.",
+				code: `const wobble = sin(hz(0.2), 60, 84)
+sin(wobble.sub(12)).gain(0.3).out()`,
 			},
 			{
-				text: "Pass a signal to `gain` to make the volume pulse.",
-				code: `const pulse = sin(hz(4), 0.1, 0.3)
-sin(60).gain(pulse).out()`,
+				text: "Use `wrap` to fold a signal back into a range, like a modulo.",
+				code: `const rising = sin(hz(0.3), 0, 24)
+sin(rising.wrap(12).add(60)).gain(0.3).out()`,
+			},
+			{
+				text: "Use `scale` to map a signal from one range to another. Here: -1..1 to 48..72.",
+				code: `const wobble = sin(hz(0.2), -1, 1)
+sin(wobble.scale(-1, 1, 48, 72)).gain(0.3).out()`,
 			},
 			{
 				text: "Use `clip` to cut off the peaks. Turn the sound up first to make it harsher.",

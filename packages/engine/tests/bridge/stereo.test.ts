@@ -95,7 +95,7 @@ describe("stereo routing pan → out", () => {
 		const program = runProgram(() => {
 			tempo(120);
 			const chord = seq("[c4,e4,g4]");
-			const pos = chord.scale(-1, 1, 60, 67); // per-lane pitch → per-lane pos
+			const pos = chord.scale(60, 67, -1, 1); // per-lane pitch → per-lane pos
 			chord
 				.tri()
 				.pan(pos)

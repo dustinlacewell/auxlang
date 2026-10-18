@@ -11,6 +11,7 @@ const gt = getModule("gt");
 const lt = getModule("lt");
 const eq = getModule("eq");
 const div = getModule("div");
+const from = getModule("from");
 const wrap = getModule("wrap");
 const mul = getModule("mul");
 const vca = getModule("vca");
@@ -42,12 +43,15 @@ describe("mul / vca", () => {
 	});
 });
 
-describe("add / sub / div", () => {
+describe("add / sub / from / div", () => {
 	it("add sums", () => {
 		expect(driver(add).step({ in: 2, to: 5 }).out).toBe(7);
 	});
-	it("sub computes from - in", () => {
-		expect(driver(sub).step({ in: 3, from: 10 }).out).toBe(7);
+	it("sub computes in - from", () => {
+		expect(driver(sub).step({ in: 3, from: 10 }).out).toBe(-7);
+	});
+	it("from computes value - in", () => {
+		expect(driver(from).step({ in: 3, value: 10 }).out).toBe(7);
 	});
 	it("div divides, guards divide-by-zero", () => {
 		expect(driver(div).step({ in: 10, by: 4 }).out).toBe(2.5);

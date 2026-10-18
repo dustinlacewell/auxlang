@@ -11,7 +11,7 @@ s.saw()
   .mul(s.gate.adsr(0.005, 0.12, 0.5, 0.2))
   .delay({ time: 0.3, feedback: pad.y, mix: toggle(1).mul(0.35) })
   .gain(0.3)
-  .pan(pad.x.scale(0, 1, -1, 1))
+  .pan(pad.x.scale(-1, 1, 0, 1))
   .out()
 
 button().trig.kick().gain(0.5).out()

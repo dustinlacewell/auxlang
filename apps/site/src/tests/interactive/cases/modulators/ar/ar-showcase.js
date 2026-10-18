@@ -8,6 +8,6 @@ clock(45)
         s
           .gate
           .ar({ attack: 0.5, release: 0.8 })
-          .scale(400, 2000))
+          .scale(0, 1, 400, 2000))
       .gain(s.gate.ar({ attack: 0.5, release: 0.8 }))
       .out())

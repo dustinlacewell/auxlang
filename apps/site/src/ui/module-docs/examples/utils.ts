@@ -62,7 +62,7 @@ c.beat.kick().gain(0.7).out()
 saw(57)
   .lpf(89, 0.2)
   .gain(0.25)
-  .vca(c.beat.ad(0.005, 0.3).sub(1))
+  .vca(c.beat.ad(0.005, 0.3).from(1))
   .out()`,
 	},
 	{
@@ -279,7 +279,7 @@ n.add(n.z1())
 		description:
 			"Each sample minus the previous — only change survives; the hiss thins and brightens. The unit delay is the atom digital filters are built from.",
 		code: `const n = noise().gain(0.3)
-n.z1().sub(n)
+n.sub(n.z1())
   .gain(0.5)
   .out()`,
 	},

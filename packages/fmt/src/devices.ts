@@ -64,7 +64,7 @@ export const devices: Record<string, DeviceConfig> = {
 	quantize: { args: ["scale", "root", "octave"], style: "config" },
 
 	// Math (input from chain)
-	scale: { args: ["min", "max"], style: "positional" },
+	scale: { args: ["from", "to", "min", "max"], style: "positional" },
 	add: { args: ["amount"], style: "positional" },
 	mult: { args: ["amount"], style: "positional" },
 	clip: { args: ["min", "max"], style: "positional" },

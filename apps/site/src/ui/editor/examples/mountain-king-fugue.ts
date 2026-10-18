@@ -151,7 +151,7 @@ hiss.hpf(rise.mul(48).add(72), 0.3)
   .gain(0.2)
   .out()
 
-const fall = ramp(40, 41).mul(-1).add(1).mul(span(clk, 40, 41))
+const fall = ramp(40, 41).from(1).mul(span(clk, 40, 41))
 hiss.lpf(fall.mul(60).add(50), 0.2)
   .mul(fall)
   .gain(0.25)

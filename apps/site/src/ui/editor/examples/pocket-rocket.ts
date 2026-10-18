@@ -24,7 +24,7 @@ beat.trig
   .mul(sections(1, p\`1!6 0!2\`, 1, 1))
   .gain(0.8)
   .out()
-const pump = beat.trig.ad(0.002, 0.25).sub(1)
+const pump = beat.trig.ad(0.002, 0.25).from(1)
 
 seq("~ 60 ~ 60").trig
   .clap({ decay: 0.3, tone: 0.6 })
@@ -61,7 +61,7 @@ chords.add(dive)
   .mix()
   .lpf(hz(rise.mul(4000).add(900)), 0.3)
   .mul(stab.gate.adsr(0.002, 0.18, 0, 0.05))
-  .mul(drops.sub(1))
+  .mul(drops.from(1))
   .delay({ time: 0.351, feedback: 0.35, mix: 0.25 })
   .gain(0.15)
   .out()

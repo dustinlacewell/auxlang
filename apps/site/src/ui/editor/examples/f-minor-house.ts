@@ -6,7 +6,7 @@ const fMinorHouse = `tempo(126)
 // kick
 const beat = seq("60*4").trig.mul(toggle(1))
 beat.kick({ pitch: 41, sweep: 4, decay: 0.4, click: 0.1 }).gain(0.9).out()
-const pump = beat.ad(0.002, 0.3).sub(1)
+const pump = beat.ad(0.002, 0.3).from(1)
 
 // clap
 seq(p\`~ 60\`.fast(2)).trig.clap({ decay: 0.25 }).reverb({ room: 0.7, mix: 0.25 }).gain(0.6).out()
@@ -29,7 +29,7 @@ const filter = xy(0.6, 0.2)
 const chords = seq("<[f3,ab3,c4,eb4] [db3,f3,ab3,c4] [ab2,c3,eb3,g3] [eb3,g3,bb3,db4]>")
 const stack = chords.add(p\`[-0.1, 0.1]\`)
   .saw()
-  .lpf(filter.x.scale(0, 1, 70, 110), filter.y.scale(0, 1, 0, 0.7))
+  .lpf(filter.x.scale(70, 110, 0, 1), filter.y.scale(0, 0.7, 0, 1))
   .mul(chords.gate.adsr(0.01, 0.3, 0.8, 0.3))
   .mul(pump)
   .gain(0.05)

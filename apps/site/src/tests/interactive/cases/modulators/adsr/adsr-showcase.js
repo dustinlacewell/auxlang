@@ -12,7 +12,7 @@ clock(90)
             decay: 0.4,
             sustain: 0.15,
             release: 0.4})
-          .scale(100, 4000))
+          .scale(0, 1, 100, 4000))
       .gain(
         s
           .gate

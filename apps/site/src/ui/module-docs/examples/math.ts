@@ -25,11 +25,10 @@ export const MATH_EXAMPLES: readonly DocExample[] = [
 	},
 	{
 		section: "Math",
-		title: "sub — pitch dip",
-		description:
-			"sub is from − in: pitch 72 minus an LFO 0→12 — the tone dips down an octave and comes back.",
+		title: "lfo — pitch dip",
+		description: "An LFO sweeping 72→60 — the tone dips down an octave and comes back.",
 		code: `sin()
-  .pitch(lfo(0.2, 0, 12).sub(72))
+  .pitch(lfo(0.2, 72, 60))
   .gain(0.3)
   .out()`,
 	},
@@ -40,7 +39,7 @@ export const MATH_EXAMPLES: readonly DocExample[] = [
 		code: `tempo(120)
 const g = seq("[1 ~]*4")
 tri(57)
-  .mul(g.gate.sub(1).ar(0.01, 0.08))
+  .mul(g.gate.from(1).ar(0.01, 0.08))
   .gain(0.35)
   .out()`,
 	},

@@ -8,6 +8,6 @@ clock(120)
         s
           .gate
           .ad({ attack: 0.01, decay: 0.2 })
-          .scale(200, 2500))
+          .scale(0, 1, 200, 2500))
       .gain(s.gate.ad({ attack: 0.005, decay: 0.25 }))
       .out())
