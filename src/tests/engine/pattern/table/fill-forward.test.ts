@@ -18,7 +18,7 @@ import { type EventTable, KIND_NOTE, createTable } from "@/engine/pattern/table/
 import { fillTable } from "@/engine/pattern/table/fill-table";
 import { LaneFill } from "@/engine/pattern/table/lane-fill";
 import { RANDOM_LOOKBACK_CYCLES } from "@/engine/pattern/table/lookback-carry";
-import { EXAMPLES } from "@/ui/editor/examples";
+import { EXAMPLES } from "@/ui/editor/examples/examples";
 import { evalPatch } from "@/engine/eval-patch";
 
 const SEED = 7;

@@ -7,7 +7,7 @@
 
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
-import { EXAMPLES } from "./examples";
+import { EXAMPLES } from "./examples/examples";
 import type { SavedPatch } from "./storage/saved-patches";
 
 export type OpenPatch = { kind: "example"; name: string } | { kind: "saved"; id: string };

@@ -13,7 +13,7 @@ import { withSourceText } from "@/engine/dsp/source-text";
 import { Core3Engine } from "@/engine/runtime/engine";
 import { withProgramSpecs } from "@/engine/runtime/hydrate-specs";
 import type { Program } from "@/engine/types";
-import { EXAMPLES as SITE } from "@/ui/editor/examples";
+import { EXAMPLES as SITE } from "@/ui/editor/examples/examples";
 import { evalPatch } from "@/engine/eval-patch";
 import { EXAMPLES as MODULE_DOCS } from "@/ui/module-docs/examples/examples";
 import { EXAMPLES as PATTERN_DOCS } from "@/ui/pattern-docs/examples/examples";

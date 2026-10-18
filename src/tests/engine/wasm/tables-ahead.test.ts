@@ -17,7 +17,7 @@ import type { Program } from "@/engine/types";
 import { createWasmEngine } from "@/engine/wasm/host/create-wasm-engine";
 import { prepareWasm, prepareWasmSwap } from "@/engine/wasm/host/prepare-wasm";
 import { WasmEngine } from "@/engine/wasm/host/wasm-engine";
-import { EXAMPLES } from "@/ui/editor/examples";
+import { EXAMPLES } from "@/ui/editor/examples/examples";
 import { evalPatch } from "@/engine/eval-patch";
 
 const SR = 48000;

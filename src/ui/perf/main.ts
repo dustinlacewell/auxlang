@@ -10,7 +10,7 @@
  */
 
 import { type PerfWindow, disablePerf, enablePerf, play, stop } from "@/engine/runtime/audio";
-import { EXAMPLES } from "@/ui/editor/examples";
+import { EXAMPLES } from "@/ui/editor/examples/examples";
 import { evalPatch } from "@/engine/eval-patch";
 
 declare global {

@@ -6,7 +6,7 @@
 
 import { render } from "@/engine/runtime/render";
 import { evalPatch } from "@/engine/eval-patch";
-import { EXAMPLES } from "@/ui/editor/examples";
+import { EXAMPLES } from "@/ui/editor/examples/examples";
 import { describe, expect, it } from "vitest";
 import { allFinite, maxAbs, rms } from "./helpers";
 

@@ -8,7 +8,7 @@ import { SitePage } from "@/ui/site/site-page";
 import { useState } from "react";
 import { EditorEmbed } from "./editor-embed";
 import { ErrorStrip } from "./error-strip";
-import { DEFAULT_EXAMPLE, EXAMPLES } from "./examples";
+import { DEFAULT_EXAMPLE, EXAMPLES } from "./examples/examples";
 import { type OpenPatch, PatchSidebar } from "./patch-sidebar";
 import { SeedBar } from "./seed-bar";
 import { readLastOpenPatch, writeLastOpenPatch } from "./storage/last-open-patch";
